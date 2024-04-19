@@ -922,7 +922,7 @@ def train_model(
 
         p_model = model_output_dir / "last.pt"
         save_model(p_model, model)
-        logger.info(f"Model from last epoch saved to '{p_model}'")
+        logger.info(f"Model from the last epoch saved to '{p_model}'")
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
