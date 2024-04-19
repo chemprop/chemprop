@@ -149,6 +149,9 @@ class RegressionFFN(_FFNPredictorBase):
     _default_criterion = MSELoss()
     _default_metric = MSEMetric()
 
+    def train_step(self, Z: Tensor) -> Tensor:
+        return super().forward(Z)
+
 
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
