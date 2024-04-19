@@ -264,6 +264,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         activation: str = "relu",
         criterion: LossFunction | None = None,
         task_weights: Tensor | None = None,
+        threshold: float | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__(
@@ -275,6 +276,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
             activation,
             criterion,
             task_weights,
+            threshold,
             output_transform,
         )
 
