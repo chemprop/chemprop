@@ -842,7 +842,7 @@ def train_model(
 
         checkpointing = ModelCheckpoint(
             model_output_dir / "checkpoints",
-            "{epoch}-{val_loss:.2f}",
+            "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
             save_last=True,
@@ -920,9 +920,9 @@ def train_model(
                 df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
             df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
-        p_model = model_output_dir / "model.pt"
+        p_model = model_output_dir / "last.pt"
         save_model(p_model, model)
-        logger.info(f"Model saved to '{p_model}'")
+        logger.info(f"Model from last epoch saved to '{p_model}'")
 
 
 def main(args):
