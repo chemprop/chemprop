@@ -257,9 +257,7 @@ def make_prediction_for_model(
     # else:
     #     cal_data = None
 
-    test_loader = data.build_dataloader(
-        test_dset, args.batch_size, args.num_workers, shuffle=False
-    )
+    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)

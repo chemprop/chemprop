@@ -149,9 +149,7 @@ def make_fingerprint_for_model(
     if V_d_scaler is not None:
         test_dset.normalize_inputs("V_d", V_d_scaler)
 
-    test_loader = data.build_dataloader(
-        test_dset, args.batch_size, args.num_workers, shuffle=False
-    )
+    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
 
     logger.info(model)
 
