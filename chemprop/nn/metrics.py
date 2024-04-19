@@ -183,7 +183,6 @@ class BinaryF1Metric(Metric, ThresholdedMixin):
         )
 
 
-
 @MetricRegistry.register("bce")
 class BCEMetric(BCELoss, Metric):
     pass
