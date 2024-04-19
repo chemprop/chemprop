@@ -34,7 +34,7 @@ def example_model_v1_prediction(data_dir):
     test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
     test_dset = MoleculeDataset(test_data, featurizer)
 
-    test_loader = MolGraphDataLoader(test_dset)
+    test_loader = MolGraphDataLoader(test_dset, shuffle=False)
     return ys, test_loader
 
 
