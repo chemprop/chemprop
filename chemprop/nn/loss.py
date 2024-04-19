@@ -35,6 +35,7 @@ class LossFunction(nn.Module):
             a tensor of shape `t` or `1 x t` containing the per-task weight.
         """
         super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
     def forward(
@@ -78,6 +79,9 @@ class LossFunction(nn.Module):
     @abstractmethod
     def _calc_unreduced_loss(self, preds, targets, mask, weights, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
+
+    def extra_repr(self) -> str:
+        return f"task_weights={self.task_weights.tolist()}"
 
 
 LossFunctionRegistry = ClassRegistry[LossFunction]()
@@ -158,7 +162,8 @@ class EvidentialLoss(LossFunction):
         return L_nll + self.v_kl * (L_reg - self.eps)
 
     def extra_repr(self) -> str:
-        return f"v_kl={self.v_kl}, eps={self.eps}"
+        parent_repr = super().extra_repr()
+        return parent_repr + f", v_kl={self.v_kl}, eps={self.eps}"
 
 
 @LossFunctionRegistry.register("bce")
@@ -247,6 +252,7 @@ class DirichletMixin:
     """
 
     def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
+        task_weights = torch.tensor([1.0])
         super().__init__(task_weights)
         self.v_kl = v_kl
 
