@@ -21,7 +21,7 @@ from chemprop.nn.ffn import MLP
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
-from chemprop.utils import ClassRegistry
+from chemprop.utils import ClassRegistry, Factory
 
 __all__ = [
     "Predictor",
@@ -112,6 +112,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         activation: str = "relu",
         criterion: LossFunction | None = None,
         task_weights: Tensor | None = None,
+        threshold: float | None = None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -121,7 +122,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
-        self.criterion = criterion or self._default_criterion(task_weights=task_weights)
+        self.criterion = criterion or Factory.build(
+            self._default_criterion, task_weights=task_weights, threshold=threshold
+        )
 
     @property
     def input_dim(self) -> int:
