@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 from torchmetrics import functional as F
-from sklearn.metrics import auc
+from torchmetrics.utilities.compute import auc
 
 from chemprop.utils.registry import ClassRegistry
 from chemprop.nn.loss import (
