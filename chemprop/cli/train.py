@@ -817,7 +817,7 @@ def build_model(
 
 
 def train_model(
-    args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+    args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
 ):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
@@ -832,7 +832,7 @@ def train_model(
 
         torch.manual_seed(seed)
 
-        model = build_model(args, train_loader.dataset, output_scaler, input_scalers)
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -854,11 +854,6 @@ def train_model(
         patience = args.patience if args.patience is not None else args.epochs
         early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
-        if args.task_type == "regression":
-            model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(1, -1).float())
-            model.predictor.register_buffer(
-                "scale", torch.tensor(scaler.scale_).view(1, -1).float()
-            )
 
         trainer = pl.Trainer(
             logger=trainer_logger,
