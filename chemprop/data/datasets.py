@@ -106,7 +106,6 @@ class _MolGraphDatasetMixin:
         """
 
         if scaler is None:
-            scaler = StandardScaler()
             scaler = StandardScaler().fit(self._Y)
 
         self.Y = scaler.transform(self._Y)

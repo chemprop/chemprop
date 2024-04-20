@@ -845,7 +845,7 @@ def train_model(
 
         checkpointing = ModelCheckpoint(
             model_output_dir / "checkpoints",
-            "{epoch}-{val_loss:.2f}",
+            "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
             save_last=True,
@@ -867,7 +867,7 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            predss = trainer.predict(model, test_loader)
+            predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -921,9 +921,11 @@ def train_model(
                 df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
             df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
-        p_model = model_output_dir / "model.pt"
+        best_model_path = checkpointing.best_model_path
+        model = model.__class__.load_from_checkpoint(best_model_path)
+        p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
-        logger.info(f"Model saved to '{p_model}'")
+        logger.info(f"Best model saved to '{p_model}'")
 
 
 def main(args):

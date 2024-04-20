@@ -131,7 +131,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "model_0" / "model.pt").exists()
+    assert (tmp_path / "model_0" / "best.pt").exists()
     assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
