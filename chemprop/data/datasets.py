@@ -106,7 +106,6 @@ class _MolGraphDatasetMixin:
         """
 
         if scaler is None:
-            scaler = StandardScaler()
             scaler = StandardScaler().fit(self._Y)
 
         self.Y = scaler.transform(self._Y)
@@ -260,7 +259,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
-        return 0 if self.V_ds[0] is None else self.V_fs[0].shape[1]
+        return 0 if self.V_fs[0] is None else self.V_fs[0].shape[1]
 
     @property
     def d_ef(self) -> int:
@@ -442,3 +441,19 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
+
+    @property
+    def d_xd(self) -> list[int]:
+        return self.datasets[0].d_xd
+
+    @property
+    def d_vf(self) -> list[int]:
+        return sum(dset.d_vf for dset in self.datasets)
+
+    @property
+    def d_ef(self) -> list[int]:
+        return sum(dset.d_ef for dset in self.datasets)
+
+    @property
+    def d_vd(self) -> list[int]:
+        return sum(dset.d_vd for dset in self.datasets)

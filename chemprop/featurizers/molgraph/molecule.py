@@ -36,8 +36,10 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
         super().__post_init__()
 
-        self.atom_fdim += extra_atom_fdim
-        self.bond_fdim += extra_bond_fdim
+        self.extra_atom_fdim = extra_atom_fdim
+        self.extra_bond_fdim = extra_bond_fdim
+        self.atom_fdim += self.extra_atom_fdim
+        self.bond_fdim += self.extra_bond_fdim
 
     def __call__(
         self,

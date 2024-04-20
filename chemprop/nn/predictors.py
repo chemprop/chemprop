@@ -16,12 +16,13 @@ from chemprop.nn.loss import (
     MulticlassDirichletLoss,
     SIDLoss,
 )
-from chemprop.nn.metrics import AUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
+from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
 from chemprop.nn.ffn import MLP
+from chemprop.nn.transforms import UnscaleTransform
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.conf import DEFAULT_HIDDEN_DIM
-from chemprop.utils import ClassRegistry
+from chemprop.utils import ClassRegistry, Factory
 
 __all__ = [
     "Predictor",
@@ -52,6 +53,10 @@ class Predictor(nn.Module, HasHParams):
     """the number of targets `s` to predict for each task `t`"""
     criterion: LossFunction
     """the loss function to use for training"""
+    task_weights: Tensor
+    """the weights to apply to each task when calculating the loss"""
+    output_transform: UnscaleTransform
+    """the transform to apply to the output of the predictor"""
 
     @abstractmethod
     def forward(self, Z: Tensor) -> Tensor:
@@ -97,8 +102,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output.
     """
 
-    _default_criterion: LossFunction
-    _default_metric: Metric
+    _T_default_criterion: LossFunction
+    _T_default_metric: Metric
 
     def __init__(
         self,
@@ -109,6 +114,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        task_weights: Tensor | None = None,
+        threshold: float | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -117,7 +125,14 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.ffn = MLP.build(
             input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
-        self.criterion = criterion or self._default_criterion
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
+        self.criterion = criterion or Factory.build(
+            self._T_default_criterion, task_weights=task_weights, threshold=threshold
+        )
+
+        self.output_transform = output_transform if output_transform is not None else nn.Identity()
+
+        self.output_transform = output_transform if output_transform is not None else nn.Identity()
 
     @property
     def input_dim(self) -> int:
@@ -132,10 +147,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.output_dim // self.n_targets
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
+        return self.output_transform(self.ffn(Z))
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -144,39 +156,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
 @PredictorRegistry.register("regression")
 class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = MSELoss()
-    _default_metric = MSEMetric()
-
-    def __init__(
-        self,
-        n_tasks: int = 1,
-        input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
-        n_layers: int = 1,
-        dropout: float = 0.0,
-        activation: str = "relu",
-        criterion: LossFunction | None = None,
-        loc: float | Tensor = 0.0,
-        scale: float | Tensor = 1.0,
-    ):
-        super().__init__(n_tasks, input_dim, hidden_dim, n_layers, dropout, activation, criterion)
-
-        if isinstance(loc, float):
-            loc = torch.ones(1, self.n_tasks) * loc
-        else:
-            loc = torch.tensor(loc).view(1, -1)
-        self.register_buffer("loc", loc)
-
-        if isinstance(scale, float):
-            scale = torch.ones(1, self.n_tasks) * scale
-        else:
-            scale = torch.tensor(scale).view(1, -1)
-        self.register_buffer("scale", scale)
-
-    def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-
-        return self.scale * Y + self.loc
+    _T_default_criterion = MSELoss
+    _T_default_metric = MSEMetric
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z)
@@ -185,7 +166,7 @@ class RegressionFFN(_FFNPredictorBase):
 @PredictorRegistry.register("regression-mve")
 class MveFFN(RegressionFFN):
     n_targets = 2
-    _default_criterion = MVELoss()
+    _T_default_criterion = MVELoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -207,7 +188,7 @@ class MveFFN(RegressionFFN):
 @PredictorRegistry.register("regression-evidential")
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
-    _default_criterion = EvidentialLoss()
+    _T_default_criterion = EvidentialLoss
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -236,8 +217,8 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 @PredictorRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
-    _default_criterion = BCELoss()
-    _default_metric = AUROCMetric(task="binary")
+    _T_default_criterion = BCELoss
+    _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -251,8 +232,8 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _default_criterion = BinaryDirichletLoss()
-    _default_metric = AUROCMetric(task="binary")
+    _T_default_criterion = BinaryDirichletLoss
+    _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -269,8 +250,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("multiclass")
 class MulticlassClassificationFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = CrossEntropyLoss()
-    _default_metric = CrossEntropyMetric()
+    _T_default_criterion = CrossEntropyLoss
+    _T_default_metric = CrossEntropyMetric
 
     def __init__(
         self,
@@ -282,9 +263,21 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         dropout: float = 0.0,
         activation: str = "relu",
         criterion: LossFunction | None = None,
+        task_weights: Tensor | None = None,
+        threshold: float | None = None,
+        output_transform: UnscaleTransform | None = None,
     ):
         super().__init__(
-            n_tasks * n_classes, input_dim, hidden_dim, n_layers, dropout, activation, criterion
+            n_tasks * n_classes,
+            input_dim,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            criterion,
+            task_weights,
+            threshold,
+            output_transform,
         )
 
         self.n_classes = n_classes
@@ -301,8 +294,8 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _default_criterion = MulticlassDirichletLoss()
-    _default_metric = CrossEntropyMetric()
+    _T_default_criterion = MulticlassDirichletLoss
+    _T_default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -329,8 +322,8 @@ class _Exp(nn.Module):
 @PredictorRegistry.register("spectral")
 class SpectralFFN(_FFNPredictorBase):
     n_targets = 1
-    _default_criterion = SIDLoss()
-    _default_metric = SIDMetric()
+    _T_default_criterion = SIDLoss
+    _T_default_metric = SIDMetric
 
     def __init__(self, *args, spectral_activation: str | None = "softplus", **kwargs):
         super().__init__(*args, **kwargs)

@@ -31,6 +31,11 @@ def test_train_quick(monkeypatch, data_path):
         "0",
         "--task-type",
         "classification",
+        "--metric",
+        "prc",
+        "accuracy",
+        "f1",
+        "roc",
     ]
 
     with monkeypatch.context() as m:
@@ -85,7 +90,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "model_0" / "model.pt").exists()
+    assert (tmp_path / "model_0" / "best.pt").exists()
     assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
@@ -118,7 +123,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "fold_2" / "model_1" / "model.pt").exists()
+    assert (tmp_path / "fold_2" / "model_1" / "best.pt").exists()
     assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
     assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "fold_2" / "train_smiles.csv").exists()

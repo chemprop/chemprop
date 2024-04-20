@@ -9,6 +9,8 @@ from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.utils import Factory
+from chemprop.nn.transforms import UnscaleTransform
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -17,24 +19,11 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     state_dict_v2 = {}
     args_v1 = model_v1_dict["args"]
 
-    if args_v1.target_weights is not None:
-        state_dict_v2["w_t"] = torch.tensor(args_v1.target_weights).unsqueeze(0)
-    else:
-        state_dict_v2["w_t"] = torch.ones(args_v1.num_tasks).unsqueeze(0)
-
     state_dict_v1 = model_v1_dict["state_dict"]
     state_dict_v2["message_passing.W_i.weight"] = state_dict_v1["encoder.encoder.0.W_i.weight"]
     state_dict_v2["message_passing.W_h.weight"] = state_dict_v1["encoder.encoder.0.W_h.weight"]
     state_dict_v2["message_passing.W_o.weight"] = state_dict_v1["encoder.encoder.0.W_o.weight"]
     state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
-
-    if args_v1.dataset_type == "regression":
-        state_dict_v2["predictor.loc"] = torch.from_numpy(
-            model_v1_dict["data_scaler"]["means"]
-        ).unsqueeze(0)
-        state_dict_v2["predictor.scale"] = torch.from_numpy(
-            model_v1_dict["data_scaler"]["stds"]
-        ).unsqueeze(0)
 
     for i in range(args_v1.ffn_num_layers):
         suffix = 0 if i == 0 else 2
@@ -42,6 +31,21 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
             f"readout.{i*3+1}.weight"
         ]
         state_dict_v2[f"predictor.ffn.{i}.{suffix}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
+
+    if args_v1.dataset_type == "regression":
+        state_dict_v2["predictor.output_transform.mean"] = torch.tensor(
+            model_v1_dict["data_scaler"]["means"], dtype=torch.float32
+        ).unsqueeze(0)
+        state_dict_v2["predictor.output_transform.scale"] = torch.tensor(
+            model_v1_dict["data_scaler"]["stds"], dtype=torch.float32
+        ).unsqueeze(0)
+
+    if args_v1.target_weights is not None:
+        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
+    else:
+        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
+
+    state_dict_v2["predictor.criterion.task_weights"] = task_weights
 
     return state_dict_v2
 
@@ -53,10 +57,6 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     args_v1 = model_v1_dict["args"]
     hyper_parameters_v2["batch_norm"] = False
     hyper_parameters_v2["metrics"] = [MetricRegistry[args_v1.metric]]
-    if args_v1.target_weights is not None:
-        hyper_parameters_v2["w_t"] = torch.tensor(args_v1.target_weights).unsqueeze(0)
-    else:
-        hyper_parameters_v2["w_t"] = None
     hyper_parameters_v2["warmup_epochs"] = args_v1.warmup_epochs
     hyper_parameters_v2["init_lr"] = args_v1.init_lr
     hyper_parameters_v2["max_lr"] = args_v1.max_lr
@@ -95,11 +95,19 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         hyper_parameters_v2["agg"]["norm"] = args_v1.aggregation_norm
 
     # convert the predictor block
+    if args_v1.target_weights is not None:
+        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
+    else:
+        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
+
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
             "activation": args_v1.activation,
             "cls": PredictorRegistry[args_v1.dataset_type],
-            "criterion": LossFunctionRegistry[args_v1.loss_function],
+            "criterion": Factory.build(
+                LossFunctionRegistry[args_v1.loss_function], task_weights=task_weights
+            ),
+            "task_weights": None,
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
             "input_dim": args_v1.hidden_size,
@@ -109,8 +117,10 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     )
 
     if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["predictor"]["loc"] = model_v1_dict["data_scaler"]["means"][0]
-        hyper_parameters_v2["predictor"]["scale"] = model_v1_dict["data_scaler"]["stds"][0]
+        print(model_v1_dict["data_scaler"]["means"])
+        hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(
+            model_v1_dict["data_scaler"]["means"], model_v1_dict["data_scaler"]["stds"]
+        )
 
     return hyper_parameters_v2
 

@@ -20,9 +20,10 @@ from chemprop.cli.train import (
     validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
-from chemprop.data import MolGraphDataLoader
+from chemprop.data import build_dataloader
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.utils import Activation
+from chemprop.nn.transforms import UnscaleTransform
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
@@ -247,19 +248,19 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     return args
 
 
-def train_model(config, args, train_dset, val_dset, logger):
+def train_model(config, args, train_dset, val_dset, logger, output_transform, input_transforms):
     update_args_with_config(args, config)
 
-    train_loader = MolGraphDataLoader(
+    train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
-    val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
 
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 
     torch.manual_seed(seed)
 
-    model = build_model(args, train_loader.dataset)
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
     monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -282,7 +283,9 @@ def train_model(config, args, train_dset, val_dset, logger):
     trainer.fit(model, train_loader, val_loader)
 
 
-def tune_model(args, train_dset, val_dset, logger, monitor_mode):
+def tune_model(
+    args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
+):
     scheduler = ASHAScheduler(
         max_t=args.epochs,
         grace_period=min(args.raytune_grace_period, args.epochs),
@@ -305,7 +308,9 @@ def tune_model(args, train_dset, val_dset, logger, monitor_mode):
     )
 
     ray_trainer = TorchTrainer(
-        lambda config: train_model(config, args, train_dset, val_dset, logger),
+        lambda config: train_model(
+            config, args, train_dset, val_dset, logger, output_transform, input_transforms
+        ),
         scaling_config=scaling_config,
         run_config=run_config,
     )
@@ -373,23 +378,26 @@ def main(args: Namespace):
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
 
-    _ = normalize_inputs(train_dset, val_dset, args)
+    input_transforms = normalize_inputs(train_dset, val_dset, args)
 
     if "regression" in args.task_type:
-        scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(scaler)
-        logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        output_scaler = train_dset.normalize_targets()
+        val_dset.normalize_targets(output_scaler)
+        logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+        output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
     else:
-        scaler = None
+        output_transform = None
 
-    train_loader = MolGraphDataLoader(
+    train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
-    model = build_model(args, train_loader.dataset)
+    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     monitor_mode = "min" if model.metrics[0].minimize else "max"
 
-    results = tune_model(args, train_dset, val_dset, logger, monitor_mode)
+    results = tune_model(
+        args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
+    )
 
     best_result = results.get_best_result()
     best_config = best_result.config

@@ -48,7 +48,7 @@ Next, we load the data from a CSV file and split it into training, validation, a
   train_data, val_test_data = train_test_split(all_data, test_size=0.1)
   val_data, test_data = train_test_split(val_test_data, test_size=0.5)
 
-We then create :code:`MoleculeDataset` objects from the data and use them to create :code:`MolGraphDataLoader` objects, which are PyTorch :code:`DataLoader` objects that can be used to train the model.
+We then create :code:`MoleculeDataset` objects from the data and use them to create PyTorch :code:`DataLoader` objects that can be used to train the model.
 
 .. code-block::
 
@@ -59,9 +59,9 @@ We then create :code:`MoleculeDataset` objects from the data and use them to cre
   test_dset = data.MoleculeDataset(test_data, featurizer)
   test_dset.normalize_targets(scaler)
 
-  train_loader = data.MolGraphDataLoader(train_dset, num_workers=args.num_workers)
-  val_loader = data.MolGraphDataLoader(val_dset, num_workers=args.num_workers, shuffle=False)
-  test_loader = data.MolGraphDataLoader(test_dset, num_workers=args.num_workers, shuffle=False)
+  train_loader = data.build_dataloader(train_dset, num_workers=args.num_workers)
+  val_loader = data.build_dataloader(val_dset, num_workers=args.num_workers, shuffle=False)
+  test_loader = data.build_dataloader(test_dset, num_workers=args.num_workers, shuffle=False)
 
 Finally, we train the model and evaluate it on the test set.
 

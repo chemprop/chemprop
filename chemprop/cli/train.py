@@ -11,9 +11,10 @@ from lightning import pytorch as pl
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 import torch
+import torch.nn as nn
 
 from chemprop.data import (
-    MolGraphDataLoader,
+    build_dataloader,
     MolGraphDataset,
     MulticomponentDataset,
     MoleculeDataset,
@@ -22,6 +23,7 @@ from chemprop.data import (
 from chemprop.data import SplitType, make_split_indices, split_data_by_indices
 from chemprop.utils import Factory
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     BondMessagePassing,
@@ -439,7 +441,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-seed",
         type=int,
         default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`MolGraphDataLoader` when :code:`shuffle` is True.",
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`build_dataloader` when :code:`shuffle` is True.",
     )
 
     parser.add_argument(
@@ -471,65 +473,91 @@ def validate_train_args(args):
 
 
 def normalize_inputs(train_dset, val_dset, args):
-    X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = None, None, None, None
+    multicomponent = isinstance(train_dset, MulticomponentDataset)
+    num_components = train_dset.n_components if multicomponent else 1
 
-    if isinstance(train_dset, MulticomponentDataset):
-        d_xd = train_dset.datasets[0].d_xd
-        d_vf = sum(dset.d_vf for dset in train_dset.datasets)
-        d_ef = sum(dset.d_ef for dset in train_dset.datasets)
-        d_vd = sum(dset.d_vd for dset in train_dset.datasets)
-    else:
-        d_xd = train_dset.d_xd
-        d_vf = train_dset.d_vf
-        d_ef = train_dset.d_ef
-        d_vd = train_dset.d_vd
+    X_d_transform = None
+    V_f_transforms = [nn.Identity()] * num_components
+    E_f_transforms = [nn.Identity()] * num_components
+    V_d_transforms = [None] * num_components
+    graph_transforms = []
+
+    d_xd = train_dset.d_xd
+    d_vf = train_dset.d_vf
+    d_ef = train_dset.d_ef
+    d_vd = train_dset.d_vd
 
     if d_xd > 0 and not args.no_descriptor_scaling:
-        X_d_scaler = train_dset.normalize_inputs("X_d")
-        val_dset.normalize_inputs("X_d", X_d_scaler)
+        scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", scaler)
 
-        X_d_scaler = [X_d_scaler] if not isinstance(X_d_scaler, list) else X_d_scaler
+        scaler = scaler if not isinstance(scaler, list) else scaler[0]
 
-        scaler = X_d_scaler[0]
-        logger.info(f"Descriptors: loc = {scaler.mean_}, scale = {scaler.scale_}")
+        if scaler is not None:
+            logger.info(
+                f"Descriptors: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            X_d_transform = ScaleTransform.from_standard_scaler(scaler)
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
-        V_f_scaler = train_dset.normalize_inputs("V_f")
-        val_dset.normalize_inputs("V_f", V_f_scaler)
+        scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_f", scaler)
 
-        V_f_scaler = [V_f_scaler] if not isinstance(V_f_scaler, list) else V_f_scaler
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
 
-        for i, scaler in enumerate(V_f_scaler):
-            if scaler is not None:
-                logger.info(
-                    f"Atom features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
-                )
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Atom features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            V_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.atom_fdim - featurizer.extra_atom_fdim
+            )
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
-        E_f_scaler = train_dset.normalize_inputs("E_f")
-        val_dset.normalize_inputs("E_f", E_f_scaler)
+        scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_f", scaler)
 
-        E_f_scaler = [E_f_scaler] if not isinstance(E_f_scaler, list) else E_f_scaler
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
 
-        for i, scaler in enumerate(E_f_scaler):
-            if scaler is not None:
-                logger.info(
-                    f"Bond features for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
-                )
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Bond features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            E_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.bond_fdim - featurizer.extra_bond_fdim
+            )
+
+    for V_f_transform, E_f_transform in zip(V_f_transforms, E_f_transforms):
+        graph_transforms.append(GraphTransform(V_f_transform, E_f_transform))
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
-        V_d_scaler = train_dset.normalize_inputs("V_d")
-        val_dset.normalize_inputs("V_d", V_d_scaler)
+        scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", scaler)
 
-        V_d_scaler = [V_d_scaler] if not isinstance(V_d_scaler, list) else V_d_scaler
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
 
-        for i, scaler in enumerate(V_d_scaler):
-            if scaler is not None:
-                logger.info(
-                    f"Atom descriptors for mol {i}: loc = {scaler.mean_}, scale = {scaler.scale_}"
-                )
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
 
-    return X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler
+            logger.info(
+                f"Atom descriptors for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
+
+    return X_d_transform, graph_transforms, V_d_transforms
 
 
 def save_config(parser: ArgumentParser, args: Namespace):
@@ -658,8 +686,15 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
-def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MPNN:
+def build_model(
+    args,
+    train_dset: MolGraphDataset | MulticomponentDataset,
+    output_transform: UnscaleTransform,
+    input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
+) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+
+    X_d_transform, graph_transforms, V_d_transforms = input_transforms
 
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -677,6 +712,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
+                V_d_transform=V_d_transforms[i],
+                graph_transform=graph_transforms[i],
             )
             for i in range(train_dset.n_components)
         ]
@@ -706,6 +743,8 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
+            V_d_transform=V_d_transforms[0],
+            graph_transform=graph_transforms[0],
         )
         d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
@@ -716,6 +755,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     if args.loss_function is not None:
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
+            task_weights=args.task_weights,
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
@@ -723,7 +763,10 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     else:
         criterion = None
     if args.metrics is not None:
-        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+        metrics = [
+            Factory.build(MetricRegistry[metric], task_weights=torch.Tensor([1.0]))
+            for metric in args.metrics
+        ]
     else:
         metrics = None
 
@@ -737,12 +780,13 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         activation=args.activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
+        output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
 
     if args.loss_function is None:
         logger.info(
-            f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
 
     if args.model_frzn is not None:
@@ -764,15 +808,17 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         predictor,
         not args.no_batch_norm,
         metrics,
-        args.task_weights,
         args.warmup_epochs,
         args.init_lr,
         args.max_lr,
         args.final_lr,
+        X_d_transform=X_d_transform,
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers):
+def train_model(
+    args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
+):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -786,7 +832,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
         torch.manual_seed(seed)
 
-        model = build_model(args, train_loader.dataset)
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -799,7 +845,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
 
         checkpointing = ModelCheckpoint(
             model_output_dir / "checkpoints",
-            "{epoch}-{val_loss:.2f}",
+            "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
             save_last=True,
@@ -821,14 +867,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            if args.task_type == "regression":
-                model.predictor.register_buffer(
-                    "loc", torch.tensor(scaler.mean_).view(1, -1).float()
-                )
-                model.predictor.register_buffer(
-                    "scale", torch.tensor(scaler.scale_).view(1, -1).float()
-                )
-            predss = trainer.predict(model, test_loader)
+            predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -838,8 +877,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
             targets = test_dset.Y
             mask = torch.from_numpy(np.isfinite(targets))
             targets = np.nan_to_num(targets, nan=0.0)
-            w_s = torch.from_numpy(test_dset.weights)
-            w_t = model.w_t
+            weights = torch.from_numpy(test_dset.weights)
             lt_mask = (
                 torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
             )
@@ -851,8 +889,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                     torch.from_numpy(preds),
                     torch.from_numpy(targets),
                     mask,
-                    w_s,
-                    w_t,
+                    weights,
                     lt_mask,
                     gt_mask,
                 )
@@ -884,10 +921,11 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler,
                 df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
             df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
-        p_model = model_output_dir / "model.pt"
-        output_scaler = scaler
-        save_model(p_model, model, input_scalers, output_scaler)
-        logger.info(f"Model saved to '{p_model}'")
+        best_model_path = checkpointing.best_model_path
+        model = model.__class__.load_from_checkpoint(best_model_path)
+        p_model = model_output_dir / "best.pt"
+        save_model(p_model, model)
+        logger.info(f"Best model saved to '{p_model}'")
 
 
 def main(args):
@@ -926,33 +964,39 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        X_d_scaler, V_f_scaler, E_f_scaler, V_d_scaler = normalize_inputs(
-            train_dset, val_dset, args
-        )
-        input_scalers = {"X_d": X_d_scaler, "V_f": V_f_scaler, "E_f": E_f_scaler, "V_d": V_d_scaler}
+        input_transforms = normalize_inputs(train_dset, val_dset, args)
 
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
         if "regression" in args.task_type:
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+            output_scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(output_scaler)
+            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
-            scaler = None
+            output_transform = None
 
-        train_loader = MolGraphDataLoader(
+        train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
         )
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
-            test_loader = MolGraphDataLoader(
+            test_loader = build_dataloader(
                 test_dset, args.batch_size, args.num_workers, shuffle=False
             )
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler, input_scalers)
+        train_model(
+            args,
+            train_loader,
+            val_loader,
+            test_loader,
+            output_dir,
+            output_transform,
+            input_transforms,
+        )
 
 
 if __name__ == "__main__":

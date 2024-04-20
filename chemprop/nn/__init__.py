@@ -36,10 +36,10 @@ from .metrics import (
     BoundedMSEMetric,
     BoundedRMSEMetric,
     R2Metric,
-    AUROCMetric,
-    AUPRCMetric,
-    AccuracyMetric,
-    F1Metric,
+    BinaryAUROCMetric,
+    BinaryAUPRCMetric,
+    BinaryAccuracyMetric,
+    BinaryF1Metric,
     BCEMetric,
     CrossEntropyMetric,
     BinaryMCCMetric,
@@ -67,6 +67,7 @@ from .predictors import (
     SpectralFFN,
 )
 from .utils import Activation
+from .transforms import UnscaleTransform
 
 __all__ = [
     "Aggregation",
@@ -102,10 +103,10 @@ __all__ = [
     "BoundedMSEMetric",
     "BoundedRMSEMetric",
     "R2Metric",
-    "AUROCMetric",
-    "AUPRCMetric",
-    "AccuracyMetric",
-    "F1Metric",
+    "BinaryAUROCMetric",
+    "BinaryAUPRCMetric",
+    "BinaryAccuracyMetric",
+    "BinaryF1Metric",
     "BCEMetric",
     "CrossEntropyMetric",
     "BinaryMCCMetric",
@@ -128,4 +129,5 @@ __all__ = [
     "MulticlassDirichletFFN",
     "SpectralFFN",
     "Activation",
+    "UnscaleTransform",
 ]
