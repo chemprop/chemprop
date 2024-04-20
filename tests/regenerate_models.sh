@@ -34,7 +34,7 @@ chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol+mol/mol+mol.csv --acc
 
 cp -L test_cli_regression_mol+mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol+mol.pt
 
-cp -L test_cli_regression_mol+mol/model_0/checkpoints/last.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol+mol.ckpt
+cp -L test_cli_regression_mol+mol/model_0/checkpoints/best*.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol+mol.ckpt
 
 # test_cli_regression_mol
 
@@ -44,7 +44,7 @@ chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol/mol.csv --accelerator
 
 cp -L test_cli_regression_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol.pt
 
-cp -L test_cli_regression_mol/model_0/checkpoints/last.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol.ckpt
+cp -L test_cli_regression_mol/model_0/checkpoints/best*.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol.ckpt
 
 # test_cli_regression_mol_multitask
 
@@ -70,4 +70,4 @@ chemprop train -i $CHEMPROP_PATH/tests/data/regression/rxn/rxn.csv --accelerator
 
 cp -L test_cli_regression_rxn/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_rxn.pt
 
-cp -L test_cli_regression_rxn/model_0/checkpoints/last.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_rxn.ckpt
+cp -L test_cli_regression_rxn/model_0/checkpoints/best*.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_rxn.ckpt
