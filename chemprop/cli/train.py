@@ -864,7 +864,7 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            predss = trainer.predict(test_loader)
+            predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -919,10 +919,6 @@ def train_model(
             else:
                 df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
             df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
-
-        p_model = model_output_dir / "last.pt"
-        save_model(p_model, model)
-        logger.info(f"Model from the last epoch saved to '{p_model}'")
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
