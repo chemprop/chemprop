@@ -755,6 +755,7 @@ def build_model(
     if args.loss_function is not None:
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
+            task_weights=args.task_weights,
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
@@ -762,14 +763,10 @@ def build_model(
     else:
         criterion = None
     if args.metrics is not None:
-        if args.task_type == "classification":
-            task = "binary"
-        elif args.task_type == "multiclass":
-            task = "multiclass"
-        else:
-            task = None
-
-        metrics = [Factory.build(MetricRegistry[metric], task=task) for metric in args.metrics]
+        metrics = [
+            Factory.build(MetricRegistry[metric], task_weights=torch.Tensor([1.0]))
+            for metric in args.metrics
+        ]
     else:
         metrics = None
 
@@ -789,7 +786,7 @@ def build_model(
 
     if args.loss_function is None:
         logger.info(
-            f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
 
     if args.model_frzn is not None:
@@ -811,7 +808,6 @@ def build_model(
         predictor,
         not args.no_batch_norm,
         metrics,
-        args.task_weights,
         args.warmup_epochs,
         args.init_lr,
         args.max_lr,
@@ -821,7 +817,7 @@ def build_model(
 
 
 def train_model(
-    args, train_loader, val_loader, test_loader, output_dir, output_scaler, input_scalers
+    args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
 ):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
@@ -836,7 +832,7 @@ def train_model(
 
         torch.manual_seed(seed)
 
-        model = build_model(args, train_loader.dataset, output_scaler, input_scalers)
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -881,8 +877,7 @@ def train_model(
             targets = test_dset.Y
             mask = torch.from_numpy(np.isfinite(targets))
             targets = np.nan_to_num(targets, nan=0.0)
-            w_s = torch.from_numpy(test_dset.weights)
-            w_t = model.w_t
+            weights = torch.from_numpy(test_dset.weights)
             lt_mask = (
                 torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
             )
@@ -894,8 +889,7 @@ def train_model(
                     torch.from_numpy(preds),
                     torch.from_numpy(targets),
                     mask,
-                    w_s,
-                    w_t,
+                    weights,
                     lt_mask,
                     gt_mask,
                 )

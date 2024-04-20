@@ -30,10 +30,10 @@ __all__ = [
     "BoundedMSEMetric",
     "BoundedRMSEMetric",
     "R2Metric",
-    "AUROCMetric",
-    "AUPRCMetric",
-    "AccuracyMetric",
-    "F1Metric",
+    "BinaryAUROCMetric",
+    "BinaryAUPRCMetric",
+    "BinaryAccuracyMetric",
+    "BinaryF1Metric",
     "BCEMetric",
     "CrossEntropyMetric",
     "BinaryMCCMetric",
@@ -44,6 +44,18 @@ __all__ = [
 
 
 class Metric(LossFunction):
+    """
+    __init__(self, task_weights: Tensor):
+
+    Parameters
+    ----------
+    task_weights : Tensor
+        a tensor of shape `t` or `1 x t` containing the per-task weight.
+    .. note::
+        This class inherits from :class:`LossFunction`, which requires task_weights. These
+        task_weights are not used in Metric and can be set to any Tensor, e.g. tensor([1.])
+    """
+
     minimize: bool = True
 
     def forward(
@@ -51,8 +63,7 @@ class Metric(LossFunction):
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
-        w_s: Tensor,
-        w_t: Tensor,
+        weights: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -92,14 +103,13 @@ class RMSEMetric(MSEMetric):
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
-        w_s: Tensor,
-        w_t: Tensor,
+        weights: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return (
-            super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean().sqrt()
-        )
+        squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
+
+        return squared_errors[mask].mean().sqrt()
 
 
 class BoundedMixin:
@@ -134,71 +144,43 @@ class R2Metric(Metric):
 
 
 @MetricRegistry.register("roc")
-class AUROCMetric(Metric):
+class BinaryAUROCMetric(Metric):
     minimize = False
-
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
-        return F.auroc(preds[mask], targets[mask].long(), task=self.task)
-
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
+        return F.auroc(preds[mask], targets[mask].long(), task="binary")
 
 
 @MetricRegistry.register("prc")
-class AUPRCMetric(Metric):
+class BinaryAUPRCMetric(Metric):
     minimize = False
 
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
-
     def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
-        p, r, _ = F.precision_recall_curve(preds, targets.long(), task=self.task)
+        p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
         return auc(r, p)
-
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("accuracy")
-class AccuracyMetric(Metric, ThresholdedMixin):
+class BinaryAccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
-
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.accuracy(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
-
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("f1")
-class F1Metric(Metric, ThresholdedMixin):
+class BinaryF1Metric(Metric, ThresholdedMixin):
     minimize = False
-
-    def __init__(self, task: str, **kwargs):
-        super().__init__(**kwargs)
-        self.task = task
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         return F.f1_score(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task=self.task
+            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
-
-    def extra_repr(self) -> str:
-        return f"task='{self.task}'"
 
 
 @MetricRegistry.register("bce")

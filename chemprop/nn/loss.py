@@ -27,13 +27,23 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
+    def __init__(self, task_weights: Tensor):
+        """
+        Parameters
+        ----------
+        task_weights : Tensor
+            a tensor of shape `t` or `1 x t` containing the per-task weight.
+        """
+        super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
     def forward(
         self,
         preds: Tensor,
         targets: Tensor,
         mask: Tensor,
-        w_s: Tensor,
-        w_t: Tensor,
+        weights: Tensor,
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
@@ -51,10 +61,8 @@ class LossFunction(nn.Module):
         mask : Tensor
             a boolean tensor of shape `b x t` indicating whether the given prediction should be
             included in the loss calculation
-        w_s : Tensor
+        weights : Tensor
             a tensor of shape `b` or `b x 1` containing the per-sample weight
-        w_t : Tensor
-            a tensor of shape `t` or `1 x t` containing the per-task weight
         lt_mask: Tensor
         gt_mask: Tensor
 
@@ -63,14 +71,17 @@ class LossFunction(nn.Module):
         Tensor
             a scalar containing the fully reduced loss
         """
-        L = self._calc_unreduced_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
-        L = L * w_s.view(-1, 1) * w_t.view(1, -1) * mask
+        L = self._calc_unreduced_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+        L = L * weights.view(-1, 1) * self.task_weights.view(1, -1) * mask
 
         return L.sum() / mask.sum()
 
     @abstractmethod
-    def _calc_unreduced_loss(self, preds, targets, mask, w_s, w_t, lt_mask, gt_mask) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, lt_mask, gt_mask) -> Tensor:
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
+
+    def extra_repr(self) -> str:
+        return f"task_weights={self.task_weights.tolist()}"
 
 
 LossFunctionRegistry = ClassRegistry[LossFunction]()
@@ -85,7 +96,7 @@ class MSELoss(LossFunction):
 @LossFunctionRegistry.register("bounded-mse")
 class BoundedMSELoss(MSELoss):
     def _calc_unreduced_loss(
-        self, preds: Tensor, targets: Tensor, mask, w_s, w_t, lt_mask: Tensor, gt_mask: Tensor
+        self, preds: Tensor, targets: Tensor, mask, weights, lt_mask: Tensor, gt_mask: Tensor
     ) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
@@ -127,8 +138,8 @@ class EvidentialLoss(LossFunction):
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
-    def __init__(self, v_kl: float = 0.2, eps: float = 1e-8):
-        super().__init__()
+    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2, eps: float = 1e-8):
+        super().__init__(task_weights)
         self.v_kl = v_kl
         self.eps = eps
 
@@ -151,7 +162,8 @@ class EvidentialLoss(LossFunction):
         return L_nll + self.v_kl * (L_reg - self.eps)
 
     def extra_repr(self) -> str:
-        return f"v_kl={self.v_kl}, eps={self.eps}"
+        parent_repr = super().extra_repr()
+        return parent_repr + f", v_kl={self.v_kl}, eps={self.eps}"
 
 
 @LossFunctionRegistry.register("bce")
@@ -179,25 +191,23 @@ class MccMixin:
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def __call__(
-        self, preds: Tensor, targets: Tensor, mask: Tensor, w_s: Tensor, w_t: Tensor, *args
-    ):
+    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
-        L = self._calc_unreduced_loss(preds, targets.long(), mask, w_s, *args)
-        L = L * w_t
+        L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
+        L = L * self.task_weights
 
         return L.mean()
 
 
 @LossFunctionRegistry.register("binary-mcc")
 class BinaryMCCLoss(LossFunction, MccMixin):
-    def _calc_unreduced_loss(self, preds, targets, mask, w_s, *args) -> Tensor:
-        TP = (targets * preds * w_s * mask).sum(0, keepdim=True)
-        FP = ((1 - targets) * preds * w_s * mask).sum(0, keepdim=True)
-        TN = ((1 - targets) * (1 - preds) * w_s * mask).sum(0, keepdim=True)
-        FN = (targets * (1 - preds) * w_s * mask).sum(0, keepdim=True)
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
+        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
+        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
+        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
+        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
 
         MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)).sqrt()
 
@@ -206,13 +216,13 @@ class BinaryMCCLoss(LossFunction, MccMixin):
 
 @LossFunctionRegistry.register("multiclass-mcc")
 class MulticlassMCCLoss(LossFunction, MccMixin):
-    def _calc_unreduced_loss(self, preds, targets, mask, w_s, *args) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
         device = preds.device
 
         C = preds.shape[2]
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
-        masked_data_weights = w_s.unsqueeze(2) * mask.unsqueeze(2)
+        masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
 
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)
@@ -241,8 +251,9 @@ class DirichletMixin:
     .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
-    def __init__(self, v_kl: float = 0.2):
-        super().__init__()
+    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
+        task_weights = torch.tensor([1.0])
+        super().__init__(task_weights)
         self.v_kl = v_kl
 
     def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
@@ -294,8 +305,8 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 
 @LossFunctionRegistry.register("sid")
 class SIDLoss(LossFunction):
-    def __init__(self, threshold: float | None = None):
-        super().__init__()
+    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+        super().__init__(task_weights)
 
         self.threshold = threshold
 
@@ -316,8 +327,8 @@ class SIDLoss(LossFunction):
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
-    def __init__(self, threshold: float | None = None):
-        super().__init__()
+    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+        super().__init__(task_weights)
 
         self.threshold = threshold
 
