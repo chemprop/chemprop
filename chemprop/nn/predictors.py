@@ -149,6 +149,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def forward(self, Z: Tensor) -> Tensor:
         return self.output_transform(self.ffn(Z))
 
+    def train_step(self, Z: Tensor) -> Tensor:
+        return self.ffn(Z)
+
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
 
@@ -158,9 +161,6 @@ class RegressionFFN(_FFNPredictorBase):
     n_targets = 1
     _T_default_criterion = MSELoss
     _T_default_metric = MSEMetric
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z)
 
 
 @PredictorRegistry.register("regression-mve")
@@ -178,7 +178,7 @@ class MveFFN(RegressionFFN):
         return torch.cat((mean, var), 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = super().train_step(Z)
         mean, var = torch.chunk(Y, self.n_targets, 1)
         var = F.softplus(var)
 
@@ -200,7 +200,7 @@ class EvidentialFFN(RegressionFFN):
         return torch.cat((mean, v, alpha, beta), 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = super().train_step(Z)
         mean, v, alpha, beta = torch.chunk(Y, self.n_targets, 1)
 
         v = F.softplus(v)
@@ -225,9 +225,6 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 
         return Y.sigmoid()
 
-    def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z)
-
 
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
@@ -242,7 +239,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
         return beta / (alpha + beta)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = super().train_step(Z)
 
         F.softplus(Y) + 1
 
@@ -289,7 +286,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         return Y.softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
+        return super().train_step(Z).reshape(Z.shape[0], -1, self.n_classes)
 
 
 @PredictorRegistry.register("multiclass-dirichlet")
@@ -309,7 +306,7 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
         return torch.cat((Y, alpha), 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+        Y = super().train_step(Z).reshape(len(Z), -1, self.n_classes)
 
         return F.softplus(Y) + 1
 
