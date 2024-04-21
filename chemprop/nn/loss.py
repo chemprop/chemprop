@@ -27,15 +27,19 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
-    def __init__(self, task_weights: Tensor):
+    def __init__(self, task_weights: Tensor | None = None):
         """
         Parameters
         ----------
-        task_weights : Tensor
-            a tensor of shape `t` or `1 x t` containing the per-task weight.
+        task_weights : Tensor | None = None
+            a tensor of shape `t` or `1 x t` containing the per-task weight. If None, defaults to
+            all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
+        if task_weights is None:
+            task_weights = torch.ones(1).view(1, -1)
+        else:
+            task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
     def forward(
@@ -81,6 +85,8 @@ class LossFunction(nn.Module):
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
 
     def extra_repr(self) -> str:
+        if self.task_weights == torch.ones(1).view(1, -1):
+            return ""
         return f"task_weights={self.task_weights.tolist()}"
 
 
@@ -252,7 +258,6 @@ class DirichletMixin:
     """
 
     def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
-        task_weights = torch.tensor([1.0])
         super().__init__(task_weights)
         self.v_kl = v_kl
 
