@@ -150,6 +150,7 @@ class MPNN(pl.LightningModule):
         return l
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        self.current_step = "validation"
         losses = self._evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
@@ -157,6 +158,7 @@ class MPNN(pl.LightningModule):
         self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        self.current_step = "test"
         losses = self._evaluate_batch(batch)
         metric2loss = {f"batch_averaged_test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
@@ -167,7 +169,11 @@ class MPNN(pl.LightningModule):
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
-        preds = self(bmg, V_d, X_d)
+        Z = self.fingerprint(bmg, V_d, X_d)
+        if self.current_step == "validation":
+            preds = self.predictor.train_step(Z)
+        else:
+            preds = self.predictor(Z)
 
         return [
             metric(preds, targets, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
