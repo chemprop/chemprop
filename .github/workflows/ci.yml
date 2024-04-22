@@ -8,11 +8,11 @@
 name: Continuous Integration
 
 on:
-  # run on pushes/pull requests to/against main or v2/dev
+  # run on pushes/pull requests to/against main
   push:
     branches: [main]
   pull_request:
-    branches: [main, v2/dev]
+    branches: [main]
   # run this in the morning on weekdays to catch dependency issues
   schedule:
     - cron: "0 8 * * 1-5"
