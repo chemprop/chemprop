@@ -89,7 +89,7 @@ class MPNN(pl.LightningModule):
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
-            else [self.predictor._T_default_metric(torch.Tensor([1])), self.criterion]
+            else [self.predictor._T_default_metric(), self.criterion]
         )
 
         self.warmup_epochs = warmup_epochs
@@ -148,6 +148,10 @@ class MPNN(pl.LightningModule):
         self.log("train_loss", l, prog_bar=True)
 
         return l
+
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        self.predictor.output_transform.train()
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
