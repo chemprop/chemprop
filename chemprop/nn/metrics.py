@@ -44,6 +44,15 @@ __all__ = [
 
 
 class Metric(LossFunction):
+    """
+    __init__(self, task_weights: ArrayLike = 1.0):
+
+    Parameters
+    ----------
+    task_weights :  ArrayLike = 1.0
+        Ignored. Inherited from :class:`LossFunction`, but not used in :class:`Metric`.
+    """
+
     minimize: bool = True
 
     def forward(
