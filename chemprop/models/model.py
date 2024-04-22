@@ -149,6 +149,10 @@ class MPNN(pl.LightningModule):
 
         return l
 
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        self.predictor.output_transform.train()
+
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
