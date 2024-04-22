@@ -1,4 +1,4 @@
-![ChemProp Logo](logo/chemprop_logo.svg)
+![ChemProp Logo](docs/source/_static/images/logo/chemprop_logo.svg)
 # Chemprop
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)
