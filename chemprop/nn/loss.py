@@ -2,6 +2,7 @@ from abc import abstractmethod
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
+from numpy.typing import ArrayLike
 
 from chemprop.utils import ClassRegistry
 
@@ -27,15 +28,15 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
-    def __init__(self, task_weights: Tensor):
+    def __init__(self, task_weights: ArrayLike = 1.0):
         """
         Parameters
         ----------
-        task_weights : Tensor
-            a tensor of shape `t` or `1 x t` containing the per-task weight.
+        task_weights :  ArrayLike, default=1.0
+            the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
     def forward(
@@ -252,7 +253,6 @@ class DirichletMixin:
     """
 
     def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
-        task_weights = torch.tensor([1.0])
         super().__init__(task_weights)
         self.v_kl = v_kl
 

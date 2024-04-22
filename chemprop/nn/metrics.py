@@ -45,15 +45,11 @@ __all__ = [
 
 class Metric(LossFunction):
     """
-    __init__(self, task_weights: Tensor):
-
     Parameters
     ----------
-    task_weights : Tensor
-        a tensor of shape `t` or `1 x t` containing the per-task weight.
-    .. note::
-        This class inherits from :class:`LossFunction`, which requires task_weights. These
-        task_weights are not used in Metric and can be set to any Tensor, e.g. tensor([1.])
+    task_weights :  ArrayLike = 1.0
+        .. important::
+            Ignored. Maintained for compatibility with :class:`~chemprop.nn.loss.LossFunction`
     """
 
     minimize: bool = True
