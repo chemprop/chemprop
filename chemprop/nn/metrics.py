@@ -50,7 +50,8 @@ class Metric(LossFunction):
     Parameters
     ----------
     task_weights :  ArrayLike = 1.0
-        Ignored. Inherited from :class:`LossFunction`, but not used in :class:`Metric`.
+        .. important::
+            Ignored. Maintained for compatibility with :class:`~chemprop.nn.loss.LossFunction`
     """
 
     minimize: bool = True

@@ -32,11 +32,11 @@ class LossFunction(nn.Module):
         """
         Parameters
         ----------
-        task_weights :  ArrayLike = 1.0
+        task_weights :  ArrayLike, default=1.0
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float32).view(1, -1)
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
     def forward(
@@ -82,7 +82,7 @@ class LossFunction(nn.Module):
         """Calculate a tensor of shape `b x t` containing the unreduced loss values."""
 
     def extra_repr(self) -> str:
-        return f"task_weights={self.task_weights}"
+        return f"task_weights={self.task_weights.tolist()}"
 
 
 LossFunctionRegistry = ClassRegistry[LossFunction]()
