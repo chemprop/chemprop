@@ -1,7 +1,7 @@
 # How to contribute
 
 We welcome contributions from external contributors, and this document
-describes how to merge code changes into this repository. 
+describes how to merge code changes into this repository.
 
 ## Getting Started
 
@@ -34,7 +34,7 @@ describes how to merge code changes into this repository.
   integration returns checkmarks,
   and multiple core developers give "Approved" reviews.
 
-# Additional Resources
+## Additional Resources
 
 * [General GitHub documentation](https://help.github.com/)
 * [PR best practices](http://codeinthehole.com/writing/pull-requests-and-other-good-practices-for-teams-using-github/)
