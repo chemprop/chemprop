@@ -63,7 +63,7 @@ You may then either ``pull`` and use official Chemprop images or ``build`` the i
 
 .. note:: 
     The Chemprop Dockerfile runs only on CPU and does not support GPU acceleration.
-    Linux users with NVIDIA GPUs may install the `nvidia-container-toolkit`_ from NVIDIA and modify the installation instructions in the Dockerfile to install versions of `torch` and `torch-scatter` which are compatible with your system's GPUs and drivers.
+    Linux users with NVIDIA GPUs may install the `nvidia-container-toolkit`_ from NVIDIA and modify the installation instructions in the Dockerfile to install the version of `torch` which is compatible with your system's GPUs and drivers.
     Adding the ``--gpus all`` argument to ``docker run`` will then allow Chemprop to run on GPU from within the container.
     Users on other systems should install Chemprop from PyPI or source.
 
