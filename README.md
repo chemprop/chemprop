@@ -5,7 +5,7 @@
 [![PyPI version](https://badge.fury.io/py/chemprop.svg)](https://badge.fury.io/py/chemprop)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/chemprop/badges/version.svg)](https://anaconda.org/conda-forge/chemprop)
 [![Build Status](https://github.com/chemprop/chemprop/workflows/tests/badge.svg)](https://github.com/chemprop/chemprop/actions/workflows/tests.yml)
-[![Documentation Status](https://readthedocs.org/projects/chemprop/badge/?version=latest)](https://chemprop.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/chemprop/badge/?version=main)](https://chemprop.readthedocs.io/en/main/?badge=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://static.pepy.tech/badge/chemprop)](https://pepy.tech/project/chemprop)
 [![Downloads](https://static.pepy.tech/badge/chemprop/month)](https://pepy.tech/project/chemprop)
@@ -13,7 +13,7 @@
 
 Chemprop is a repository containing message passing neural networks for molecular property prediction.
 
-Documentation can be found [here](https://chemprop.readthedocs.io/en/latest/).
+Documentation can be found [here](https://chemprop.readthedocs.io/en/main/).
 
 There are tutorial notebooks in the [`examples/`](https://github.com/chemprop/chemprop/tree/main/examples) directory.
 
