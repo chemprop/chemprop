@@ -93,9 +93,13 @@ Visit the `Docker Hub`_ page for a list of those that are available.
 Build Image Locally
 +++++++++++++++++++
 
-First follow the instructions in `Option 2: Installing from Source`_ up to invoking ``pip``, and then run the following:
+If you don't yet have Docker installed, you can install it from the `Docker website`_.
 
 .. code-block::
 
+    git clone https://github.com/chemprop/chemprop.git
+    cd chemprop
     docker build --tag=chemprop .
-    docker run -it chemprop
+    docker run -it chemprop:latest
+
+.. _`Docker website`: https://docs.docker.com/get-docker/
