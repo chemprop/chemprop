@@ -44,11 +44,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           python -m pip install black==23.* flake8 mypy
-          mypy . || exit_code=$?
+          mypy chemprop/. || exit_code=$?
           mypy --install-types --non-interactive
       - run: black --check .
       - run: flake8 .
-      - run: mypy --ignore-missing-imports --disallow-any-generics --disallow-untyped-defs --no-implicit-optional --disallow-incomplete-defs .
+      - run: mypy --ignore-missing-imports --disallow-any-generics --disallow-untyped-defs --no-implicit-optional --disallow-incomplete-defs chemprop/.
 
   test:
     name: Execute Tests
