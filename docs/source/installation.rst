@@ -12,7 +12,7 @@ Chemprop can either be installed from PyPI via pip_, from source (i.e., directly
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 .. note:: 
-    *CPU-only installation:* For the following options, if you do not have a GPU, install a CPU-only version of PyTorch by running the following command before installing Chemprop:
+    *CPU-only installation:* For the following options 1-3, if you do not have a GPU, you might need to manually install a CPU-only version of PyTorch. This should be handled automatically, but if you find that it is not, you should run the following command before installing Chemprop:
 
     .. code-block::
 
