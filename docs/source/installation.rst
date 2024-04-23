@@ -11,18 +11,10 @@ Chemprop can either be installed from PyPI via pip_, from source (i.e., directly
 .. _conda: https://docs.conda.io/en/latest/conda.html
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
-.. note:: 
-    We also plan to make chemprop installable using an ``environment.yml`` file with ``conda`` before the release of v2.0.0.
-
-Start by setting up your virtual environment. We assume you are using ``conda`` or ``miniconda``, but you may adapt these steps use any virtual environment manager you like:
-
-.. code-block::
-
-    conda create -n chemprop python=3.11
-    conda activate chemprop
+We assume you are using ``anaconda`` or ``miniconda`` to set up your local environment, but you may adapt these steps use any virtual environment manager you like (e.g. ``mamba``):
 
 .. note:: 
-    *CPU-only installation:* If you do not have a GPU, install a CPU-only version of PyTorch by running the following command before installing Chemprop:
+    *CPU-only installation:* For the following options, if you do not have a GPU, install a CPU-only version of PyTorch by running the following command before installing Chemprop:
 
     .. code-block::
 
@@ -33,21 +25,37 @@ Option 1: Installing from PyPI
 
 .. code-block::
 
-    pip install chemprop --pre
+    conda create -n chemprop python=3.11
+    conda activate chemprop
+    pip install chemprop
 
+Option 2: Installing from source using pip
+------------------------------------------
 
-Option 2: Installing from source
---------------------------------
+.. code-block::
+
+    conda create -n chemprop python=3.11
+    conda activate chemprop
+    git clone https://github.com/chemprop/chemprop.git
+    cd chemprop
+    pip install -e .
+
+.. note:: 
+    You can also use this option to install additional optional dependencies by replacing ``pip install -e .`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks]"``.
+
+Option 3: Installing from source using environment.yml
+-------------------------------------------------------
 
 .. code-block::
 
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
-    pip install .
+    conda env create -f environment.yml
+    conda activate chemprop
 
-Option 3: Installing via Docker
+Option 4: Installing via Docker
 -------------------------------
- 
+
 Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment.
 To install and run Chemprop in a Docker container, first install `Docker`_.
 You may then either ``pull`` and use official Chemprop images or ``build`` the image yourself.
@@ -65,15 +73,15 @@ Pull Official Images
 
 .. code-block::
 
-    docker pull chemprop/chemprop:X.Y.ZrcN
-    docker run -it chemprop/chemprop:X.Y.ZrcN
+    docker pull chemprop/chemprop:X.Y.Z
+    docker run -it chemprop/chemprop:X.Y.Z
 
-Where ``X``, ``Y``, ``Z``, and ``N``, should be replaced with the version of Chemprop you wish to ``pull``.
-For example, to pull ``chemprop-2.0.0rc1`` run
+Where ``X``, ``Y``, and ``Z`` should be replaced with the version of Chemprop you wish to ``pull``.
+For example, to pull ``chemprop-2.0.0`` run
 
 .. code-block::
 
-    docker pull chemprop/chemprop:2.0.0rc1
+    docker pull chemprop/chemprop:2.0.0
 
 Note that not all versions of Chemprop are available as pre-built images.
 Visit the `Docker Hub`_ page for a list of those that are available.
