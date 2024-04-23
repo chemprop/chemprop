@@ -131,8 +131,6 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         )
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
 
-        self.output_transform = output_transform if output_transform is not None else nn.Identity()
-
     @property
     def input_dim(self) -> int:
         return self.ffn.input_dim
