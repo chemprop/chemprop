@@ -1,5 +1,4 @@
 from enum import auto
-
 from torch import nn
 
 from chemprop.utils.utils import EnumMapping

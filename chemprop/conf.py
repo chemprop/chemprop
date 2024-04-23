@@ -1,4 +1,5 @@
 """Global configuration variables for chemprop"""
+
 from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
 
 

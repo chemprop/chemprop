@@ -1,44 +1,16 @@
-from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import Mol
 
-from chemprop.featurizers.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
-class MoleculeMolGraphFeaturizer(ABC):
-    """A :class:`MoleculeMolGraphFeaturizer` featurizes RDKit molecules into
-    :class:`MolGraph`s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        mol: Chem.Mol,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        """Featurize the input molecule into a molecular graph
-
-        Parameters
-        ----------
-        mol : Chem.Mol
-            the input molecule
-        atom_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated atom features
-        bond_features_extra : np.ndarray | None, default=None
-            Additional features to concatenate to the calculated bond features
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the molecule
-        """
-
-
 @dataclass
-class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGraphFeaturizer):
+class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
     """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
     :class:`MoleculeMolGraphFeaturizer`
 
@@ -64,8 +36,10 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGrap
     def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
         super().__post_init__()
 
-        self.atom_fdim += extra_atom_fdim
-        self.bond_fdim += extra_bond_fdim
+        self.extra_atom_fdim = extra_atom_fdim
+        self.extra_bond_fdim = extra_bond_fdim
+        self.atom_fdim += self.extra_atom_fdim
+        self.bond_fdim += self.extra_bond_fdim
 
     def __call__(
         self,
@@ -88,9 +62,9 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGrap
             )
 
         if n_atoms == 0:
-            V = np.zeros((1, self.atom_fdim))
+            V = np.zeros((1, self.atom_fdim), dtype=np.single)
         else:
-            V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()])
+            V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
 
@@ -106,7 +80,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, MoleculeMolGrap
 
                 x_e = self.bond_featurizer(bond)
                 if bond_features_extra is not None:
-                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]))
+                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
 
                 E[i : i + 2] = x_e
 

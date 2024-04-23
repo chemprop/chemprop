@@ -1,64 +1,79 @@
+.. _python usage:
+
 Python Usage
 ============
 
-Model training and predicting can also be embedded within a python script. To train a model, provide arguments as a list of strings (arguments are identical to command line mode),
-parse the arguments, and then call :code:`chemprop.train.cross_validate()`::
+.. warning:: 
+    This page is deprecated. Please see Jupyter notebooks for up-to-date information on how to use Chemprop in Python scripts.
 
-    import chemprop
 
-    arguments = [
-        '--data_path', 'data/tox21.csv',
-        '--dataset_type', 'classification',
-        '--save_dir', 'tox21_checkpoints'
-    ]
+An example of basic Chemprop model training and prediction in Python is given in the :code:`example.py` file. We describe the steps in more detail below:
 
-    args = chemprop.args.TrainArgs().parse_args(arguments)
-    mean_score, std_score = chemprop.train.cross_validate(args=args, train_func=chemprop.train.run_training)
+First, we must import the necessary modules:
 
-For predicting with a given model, either a list of smiles or a csv file can be used as input. To use a csv file ::
-
-  import chemprop
-
-  arguments = [
-      '--test_path', 'data/tox21.csv',
-      '--preds_path', 'tox21_preds.csv',
-      '--checkpoint_dir', 'tox21_checkpoints'
-  ]
+.. code-block::
   
-  args = chemprop.args.PredictArgs().parse_args(arguments)
-  preds = chemprop.train.make_predictions(args=args)
+  import csv
+  import sys
 
-If you only want to use the predictions :code:`preds` within the script, and not save the file, set :code:`preds_path` to :code:`/dev/null`. To predict on a list of smiles, run::
+  from lightning import pytorch as pl
+  import numpy as np
+  from sklearn.model_selection import train_test_split
 
-  import chemprop
+  from chemprop.v2 import data
+  from chemprop.v2 import featurizers
+  from chemprop.v2.models import loss, modules, models, metrics
 
-  smiles = [['CCC'], ['CCCC'], ['OCC']]
-  arguments = [
-      '--test_path', '/dev/null',
-      '--preds_path', '/dev/null',
-      '--checkpoint_dir', 'tox21_checkpoints'
-  ]
+We then define the structure of the neural network by selecting a featurizer, message passing module, aggregation module, and feed-forward network module. We also define the model itself by combining these modules with the :code:`MPNN` class, where we can also specify the metrics to be used during training.
 
-  args = chemprop.args.PredictArgs().parse_args(arguments)
-  preds = chemprop.train.make_predictions(args=args, smiles=smiles)
+.. code-block::
 
-where the given :code:`test_path` will be discarded if a list of smiles is provided. If you want to predict multiple sets of molecules consecutively, it is more efficient to
-only load the chemprop model once, and then predict with the preloaded model (instead of loading the model for every prediction)::
+  featurizer = featurizers.MoleculeMolGraphFeaturizer()
+  mp = modules.BondMessageBlock()
+  agg = modules.MeanAggregation()
+  ffn = modules.RegressionFFN()
+  mpnn = models.MPNN(mp, agg, ffn, batch_norm=True, metrics=[metrics.RMSEMetric()])
 
-  import chemprop
+Next, we load the data from a CSV file and split it into training, validation, and test sets.
 
-  arguments = [
-      '--test_path', '/dev/null',
-      '--preds_path', '/dev/null',
-      '--checkpoint_dir', 'tox21_checkpoints'
-  ]
+.. code-block::
 
-  args = chemprop.args.PredictArgs().parse_args(arguments)
+  with open(args.input) as fid:
+      reader = csv.reader(fid)
+      next(reader)
+      smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
+  ys = np.array(ys).reshape(-1, 1)
+  all_data = [data.MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, ys)]
 
-  model_objects = chemprop.train.load_model(args=args)
-  
-  smiles = [['CCC'], ['CCCC'], ['OCC']]
-  preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)
+  train_data, val_test_data = train_test_split(all_data, test_size=0.1)
+  val_data, test_data = train_test_split(val_test_data, test_size=0.5)
 
-  smiles = [['CCCC'], ['CCCCC'], ['COCC']]
-  preds = chemprop.train.make_predictions(args=args, smiles=smiles, model_objects=model_objects)
+We then create :code:`MoleculeDataset` objects from the data and use them to create PyTorch :code:`DataLoader` objects that can be used to train the model.
+
+.. code-block::
+
+  train_dset = data.MoleculeDataset(train_data, featurizer)
+  scaler = train_dset.normalize_targets()
+  val_dset = data.MoleculeDataset(val_data, featurizer)
+  val_dset.normalize_targets(scaler)
+  test_dset = data.MoleculeDataset(test_data, featurizer)
+  test_dset.normalize_targets(scaler)
+
+  train_loader = data.build_dataloader(train_dset, num_workers=args.num_workers)
+  val_loader = data.build_dataloader(val_dset, num_workers=args.num_workers, shuffle=False)
+  test_loader = data.build_dataloader(test_dset, num_workers=args.num_workers, shuffle=False)
+
+Finally, we train the model and evaluate it on the test set.
+
+.. code-block::
+
+  trainer = pl.Trainer(
+      logger=False,
+      enable_checkpointing=False,
+      enable_progress_bar=True,
+      accelerator="auto",
+      devices=1,
+      max_epochs=20,
+  )
+  trainer.fit(mpnn, train_loader, val_loader)
+  results = trainer.test(mpnn, test_loader)

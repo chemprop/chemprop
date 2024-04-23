@@ -1,6 +1,7 @@
 """This integration test is designed to ensure that the chemprop model can _overfit_ the training
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
+
 from lightning import pytorch as pl
 import pytest
 import torch
@@ -11,7 +12,13 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
 pytestmark = [
     pytest.mark.parametrize(
-        "mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+        "mpnn",
+        [
+            (nn.BondMessagePassing(), nn.MeanAggregation()),
+            (nn.AtomMessagePassing(), nn.SumAggregation()),
+            (nn.BondMessagePassing(), nn.NormAggregation()),
+        ],
+        indirect=True,
     ),
     pytest.mark.integration,
 ]
