@@ -87,7 +87,7 @@ For example, to pull ``chemprop-2.0.0`` run
 
 .. note::
     Not all versions of Chemprop are available as pre-built images.
-Visit the `Docker Hub`_ page for a list of those that are available.
+    Visit the `Docker Hub`_ page for a list of those that are available.
 
 .. _`Docker Hub`: https://hub.docker.com/repository/docker/chemprop/chemprop/general
 
