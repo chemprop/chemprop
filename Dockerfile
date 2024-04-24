@@ -3,7 +3,9 @@
 # Builds a Docker image containing Chemprop and its required dependencies.
 #
 # Build this image with:
-#  docker build .
+#  git clone https://github.com/chemprop/chemprop.git
+#  cd chemprop
+#  docker build --tag=chemprop .
 #
 # Run the built image with:
 #  docker run --name chemprop_container -it <IMAGE_ID>
