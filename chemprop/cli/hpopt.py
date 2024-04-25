@@ -417,7 +417,9 @@ def main(args: Namespace):
     with open(best_config_save_path, "w") as f:
         json.dump(best_config, f, indent=4)
 
-    logger.info(f"Saving best hyperparameter configuration checkpoint to: {best_checkpoint_save_path}")
+    logger.info(
+        f"Saving best hyperparameter configuration checkpoint to: {best_checkpoint_save_path}"
+    )
 
     shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
 
