@@ -9,7 +9,7 @@ dependencies:
   - aimsim
   - configargparse
   - lightning>=2.0
-  - numpy<2.0
+  - numpy>=2.0.0rc1
   - pandas
   - rdkit
   - scikit-learn
