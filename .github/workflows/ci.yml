@@ -60,7 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         # test on all platforms with both supported versions of Python
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.11, 3.12]
     steps:
       - uses: actions/checkout@v4
@@ -90,15 +90,15 @@ jobs:
         run: |
           # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
           # that the GitHub actions runners still have but are not allowed to actually use
-          CUDA_VISIBLE_DEVICES="" pytest -v tests
+          pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
         run: |
-          CUDA_VISIBLE_DEVICES="" pytest --nbmake examples/training.ipynb
-          CUDA_VISIBLE_DEVICES="" pytest --nbmake examples/predicting.ipynb
-          CUDA_VISIBLE_DEVICES="" pytest --nbmake examples/convert_v1_to_v2.ipynb
-          CUDA_VISIBLE_DEVICES="" pytest --nbmake examples/training_regression_multicomponent.ipynb
-          CUDA_VISIBLE_DEVICES="" pytest --nbmake examples/predicting_regression_multicomponent.ipynb
+          pytest --nbmake examples/training.ipynb
+          pytest --nbmake examples/predicting.ipynb
+          pytest --nbmake examples/convert_v1_to_v2.ipynb
+          pytest --nbmake examples/training_regression_multicomponent.ipynb
+          pytest --nbmake examples/predicting_regression_multicomponent.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install
