@@ -5,11 +5,10 @@
 # Build this image with:
 #  git clone https://github.com/chemprop/chemprop.git
 #  cd chemprop
-#  docker build --tag=chemprop .
+#  docker build --tag=chemprop:latest .
 #
 # Run the built image with:
-#  docker run --name chemprop_container -it <IMAGE_ID>
-# where <IMAGE_ID> is shown from the output of the build command.
+#  docker run --name chemprop_container -it chemprop:latest
 #
 # Note:
 # This image only runs on CPU - we do not provide a Dockerfile
@@ -28,8 +27,7 @@ RUN apt-get update && \
 WORKDIR /opt/chemprop
 
 # build an empty conda environment with appropriate Python version
-RUN conda create --name chemprop_env python=3.11* && \
-    conda clean --all --yes
+RUN conda create --name chemprop_env python=3.11*
 
 # This runs all subsequent commands inside the chemprop_env conda environment
 #
@@ -42,7 +40,9 @@ SHELL ["conda", "run", "--no-capture-output", "-n", "chemprop_env", "/bin/bash",
 ADD chemprop chemprop
 ENV PYTHONPATH /opt/chemprop
 ADD LICENSE.txt pyproject.toml README.md .
-RUN python -m pip install . && \
+RUN conda install pytorch cpuonly -c pytorch && \
+    conda clean --all --yes && \
+    python -m pip install . && \
     python -m pip cache purge
 
 # when running this image, open an interactive bash terminal inside the conda environment
