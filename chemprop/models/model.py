@@ -129,6 +129,10 @@ class MPNN(pl.LightningModule):
         """Calculate the :attr:`i`-th hidden representation"""
         return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), i)
 
+    def atomic_encodings(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> tuple[Tensor]:
+        H_v = self.message_passing(bmg, V_d)
+        return H_v.split(torch.bincount(bmg.batch).tolist())
+
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
