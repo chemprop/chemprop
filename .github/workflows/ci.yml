@@ -90,7 +90,7 @@ jobs:
         run: |
           # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
           # that the GitHub actions runners still have but are not allowed to actually use
-          pytest -v tests
+          USE_MPS=0 pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
         run: |
