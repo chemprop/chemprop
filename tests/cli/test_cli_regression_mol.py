@@ -129,6 +129,8 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
         model_path,
         "--ffn-block-index",
         ffn_block_index,
+        "--features-generators",
+        "morgan_count",
     ]
 
     with monkeypatch.context() as m:
@@ -410,6 +412,8 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
+        "--features-generators",
+        "morgan_count",
     ]
 
     with monkeypatch.context() as m:
