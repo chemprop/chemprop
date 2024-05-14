@@ -9,21 +9,18 @@ import torch
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.train import (
-    add_train_args,
-    build_datasets,
-    build_model,
-    build_splits,
-    normalize_inputs,
-    process_train_args,
-    validate_train_args,
-)
+from chemprop.cli.common import (add_common_args, process_common_args,
+                                 validate_common_args)
+from chemprop.cli.train import (add_train_args, build_datasets, build_model,
+                                build_splits, normalize_inputs,
+                                process_train_args, validate_train_args)
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
+from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.nn import AggregationRegistry
-from chemprop.nn.utils import Activation
 from chemprop.nn.transforms import UnscaleTransform
+from chemprop.nn.utils import Activation
+from chemprop.utils import Factory
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
@@ -31,12 +28,8 @@ try:
     import ray
     from ray import tune
     from ray.train import CheckpointConfig, RunConfig, ScalingConfig
-    from ray.train.lightning import (
-        RayDDPStrategy,
-        RayLightningEnvironment,
-        RayTrainReportCallback,
-        prepare_trainer,
-    )
+    from ray.train.lightning import (RayDDPStrategy, RayLightningEnvironment,
+                                     RayTrainReportCallback, prepare_trainer)
     from ray.train.torch import TorchTrainer
     from ray.tune.schedulers import ASHAScheduler
 
@@ -372,8 +365,18 @@ def main(args: Namespace):
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
+
+    if args.features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
+        features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in args.features_generators
+        ]
+    else:
+        features_generators = None
+
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
