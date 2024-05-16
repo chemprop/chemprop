@@ -80,6 +80,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install ".[dev,docs,test]"
       - name: Install hyperopt optional dependencies (Python 3.11 only)
         if: ${{ matrix.python-version == '3.11' }} 
@@ -90,7 +91,7 @@ jobs:
         run: |
           # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
           # that the GitHub actions runners still have but are not allowed to actually use
-          USE_MPS=0 pytest -v tests
+          pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
         run: |
