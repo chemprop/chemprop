@@ -129,8 +129,6 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
         model_path,
         "--ffn-block-index",
         ffn_block_index,
-        "--features-generators",
-        "morgan_count",
     ]
 
     with monkeypatch.context() as m:
