@@ -410,6 +410,8 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
+        "--features-generators",
+        "morgan_count",
     ]
 
     with monkeypatch.context() as m:

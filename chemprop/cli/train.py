@@ -1,49 +1,50 @@
-from configargparse import ArgumentParser, Namespace, ArgumentError
+import json
 import logging
-from pathlib import Path
 import sys
 from copy import deepcopy
-import pandas as pd
-import json
-import numpy as np
+from pathlib import Path
 
-from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-
-from chemprop.data import (
-    build_dataloader,
-    MolGraphDataset,
-    MulticomponentDataset,
-    MoleculeDataset,
-    ReactionDatapoint,
-)
-from chemprop.data import SplitType, make_split_indices, split_data_by_indices
-from chemprop.utils import Factory
-from chemprop.models import MPNN, MulticomponentMPNN, save_model
-from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
-from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
-from chemprop.nn.message_passing import (
-    BondMessagePassing,
-    AtomMessagePassing,
-    MulticomponentMessagePassing,
-)
-from chemprop.nn.utils import Activation
+from configargparse import ArgumentError, ArgumentParser, Namespace
+from lightning import pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import (
-    Subcommand,
     LookupAction,
+    Subcommand,
     build_data_from_files,
-    make_dataset,
     get_column_names,
+    make_dataset,
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.data import (
+    MoleculeDataset,
+    MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDatapoint,
+    SplitType,
+    build_dataloader,
+    make_split_indices,
+    split_data_by_indices,
+)
 from chemprop.featurizers import MoleculeFeaturizerRegistry
+from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
+from chemprop.nn.message_passing import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MulticomponentMessagePassing,
+)
+from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
+from chemprop.nn.utils import Activation
+from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
