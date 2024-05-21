@@ -28,6 +28,7 @@ from chemprop.nn.transforms import UnscaleTransform
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {}
 try:
+    import ray
     from ray import tune
     from ray.train import CheckpointConfig, RunConfig, ScalingConfig
     from ray.train.lightning import (
@@ -417,6 +418,8 @@ def main(args: Namespace):
     logger.info(f"Saving hyperparameter optimization results: {result_df}")
 
     result_df.to_csv(args.hpopt_save_dir / "all_progress.csv", index=False)
+
+    ray.shutdown()
 
 
 if __name__ == "__main__":

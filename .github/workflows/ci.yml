@@ -60,7 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         # test on all platforms with both supported versions of Python
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.11, 3.12]
     steps:
       - uses: actions/checkout@v4
@@ -88,6 +88,8 @@ jobs:
       - name: Test with pytest
         shell: bash -l {0}
         run: |
+          # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
+          # that the GitHub actions runners still have but are not allowed to actually use
           pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
@@ -136,21 +138,66 @@ jobs:
         run: |
           pytest -v tests
 
-  # GitHub allows you to set checks as required before PRs can be merged, which is annoying to do
-  # for matrix jobs like the one above which have six actual jobs. Instead we have a summary job
-  # like this, which we mark as required.
-  # Copied in part from:
-  # https://github.com/orgs/community/discussions/26822#discussioncomment-3305794
-  ci-report-status:
-    name: report CI status
-    needs: test
+  pypi:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
+    # only run if the tests pass
+    needs: [test, conda-test]
+    # run only on pushes to main on chemprop
+    if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
     steps:
-      - run: |
-          result="${{ needs.test.result }}"
-          if test $result == "success"; then
-            exit 0
-          else
-            exit 1
-          fi
+      - uses: actions/checkout@master
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m
+          build
+          --sdist
+          --wheel
+          --outdir dist/
+          .
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
+          verbose: true
+  
+  build-and-push-docker:
+    # shamelessly copied from:
+    # https://github.com/ReactionMechanismGenerator/RMG-Py/blob/bfaee1cad9909a17103a8e6ef9a22569c475964c/.github/workflows/CI.yml#L359C1-L386C54
+    # which is also shamelessly copied from somewhere
+    runs-on: ubuntu-latest
+    # only run if the tests pass
+    needs: [test, conda-test]
+    # run only on pushes to main on chemprop
+    if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          # repository secretes managed by the maintainers
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: chemprop/chemprop:latest
         
