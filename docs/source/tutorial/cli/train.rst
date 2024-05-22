@@ -267,7 +267,28 @@ Morgan fingerprints can be generated as molecular 2D features using :code:`--fea
 
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
+* :code:`rdkit_2d` RDKit 2D features
 
+Note that the RDKit 2D features are not normalized. In Chemprop v1, descriptastorus was used to automatically calculate normalized RDKit 2D features. This was removed in v2 both because it reduces the number of dependencies and because the origin of the descriptastorus scalers is unknown.
+
+If you would like to use the descriptastorus normalized features, you can calculate them manually as shown below::
+
+   # First make sure you have descriptastorus installed in your environment
+   pip install git+https://github.com/bp-kelley/descriptastorus
+
+   # Then run a script like the following
+   import numpy as np
+   import pandas as pd
+   from descriptastorus.descriptors import rdNormalizedDescriptors
+
+   df = pd.read_csv("mydata.csv") # Replace with your data file. The SMILES column should be named "smiles".
+
+   generator = rdNormalizedDescriptors.RDKit2DNormalized()
+   rdkit_descriptors = np.array([generator.process(smi)[1:] for smi in df.smiles]) 
+   np.savez("rdkit_descriptors.npz", rdkit_descriptors)
+
+   # Finally run Chemprop with the --descriptors-path and --no-descriptor-scaling flags
+   chemprop train --data-path mydata.csv --descriptors-path rdkit_descriptors.npz --no-descriptor-scaling
 
 Missing Target Values
 ^^^^^^^^^^^^^^^^^^^^^

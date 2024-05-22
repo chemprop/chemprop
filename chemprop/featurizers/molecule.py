@@ -1,6 +1,8 @@
+import warnings
+
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import Mol, Descriptors
+from rdkit.Chem import Descriptors, Mol
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.featurizers.base import VectorFeaturizer
@@ -9,7 +11,7 @@ from chemprop.utils import ClassRegistry
 MoleculeFeaturizerRegistry = ClassRegistry[VectorFeaturizer[Mol]]()
 
 
-class MorganFeaturizerMixin:
+class MorganFeaturizerMixin(VectorFeaturizer[Mol]):
     def __init__(self, radius: int = 2, length: int = 2048, include_chirality: bool = True):
         if radius < 0:
             raise ValueError(f"arg 'radius' must be >= 0! got: {radius}")
@@ -46,7 +48,11 @@ class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, VectorF
 @MoleculeFeaturizerRegistry("rdkit_2d")
 class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __init__(self):
-        pass
+        warnings.warn(
+            "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
+            "manually scaling them using an appropriate scaler before creating datapoints, rather "
+            "than using the scikit-learn `StandardScaler` (the default in Chemprop)."
+        )
 
     def __len__(self) -> int:
         return len(Descriptors.descList)
@@ -54,11 +60,11 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
         if mol.GetNumHeavyAtoms() == 0:
             features = np.array(
-                [0 if name == "SPS" else func(mol) for name, func in sorted(Descriptors.descList)]
+                [0 if name == "SPS" else func(mol) for name, func in Descriptors.descList], float
             )
         else:
-            features = np.array([func(mol) for name, func in sorted(Descriptors.descList)])
+            features = np.array([func(mol) for name, func in Descriptors.descList], float)
 
         NAN_TOKEN = 0
-        features[np.isnan(self.x_d)] = NAN_TOKEN
+        features[np.isnan(features)] = NAN_TOKEN
         return features
