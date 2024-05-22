@@ -216,8 +216,6 @@ def make_datapoints(
             Factory.build(MoleculeFeaturizerRegistry[features_generator])
             for features_generator in features_generators
         ]
-    else:
-        features_generators = None
 
     mol_data = [
         [
