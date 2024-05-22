@@ -107,17 +107,8 @@ def make_fingerprint_for_model(
         bounded=bounded,
     )
 
-    if args.features_generators is not None:
-        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
-        features_generators = [
-            Factory.build(MoleculeFeaturizerRegistry[features_generator])
-            for features_generator in args.features_generators
-        ]
-    else:
-        features_generators = None
-
     featurization_kwargs = dict(
-        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
+        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(
