@@ -4,11 +4,9 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-from rdkit.Chem import Mol
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
-from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
