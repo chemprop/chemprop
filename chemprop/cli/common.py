@@ -84,10 +84,10 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
         "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph."
     )
     featurization_args.add_argument(
-        "--features-generators",
+        "--molecule-featurizers",
         nargs="+",
         action=LookupAction(MoleculeFeaturizerRegistry),
-        help="Method(s) of generating additional features.",
+        help="Method(s) of generating molecule features to use as extra descriptors.",
     )
     featurization_args.add_argument(
         "--descriptors-path",

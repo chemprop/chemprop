@@ -374,7 +374,7 @@ def main(args: Namespace):
     )
 
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)

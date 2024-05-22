@@ -106,7 +106,7 @@ def make_fingerprint_for_model(
     )
 
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(

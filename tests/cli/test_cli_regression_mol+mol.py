@@ -199,3 +199,29 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_train_molecule_featurizers(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--molecule-featurizers",
+        "morgan_count",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
