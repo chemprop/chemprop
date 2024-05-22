@@ -186,7 +186,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--metrics",
         "mse",
         "rmse",
-        "----molecule-featurizers",
+        "--molecule-featurizers",
         "morgan_count",
     ]
 

@@ -11,7 +11,7 @@ from chemprop.utils import make_mol
 MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True)
 class _DatapointMixin:
     """A mixin class for both molecule- and reaction- and multicomponent-type data"""
 
@@ -41,12 +41,26 @@ class _DatapointMixin:
         return len(self.y) if self.y is not None else None
 
 
-@dataclass(slots=True)
-class MoleculeDatapoint(_DatapointMixin):
-    """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
-
+@dataclass
+class _MoleculeDatapointMixin:
     mol: Chem.Mol
     """the molecule associated with this datapoint"""
+
+    @classmethod
+    def from_smi(
+        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
+    ) -> _MoleculeDatapointMixin:
+        mol = make_mol(smi, keep_h, add_h)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, *args, **kwargs)
+
+
+@dataclass(slots=True)
+class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
+    """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
+
     V_f: np.ndarray | None = None
     """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
     ``d_vf`` is the number of additional features that will be concatenated to atom-level features
@@ -77,36 +91,13 @@ class MoleculeDatapoint(_DatapointMixin):
     def __len__(self) -> int:
         return 1
 
-    @classmethod
-    def from_smi(
-        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
-    ) -> MoleculeDatapoint:
-        mol = make_mol(smi, keep_h, add_h)
 
-        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
-
-        return cls(mol, *args, **kwargs)
-
-
-@dataclass(slots=True)
-class ReactionDatapoint(_DatapointMixin):
-    """A :class:`ReactionDatapoint` contains a single reaction and its associated features and targets."""
-
+@dataclass
+class _ReactionDatapointMixin:
     rct: Chem.Mol
     """the reactant associated with this datapoint"""
     pdt: Chem.Mol
     """the product associated with this datapoint"""
-
-    def __post_init__(self):
-        if self.rct is None:
-            raise ValueError("Reactant cannot be `None`!")
-        if self.pdt is None:
-            raise ValueError("Product cannot be `None`!")
-
-        return super(ReactionDatapoint, self).__post_init__()
-
-    def __len__(self) -> int:
-        return 2
 
     @classmethod
     def from_smi(
@@ -116,7 +107,7 @@ class ReactionDatapoint(_DatapointMixin):
         keep_h: bool = False,
         add_h: bool = False,
         **kwargs,
-    ) -> ReactionDatapoint:
+    ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
             case str():
                 rct_smi, agt_smi, pdt_smi = rxn_or_smis.split(">")
@@ -137,3 +128,19 @@ class ReactionDatapoint(_DatapointMixin):
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
         return cls(rct, pdt, *args, **kwargs)
+
+
+@dataclass(slots=True)
+class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
+    """A :class:`ReactionDatapoint` contains a single reaction and its associated features and targets."""
+
+    def __post_init__(self):
+        if self.rct is None:
+            raise ValueError("Reactant cannot be `None`!")
+        if self.pdt is None:
+            raise ValueError("Product cannot be `None`!")
+
+        return super(ReactionDatapoint, self).__post_init__()
+
+    def __len__(self) -> int:
+        return 2
