@@ -86,7 +86,7 @@ SEARCH_PARAM_KEYWORDS_MAP = {
 
 class HpoptSubcommand(Subcommand):
     COMMAND = "hpopt"
-    HELP = "perform hyperparameter optimization on the given task"
+    HELP = "Perform hyperparameter optimization on the given task."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -116,10 +116,11 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     Some options are bundles of parameters or otherwise special parameter operations.
 
     Special keywords:
-        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim.
-        learning_rate - search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
+    
+        - `basic`: Default set of hyperparameters for search (depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim)
+        - `learning_rate`: Search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
             are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
-        all - include search for all 13 inidividual keyword options
+        - `all`: Include search for all 13 inidividual keyword options.
 
     Individual supported parameters:
         {list(DEFAULT_SEARCH_SPACE.keys())}

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
-    HELP = "use a pretrained chemprop model for to calculate learned representations"
+    HELP = "Use a pretrained chemprop model to calculate learned representations."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -30,20 +30,20 @@ class FingerprintSubcommand(Subcommand):
             "--test-path",
             required=True,
             type=Path,
-            help="Path to an input CSV file containing SMILES.",
+            help="Path to an input CSV file containing SMILES",
         )
         parser.add_argument(
             "-o",
             "--output",
             "--preds-path",
             type=Path,
-            help="Path to which predictions will be saved. If the file extension is .npz, they will be saved as a npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
+            help="Specify the path where predictions will be saved. If the file extension is .npz, they will be saved as a npz file. Otherwise, the predictions will be saved as a CSV. The index of the model will be appended to the filename\'s stem. By default, predictions will be saved to the same location as ``--test-path`` with '_fps' appended (e.g., 'PATH/TO/TEST_PATH_fps_0.csv').",
         )
         parser.add_argument(
             "--model-path",
             required=True,
             type=Path,
-            help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+            help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these file (will recursively search and predict on all found models if a directory)",
         )
         parser.add_argument(
             "--ffn-block-index",

@@ -42,30 +42,30 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES.",
+        help="Path to an input CSV file containing SMILES",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds_0.csv'.",
+        help="Specify the path where predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as ``--test-path`` with '_preds' appended (e.g., 'PATH/TO/TEST_PATH_preds_0.csv').",
     )
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns",
     )
     parser.add_argument(
         "--model-path",
         required=True,
         type=Path,
-        help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+        help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files (will recursively search and predict on all found models if a directory)",
     )
     parser.add_argument(
         "--target-columns",
         nargs="+",
-        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+        help="Column names to save the predictions to (by default, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.)",
     )
 
     # TODO: add uncertainty and calibration in v2.1
