@@ -254,7 +254,7 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
 
 def train_model(config, args, train_dset, val_dset, logger, output_transform, input_transforms):
-    update_args_with_config(args, config)
+    args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
