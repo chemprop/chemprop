@@ -40,7 +40,7 @@ def construct_parser():
         "--verbose",
         action="count",
         default=0,
-        help="Verbosity level (specify the flag multiple times to increase verbosity)"
+        help="Verbosity level (specify the flag multiple times to increase verbosity)",
     )
 
     parents = [parent]
