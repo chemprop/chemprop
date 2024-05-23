@@ -1,11 +1,11 @@
 from abc import abstractmethod
+
+from numpy.typing import ArrayLike
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
-from numpy.typing import ArrayLike
 
 from chemprop.utils import ClassRegistry
-
 
 __all__ = [
     "LossFunction",

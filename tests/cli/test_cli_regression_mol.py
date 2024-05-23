@@ -1,14 +1,15 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
-import pytest
-import torch
 import json
 
+import pytest
+import torch
+
+from chemprop.cli.hpopt import NO_HYPEROPT, NO_RAY  # , NO_OPTUNA
 from chemprop.cli.main import main
 from chemprop.cli.train import TrainSubcommand
 from chemprop.models.model import MPNN
-from chemprop.cli.hpopt import NO_RAY, NO_HYPEROPT  # , NO_OPTUNA
 
 pytestmark = pytest.mark.CLI
 

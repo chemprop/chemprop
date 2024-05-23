@@ -8,12 +8,12 @@ from rdkit.Chem import Mol
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 
 logger = logging.getLogger(__name__)
 
