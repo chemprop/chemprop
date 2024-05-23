@@ -94,7 +94,7 @@ jobs:
       - name: Test notebooks
         shell: bash -l {0}
         run: |
-          pytest --nbmake examples/*.ipynb
+          pytest --no-cov -v --nbmake examples/*.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install
