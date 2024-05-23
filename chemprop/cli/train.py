@@ -1,7 +1,6 @@
 import json
 import logging
 import sys
-from copy import deepcopy
 from pathlib import Path
 
 import numpy as np

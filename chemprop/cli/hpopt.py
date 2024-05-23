@@ -1,4 +1,3 @@
-import json
 import logging
 import sys
 from configargparse import ArgumentParser, Namespace
