@@ -424,20 +424,20 @@ def main(args: Namespace):
     best_checkpoint_save_path = args.hpopt_save_dir / "best_checkpoint.ckpt"
     all_progress_save_path = args.hpopt_save_dir / "all_progress.csv"
 
-    logger.info(f"Saving best hyperparameter parameters to: {best_config_save_path}")
+    logger.info(f"Best hyperparameters saved to: '{best_config_save_path}'")
 
     with open(best_config_save_path, "w") as f:
         json.dump(best_config, f, indent=4)
 
     logger.info(
-        f"Saving best hyperparameter configuration checkpoint to: {best_checkpoint_save_path}"
+        f"Best hyperparameter configuration checkpoint saved to '{best_checkpoint_save_path}'"
     )
 
     shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
 
     result_df = results.get_dataframe()
 
-    logger.info(f"Saving hyperparameter optimization results to: {all_progress_save_path}")
+    logger.info(f"Hyperparameter optimization results saved to '{all_progress_save_path}'")
 
     result_df.to_csv(all_progress_save_path, index=False)
 
