@@ -405,13 +405,15 @@ def main(args: Namespace):
     )
 
     best_result = results.get_best_result()
-    best_config = best_result.config
+    best_params = best_result.config
     best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
 
-    logger.info(f"Saving best hyperparameter parameters: {best_config}")
+    logger.info(f"Saving best hyperparameter parameters: {best_params['train_loop_config']}")
 
-    with open(args.hpopt_save_dir / "best_params.json", "w") as f:
-        json.dump(best_config, f, indent=4)
+    args = update_args_with_config(args, best_params["train_loop_config"])
+
+    args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
+    save_config(TrainSubcommand.parser, args, args.hpopt_save_dir / "best_config.toml")
 
     logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
 
