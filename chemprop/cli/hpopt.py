@@ -45,8 +45,8 @@ try:
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
-        "aggregation_norm": tune.qrandint(lower=1, upper=200, q=1),
-        "batch_size": tune.choice(np.logspace(start=4, stop=8, num=5, base=2)),
+        "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
+        "batch_size": tune.choice(np.logspace(start=4, stop=8, num=5, base=2, dtype=int)),
         "depth": tune.qrandint(lower=2, upper=6, q=1),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
@@ -227,8 +227,8 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
-    if "warmup_epochs" in search_parameters:
-        SEARCH_SPACE["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
+    if search_parameters.get("warmup_epochs", None) is None:
+        SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
 
