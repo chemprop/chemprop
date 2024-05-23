@@ -603,7 +603,25 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-
+    
+    logger.info("Summary of training data:")
+    n_datapoints = len(all_data[0])
+    logger.info(f"\tNum. datapoints =".ljust(32) + f"{n_datapoints}".rjust(10))
+    if args.task_type == "regression":
+        ys = [x.y for x in all_data[0]]
+        train_data_mean = np.mean(ys)
+        train_data_std = np.std(ys)
+        train_data_median = np.median(ys)
+        logger.info("\tTask type:".ljust(32)+f"{str(args.task_type).strip()}".rjust(11))
+        logger.info("\t\tMean =".ljust(32) + f"{str(np.round(train_data_mean,2))}".rjust(10))
+        logger.info("\t\tStandard deviation =".ljust(32) + f"{str(np.round(train_data_std,2))}".rjust(10))
+        logger.info("\t\tMedian =".ljust(32) + f"{str(np.round(train_data_median,2))}".rjust(10))
+    elif args.task_type == "classification":
+        
+        
+    
+    
+    
     if args.splits_column is not None:
         df = pd.read_csv(
             args.data_path, header=None if args.no_header_row else "infer", index_col=False
@@ -613,7 +631,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         val_indices = grouped.groups.get("val", pd.Index([])).tolist()
         test_indices = grouped.groups.get("test", pd.Index([])).tolist()
         train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
-
+    
     elif args.splits_file is not None:
         with open(args.splits_file, "rb") as json_file:
             split_idxss = json.load(json_file)
