@@ -664,7 +664,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     elif args.task_type == "multiclass":
         class_data = [x.y[0] for x in all_data[0]]
         class_nos = sorted(list(set(class_data)))
-        print(class_nos)
         class_counts = []
         class_percents = []
         for class_no in class_nos:
