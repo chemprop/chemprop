@@ -39,7 +39,7 @@ autodoc_typehints = "description"
 # -- AutoAPI configuration ---------------------------------------------------
 nbsphinx_allow_errors = True
 autoapi_dirs = ["../.."]
-autoapi_ignore = ["*test*", "*cli*"]
+autoapi_ignore = ["*/tests/*", "*/cli/*"]
 autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",
