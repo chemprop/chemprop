@@ -227,7 +227,7 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
-    if search_parameters.get("warmup_epochs", None) is None:
+    if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
         SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
