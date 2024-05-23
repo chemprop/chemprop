@@ -603,25 +603,87 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **format_kwargs,
         **featurization_kwargs,
     )
-    
+
     logger.info("Summary of training data:")
     n_datapoints = len(all_data[0])
-    logger.info(f"\tNum. datapoints =".ljust(32) + f"{n_datapoints}".rjust(10))
+
     if args.task_type == "regression":
         ys = [x.y for x in all_data[0]]
         train_data_mean = np.mean(ys)
         train_data_std = np.std(ys)
         train_data_median = np.median(ys)
-        logger.info("\tTask type:".ljust(32)+f"{str(args.task_type).strip()}".rjust(11))
-        logger.info("\t\tMean =".ljust(32) + f"{str(np.round(train_data_mean,2))}".rjust(10))
-        logger.info("\t\tStandard deviation =".ljust(32) + f"{str(np.round(train_data_std,2))}".rjust(10))
-        logger.info("\t\tMedian =".ljust(32) + f"{str(np.round(train_data_median,2))}".rjust(10))
+        n_datapoints_1_sigma = sum(
+            [
+                1
+                for y in ys
+                if y > train_data_mean - train_data_std and y < train_data_mean + train_data_std
+            ]
+        )
+        n_datapoints_2_sigma = sum(
+            [
+                1
+                for y in ys
+                if y > train_data_mean - 2 * train_data_std
+                and y < train_data_mean + 2 * train_data_std
+            ]
+        )
+        percent_datapoint_1_sigma = n_datapoints_1_sigma / n_datapoints * 100
+        percent_datapoint_2_sigma = n_datapoints_2_sigma / n_datapoints * 100
+        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
+        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
+        logger.info("\tMean =".ljust(40) + f"{str(np.round(train_data_mean, 2))}".rjust(20))
+        logger.info(
+            "\tStandard deviation =".ljust(40) + f"{str(np.round(train_data_std, 2))}".rjust(20)
+        )
+        logger.info("\tMedian =".ljust(40) + f"{str(np.round(train_data_median, 2))}".rjust(20))
+        logger.info(
+            "\tPercent datapoints within 1 std. dev. =".ljust(40)
+            + f"{str(np.round(percent_datapoint_1_sigma, 2))}%".rjust(20)
+        )
+        logger.info(
+            "\tPercent datapoints within 2 std. dev. =".ljust(40)
+            + f"{str(np.round(percent_datapoint_2_sigma, 2))}%".rjust(20)
+        )
     elif args.task_type == "classification":
-        
-        
-    
-    
-    
+        bools = [x.y[0] for x in all_data[0]]
+        n_true = bools.count(1)
+        n_false = bools.count(0)
+        percent_true = n_true / n_datapoints * 100
+        percent_false = n_false / n_datapoints * 100
+        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
+        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
+        logger.info("\tClass".ljust(40) + "Count".rjust(10) + "Percent".rjust(10))
+        logger.info(
+            "\t0".ljust(40)
+            + f"{n_false}".rjust(10)
+            + f"{str(np.round(percent_false, 2))}%".rjust(10)
+        )
+        logger.info(
+            "\t1".ljust(40) + f"{n_true}".rjust(10) + f"{str(np.round(percent_true, 2))}%".rjust(10)
+        )
+    elif args.task_type == "multiclass":
+        class_data = [x.y[0] for x in all_data[0]]
+        class_nos = sorted(list(set(class_data)))
+        print(class_nos)
+        class_counts = []
+        class_percents = []
+        for class_no in class_nos:
+            class_count = class_data.count(class_no)
+            class_percent = class_count / n_datapoints * 100
+            class_counts.append(class_count)
+            class_percents.append(class_percent)
+        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
+        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
+        logger.info("\tClass".ljust(40) + "Count".rjust(10) + "Percent".rjust(10))
+        for i, class_no in enumerate(class_nos):
+            logger.info(
+                f"\t{int(class_no)}".ljust(40)
+                + f"{int(class_counts[i])}".rjust(10)
+                + f"{str(np.round(class_percents[i], 2))}%".rjust(10)
+            )
+    else:
+        logger.info(f"\tTraining data summaries not yet supported for {args.task_type}")
+
     if args.splits_column is not None:
         df = pd.read_csv(
             args.data_path, header=None if args.no_header_row else "infer", index_col=False
@@ -631,7 +693,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         val_indices = grouped.groups.get("val", pd.Index([])).tolist()
         test_indices = grouped.groups.get("test", pd.Index([])).tolist()
         train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
-    
+
     elif args.splits_file is not None:
         with open(args.splits_file, "rb") as json_file:
             split_idxss = json.load(json_file)
