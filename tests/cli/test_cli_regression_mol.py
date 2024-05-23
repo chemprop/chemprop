@@ -422,3 +422,16 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "best_checkpoint.ckpt").exists()
     assert (tmp_path / "all_progress.csv").exists()
     assert (tmp_path / "ray_results").exists()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "best_config.toml"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model_0" / "best.pt").exists()
