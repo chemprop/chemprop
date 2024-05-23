@@ -8,11 +8,7 @@ import torch
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 
-from chemprop.cli.common import (
-    add_common_args,
-    process_common_args,
-    validate_common_args,
-)
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
     add_train_args,
     build_datasets,
@@ -22,7 +18,7 @@ from chemprop.cli.train import (
     process_train_args,
     validate_train_args,
     TrainSubcommand,
-    save_config
+    save_config,
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader

@@ -181,4 +181,3 @@ def process_common_args(args: Namespace) -> Namespace:
 
 def validate_common_args(args):
     pass
-

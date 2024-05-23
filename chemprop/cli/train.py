@@ -12,11 +12,7 @@ from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 
-from chemprop.cli.common import (
-    add_common_args,
-    process_common_args,
-    validate_common_args,
-)
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import (
     LookupAction,
