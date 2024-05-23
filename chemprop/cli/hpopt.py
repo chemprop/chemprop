@@ -12,7 +12,6 @@ from chemprop.cli.common import (
     add_common_args,
     process_common_args,
     validate_common_args,
-    save_config,
 )
 from chemprop.cli.train import (
     add_train_args,
@@ -23,6 +22,7 @@ from chemprop.cli.train import (
     process_train_args,
     validate_train_args,
     TrainSubcommand,
+    save_config
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader

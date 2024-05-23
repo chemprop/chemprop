@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 import torch
@@ -16,7 +16,6 @@ from chemprop.cli.common import (
     add_common_args,
     process_common_args,
     validate_common_args,
-    save_config,
 )
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import (
@@ -476,6 +475,20 @@ def process_train_args(args: Namespace) -> Namespace:
 
 def validate_train_args(args):
     pass
+
+
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
+    config_args = deepcopy(args)
+    for key, value in vars(config_args).items():
+        if isinstance(value, Path):
+            setattr(config_args, key, str(value))
+
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if getattr(config_args, key) is not None:
+            for index, path in getattr(config_args, key).items():
+                getattr(config_args, key)[index] = str(path)
+
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def normalize_inputs(train_dset, val_dset, args):
