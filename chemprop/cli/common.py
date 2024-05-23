@@ -57,7 +57,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default="REAC_DIFF",
         choices=list(RxnMode.keys()),
         help="""Choices for construction of atom and bond features for reactions (case insensitive):
-        
+
 - `REAC_PROD`: concatenates the reactants feature with the products feature
 - `REAC_DIFF`: concatenates the reactants feature with the difference in features between reactants and products (Default)
 - `PROD_DIFF`: concatenates the products feature with the difference in features between reactants and products
@@ -72,7 +72,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default="V2",
         choices=list(AtomFeatureMode.keys()),
         help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
-        
+
 - `V1`: Corresponds to the original configuration employed in the Chemprop V1
 - `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
 - `ORGANIC`: This configuration is designed specifically for use with organic molecules for drug research and development and includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
