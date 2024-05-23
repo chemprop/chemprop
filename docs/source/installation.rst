@@ -61,6 +61,8 @@ Chemprop can also be installed with Docker, making it possible to isolate the Ch
 To install and run Chemprop in a Docker container, first install `Docker`_.
 You may then either ``pull`` and use official Chemprop images or ``build`` the image yourself.
 
+.. _`Docker`: https://docs.docker.com/get-docker/
+
 .. note:: 
     The Chemprop Dockerfile runs only on CPU and does not support GPU acceleration.
     Linux users with NVIDIA GPUs may install the `nvidia-container-toolkit`_ from NVIDIA and modify the installation instructions in the Dockerfile to install the version of `torch` which is compatible with your system's GPUs and drivers.
@@ -89,18 +91,12 @@ For example, to pull ``chemprop-2.0.0`` run
     Not all versions of Chemprop are available as pre-built images.
     Visit the `Docker Hub`_ page for a list of those that are available.
 
+.. note::
+    Nightly builds of Chemprop are available under the ``latest`` tag on Dockerhub and are intended for developer use and as feature previews, not production deployment.
+
 .. _`Docker Hub`: https://hub.docker.com/repository/docker/chemprop/chemprop/general
 
 Build Image Locally
 +++++++++++++++++++
 
-If you don't yet have Docker installed, you can install it from the `Docker website`_.
-
-.. code-block::
-
-    git clone https://github.com/chemprop/chemprop.git
-    cd chemprop
-    docker build --tag=chemprop .
-    docker run -it chemprop:latest
-
-.. _`Docker website`: https://docs.docker.com/get-docker/
+See the build instructions in the top of the ``Dockerfile``.
