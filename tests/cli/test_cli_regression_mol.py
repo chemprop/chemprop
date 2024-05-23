@@ -412,6 +412,8 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "hyperopt",
         "--features-generators",
         "morgan_count",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
