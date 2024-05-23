@@ -608,7 +608,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     n_datapoints = len(all_data[0])
 
     if args.task_type == "regression":
-        ys = [x.y for x in all_data[0]]
+        ys = [x.y[0] for x in all_data[0]]
         train_data_mean = np.mean(ys)
         train_data_std = np.std(ys)
         train_data_median = np.median(ys)
