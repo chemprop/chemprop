@@ -1048,7 +1048,7 @@ def summarize_regression_data(all_data):
 def summarize_classification_data(all_data):
     n_datapoints = len(all_data[0])
     class_data = [x.y[0] for x in all_data[0]]
-    class_nos = sorted(list(set(class_data)))
+    class_nos = sorted([x for x in set(class_data) if not np.isnan(x)])
     class_counts = []
     class_percents = []
     for class_no in class_nos:
