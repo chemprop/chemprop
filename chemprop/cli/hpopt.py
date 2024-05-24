@@ -46,7 +46,7 @@ try:
         "activation": tune.choice(categories=list(Activation.keys())),
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-        "batch_size": tune.choice(np.logspace(start=4, stop=8, num=5, base=2, dtype=int)),
+        "batch_size": tune.choice([16, 32, 64, 128, 256]),
         "depth": tune.qrandint(lower=2, upper=6, q=1),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
