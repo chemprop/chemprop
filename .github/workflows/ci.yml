@@ -85,12 +85,12 @@ jobs:
         if: ${{ matrix.python-version == '3.11' }} 
         run: |
           python -m pip install ".[hpopt]"
-      # - name: Test with pytest
-      #   shell: bash -l {0}
-      #   run: |
-      #     # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
-      #     # that the GitHub actions runners still have but are not allowed to actually use
-      #     pytest -v tests
+      - name: Test with pytest
+        shell: bash -l {0}
+        run: |
+          # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
+          # that the GitHub actions runners still have but are not allowed to actually use
+          pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
         run: |
