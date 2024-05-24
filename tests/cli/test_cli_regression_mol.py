@@ -403,7 +403,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
