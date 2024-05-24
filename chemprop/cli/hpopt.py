@@ -244,9 +244,6 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
             case "init_lr_ratio":
                 setattr(args, "init_lr", value * args.max_lr)
 
-            case "batch_size":
-                setattr(args, "batch_size", int(value))
-
             case _:
                 assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
