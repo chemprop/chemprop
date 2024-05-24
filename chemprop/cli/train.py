@@ -1089,7 +1089,7 @@ def construct_regression_data_summary_table(
 def construct_classification_data_summary_table(
     n_datapoints, class_nos, class_counts, class_percents, na_count, na_percent
 ):
-    table = Table(title="Summary of Training Data (Multiclass)")
+    table = Table(title="Summary of Training Data (Classification)")
     table.add_column("Class")
     table.add_column("Count", justify="right")
     table.add_column("Percentage", justify="right")
