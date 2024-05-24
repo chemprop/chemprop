@@ -420,9 +420,9 @@ def main(args: Namespace):
     best_config = best_result.config["train_loop_config"]
     best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
 
-    logger.info(f"Saving best hyperparameter parameters: {best_params['train_loop_config']}")
+    logger.info(f"Saving best hyperparameter parameters: {best_config}")
 
-    args = update_args_with_config(args, best_params["train_loop_config"])
+    args = update_args_with_config(args, best_config)
 
     args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
     save_config(TrainSubcommand.parser, args, args.hpopt_save_dir / "best_config.toml")
