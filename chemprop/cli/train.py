@@ -12,6 +12,7 @@ from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from lightning.pytorch.strategies import DDPStrategy
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
@@ -865,7 +866,21 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            predss = trainer.predict(dataloaders=test_loader)
+            if isinstance(trainer.strategy, DDPStrategy):
+                torch.distributed.destroy_process_group()
+
+                best_ckpt_path = trainer.checkpoint_callback.best_model_path
+                trainer = pl.Trainer(
+                    logger=trainer_logger,
+                    enable_progress_bar=True,
+                    accelerator=args.accelerator,
+                    devices=1,
+                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+                model = model.load_from_checkpoint(best_ckpt_path)
+                predss = trainer.predict(model, dataloaders=test_loader)
+            else:
+                predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
