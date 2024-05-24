@@ -246,7 +246,7 @@ class BondMessagePassing(_MessagePassingBase):
         W_i = nn.Linear(d_v + d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
+        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
 
