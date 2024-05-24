@@ -4,7 +4,6 @@ import sys
 from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 from pathlib import Path
-import numpy as np
 import torch
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
