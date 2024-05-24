@@ -608,7 +608,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **featurization_kwargs,
     )
 
-    summarize_training_data(all_data, args.task_type)
+    construct_data_summary_table(all_data, args.task_type)
 
     if args.splits_column is not None:
         df = pd.read_csv(
@@ -1013,7 +1013,7 @@ if __name__ == "__main__":
     TrainSubcommand.func(args)
 
 
-def construct_regression_data_summary(all_data):
+def summarize_regression_data(all_data):
     n_datapoints = len(all_data[0])
     ys = [x.y[0] for x in all_data[0]]
     train_data_mean = np.mean(ys)
@@ -1035,6 +1035,40 @@ def construct_regression_data_summary(all_data):
     )
     percent_datapoint_1_sigma = n_datapoints_1_sigma / n_datapoints * 100
     percent_datapoint_2_sigma = n_datapoints_2_sigma / n_datapoints * 100
+    return (
+        n_datapoints,
+        train_data_mean,
+        train_data_std,
+        train_data_median,
+        percent_datapoint_1_sigma,
+        percent_datapoint_2_sigma,
+    )
+
+
+def summarize_classification_data(all_data):
+    n_datapoints = len(all_data[0])
+    class_data = [x.y[0] for x in all_data[0]]
+    class_nos = sorted(list(set(class_data)))
+    class_counts = []
+    class_percents = []
+    for class_no in class_nos:
+        class_count = class_data.count(class_no)
+        class_percent = class_count / n_datapoints * 100
+        class_counts.append(class_count)
+        class_percents.append(class_percent)
+    na_count = n_datapoints - sum(class_counts)
+    na_percent = na_count / n_datapoints * 100
+    return n_datapoints, class_nos, class_counts, class_percents, na_count, na_percent
+
+
+def construct_regression_data_summary_table(
+    n_datapoints,
+    train_data_mean,
+    train_data_std,
+    train_data_median,
+    percent_datapoint_1_sigma,
+    percent_datapoint_2_sigma,
+):
     table = Table(title="Summary of Training Data (Regression)")
     table.add_column("Statistic")
     table.add_column("Value", justify="right")
@@ -1052,44 +1086,9 @@ def construct_regression_data_summary(all_data):
     return console.print(table)
 
 
-def construct_classification_data_summary(all_data):
-    n_datapoints = len(all_data[0])
-    bools = [x.y[0] for x in all_data[0]]
-    n_true = bools.count(1)
-    n_false = bools.count(0)
-    n_na = n_datapoints - n_true - n_false
-    percent_true = n_true / n_datapoints * 100
-    percent_false = n_false / n_datapoints * 100
-    percent_na = n_na / n_datapoints * 100
-    table = Table(title="Summary of Training Data (Classification)")
-    table.add_column("Class")
-    table.add_column("Count", justify="right")
-    table.add_column("Percentage", justify="right")
-    table.add_row("0", f"{n_false}", f"{np.round(percent_false, 2)}%")
-    table.add_row("1", f"{n_true}", f"{np.round(percent_true, 2)}%")
-    table.add_row("N/A", f"{n_na}", f"{np.round(percent_na, 2)}%")
-    table.add_row("Total", f"{n_datapoints}", f"{100.00}%")
-    console = Console()
-    with console.capture() as capture:
-        console.print(table)
-    capture_text = Text.from_ansi(capture.get())
-    logger.info(f"{capture_text}")
-    return console.print(table)
-
-
-def construct_multiclass_data_summary(all_data):
-    n_datapoints = len(all_data[0])
-    class_data = [x.y[0] for x in all_data[0]]
-    class_nos = sorted(list(set(class_data)))
-    class_counts = []
-    class_percents = []
-    for class_no in class_nos:
-        class_count = class_data.count(class_no)
-        class_percent = class_count / n_datapoints * 100
-        class_counts.append(class_count)
-        class_percents.append(class_percent)
-    na_count = n_datapoints - sum(class_counts)
-    na_percent = na_count / n_datapoints * 100
+def construct_classification_data_summary_table(
+    n_datapoints, class_nos, class_counts, class_percents, na_count, na_percent
+):
     table = Table(title="Summary of Training Data (Multiclass)")
     table.add_column("Class")
     table.add_column("Count", justify="right")
@@ -1108,12 +1107,10 @@ def construct_multiclass_data_summary(all_data):
     return console.print(table)
 
 
-def summarize_training_data(all_data, task_type):
+def construct_data_summary_table(all_data, task_type):
     if task_type == "regression":
-        construct_regression_data_summary(all_data)
-    elif task_type == "classification":
-        construct_classification_data_summary(all_data)
-    elif task_type == "multiclass":
-        construct_multiclass_data_summary(all_data)
-    else:
-        logger.info(f"\tTraining data summaries not yet supported for {task_type}")
+        summary = summarize_regression_data(all_data)
+        construct_regression_data_summary_table(*summary)
+    elif task_type in ["classification", "multiclass"]:
+        summary = summarize_classification_data(all_data)
+        construct_classification_data_summary_table(*summary)
