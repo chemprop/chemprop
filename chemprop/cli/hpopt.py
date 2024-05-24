@@ -417,7 +417,7 @@ def main(args: Namespace):
     )
 
     best_result = results.get_best_result()
-    best_params = best_result.config
+    best_config = best_result.config["train_loop_config"]
     best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
 
     logger.info(f"Saving best hyperparameter parameters: {best_params['train_loop_config']}")
