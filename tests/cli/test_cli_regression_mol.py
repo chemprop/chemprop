@@ -432,8 +432,6 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         str(tmp_path / "best_config.toml"),
         "--save-dir",
         str(tmp_path),
-        "--num-workers",
-        "0",
     ]
 
     with monkeypatch.context() as m:
