@@ -46,6 +46,10 @@ from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransf
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
 logger = logging.getLogger(__name__)
 
 
@@ -604,84 +608,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **featurization_kwargs,
     )
 
-    logger.info("Summary of training data:")
-    n_datapoints = len(all_data[0])
-
-    if args.task_type == "regression":
-        ys = [x.y[0] for x in all_data[0]]
-        train_data_mean = np.mean(ys)
-        train_data_std = np.std(ys)
-        train_data_median = np.median(ys)
-        n_datapoints_1_sigma = sum(
-            [
-                1
-                for y in ys
-                if y > train_data_mean - train_data_std and y < train_data_mean + train_data_std
-            ]
-        )
-        n_datapoints_2_sigma = sum(
-            [
-                1
-                for y in ys
-                if y > train_data_mean - 2 * train_data_std
-                and y < train_data_mean + 2 * train_data_std
-            ]
-        )
-        percent_datapoint_1_sigma = n_datapoints_1_sigma / n_datapoints * 100
-        percent_datapoint_2_sigma = n_datapoints_2_sigma / n_datapoints * 100
-        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
-        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
-        logger.info("\tMean =".ljust(40) + f"{str(np.round(train_data_mean, 2))}".rjust(20))
-        logger.info(
-            "\tStandard deviation =".ljust(40) + f"{str(np.round(train_data_std, 2))}".rjust(20)
-        )
-        logger.info("\tMedian =".ljust(40) + f"{str(np.round(train_data_median, 2))}".rjust(20))
-        logger.info(
-            "\tPercent datapoints within 1 std. dev. =".ljust(40)
-            + f"{str(np.round(percent_datapoint_1_sigma, 2))}%".rjust(20)
-        )
-        logger.info(
-            "\tPercent datapoints within 2 std. dev. =".ljust(40)
-            + f"{str(np.round(percent_datapoint_2_sigma, 2))}%".rjust(20)
-        )
-    elif args.task_type == "classification":
-        bools = [x.y[0] for x in all_data[0]]
-        n_true = bools.count(1)
-        n_false = bools.count(0)
-        percent_true = n_true / n_datapoints * 100
-        percent_false = n_false / n_datapoints * 100
-        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
-        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
-        logger.info("\tClass".ljust(40) + "Count".rjust(10) + "Percent".rjust(10))
-        logger.info(
-            "\t0".ljust(40)
-            + f"{n_false}".rjust(10)
-            + f"{str(np.round(percent_false, 2))}%".rjust(10)
-        )
-        logger.info(
-            "\t1".ljust(40) + f"{n_true}".rjust(10) + f"{str(np.round(percent_true, 2))}%".rjust(10)
-        )
-    elif args.task_type == "multiclass":
-        class_data = [x.y[0] for x in all_data[0]]
-        class_nos = sorted(list(set(class_data)))
-        class_counts = []
-        class_percents = []
-        for class_no in class_nos:
-            class_count = class_data.count(class_no)
-            class_percent = class_count / n_datapoints * 100
-            class_counts.append(class_count)
-            class_percents.append(class_percent)
-        logger.info("\tTask type:".ljust(40) + f"{str(args.task_type).strip()}".rjust(20))
-        logger.info("\tNum. datapoints =".ljust(40) + f"{n_datapoints}".rjust(20))
-        logger.info("\tClass".ljust(40) + "Count".rjust(10) + "Percent".rjust(10))
-        for i, class_no in enumerate(class_nos):
-            logger.info(
-                f"\t{int(class_no)}".ljust(40)
-                + f"{int(class_counts[i])}".rjust(10)
-                + f"{str(np.round(class_percents[i], 2))}%".rjust(10)
-            )
-    else:
-        logger.info(f"\tTraining data summaries not yet supported for {args.task_type}")
+    summarize_training_data(all_data, args.task_type)
 
     if args.splits_column is not None:
         df = pd.read_csv(
@@ -1084,3 +1011,109 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
     TrainSubcommand.func(args)
+
+
+def construct_regression_data_summary(all_data):
+    n_datapoints = len(all_data[0])
+    ys = [x.y[0] for x in all_data[0]]
+    train_data_mean = np.mean(ys)
+    train_data_std = np.std(ys)
+    train_data_median = np.median(ys)
+    n_datapoints_1_sigma = sum(
+        [
+            1
+            for y in ys
+            if y > train_data_mean - train_data_std and y < train_data_mean + train_data_std
+        ]
+    )
+    n_datapoints_2_sigma = sum(
+        [
+            1
+            for y in ys
+            if y > train_data_mean - 2 * train_data_std and y < train_data_mean + 2 * train_data_std
+        ]
+    )
+    percent_datapoint_1_sigma = n_datapoints_1_sigma / n_datapoints * 100
+    percent_datapoint_2_sigma = n_datapoints_2_sigma / n_datapoints * 100
+    table = Table(title="Summary of Training Data (Regression)")
+    table.add_column("Statistic")
+    table.add_column("Value", justify="right")
+    table.add_row("Num. datapoints", f"{n_datapoints}")
+    table.add_row("Mean", f"{str(np.round(train_data_mean, 2))}")
+    table.add_row("Std. dev.", f"{str(np.round(train_data_std, 2))}")
+    table.add_row("Median", f"{str(np.round(train_data_median, 2))}")
+    table.add_row("Datapoints within 1 std. dev.", f"{np.round(percent_datapoint_1_sigma, 2)}%")
+    table.add_row("Datapoints within 2 std. dev.", f"{np.round(percent_datapoint_2_sigma, 2)}%")
+    console = Console()
+    with console.capture() as capture:
+        console.print(table)
+    capture_text = Text.from_ansi(capture.get())
+    logger.info(f"{capture_text}")
+    return console.print(table)
+
+
+def construct_classification_data_summary(all_data):
+    n_datapoints = len(all_data[0])
+    bools = [x.y[0] for x in all_data[0]]
+    n_true = bools.count(1)
+    n_false = bools.count(0)
+    n_na = n_datapoints - n_true - n_false
+    percent_true = n_true / n_datapoints * 100
+    percent_false = n_false / n_datapoints * 100
+    percent_na = n_na / n_datapoints * 100
+    table = Table(title="Summary of Training Data (Classification)")
+    table.add_column("Class")
+    table.add_column("Count", justify="right")
+    table.add_column("Percentage", justify="right")
+    table.add_row("0", f"{n_false}", f"{np.round(percent_false, 2)}%")
+    table.add_row("1", f"{n_true}", f"{np.round(percent_true, 2)}%")
+    table.add_row("N/A", f"{n_na}", f"{np.round(percent_na, 2)}%")
+    table.add_row("Total", f"{n_datapoints}", f"{100.00}%")
+    console = Console()
+    with console.capture() as capture:
+        console.print(table)
+    capture_text = Text.from_ansi(capture.get())
+    logger.info(f"{capture_text}")
+    return console.print(table)
+
+
+def construct_multiclass_data_summary(all_data):
+    n_datapoints = len(all_data[0])
+    class_data = [x.y[0] for x in all_data[0]]
+    class_nos = sorted(list(set(class_data)))
+    class_counts = []
+    class_percents = []
+    for class_no in class_nos:
+        class_count = class_data.count(class_no)
+        class_percent = class_count / n_datapoints * 100
+        class_counts.append(class_count)
+        class_percents.append(class_percent)
+    na_count = n_datapoints - sum(class_counts)
+    na_percent = na_count / n_datapoints * 100
+    table = Table(title="Summary of Training Data (Multiclass)")
+    table.add_column("Class")
+    table.add_column("Count", justify="right")
+    table.add_column("Percentage", justify="right")
+    for i, class_no in enumerate(class_nos):
+        table.add_row(
+            f"{int(class_no)}", f"{class_counts[i]}", f"{np.round(class_percents[i], 2)}%"
+        )
+    table.add_row("N/A", f"{na_count}", f"{np.round(na_percent, 2)}%")
+    table.add_row("Total", f"{n_datapoints}", f"{100.00}%")
+    console = Console()
+    with console.capture() as capture:
+        console.print(table)
+    capture_text = Text.from_ansi(capture.get())
+    logger.info(f"{capture_text}")
+    return console.print(table)
+
+
+def summarize_training_data(all_data, task_type):
+    if task_type == "regression":
+        construct_regression_data_summary(all_data)
+    elif task_type == "classification":
+        construct_classification_data_summary(all_data)
+    elif task_type == "multiclass":
+        construct_multiclass_data_summary(all_data)
+    else:
+        logger.info(f"\tTraining data summaries not yet supported for {task_type}")
