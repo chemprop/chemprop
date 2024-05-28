@@ -276,7 +276,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         devices=args.devices,
         max_epochs=args.epochs,
         gradient_clip_val=args.grad_clip,
-        strategy=RayDDPStrategy(find_unused_parameters=True),
+        strategy=RayDDPStrategy(),
         callbacks=[RayTrainReportCallback(), early_stopping],
         plugins=[RayLightningEnvironment()],
         deterministic=args.pytorch_seed is not None,
