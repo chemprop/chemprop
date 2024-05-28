@@ -84,7 +84,7 @@ jobs:
       - name: Install hyperopt optional dependencies (Python 3.11 only)
         if: ${{ matrix.python-version == '3.11' }} 
         run: |
-          python -m pip install ".[hpopt]"
+          python -m pip install ".[hpopt]" optuna
       - name: Test with pytest
         shell: bash -l {0}
         run: |
