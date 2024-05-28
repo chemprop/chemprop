@@ -1056,9 +1056,7 @@ def summarize(task_type, dataset):
 
 
 def build_table(column_headers: list, table_rows: list) -> str:
-    table = Table(title="Summary of Training Data ")
-    for col in column_headers:
-        table.add_column(col)
+    table = Table(*column_headers, title="Summary of Training Data (task 0)")
     for row in table_rows:
         table.add_row(*row)
     with Console().capture() as capture:
