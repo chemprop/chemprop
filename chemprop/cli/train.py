@@ -1061,8 +1061,8 @@ def build_table(column_headers: list, table_rows: list) -> str:
         table.add_column(col)
     for row in table_rows:
         table.add_row(*row)
-    console = Console()
-    with console.capture() as capture:
+    with Console().capture() as capture:
         console.print(table)
-    capture_text = Text.from_ansi(capture.get())
-    return f"{capture_text}"
+        text = Text.from_ansi(capture.get())
+    
+    return text.plain
