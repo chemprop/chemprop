@@ -4,13 +4,13 @@ from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import nn, Tensor, optim
+from torch import Tensor, nn, optim
 
-from chemprop.data import TrainingBatch, BatchMolGraph
+from chemprop.data import BatchMolGraph, TrainingBatch
+from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
-from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
-from chemprop.schedulers import NoamLR
 from chemprop.nn.transforms import ScaleTransform
+from chemprop.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
