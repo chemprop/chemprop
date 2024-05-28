@@ -4,7 +4,6 @@ import sys
 from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 from pathlib import Path
-
 import torch
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
@@ -46,15 +45,15 @@ try:
         "activation": tune.choice(categories=list(Activation.keys())),
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-        "batch_size": tune.loguniform(lower=16, upper=256, base=2),
-        "depth": tune.quniform(lower=2, upper=6, q=1),
+        "batch_size": tune.choice([16, 32, 64, 128, 256]),
+        "depth": tune.qrandint(lower=2, upper=6, q=1),
         "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
-        "ffn_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
-        "ffn_num_layers": tune.quniform(lower=1, upper=3, q=1),
-        "final_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "message_hidden_dim": tune.quniform(lower=300, upper=2400, q=100),
-        "init_lr_ratio": tune.loguniform(lower=1e-4, upper=1),
-        "max_lr": tune.loguniform(lower=1e-6, upper=1e-2),
+        "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
+        "final_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
+        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "init_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
+        "max_lr": tune.loguniform(lower=1e-4, upper=1e-2),
         "warmup_epochs": None,
     }
 except ImportError:
@@ -227,8 +226,8 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
-    if "warmup_epochs" not in SEARCH_SPACE and "warmup_epochs" in search_parameters:
-        SEARCH_SPACE["warmup_epochs"] = tune.quniform(lower=1, upper=train_epochs // 2, q=1)
+    if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
+        SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
 
