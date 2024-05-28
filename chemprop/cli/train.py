@@ -608,8 +608,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         **featurization_kwargs,
     )
 
-    construct_data_summary_table(all_data, args.task_type)
-
     if args.splits_column is not None:
         df = pd.read_csv(
             args.data_path, header=None if args.no_header_row else "infer", index_col=False
@@ -690,6 +688,9 @@ def build_datasets(args, train_data, val_data, test_data):
         else:
             test_dset = None
 
+    headers, rows = summarize(args.task_type, train_data + val_data + test_data)
+    table_str = build_table(headers, rows)
+    logger.info("\n" + table_str)
     return train_dset, val_dset, test_dset
 
 
@@ -1013,104 +1014,55 @@ if __name__ == "__main__":
     TrainSubcommand.func(args)
 
 
-def summarize_regression_data(all_data):
-    n_datapoints = len(all_data[0])
-    ys = [x.y[0] for x in all_data[0]]
-    train_data_mean = np.mean(ys)
-    train_data_std = np.std(ys)
-    train_data_median = np.median(ys)
-    n_datapoints_1_sigma = sum(
-        [
-            1
-            for y in ys
-            if y > train_data_mean - train_data_std and y < train_data_mean + train_data_std
-        ]
-    )
-    n_datapoints_2_sigma = sum(
-        [
-            1
-            for y in ys
-            if y > train_data_mean - 2 * train_data_std and y < train_data_mean + 2 * train_data_std
-        ]
-    )
-    percent_datapoint_1_sigma = n_datapoints_1_sigma / n_datapoints * 100
-    percent_datapoint_2_sigma = n_datapoints_2_sigma / n_datapoints * 100
-    return (
-        n_datapoints,
-        train_data_mean,
-        train_data_std,
-        train_data_median,
-        percent_datapoint_1_sigma,
-        percent_datapoint_2_sigma,
-    )
-
-
-def summarize_classification_data(all_data):
-    n_datapoints = len(all_data[0])
-    class_data = [x.y[0] for x in all_data[0]]
-    class_nos = sorted([x for x in set(class_data) if not np.isnan(x)])
-    class_counts = []
-    class_percents = []
-    for class_no in class_nos:
-        class_count = class_data.count(class_no)
-        class_percent = class_count / n_datapoints * 100
-        class_counts.append(class_count)
-        class_percents.append(class_percent)
-    na_count = n_datapoints - sum(class_counts)
-    na_percent = na_count / n_datapoints * 100
-    return n_datapoints, class_nos, class_counts, class_percents, na_count, na_percent
-
-
-def construct_regression_data_summary_table(
-    n_datapoints,
-    train_data_mean,
-    train_data_std,
-    train_data_median,
-    percent_datapoint_1_sigma,
-    percent_datapoint_2_sigma,
-):
-    table = Table(title="Summary of Training Data (Regression)")
-    table.add_column("Statistic")
-    table.add_column("Value", justify="right")
-    table.add_row("Num. datapoints", f"{n_datapoints}")
-    table.add_row("Mean", f"{str(np.round(train_data_mean, 2))}")
-    table.add_row("Std. dev.", f"{str(np.round(train_data_std, 2))}")
-    table.add_row("Median", f"{str(np.round(train_data_median, 2))}")
-    table.add_row("Datapoints within 1 std. dev.", f"{np.round(percent_datapoint_1_sigma, 2)}%")
-    table.add_row("Datapoints within 2 std. dev.", f"{np.round(percent_datapoint_2_sigma, 2)}%")
-    console = Console()
-    with console.capture() as capture:
-        console.print(table)
-    capture_text = Text.from_ansi(capture.get())
-    logger.info(f"{capture_text}")
-    return console.print(table)
-
-
-def construct_classification_data_summary_table(
-    n_datapoints, class_nos, class_counts, class_percents, na_count, na_percent
-):
-    table = Table(title="Summary of Training Data (Classification)")
-    table.add_column("Class")
-    table.add_column("Count", justify="right")
-    table.add_column("Percentage", justify="right")
-    for i, class_no in enumerate(class_nos):
-        table.add_row(
-            f"{int(class_no)}", f"{class_counts[i]}", f"{np.round(class_percents[i], 2)}%"
-        )
-    table.add_row("N/A", f"{na_count}", f"{np.round(na_percent, 2)}%")
-    table.add_row("Total", f"{n_datapoints}", f"{100.00}%")
-    console = Console()
-    with console.capture() as capture:
-        console.print(table)
-    capture_text = Text.from_ansi(capture.get())
-    logger.info(f"{capture_text}")
-    return console.print(table)
-
-
-def construct_data_summary_table(all_data, task_type):
+def summarize(task_type, dataset):
     if task_type == "regression":
-        summary = summarize_regression_data(all_data)
-        construct_regression_data_summary_table(*summary)
+        y = np.array([datapoint.y[0] for datapoint in dataset])
+        y_mean = y.mean()
+        y_std = y.std()
+        y_median = np.median(y)
+        mean_dev_abs = np.abs(y - y_mean)
+        num_1_sigma = (mean_dev_abs < y_std).sum()
+        num_2_sigma = (mean_dev_abs < 2 * y_std).sum()
+        percent_1_sigma = num_1_sigma / len(y) * 100
+        percent_2_sigma = num_2_sigma / len(y) * 100
+        column_headers = ["Statistic", "Value"]
+        table_rows = [
+            ["Num. datapoints", f"{len(y)}"],
+            ["Mean", f"{str(np.round(y_mean, 2))}"],
+            ["Std. dev.", f"{str(np.round(y_std, 2))}"],
+            ["Median", f"{str(np.round(y_median, 2))}"],
+            ["Datapoints within 1 std. dev.", f"{np.round(percent_1_sigma, 2)}%"],
+            ["Datapoints within 2 std. dev.", f"{np.round(percent_2_sigma, 2)}%"],
+        ]
+        return tuple([column_headers, table_rows])
     elif task_type in ["classification", "multiclass"]:
-        summary = summarize_classification_data(all_data)
-        construct_classification_data_summary_table(*summary)
+        y = np.array([datapoint.y[0] for datapoint in dataset])
+        mask = np.isnan(y)
+        classes = sorted(np.unique(y[~mask]))
+        class_counts = [(y == k).sum() for k in classes]
+        class_percents = [count / len(y) * 100 for count in class_counts]
+        nan_count = (mask).sum()
+        nan_percent = nan_count / len(y) * 100
+        column_headers = ["Class", "Count", "Percent"]
+        table_rows = []
+        for i, class_no in enumerate(classes):
+            table_row = [f"{class_no}", f"{class_counts[i]}", f"{np.round(class_percents[i], 2)}%"]
+            table_rows.append(table_row)
+        table_rows.append(["Nan", f"{nan_count}", f"{np.round(nan_percent, 2)}%"])
+        table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
+        return column_headers, table_rows
+    else:
+        return None
+
+
+def build_table(column_headers: list, table_rows: list) -> str:
+    table = Table(title="Summary of Training Data ")
+    for col in column_headers:
+        table.add_column(col)
+    for row in table_rows:
+        table.add_row(*row)
+    console = Console()
+    with console.capture() as capture:
+        console.print(table)
+    capture_text = Text.from_ansi(capture.get())
+    return f"{capture_text}"
