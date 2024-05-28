@@ -1028,9 +1028,9 @@ def summarize(task_type, dataset):
         column_headers = ["Statistic", "Value"]
         table_rows = [
             ["Num. datapoints", f"{len(y)}"],
-            ["Mean", f"{str(np.round(y_mean, 2))}"],
-            ["Std. dev.", f"{str(np.round(y_std, 2))}"],
-            ["Median", f"{str(np.round(y_median, 2))}"],
+            ["Mean", f"{y_mean:0.2f}"],
+            ["Std. dev.", f"{y_std:0.2f}"],
+            ["Median", f"{y_median:0.2f}"],
             ["Datapoints within 1 std. dev.", f"{np.round(percent_1_sigma, 2)}%"],
             ["Datapoints within 2 std. dev.", f"{np.round(percent_2_sigma, 2)}%"],
         ]
