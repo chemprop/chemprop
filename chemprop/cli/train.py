@@ -1034,7 +1034,7 @@ def summarize(task_type, dataset):
             ["% within 1 s.d.", f"{percent_1_sigma:0.0%}"],
             ["% within 2 s.d.", f"{percent_2_sigma:0.0%}"],
         ]
-        return tuple([column_headers, table_rows])
+        return (column_headers, table_rows)
     elif task_type in ["classification", "multiclass"]:
         y = np.array([datapoint.y[0] for datapoint in dataset])
         mask = np.isnan(y)
