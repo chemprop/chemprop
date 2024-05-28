@@ -1038,19 +1038,18 @@ def summarize(task_type, dataset):
     elif task_type in ["classification", "multiclass"]:
         y = np.array([datapoint.y[0] for datapoint in dataset])
         mask = np.isnan(y)
-        classes = sorted(np.unique(y[~mask]))
-        class_counts = [(y == k).sum() for k in classes]
-        class_percents = [count / len(y) * 100 for count in class_counts]
+        classes = np.sort(np.unique(y[~mask]))
+        class_counts = (class[:, None] == y[None, :]).sum(1)
+        class_fracs = class_counts / len(y)
         nan_count = (mask).sum()
-        nan_percent = nan_count / len(y) * 100
+        nan_frac = nan_count / len(y)
         column_headers = ["Class", "Count", "Percent"]
-        table_rows = []
-        for i, class_no in enumerate(classes):
-            table_row = [f"{class_no}", f"{class_counts[i]}", f"{np.round(class_percents[i], 2)}%"]
-            table_rows.append(table_row)
-        table_rows.append(["Nan", f"{nan_count}", f"{np.round(nan_percent, 2)}%"])
+        table_rows = [
+            (k, class_counts[i], f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
+        ]
+        table_rows.append(["Nan", nan_count, f"{nan_frac:0.0%}"])
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
-        return column_headers, table_rows
+        return (column_headers, table_rows)
     else:
         return None
 
