@@ -1031,8 +1031,8 @@ def summarize(task_type, dataset):
             ["Mean", f"{y_mean:0.2f}"],
             ["Std. dev.", f"{y_std:0.2f}"],
             ["Median", f"{y_median:0.2f}"],
-            ["Datapoints within 1 std. dev.", f"{np.round(percent_1_sigma, 2)}%"],
-            ["Datapoints within 2 std. dev.", f"{np.round(percent_2_sigma, 2)}%"],
+            ["% within 1 s.d.", f"{percent_1_sigma:0.0%}"],
+            ["% within 2 s.d.", f"{percent_2_sigma:0.0%}"],
         ]
         return tuple([column_headers, table_rows])
     elif task_type in ["classification", "multiclass"]:
