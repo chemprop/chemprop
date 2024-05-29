@@ -34,6 +34,7 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
+
 from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -47,8 +48,7 @@ from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 from rich.console import Console
-from rich.table import Table
-from rich.text import Text
+from rich.table import Table, Column
 
 logger = logging.getLogger(__name__)
 
@@ -687,10 +687,11 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-
-    headers, rows = summarize(args.task_type, train_data + val_data + test_data)
-    table_str = build_table(headers, rows)
-    logger.info("\n" + table_str)
+    all_data = train_data + val_data + test_data
+    all_dset = make_dataset(all_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+    column_headers, table_rows = summarize(args.task_type, all_dset)
+    output = build_table(column_headers, table_rows)
+    logger.info(output)
     return train_dset, val_dset, test_dset
 
 
@@ -1014,9 +1015,9 @@ if __name__ == "__main__":
     TrainSubcommand.func(args)
 
 
-def summarize(task_type, dataset):
+def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
     if task_type == "regression":
-        y = np.array([datapoint.y[0] for datapoint in dataset])
+        y = np.array([datapoint.y[0] for datapoint in dataset.data])
         y_mean = y.mean()
         y_std = y.std()
         y_median = np.median(y)
@@ -1036,30 +1037,33 @@ def summarize(task_type, dataset):
         ]
         return (column_headers, table_rows)
     elif task_type in ["classification", "multiclass"]:
-        y = np.array([datapoint.y[0] for datapoint in dataset])
+        y = np.array([datapoint.y[0] for datapoint in dataset.data])
+        print(y)
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
-        class_counts = (class[:, None] == y[None, :]).sum(1)
+        class_counts = (classes[:, None] == y[None, :]).sum(1)
         class_fracs = class_counts / len(y)
         nan_count = (mask).sum()
         nan_frac = nan_count / len(y)
         column_headers = ["Class", "Count", "Percent"]
         table_rows = [
-            (k, class_counts[i], f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
+            (f"{k}", f"{class_counts[i]}", f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
         ]
-        table_rows.append(["Nan", nan_count, f"{nan_frac:0.0%}"])
+        table_rows.append(["Nan", f"{nan_count}", f"{nan_frac:0.0%}"])
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
         return (column_headers, table_rows)
     else:
-        return None
+        raise Exception
 
 
 def build_table(column_headers: list, table_rows: list) -> str:
-    table = Table(*column_headers, title="Summary of Training Data (task 0)")
+    right_justified_columns = [
+        Column(header=column_header, justify="right") for column_header in column_headers
+    ]
+    table = Table(*right_justified_columns, title="Summary of Training Data (task 0)")
     for row in table_rows:
         table.add_row(*row)
-    with Console().capture() as capture:
-        console.print(table)
-        text = Text.from_ansi(capture.get())
-    
-    return text.plain
+    console = Console(record=True)
+    console.print(table)
+    text = console.export_text()
+    return text
