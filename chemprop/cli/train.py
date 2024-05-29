@@ -687,9 +687,8 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-    all_data = train_data + val_data + test_data
-    all_dset = make_dataset(all_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-    column_headers, table_rows = summarize(args.task_type, all_dset)
+
+    column_headers, table_rows = summarize(args.task_type, train_dset)
     output = build_table(column_headers, table_rows)
     logger.info(output)
     return train_dset, val_dset, test_dset
