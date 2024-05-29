@@ -1052,7 +1052,6 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
         return (column_headers, table_rows)
     elif task_type in ["classification", "multiclass"]:
         y = np.array([datapoint.y[0] for datapoint in dataset.data])
-        print(y)
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
         class_counts = (classes[:, None] == y[None, :]).sum(1)
