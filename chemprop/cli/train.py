@@ -676,6 +676,18 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = MulticomponentDataset(test_dsets)
         else:
             test_dset = None
+        for i, train_dataset in enumerate(train_dsets):
+            column_headers, table_rows = summarize(args.task_type, train_dataset)
+            output = build_table(
+                column_headers, table_rows, f"Summary of Training Data - Component {i}"
+            )
+            logger.info(output)
+        for i, test_dataset in enumerate(test_dsets):
+            column_headers, table_rows = summarize(args.task_type, test_dataset)
+            output = build_table(
+                column_headers, table_rows, f"Summary of Test Data - Component {i}"
+            )
+            logger.info(output)
     else:
         train_data = train_data[0]
         val_data = val_data[0]
@@ -687,10 +699,13 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
+        column_headers, table_rows = summarize(args.task_type, train_dset)
+        output = build_table(column_headers, table_rows, "Summary of Training Data")
+        logger.info(output)
+        column_headers, table_rows = summarize(args.task_type, test_dset)
+        output = build_table(column_headers, table_rows, "Summary of Test Data")
+        logger.info(output)
 
-    column_headers, table_rows = summarize(args.task_type, train_dset)
-    output = build_table(column_headers, table_rows)
-    logger.info(output)
     return train_dset, val_dset, test_dset
 
 
@@ -1023,16 +1038,16 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
         mean_dev_abs = np.abs(y - y_mean)
         num_1_sigma = (mean_dev_abs < y_std).sum()
         num_2_sigma = (mean_dev_abs < 2 * y_std).sum()
-        percent_1_sigma = num_1_sigma / len(y) * 100
-        percent_2_sigma = num_2_sigma / len(y) * 100
+        frac_1_sigma = num_1_sigma / len(y)
+        frac_2_sigma = num_2_sigma / len(y)
         column_headers = ["Statistic", "Value"]
         table_rows = [
             ["Num. datapoints", f"{len(y)}"],
             ["Mean", f"{y_mean:0.2f}"],
             ["Std. dev.", f"{y_std:0.2f}"],
             ["Median", f"{y_median:0.2f}"],
-            ["% within 1 s.d.", f"{percent_1_sigma:0.0%}"],
-            ["% within 2 s.d.", f"{percent_2_sigma:0.0%}"],
+            ["% within 1 s.d.", f"{frac_1_sigma:0.0%}"],
+            ["% within 2 s.d.", f"{frac_2_sigma:0.0%}"],
         ]
         return (column_headers, table_rows)
     elif task_type in ["classification", "multiclass"]:
@@ -1055,11 +1070,11 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
         raise Exception("Summaries not available for this task type yet")
 
 
-def build_table(column_headers: list, table_rows: list) -> str:
+def build_table(column_headers: list, table_rows: list, title: str) -> str:
     right_justified_columns = [
         Column(header=column_header, justify="right") for column_header in column_headers
     ]
-    table = Table(*right_justified_columns, title="Summary of Training Data (task 0)")
+    table = Table(*right_justified_columns, title=title)
     for row in table_rows:
         table.add_row(*row)
     console = Console(record=True)
