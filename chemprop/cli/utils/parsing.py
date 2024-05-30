@@ -49,13 +49,14 @@ def parse_csv(
         input_cols = [df.columns[0]]
 
     if target_cols is None:
-        target_cols = list(
-            set(df.columns)
-            - set(input_cols)
-            - set(ignore_cols or [])
-            - set(splits_col or [])
-            - set(weight_col or [])
-        )
+       target_cols = list(
+           i
+           for i in df.columns
+           if i
+           not in set(
+               input_cols + (ignore_cols or []) + (splits_col or []) + (weight_col or [])
+           )
+       )
 
     Y = df[target_cols]
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
