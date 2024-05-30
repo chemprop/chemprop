@@ -50,9 +50,9 @@ def parse_csv(
 
     if target_cols is None:
         target_cols = list(
-            i
-            for i in df.columns
-            if i
+            column
+            for column in df.columns
+            if column
             not in set(input_cols + (ignore_cols or []) + (splits_col or []) + (weight_col or []))
         )
 
