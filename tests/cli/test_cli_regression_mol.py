@@ -364,7 +364,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     )
 
 
-@pytest.mark.skipif(NO_OPTUNA, reason="Optuna not installed")
+@pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
 def test_optuna_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
@@ -393,7 +393,7 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "ray_results").exists()
 
 
-@pytest.mark.skipif(NO_RAY and NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+@pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
