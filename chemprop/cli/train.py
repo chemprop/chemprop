@@ -473,20 +473,6 @@ def validate_train_args(args):
     pass
 
 
-def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
-    config_args = deepcopy(args)
-    for key, value in vars(config_args).items():
-        if isinstance(value, Path):
-            setattr(config_args, key, str(value))
-
-    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
-        if getattr(config_args, key) is not None:
-            for index, path in getattr(config_args, key).items():
-                getattr(config_args, key)[index] = str(path)
-
-    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
-
-
 def normalize_inputs(train_dset, val_dset, args):
     multicomponent = isinstance(train_dset, MulticomponentDataset)
     num_components = train_dset.n_components if multicomponent else 1
@@ -573,6 +559,20 @@ def normalize_inputs(train_dset, val_dset, args):
             V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
     return X_d_transform, graph_transforms, V_d_transforms
+
+
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
+    config_args = deepcopy(args)
+    for key, value in vars(config_args).items():
+        if isinstance(value, Path):
+            setattr(config_args, key, str(value))
+
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if getattr(config_args, key) is not None:
+            for index, path in getattr(config_args, key).items():
+                getattr(config_args, key)[index] = str(path)
+
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
