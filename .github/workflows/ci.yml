@@ -94,11 +94,8 @@ jobs:
       - name: Test notebooks
         shell: bash -l {0}
         run: |
-          pytest --nbmake examples/training.ipynb
-          pytest --nbmake examples/predicting.ipynb
-          pytest --nbmake examples/convert_v1_to_v2.ipynb
-          pytest --nbmake examples/training_regression_multicomponent.ipynb
-          pytest --nbmake examples/predicting_regression_multicomponent.ipynb
+          python -m pip install matplotlib
+          pytest --no-cov -v --nbmake examples/*.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install
