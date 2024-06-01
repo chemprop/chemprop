@@ -305,7 +305,7 @@ def tune_model(
                 reduction_factor=args.raytune_reduction_factor,
             )
         case _:
-            raise RuntimeError("Unreachable code reached!")
+            raise ValueError(f"Invalid trial scheduler! got: {args.raytune_trial_scheduler}.")
 
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
