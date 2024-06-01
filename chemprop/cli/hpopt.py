@@ -39,7 +39,7 @@ try:
         prepare_trainer,
     )
     from ray.train.torch import TorchTrainer
-    from ray.tune.schedulers import ASHAScheduler
+    from ray.tune.schedulers import ASHAScheduler, FIFOScheduler
 
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
@@ -145,6 +145,13 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         choices=["random", "hyperopt"],  # , "optuna"],
         default="hyperopt",
         help="Passed to Ray Tune TuneConfig to control search algorithm",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-trial-scheduler",
+        choices=["FIFO", "AsyncHyperBand"],
+        default="FIFO",
+        help="Passed to Ray Tune TuneConfig to control trial scheduler",
     )
 
     raytune_args.add_argument(
@@ -288,11 +295,17 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
 def tune_model(
     args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
 ):
-    scheduler = ASHAScheduler(
-        max_t=args.epochs,
-        grace_period=min(args.raytune_grace_period, args.epochs),
-        reduction_factor=args.raytune_reduction_factor,
-    )
+    match args.raytune_trial_scheduler:
+        case "FIFO":
+            scheduler = FIFOScheduler()
+        case "AsyncHyperBand":
+            scheduler = ASHAScheduler(
+                max_t=args.epochs,
+                grace_period=min(args.raytune_grace_period, args.epochs),
+                reduction_factor=args.raytune_reduction_factor,
+            )
+        case _:
+            raise ValueError(f"Invalid trial scheduler! got: {args.raytune_trial_scheduler}.")
 
     scaling_config = ScalingConfig(
         num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
