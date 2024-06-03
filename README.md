@@ -112,6 +112,10 @@ Then proceed to either option below to complete the installation. If installing 
 2. `conda activate chemprop`
 3. `pip install chemprop`
 
+> [!NOTE]  
+> Some features that were not made available in the main releases of Chemprop are instead available through 'feature releases' via PyPI: 
+> - SSL Pre-train with DDP - available in version `1.6.1.dev0`, install with `pip install chemprop==1.6.1.dev0`. Also available to be installed from source using the `sslddpv1` branch. Authored by Jiali Li, Kevin Greenman, and Shomik Verma.
+
 ### Option 2: Installing from source
 
 1. `git clone https://github.com/chemprop/chemprop.git`
