@@ -12,6 +12,8 @@ from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from rich.console import Console
+from rich.table import Column, Table
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
@@ -34,7 +36,6 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
-
 from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -46,9 +47,6 @@ from chemprop.nn.message_passing import (
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
-
-from rich.console import Console
-from rich.table import Table, Column
 
 logger = logging.getLogger(__name__)
 
