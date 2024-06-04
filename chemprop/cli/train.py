@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 TASK_TYPES = ["regression", "classification", "multiclass"]
 
+
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "train a chemprop model"
