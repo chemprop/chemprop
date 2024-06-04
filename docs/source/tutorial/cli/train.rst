@@ -76,7 +76,7 @@ Ensembling
 To train an ensemble, specify the number of models in the ensemble with :code:`--ensemble-size <n>` (default 1).
 
 Hyperparameters
-----------
+---------------
 
 Model performance is often highly dependent on the hyperparameters used. Below is a list of common hyperparameters (see :ref:`cmd` for a full list):
 

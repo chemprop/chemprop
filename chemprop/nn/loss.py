@@ -127,12 +127,12 @@ class MVELoss(LossFunction):
 
 @LossFunctionRegistry.register("evidential")
 class EvidentialLoss(LossFunction):
-    """Calculate the loss using Eqs. 8, 9, and 10 from [amini2020]_
+    """Calculate the loss using Eqs. 8, 9, and 10 from [amini2020]_. See also [soleimany2021]_.
 
     References
     ----------
     .. [amini2020] Amini, A; Schwarting, W.; Soleimany, A.; Rus, D.;
-        "Deep Evidential Regression" Advances in Neural Information Processing Systems;2020; Vol.33.
+        "Deep Evidential Regression" Advances in Neural Information Processing Systems; 2020; Vol.33.
         https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
     .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
         "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
