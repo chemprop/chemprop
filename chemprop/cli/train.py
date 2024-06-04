@@ -52,7 +52,15 @@ from rich.table import Table, Column
 
 logger = logging.getLogger(__name__)
 
-TASK_TYPES = ["regression", "classification", "multiclass"]
+TASK_TYPES = [
+    "regression",
+    "regression-mve",
+    "regression-evidential",
+    "classification",
+    "classification-dirichlet",
+    "multiclass",
+    "multiclass-dirichlet",
+]
 
 
 class TrainSubcommand(Subcommand):
@@ -1032,7 +1040,7 @@ if __name__ == "__main__":
 
 
 def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
-    if task_type == "regression":
+    if task_type in ["regression", "regression-mve", "regression-evidential"]:
         y = np.array([datapoint.y[0] for datapoint in dataset.data])
         y_mean = y.mean()
         y_std = y.std()
@@ -1052,7 +1060,12 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
             ["% within 2 s.d.", f"{frac_2_sigma:0.0%}"],
         ]
         return (column_headers, table_rows)
-    elif task_type in ["classification", "multiclass"]:
+    elif task_type in [
+        "classification",
+        "classification-dirichlet",
+        "multiclass",
+        "multiclass-dirichlet",
+    ]:
         y = np.array([datapoint.y[0] for datapoint in dataset.data])
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
