@@ -1,6 +1,6 @@
+import numpy as np
 import pytest
 import torch
-import numpy as np
 
 from chemprop.data.collate import BatchMolGraph, collate_batch
 from chemprop.data.datasets import Datum

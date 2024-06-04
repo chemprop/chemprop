@@ -1,11 +1,11 @@
-from typing import Sequence
 from enum import auto
+from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
 
-from chemprop.utils.utils import EnumMapping
 from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.utils.utils import EnumMapping
 
 
 class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):

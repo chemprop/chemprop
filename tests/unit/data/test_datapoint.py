@@ -2,10 +2,8 @@ import numpy as np
 import pytest
 
 from chemprop.data import MoleculeDatapoint
-
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.utils.registry import Factory
-
 
 SMI = "c1ccccc1"
 

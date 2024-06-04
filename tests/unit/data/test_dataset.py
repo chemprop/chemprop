@@ -5,7 +5,7 @@ import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.data.datasets import MoleculeDataset, MoleculeDatapoint
+from chemprop.data.datasets import MoleculeDatapoint, MoleculeDataset
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
 

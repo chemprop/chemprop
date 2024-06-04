@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chemprop.data import MoleculeDataset, MoleculeDatapoint, SeededSampler, ClassBalanceSampler
+from chemprop.data import ClassBalanceSampler, MoleculeDatapoint, MoleculeDataset, SeededSampler
 from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
 
 
