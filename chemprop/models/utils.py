@@ -1,4 +1,5 @@
 from os import PathLike
+
 import torch
 
 from chemprop.models.model import MPNN
