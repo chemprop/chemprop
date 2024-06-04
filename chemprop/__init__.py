@@ -1,5 +1,5 @@
-from . import data, featurizers, models, nn, utils, conf, exceptions, schedulers
+from . import data, exceptions, featurizers, models, nn, schedulers, utils
 
-__all__ = ["data", "featurizers", "models", "nn", "utils", "conf", "exceptions", "schedulers"]
+__all__ = ["data", "featurizers", "models", "nn", "utils", "exceptions", "schedulers"]
 
 __version__ = "2.0.0"

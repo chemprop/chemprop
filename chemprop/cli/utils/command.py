@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from argparse import ArgumentParser, _SubParsersAction, Namespace
+from argparse import ArgumentParser, Namespace, _SubParsersAction
 
 
 class Subcommand(ABC):
