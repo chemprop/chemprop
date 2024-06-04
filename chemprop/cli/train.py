@@ -1067,7 +1067,7 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
         return (column_headers, table_rows)
     else:
-        raise Exception("Summaries not available for this task type yet")
+        raise ValueError("invalid task type! got: '{task_type}'. expected one of {TASK_TYPES}.")
 
 
 def build_table(column_headers: list, table_rows: list, title: str) -> str:
