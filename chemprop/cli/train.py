@@ -876,7 +876,6 @@ def train_model(
                     accelerator=args.accelerator,
                     devices=1,
                 )
-                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
                 model = model.load_from_checkpoint(best_ckpt_path)
                 predss = trainer.predict(model, dataloaders=test_loader)
             else:
