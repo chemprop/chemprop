@@ -375,13 +375,17 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
         "2",
         "--raytune-search-algorithm",
         "optuna",
+        "--features-generators",
+        "morgan_count",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
