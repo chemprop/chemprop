@@ -1,9 +1,9 @@
-from configargparse import ArgumentParser, Namespace
 from copy import deepcopy
 import logging
 from pathlib import Path
 import sys
 
+from configargparse import ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 import numpy as np
@@ -11,15 +11,15 @@ import torch
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
+    TrainSubcommand,
     add_train_args,
     build_datasets,
     build_model,
     build_splits,
     normalize_inputs,
     process_train_args,
-    validate_train_args,
-    TrainSubcommand,
     save_config,
+    validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
