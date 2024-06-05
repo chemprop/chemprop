@@ -1,10 +1,11 @@
+from collections.abc import Iterable, Sequence
 import copy
-import logging
 from enum import auto
-from collections.abc import Sequence, Iterable
-import numpy as np
+import logging
+
 from astartes import train_test_split, train_val_test_split
 from astartes.molecules import train_test_split_molecules, train_val_test_split_molecules
+import numpy as np
 from rdkit import Chem
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint

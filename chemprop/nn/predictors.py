@@ -2,9 +2,12 @@ from abc import abstractmethod
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 
+from chemprop.conf import DEFAULT_HIDDEN_DIM
+from chemprop.nn.ffn import MLP
+from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import (
     BCELoss,
     BinaryDirichletLoss,
@@ -12,16 +15,12 @@ from chemprop.nn.loss import (
     EvidentialLoss,
     LossFunction,
     MSELoss,
-    MVELoss,
     MulticlassDirichletLoss,
+    MVELoss,
     SIDLoss,
 )
-from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
-from chemprop.nn.ffn import MLP
+from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, Metric, MSEMetric, SIDMetric
 from chemprop.nn.transforms import UnscaleTransform
-
-from chemprop.nn.hparams import HasHParams
-from chemprop.conf import DEFAULT_HIDDEN_DIM
 from chemprop.utils import ClassRegistry, Factory
 
 __all__ = [

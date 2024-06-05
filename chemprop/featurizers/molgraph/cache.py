@@ -4,8 +4,8 @@ from typing import Generic, Iterable
 
 import numpy as np
 
-from chemprop.featurizers.base import S, Featurizer
 from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import Featurizer, S
 
 
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):

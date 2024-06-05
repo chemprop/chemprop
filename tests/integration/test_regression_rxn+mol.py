@@ -11,9 +11,9 @@ from chemprop import nn
 from chemprop.data import (
     MoleculeDatapoint,
     MoleculeDataset,
+    MulticomponentDataset,
     ReactionDatapoint,
     ReactionDataset,
-    MulticomponentDataset,
     collate_multicomponent,
 )
 from chemprop.featurizers.molgraph import CondensedGraphOfReactionFeaturizer
