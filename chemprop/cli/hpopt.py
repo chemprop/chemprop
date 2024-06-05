@@ -1,11 +1,14 @@
-import logging
-import sys
 from configargparse import ArgumentParser, Namespace
 from copy import deepcopy
+import json
+import logging
 from pathlib import Path
-import torch
+import sys
+
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
+import numpy as np
+import torch
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
@@ -48,7 +51,7 @@ try:
         "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
         "batch_size": tune.choice([16, 32, 64, 128, 256]),
         "depth": tune.qrandint(lower=2, upper=6, q=1),
-        "dropout": tune.choice([tune.choice([0.0]), tune.quniform(lower=0.05, upper=0.4, q=0.05)]),
+        "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
         "ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
         "final_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
@@ -66,11 +69,11 @@ try:
 except ImportError:
     NO_HYPEROPT = True
 
-# NO_OPTUNA = False
-# try:
-#     from ray.tune.search.optuna import OptunaSearch
-# except ImportError:
-#     NO_OPTUNA = True
+NO_OPTUNA = False
+try:
+    from ray.tune.search.optuna import OptunaSearch
+except ImportError:
+    NO_OPTUNA = True
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +146,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
     raytune_args.add_argument(
         "--raytune-search-algorithm",
-        choices=["random", "hyperopt"],  # , "optuna"],
+        choices=["random", "hyperopt", "optuna"],
         default="hyperopt",
         help="Passed to Ray Tune TuneConfig to control search algorithm",
     )
@@ -344,13 +347,13 @@ def tune_model(
                 n_initial_points=args.hyperopt_n_initial_points,
                 random_state_seed=args.hyperopt_random_state_seed,
             )
-        # case "optuna":
-        #     if NO_OPTUNA:
-        #         raise ImportError(
-        #             "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
-        #         )
+        case "optuna":
+            if NO_OPTUNA:
+                raise ImportError(
+                    "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
+                )
 
-        #     search_alg = OptunaSearch()
+            search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
         metric="val_loss",

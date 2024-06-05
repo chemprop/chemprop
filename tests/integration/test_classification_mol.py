@@ -5,8 +5,8 @@ should generally pass."""
 from lightning import pytorch as pl
 import pytest
 import torch
-from torchmetrics import functional as F
 from torch.utils.data import DataLoader
+from torchmetrics import functional as F
 
 from chemprop import nn
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch

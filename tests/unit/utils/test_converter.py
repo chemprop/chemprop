@@ -1,15 +1,14 @@
 import csv
-import pytest
-import numpy as np
-
 
 from lightning import pytorch as pl
+import numpy as np
+import pytest
 
 from chemprop.data.dataloader import build_dataloader
 from chemprop.data.datapoints import MoleculeDatapoint
 from chemprop.data.datasets import MoleculeDataset
-from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
+from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
 from chemprop.models.model import MPNN
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 

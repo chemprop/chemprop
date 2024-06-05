@@ -1,6 +1,6 @@
-import torch
 from numpy.typing import ArrayLike
 from sklearn.preprocessing import StandardScaler
+import torch
 from torch import Tensor, nn
 
 from chemprop.data.collate import BatchMolGraph

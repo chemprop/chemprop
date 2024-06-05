@@ -1,16 +1,17 @@
+from copy import deepcopy
 import json
 import logging
-import sys
 from pathlib import Path
-from copy import deepcopy
-import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
+import sys
+
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW

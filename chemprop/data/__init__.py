@@ -2,11 +2,11 @@ from .collate import BatchMolGraph, TrainingBatch, collate_batch, collate_multic
 from .dataloader import build_dataloader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
-    MoleculeDataset,
-    ReactionDataset,
     Datum,
-    MulticomponentDataset,
+    MoleculeDataset,
     MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDataset,
 )
 from .molgraph import MolGraph
 from .samplers import ClassBalanceSampler, SeededSampler
