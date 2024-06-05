@@ -2,8 +2,9 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 
+from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
-from chemprop.featurizers import AtomFeatureMode, RxnMode
+from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,10 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
         "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph."
     )
     featurization_args.add_argument(
-        "--features-generators", nargs="+", help="Method(s) of generating additional features."
+        "--features-generators",
+        nargs="+",
+        action=LookupAction(MoleculeFeaturizerRegistry),
+        help="Method(s) of generating additional features.",
     )
     featurization_args.add_argument(
         "--descriptors-path",
