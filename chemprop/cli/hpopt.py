@@ -338,7 +338,7 @@ def tune_model(
         case "hyperopt":
             if NO_HYPEROPT:
                 raise ImportError(
-                    "HyperOptSearch requires hyperopt to be installed. Use 'pip -U install hyperopt' to install."
+                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U  hyperopt' to install."
                 )
 
             search_alg = HyperOptSearch(
@@ -348,7 +348,7 @@ def tune_model(
         case "optuna":
             if NO_OPTUNA:
                 raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip -U install optuna' to install."
+                    "OptunaSearch requires optuna to be installed. Use 'pip install -U  optuna' to install."
                 )
 
             search_alg = OptunaSearch()
@@ -375,7 +375,7 @@ def tune_model(
 def main(args: Namespace):
     if NO_RAY:
         raise ImportError(
-            "Ray Tune requires ray to be installed. Use 'pip -U install ray[tune]' to install."
+            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install."
         )
 
     format_kwargs = dict(
