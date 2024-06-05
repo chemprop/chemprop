@@ -1,10 +1,10 @@
-import pytest
-import numpy as np
-from rdkit import Chem
 from astartes import train_val_test_split
 from astartes.utils.warnings import NormalizationWarning
+import numpy as np
+import pytest
+from rdkit import Chem
 
-from chemprop.data.splitting import make_split_indices, _unpack_astartes_result
+from chemprop.data.splitting import _unpack_astartes_result, make_split_indices
 
 
 @pytest.fixture(params=[["C", "CC", "CCC", "CN", "CCN", "CCCN", "CCCCN", "CO", "CCO", "CCCO"]])

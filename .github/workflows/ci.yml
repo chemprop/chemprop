@@ -42,9 +42,10 @@ jobs:
     steps:
       # clone the repo, run black and flake8 on it
       - uses: actions/checkout@v4
-      - run: python -m pip install black==23.* flake8
+      - run: python -m pip install black==23.* flake8 isort
       - run: black --check .
       - run: flake8 .
+      - run: isort --check .
 
   test:
     name: Execute Tests

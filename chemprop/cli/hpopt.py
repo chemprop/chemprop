@@ -1,14 +1,14 @@
-import json
-import logging
-import sys
 from argparse import ArgumentParser, Namespace
 from copy import deepcopy
+import json
+import logging
 from pathlib import Path
-import numpy as np
+import sys
 
-import torch
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
+import numpy as np
+import torch
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
