@@ -1,6 +1,5 @@
 from configargparse import ArgumentParser, Namespace
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path
 import sys
