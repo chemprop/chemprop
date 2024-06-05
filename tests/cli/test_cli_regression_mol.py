@@ -375,23 +375,42 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
         "2",
         "--raytune-search-algorithm",
         "optuna",
+        "--features-generators",
+        "morgan_count",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "best_config.json").exists()
+    assert (tmp_path / "best_config.toml").exists()
     assert (tmp_path / "best_checkpoint.ckpt").exists()
     assert (tmp_path / "all_progress.csv").exists()
     assert (tmp_path / "ray_results").exists()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "best_config.toml"),
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model_0" / "best.pt").exists()
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
@@ -404,7 +423,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
@@ -413,13 +432,30 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "hyperopt",
         "--features-generators",
         "morgan_count",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "best_config.json").exists()
+    assert (tmp_path / "best_config.toml").exists()
     assert (tmp_path / "best_checkpoint.ckpt").exists()
     assert (tmp_path / "all_progress.csv").exists()
     assert (tmp_path / "ray_results").exists()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "best_config.toml"),
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model_0" / "best.pt").exists()
