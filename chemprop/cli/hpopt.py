@@ -1,10 +1,9 @@
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path
 import sys
 
+from configargparse import ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 import numpy as np
@@ -12,12 +11,14 @@ import torch
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
+    TrainSubcommand,
     add_train_args,
     build_datasets,
     build_model,
     build_splits,
     normalize_inputs,
     process_train_args,
+    save_config,
     validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
@@ -260,7 +261,7 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
 
 def train_model(config, args, train_dset, val_dset, logger, output_transform, input_transforms):
-    update_args_with_config(args, config)
+    args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -427,13 +428,15 @@ def main(args: Namespace):
     )
 
     best_result = results.get_best_result()
-    best_config = best_result.config
+    best_config = best_result.config["train_loop_config"]
     best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
 
     logger.info(f"Saving best hyperparameter parameters: {best_config}")
 
-    with open(args.hpopt_save_dir / "best_params.json", "w") as f:
-        json.dump(best_config, f, indent=4)
+    args = update_args_with_config(args, best_config)
+
+    args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
+    save_config(TrainSubcommand.parser, args, args.hpopt_save_dir / "best_config.toml")
 
     logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
 

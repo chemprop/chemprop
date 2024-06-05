@@ -69,7 +69,8 @@ class TrainSubcommand(Subcommand):
         validate_train_args(args)
 
         args.output_dir.mkdir(exist_ok=True, parents=True)
-        save_config(cls.parser, args)
+        config_path = args.output_dir / "config.toml"
+        save_config(cls.parser, args, config_path)
         main(args)
 
 
@@ -561,7 +562,7 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_transform, graph_transforms, V_d_transforms
 
 
-def save_config(parser: ArgumentParser, args: Namespace):
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
     config_args = deepcopy(args)
     for key, value in vars(config_args).items():
         if isinstance(value, Path):
@@ -572,8 +573,7 @@ def save_config(parser: ArgumentParser, args: Namespace):
             for index, path in getattr(config_args, key).items():
                 getattr(config_args, key)[index] = str(path)
 
-    config_path = str(args.output_dir / "config.toml")
-    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
