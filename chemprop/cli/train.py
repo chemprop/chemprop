@@ -307,6 +307,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
+    train_data_args.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
+    )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
     #     "--spectra-phase-mask-path",
@@ -988,6 +993,10 @@ def main(args):
             output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
             output_transform = None
+
+        if not args.no_cache:
+            train_dset.cache = True
+            val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed
