@@ -4,13 +4,13 @@ from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import nn, Tensor, optim
+from torch import Tensor, distributed, nn, optim
 
-from chemprop.data import TrainingBatch, BatchMolGraph
+from chemprop.data import BatchMolGraph, TrainingBatch
+from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
-from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
-from chemprop.schedulers import NoamLR
 from chemprop.nn.transforms import ScaleTransform
+from chemprop.schedulers import NoamLR
 
 
 class MPNN(pl.LightningModule):
@@ -158,7 +158,13 @@ class MPNN(pl.LightningModule):
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
-        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
+        self.log(
+            "val_loss",
+            losses[0],
+            batch_size=len(batch[0]),
+            prog_bar=True,
+            sync_dist=distributed.is_initialized(),
+        )
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
@@ -191,10 +197,11 @@ class MPNN(pl.LightningModule):
             a tensor of varying shape depending on the task type:
 
             * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
-            per task. The final dimension is flattened, so that the targets for each task are
-            grouped. I.e., the first ``t`` elements are the first target for each task, the second
-            ``t`` elements the second target, etc.
+              molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
+              per task. The final dimension is flattened, so that the targets for each task are
+              grouped. I.e., the first ``t`` elements are the first target for each task, the second
+              ``t`` elements the second target, etc.
+
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
         bmg, X_vd, X_d, *_ = batch
