@@ -14,7 +14,7 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
     :class:`~chemprop.data.molgraph.MolGraph`\s.
 
     .. note::
-        This class only provides a facade for a cached dataset, but it _does not guarantee_
+        This class only provides a facade for a cached dataset, but it *does not guarantee*
         whether the underlying data is truly cached.
 
 

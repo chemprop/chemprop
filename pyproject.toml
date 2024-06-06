@@ -41,7 +41,7 @@ dependencies = [
 [project.optional-dependencies]
 hpopt = ["ray[tune]", "hyperopt", "optuna"]
 dev = ["black == 23.*", "bumpversion", "autopep8", "flake8", "pytest", "pytest-cov", "isort"]
-docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21"]
+docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21", "readthedocs-sphinx-ext", "pandoc"]
 test = ["pytest >= 6.2", "pytest-cov"]
 notebooks = ["ipykernel"]
 

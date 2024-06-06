@@ -197,10 +197,11 @@ class MPNN(pl.LightningModule):
             a tensor of varying shape depending on the task type:
 
             * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
-            per task. The final dimension is flattened, so that the targets for each task are
-            grouped. I.e., the first ``t`` elements are the first target for each task, the second
-            ``t`` elements the second target, etc.
+              molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
+              per task. The final dimension is flattened, so that the targets for each task are
+              grouped. I.e., the first ``t`` elements are the first target for each task, the second
+              ``t`` elements the second target, etc.
+
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
         bmg, X_vd, X_d, *_ = batch

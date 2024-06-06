@@ -59,10 +59,10 @@ Option 4: Installing via Docker
 -------------------------------
 
 Chemprop can also be installed with Docker, making it possible to isolate the Chemprop code and environment.
-To install and run Chemprop in a Docker container, first install `Docker`_.
+To install and run Chemprop in a Docker container, first `install Docker`_.
 You may then either ``pull`` and use official Chemprop images or ``build`` the image yourself.
 
-.. _`Docker`: https://docs.docker.com/get-docker/
+.. _`install Docker`: https://docs.docker.com/get-docker/
 
 .. note:: 
     The Chemprop Dockerfile runs only on CPU and does not support GPU acceleration.

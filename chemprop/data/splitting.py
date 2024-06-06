@@ -56,8 +56,9 @@ def make_split_indices(
         A tuple of list of indices corresponding to the train, validation, and test splits of the
         data. If the split type is "cv" or "cv-no-test", returns a tuple of lists of lists of
         indices corresponding to the train, validation, and test splits of each fold.
-            .. important::
-                validation may or may not be present
+
+        .. important::
+            Validation may or may not be present
 
     Raises
     ------
