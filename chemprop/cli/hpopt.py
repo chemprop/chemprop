@@ -1,6 +1,7 @@
 from copy import deepcopy
 import logging
 from pathlib import Path
+import shutil
 import sys
 
 from configargparse import ArgumentParser, Namespace
@@ -339,7 +340,7 @@ def tune_model(
         case "hyperopt":
             if NO_HYPEROPT:
                 raise ImportError(
-                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U  hyperopt' to install."
+                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U hyperopt' to install."
                 )
 
             search_alg = HyperOptSearch(
@@ -349,7 +350,7 @@ def tune_model(
         case "optuna":
             if NO_OPTUNA:
                 raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip install -U  optuna' to install."
+                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install."
                 )
 
             search_alg = OptunaSearch()
@@ -429,24 +430,30 @@ def main(args: Namespace):
 
     best_result = results.get_best_result()
     best_config = best_result.config["train_loop_config"]
-    best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
+    best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
 
-    logger.info(f"Saving best hyperparameter parameters: {best_config}")
+    best_config_save_path = args.hpopt_save_dir / "best_config.toml"
+    best_checkpoint_save_path = args.hpopt_save_dir / "best_checkpoint.ckpt"
+    all_progress_save_path = args.hpopt_save_dir / "all_progress.csv"
+
+    logger.info(f"Best hyperparameters saved to: '{best_config_save_path}'")
 
     args = update_args_with_config(args, best_config)
 
     args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
-    save_config(TrainSubcommand.parser, args, args.hpopt_save_dir / "best_config.toml")
+    save_config(TrainSubcommand.parser, args, best_config_save_path)
 
-    logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
+    logger.info(
+        f"Best hyperparameter configuration checkpoint saved to '{best_checkpoint_save_path}'"
+    )
 
-    torch.save(best_checkpoint, args.hpopt_save_dir / "best_checkpoint.ckpt")
+    shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
+
+    logger.info(f"Hyperparameter optimization results saved to '{all_progress_save_path}'")
 
     result_df = results.get_dataframe()
 
-    logger.info(f"Saving hyperparameter optimization results: {result_df}")
-
-    result_df.to_csv(args.hpopt_save_dir / "all_progress.csv", index=False)
+    result_df.to_csv(all_progress_save_path, index=False)
 
     ray.shutdown()
 
