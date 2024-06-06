@@ -76,13 +76,13 @@ class Predictor(nn.Module, HasHParams):
             input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
-            layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
+            layers in the MLP *up to* :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
             value, and the behavior of this function is dependent on the underlying list
             slicing behavior. For example:
 
             * ``i=0``: use a 0-layer MLP (i.e., a no-op)
             * ``i=1``: use only the first block
-            * ``i=-1``: use _up to_ the final block
+            * ``i=-1``: use *up to* the final block
 
         Returns
         -------
