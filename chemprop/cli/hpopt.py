@@ -238,6 +238,7 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
     if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
+        assert train_epochs >= 6, "Training epochs must be at least 6 to perform hyperparameter optimization for warmup_epochs."
         SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
