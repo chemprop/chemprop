@@ -1,7 +1,7 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
-import sys
 import logging
 from pathlib import Path
+import sys
 
 from chemprop.cli.utils import Subcommand
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2

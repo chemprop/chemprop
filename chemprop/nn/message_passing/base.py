@@ -5,11 +5,11 @@ import torch
 from torch import Tensor, nn
 
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
-from chemprop.exceptions import InvalidShapeError
 from chemprop.data import BatchMolGraph
-from chemprop.nn.utils import Activation, get_activation_function
+from chemprop.exceptions import InvalidShapeError
 from chemprop.nn.message_passing.proto import MessagePassing
-from chemprop.nn.transforms import ScaleTransform, GraphTransform
+from chemprop.nn.transforms import GraphTransform, ScaleTransform
+from chemprop.nn.utils import Activation, get_activation_function
 
 
 class _MessagePassingBase(MessagePassing, HyperparametersMixin):
@@ -246,7 +246,8 @@ class BondMessagePassing(_MessagePassingBase):
         W_i = nn.Linear(d_v + d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
+        # initialize W_d only when d_vd is neither 0 nor None
+        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
 
@@ -296,7 +297,8 @@ class AtomMessagePassing(_MessagePassingBase):
         W_i = nn.Linear(d_v, d_h, bias)
         W_h = nn.Linear(d_e + d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd is not None else None
+        # initialize W_d only when d_vd is neither 0 nor None
+        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
 
