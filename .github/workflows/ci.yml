@@ -92,11 +92,16 @@ jobs:
           # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
           # that the GitHub actions runners still have but are not allowed to actually use
           pytest -v tests
-      - name: Test notebooks
+      - name: Test notebooks (excluding hpopting.ipynb)
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake examples/*.ipynb
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'hpopting.ipynb')
+      - name: Test hpopting.ipynb (Python 3.11 only)
+        if: ${{ matrix.python-version == '3.11' }}
+        shell: bash -l {0}
+        run: |
+          pytest --no-cov -v --nbmake examples/hpopting.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install
