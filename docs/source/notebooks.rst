@@ -19,3 +19,4 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     mpnn_fingerprints
     extra_features_from_featurizer
     convert_v1_to_v2
+    active_learning
