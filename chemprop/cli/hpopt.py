@@ -252,10 +252,10 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     for key, value in config.items():
         match key:
             case "final_lr_ratio":
-                setattr(args, "final_lr", value * args.max_lr)
+                setattr(args, "final_lr", value * config.get("max_lr", args.max_lr))
 
             case "init_lr_ratio":
-                setattr(args, "init_lr", value * args.max_lr)
+                setattr(args, "init_lr", value * config.get("max_lr", args.max_lr))
 
             case _:
                 assert key in args, f"Key: {key} not found in args."
