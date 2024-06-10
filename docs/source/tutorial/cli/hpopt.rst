@@ -1,11 +1,10 @@
 .. _hpopt:
 
+Hyperparameter Optimization
+============================
+
 .. warning:: 
     This page is under construction.
-
-
-Hyperparameter Optimization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Although the default message passing architecture works quite well on a variety of datasets, optimizing the hyperparameters for a particular dataset often leads to marked improvement in predictive performance. We have automated hyperparameter optimization via Bayesian optimization (using the `hyperopt <https://github.com/hyperopt/hyperopt>`_ package), which will find the optimal hidden size, depth, dropout, and number of feed-forward layers for our model. Optimization can be run as follows:
 
