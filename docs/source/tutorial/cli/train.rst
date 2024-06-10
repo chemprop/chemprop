@@ -173,8 +173,6 @@ Pretraining
 It is possible to freeze the weights of a loaded model during training, such as for transfer learning applications. To do so, specify :code:`--model-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
 
  * :code:`--frzn-ffn-layers <n>` Overwrites weights for the first n layers of the FFN from the checkpoint (default 0)  
-..  * :code:`--freeze-first-only` Determines whether to use the loaded checkpoint for just the first encoder. Only relevant if the number of molecules is greater than one, i.e. two SMILES columns are provided for training (default :code:`false`)
-
 
 .. _train-on-reactions:
 
@@ -228,7 +226,7 @@ While the model works very well on its own, especially after hyperparameter opti
 
 
 Atom-Level Features/Descriptors
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can provide additional atom features via :code:`--atom-features-path /path/to/atom/features.npz` as a numpy :code:`.npz` file. This command concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing. This file can be saved using :code:`np.savez("atom_features.npz", *V_fs)`, where :code:`V_fs` is a list containing the atom features :code:`V_f` for each molecule, where :code:`V_f` is a 2D array with a shape of number of atoms by number of atom features in the exact same order as the SMILES strings in your data file.
 
