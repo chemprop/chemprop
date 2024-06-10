@@ -118,7 +118,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
-        # manually add criterion and output_transform to hparams to supress lightning's warning
+        # manually add criterion and output_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
         self.save_hyperparameters(ignore=["criterion", "output_transform"])
         self.hparams["criterion"] = criterion
