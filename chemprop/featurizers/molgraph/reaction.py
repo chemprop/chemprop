@@ -6,11 +6,11 @@ import warnings
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
-from chemprop.featurizers.base import GraphFeaturizer
 
-from chemprop.types import Rxn
 from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
 
 

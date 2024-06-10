@@ -2,9 +2,9 @@
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
 
+from lightning import pytorch as pl
 import pytest
 import torch
-from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
 from chemprop import nn
