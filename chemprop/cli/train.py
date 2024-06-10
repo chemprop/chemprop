@@ -667,6 +667,59 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     return train_data, val_data, test_data
 
+def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
+    if task_type in ["regression", "regression-mve", "regression-evidential"]:
+        y = np.array([datapoint.y[0] for datapoint in dataset.data])
+        y_mean = y.mean()
+        y_std = y.std()
+        y_median = np.median(y)
+        mean_dev_abs = np.abs(y - y_mean)
+        frac_1_sigma = (mean_dev_abs < y_std).sum() / len(y)
+        frac_2_sigma = (mean_dev_abs < 2 * y_std).sum() / len(y)
+        column_headers = ["Statistic", "Value"]
+        table_rows = [
+            ["Num. datapoints", f"{len(y)}"],
+            ["Mean", f"{y_mean:0.2f}"],
+            ["Std. dev.", f"{y_std:0.2f}"],
+            ["Median", f"{y_median:0.2f}"],
+            ["% within 1 s.d.", f"{frac_1_sigma:0.0%}"],
+            ["% within 2 s.d.", f"{frac_2_sigma:0.0%}"],
+        ]
+        return (column_headers, table_rows)
+    elif task_type in [
+        "classification",
+        "classification-dirichlet",
+        "multiclass",
+        "multiclass-dirichlet",
+    ]:
+        y = np.array([datapoint.y[0] for datapoint in dataset.data])
+        mask = np.isnan(y)
+        classes = np.sort(np.unique(y[~mask]))
+        class_counts = (classes[:, None] == y[None, :]).sum(1)
+        class_fracs = class_counts / len(y)
+        nan_count = (mask).sum()
+        nan_frac = nan_count / len(y)
+        column_headers = ["Class", "Count", "Percent"]
+        table_rows = [
+            (f"{k}", f"{class_counts[i]}", f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
+        ]
+        table_rows.append(["Nan", f"{nan_count}", f"{nan_frac:0.0%}"])
+        table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
+        return (column_headers, table_rows)
+    else:
+        raise ValueError(f"invalid task type! got: '{task_type}'. expected one of {TASK_TYPES}.")
+
+
+def build_table(column_headers: list, table_rows: list, title: str) -> str:
+    right_justified_columns = [
+        Column(header=column_header, justify="right") for column_header in column_headers
+    ]
+    table = Table(*right_justified_columns, title=title)
+    for row in table_rows:
+        table.add_row(*row)
+    console = Console(record=True)
+    console.print(table)
+    return console.export_text()
 
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
@@ -696,6 +749,12 @@ def build_datasets(args, train_data, val_data, test_data):
                 column_headers, table_rows, f"Summary of Training Data - Component {i}"
             )
             logger.info(output)
+        for i, val_dataset in enumerate(val_dsets):
+            column_headers, table_rows = summarize(args.task_type, val_dataset)
+            output = build_table(
+                column_headers, table_rows, f"Summary of Validation Data - Component {i}"
+            )
+            logger.info(output)
         for i, test_dataset in enumerate(test_dsets):
             column_headers, table_rows = summarize(args.task_type, test_dataset)
             output = build_table(
@@ -715,6 +774,9 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = None
         column_headers, table_rows = summarize(args.task_type, train_dset)
         output = build_table(column_headers, table_rows, "Summary of Training Data")
+        logger.info(output)
+        column_headers, table_rows = summarize(args.task_type, val_dset)
+        output = build_table(column_headers, table_rows, "Summary of Validation Data")
         logger.info(output)
         column_headers, table_rows = summarize(args.task_type, test_dset)
         output = build_table(column_headers, table_rows, "Summary of Test Data")
@@ -1060,59 +1122,3 @@ if __name__ == "__main__":
     TrainSubcommand.func(args)
 
 
-def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
-    if task_type in ["regression", "regression-mve", "regression-evidential"]:
-        y = np.array([datapoint.y[0] for datapoint in dataset.data])
-        y_mean = y.mean()
-        y_std = y.std()
-        y_median = np.median(y)
-        mean_dev_abs = np.abs(y - y_mean)
-        num_1_sigma = (mean_dev_abs < y_std).sum()
-        num_2_sigma = (mean_dev_abs < 2 * y_std).sum()
-        frac_1_sigma = num_1_sigma / len(y)
-        frac_2_sigma = num_2_sigma / len(y)
-        column_headers = ["Statistic", "Value"]
-        table_rows = [
-            ["Num. datapoints", f"{len(y)}"],
-            ["Mean", f"{y_mean:0.2f}"],
-            ["Std. dev.", f"{y_std:0.2f}"],
-            ["Median", f"{y_median:0.2f}"],
-            ["% within 1 s.d.", f"{frac_1_sigma:0.0%}"],
-            ["% within 2 s.d.", f"{frac_2_sigma:0.0%}"],
-        ]
-        return (column_headers, table_rows)
-    elif task_type in [
-        "classification",
-        "classification-dirichlet",
-        "multiclass",
-        "multiclass-dirichlet",
-    ]:
-        y = np.array([datapoint.y[0] for datapoint in dataset.data])
-        mask = np.isnan(y)
-        classes = np.sort(np.unique(y[~mask]))
-        class_counts = (classes[:, None] == y[None, :]).sum(1)
-        class_fracs = class_counts / len(y)
-        nan_count = (mask).sum()
-        nan_frac = nan_count / len(y)
-        column_headers = ["Class", "Count", "Percent"]
-        table_rows = [
-            (f"{k}", f"{class_counts[i]}", f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
-        ]
-        table_rows.append(["Nan", f"{nan_count}", f"{nan_frac:0.0%}"])
-        table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
-        return (column_headers, table_rows)
-    else:
-        raise ValueError(f"invalid task type! got: '{task_type}'. expected one of {TASK_TYPES}.")
-
-
-def build_table(column_headers: list, table_rows: list, title: str) -> str:
-    right_justified_columns = [
-        Column(header=column_header, justify="right") for column_header in column_headers
-    ]
-    table = Table(*right_justified_columns, title=title)
-    for row in table_rows:
-        table.add_row(*row)
-    console = Console(record=True)
-    console.print(table)
-    text = console.export_text()
-    return text
