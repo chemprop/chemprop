@@ -8,11 +8,12 @@ import pandas as pd
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
-from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
+from chemprop.utils import Factory, make_mol
 
 logger = logging.getLogger(__name__)
 
