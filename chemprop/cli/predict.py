@@ -174,12 +174,15 @@ def find_models(model_paths: Path):
         if model_path.suffix in [".ckpt", ".pt"]:
             collected_model_paths.append(model_path)
         elif model_path.is_dir():
-            collected_model_paths.extend(list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt")))
+            collected_model_paths.extend(
+                list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
+            )
         else:
             raise ArgumentError(
-                argument=None, message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}"
+                argument=None,
+                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
             )
-    
+
     return collected_model_paths
 
 
