@@ -2,9 +2,12 @@ from abc import abstractmethod
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 
+from chemprop.conf import DEFAULT_HIDDEN_DIM
+from chemprop.nn.ffn import MLP
+from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import (
     BCELoss,
     BinaryDirichletLoss,
@@ -12,16 +15,12 @@ from chemprop.nn.loss import (
     EvidentialLoss,
     LossFunction,
     MSELoss,
-    MVELoss,
     MulticlassDirichletLoss,
+    MVELoss,
     SIDLoss,
 )
-from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, MSEMetric, Metric, SIDMetric
-from chemprop.nn.ffn import MLP
+from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, Metric, MSEMetric, SIDMetric
 from chemprop.nn.transforms import UnscaleTransform
-
-from chemprop.nn.hparams import HasHParams
-from chemprop.conf import DEFAULT_HIDDEN_DIM
 from chemprop.utils import ClassRegistry, Factory
 
 __all__ = [
@@ -77,13 +76,13 @@ class Predictor(nn.Module, HasHParams):
             input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
-            layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
+            layers in the MLP *up to* :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
             value, and the behavior of this function is dependent on the underlying list
             slicing behavior. For example:
 
             * ``i=0``: use a 0-layer MLP (i.e., a no-op)
             * ``i=1``: use only the first block
-            * ``i=-1``: use _up to_ the final block
+            * ``i=-1``: use *up to* the final block
 
         Returns
         -------
@@ -119,7 +118,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["criterion", "output_transform"])
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
@@ -129,10 +128,9 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.criterion = criterion or Factory.build(
             self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
-
+        self.hparams["criterion"] = self.criterion
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
-
-        self.output_transform = output_transform if output_transform is not None else nn.Identity()
+        self.hparams["output_transform"] = self.output_transform
 
     @property
     def input_dim(self) -> int:

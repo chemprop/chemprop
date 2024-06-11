@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn.hparams import HasHParams

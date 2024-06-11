@@ -1,17 +1,18 @@
+from copy import deepcopy
 import json
 import logging
-import sys
-from copy import deepcopy
 from pathlib import Path
+import sys
 
-import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from lightning.pytorch.strategies import DDPStrategy
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
@@ -68,7 +69,8 @@ class TrainSubcommand(Subcommand):
         validate_train_args(args)
 
         args.output_dir.mkdir(exist_ok=True, parents=True)
-        save_config(cls.parser, args)
+        config_path = args.output_dir / "config.toml"
+        save_config(cls.parser, args, config_path)
         main(args)
 
 
@@ -303,6 +305,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--ignore-columns",
         nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
+    )
+    train_data_args.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
     )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
@@ -560,7 +567,7 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_transform, graph_transforms, V_d_transforms
 
 
-def save_config(parser: ArgumentParser, args: Namespace):
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
     config_args = deepcopy(args)
     for key, value in vars(config_args).items():
         if isinstance(value, Path):
@@ -571,8 +578,7 @@ def save_config(parser: ArgumentParser, args: Namespace):
             for index, path in getattr(config_args, key).items():
                 getattr(config_args, key)[index] = str(path)
 
-    config_path = str(args.output_dir / "config.toml")
-    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -864,7 +870,20 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            predss = trainer.predict(dataloaders=test_loader)
+            if isinstance(trainer.strategy, DDPStrategy):
+                torch.distributed.destroy_process_group()
+
+                best_ckpt_path = trainer.checkpoint_callback.best_model_path
+                trainer = pl.Trainer(
+                    logger=trainer_logger,
+                    enable_progress_bar=True,
+                    accelerator=args.accelerator,
+                    devices=1,
+                )
+                model = model.load_from_checkpoint(best_ckpt_path)
+                predss = trainer.predict(model, dataloaders=test_loader)
+            else:
+                predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -965,6 +984,10 @@ def main(args):
             output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
             output_transform = None
+
+        if not args.no_cache:
+            train_dset.cache = True
+            val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed

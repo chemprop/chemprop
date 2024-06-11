@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 # Configuration file for the Sphinx documentation builder.
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "Chemprop"
 copyright = "2024, Chemprop developers"
 author = "Chemprop developers"
-release = "2.0.0"
+release = "2.0.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -39,7 +39,7 @@ autodoc_typehints = "description"
 # -- AutoAPI configuration ---------------------------------------------------
 nbsphinx_allow_errors = True
 autoapi_dirs = ["../.."]
-autoapi_ignore = ["*test*", "*cli*"]
+autoapi_ignore = ["*/tests/*", "*/cli/*"]
 autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",

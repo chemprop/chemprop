@@ -1,8 +1,9 @@
 """This tests the CLI functionality of training and predicting a regression model on a multi-molecule.
 """
 
-import pytest
 import json
+
+import pytest
 
 from chemprop.cli.main import main
 
