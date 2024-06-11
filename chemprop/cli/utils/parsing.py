@@ -224,46 +224,41 @@ def make_datapoints(
 
     if X_d is None and molecule_featurizers is None:
         X_d = [None] * N
+    elif molecule_featurizers is None:
+        pass
     else:
-        if molecule_featurizers is None:
-            pass
-        else:
-            # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements.
-            # Should we expose these through the CLI?
-            molecule_featurizers = [
-                Factory.build(MoleculeFeaturizerRegistry[mf]) for mf in molecule_featurizers
-            ]
-            if len(smiss) > 0:
-                mol_descriptors = np.hstack(
-                    [
-                        np.vstack(
-                            [np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols]
-                        )
-                        for mols in molss
-                    ]
-                )
-                if X_d is None:
-                    X_d = mol_descriptors
-                else:
-                    X_d = np.hstack([X_d, mol_descriptors])
-            if len(rxnss) > 0:
-                rct_pdt_descriptors = np.hstack(
-                    [
-                        np.vstack(
-                            [
-                                np.hstack(
-                                    [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
-                                )
-                                for rct, pdt in zip(rcts, pdts)
-                            ]
-                        )
-                        for rcts, pdts in zip(rctss, pdtss)
-                    ]
-                )
-                if X_d is None:
-                    X_d = rct_pdt_descriptors
-                else:
-                    X_d = np.hstack([X_d, rct_pdt_descriptors])
+        molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
+
+        if len(smiss) > 0:
+            mol_descriptors = np.hstack(
+                [
+                    np.vstack([np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols])
+                    for mols in molss
+                ]
+            )
+            if X_d is None:
+                X_d = mol_descriptors
+            else:
+                X_d = np.hstack([X_d, mol_descriptors])
+
+        if len(rxnss) > 0:
+            rct_pdt_descriptors = np.hstack(
+                [
+                    np.vstack(
+                        [
+                            np.hstack(
+                                [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
+                            )
+                            for rct, pdt in zip(rcts, pdts)
+                        ]
+                    )
+                    for rcts, pdts in zip(rctss, pdtss)
+                ]
+            )
+            if X_d is None:
+                X_d = rct_pdt_descriptors
+            else:
+                X_d = np.hstack([X_d, rct_pdt_descriptors])
 
     mol_data = [
         [
