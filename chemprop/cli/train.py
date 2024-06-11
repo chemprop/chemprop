@@ -93,7 +93,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         type=Path,
-        help="Directory where training outputs will be saved (defaults to 'CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP')",
+        help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
     )
 
     # TODO: Add in v2.1
@@ -130,7 +130,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input (also automatically freezes mpnn weights)",
+        help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified ``model-frzn``), where n is specified in the input (also automatically freezes mpnn weights)",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -226,7 +226,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--aggregation-norm",
         type=float,
         default=100,
-        help="Normalization factor by which to divide summed up atomic features for 'norm' aggregation",
+        help="Normalization factor by which to divide summed up atomic features for ``norm`` aggregation",
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
@@ -310,7 +310,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "--no-cache",
         action="store_true",
-        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
+        help="Whether to not cache the featurized ``MolGraph`` s at the beginning of training.",
     )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
@@ -324,7 +324,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset (determines the default loss function used during training, defaults to regression)",
+        help="Type of dataset (determines the default loss function used during training, defaults to ``regression``)",
     )
     train_args.add_argument(
         "-l",
@@ -337,7 +337,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--evidential-regularization",
         type=float,
         default=0.0,
-        help="Specify the value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
+        help="Specify the value used in regularization for evidential loss function. The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
     )
 
     train_args.add_argument(
@@ -357,7 +357,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
-        help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
+        help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     # TODO: Add in v2.1
     # train_args.add_argument(
@@ -382,7 +382,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
     train_args.add_argument(
-        "--epochs", type=int, default=50, help="the number of epochs to train over"
+        "--epochs", type=int, default=50, help="The number of epochs to train over."
     )
     train_args.add_argument(
         "--patience",
@@ -422,7 +422,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--split-key-molecule",
         type=int,
         default=0,
-        help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., 'scaffold_balanced' or 'random_with_repeated_smiles'). Note that this index begins with zero for the first molecule.",
+        help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., ``scaffold_balanced`` or ``random_with_repeated_smiles``). Note that this index begins with zero for the first molecule.",
     )
     split_args.add_argument(
         "-k",
@@ -439,11 +439,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--splits-file",
         type=Path,
-        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys 'train', 'val', and 'test' and values as lists of indices or strings formatted (e.g., '0-2,4')",
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or strings formatted (e.g., '0-2,4')",
     )
     train_data_args.add_argument(
         "--splits-column",
-        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row",
+        help="Name of the column in the input CSV file containing ``train``, ``val``, or ``test`` for each row",
     )
     split_args.add_argument(
         "--data-seed",

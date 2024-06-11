@@ -115,16 +115,10 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         nargs="+",
         default=["basic"],
-        help=f"""The model parameters over which to search for an optimal hyperparameter configuration.
-    Some options are bundles of parameters or otherwise special parameter operations.
-
-    Special keywords:
-
-        - `basic`: Default set of hyperparameters for search (depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim)
-        - `learning_rate`: Search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
-            are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
-        - `all`: Include search for all 13 inidividual keyword options.
-
+        help=f"""The model parameters over which to search for an optimal hyperparameter configuration. Some options are bundles of parameters or otherwise special parameter operations. Special keywords include:
+        - ``basic``: Default set of hyperparameters for search (depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim)
+        - ``learning_rate``: Search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+        - ``all``: Include search for all 13 individual keyword options (including: activation, aggregation, aggregation_norm, and batch_size which aren't included in the other two keywords).
     Individual supported parameters:
         {list(DEFAULT_SEARCH_SPACE.keys())}
     """,
@@ -142,55 +136,55 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--raytune-num-samples",
         type=int,
         default=10,
-        help="Passed directly to Ray Tune TuneConfig to control number of trials to run",
+        help="Passed directly to Ray Tune ``TuneConfig`` to control number of trials to run",
     )
 
     raytune_args.add_argument(
         "--raytune-search-algorithm",
         choices=["random", "hyperopt", "optuna"],
         default="hyperopt",
-        help="Passed to Ray Tune TuneConfig to control search algorithm",
+        help="Passed to Ray Tune ``TuneConfig`` to control search algorithm",
     )
 
     raytune_args.add_argument(
         "--raytune-trial-scheduler",
         choices=["FIFO", "AsyncHyperBand"],
         default="FIFO",
-        help="Passed to Ray Tune TuneConfig to control trial scheduler",
+        help="Passed to Ray Tune ``TuneConfig`` to control trial scheduler",
     )
 
     raytune_args.add_argument(
         "--raytune-num-workers",
         type=int,
         default=1,
-        help="Passed directly to Ray Tune ScalingConfig to control number of workers to use",
+        help="Passed directly to Ray Tune ``ScalingConfig`` to control number of workers to use",
     )
 
     raytune_args.add_argument(
         "--raytune-use-gpu",
         action="store_true",
-        help="Passed directly to Ray Tune ScalingConfig to control whether to use GPUs",
+        help="Passed directly to Ray Tune ``ScalingConfig`` to control whether to use GPUs",
     )
 
     raytune_args.add_argument(
         "--raytune-num-checkpoints-to-keep",
         type=int,
         default=1,
-        help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
+        help="Passed directly to Ray Tune ``CheckpointConfig`` to control number of checkpoints to keep",
     )
 
     raytune_args.add_argument(
         "--raytune-grace-period",
         type=int,
         default=10,
-        help="Passed directly to Ray Tune ASHAScheduler to control grace period",
+        help="Passed directly to Ray Tune ``ASHAScheduler`` to control grace period",
     )
 
     raytune_args.add_argument(
         "--raytune-reduction-factor",
         type=int,
         default=2,
-        help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
+        help="Passed directly to Ray Tune ``ASHAScheduler`` to control reduction factor",
     )
 
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
@@ -199,14 +193,14 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--hyperopt-n-initial-points",
         type=int,
         default=20,
-        help="Passed directly to HyperOptSearch to control number of initial points to sample",
+        help="Passed directly to ``HyperOptSearch`` to control number of initial points to sample",
     )
 
     hyperopt_args.add_argument(
         "--hyperopt-random-state-seed",
         type=int,
         default=None,
-        help="Passed directly to HyperOptSearch to control random state seed",
+        help="Passed directly to ``HyperOptSearch`` to control random state seed",
     )
 
     return parser
@@ -239,9 +233,6 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
     if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
-        assert (
-            train_epochs >= 6
-        ), "Training epochs must be at least 6 to perform hyperparameter optimization for warmup_epochs."
         SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
@@ -253,10 +244,10 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     for key, value in config.items():
         match key:
             case "final_lr_ratio":
-                setattr(args, "final_lr", value * config.get("max_lr", args.max_lr))
+                setattr(args, "final_lr", value * args.max_lr)
 
             case "init_lr_ratio":
-                setattr(args, "init_lr", value * config.get("max_lr", args.max_lr))
+                setattr(args, "init_lr", value * args.max_lr)
 
             case _:
                 assert key in args, f"Key: {key} not found in args."

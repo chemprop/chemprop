@@ -15,13 +15,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "-s",
         "--smiles-columns",
         nargs="+",
-        help="Column names in the input CSV containing SMILES strings (uses the the 0th column by default)",
+        help="Column names in the input CSV containing SMILES strings (uses the 0th column by default)",
     )
     data_args.add_argument(
         "-r",
         "--reaction-columns",
         nargs="+",
-        help="Column names in the input CSV containing reaction SMILES in the format 'REACTANT>AGENT>PRODUCT', where 'AGENT' is optional",
+        help="Column names in the input CSV containing reaction SMILES in the format ``REACTANT>AGENT>PRODUCT``, where 'AGENT' is optional",
     )
     data_args.add_argument(
         "--no-header-row",
@@ -36,17 +36,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=0,
         help="""Number of workers for parallel data loading where 0 means sequential
-(Warning: setting num_workers>0 can cause hangs on Windows and MacOS)""",
+(Warning: setting ``num_workers`` to a value greater than 0 can cause hangs on Windows and MacOS)""",
     )
     dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
 
     parser.add_argument(
-        "--accelerator", default="auto", help="Passed directly to the lightning Trainer()"
+        "--accelerator", default="auto", help="Passed directly to the lightning ``Trainer()``"
     )
     parser.add_argument(
         "--devices",
         default="auto",
-        help="Passed directly to the lightning Trainer() (must be a single string of comma separated devices, e.g. '1, 2' if specifying multiple devices)",
+        help="Passed directly to the lightning ``Trainer()`` (must be a single string of comma separated devices, e.g. '1, 2' if specifying multiple devices)",
     )
 
     featurization_args = parser.add_argument_group("Featurization args")
@@ -58,12 +58,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         choices=list(RxnMode.keys()),
         help="""Choices for construction of atom and bond features for reactions (case insensitive):
 
-- `REAC_PROD`: concatenates the reactants feature with the products feature
-- `REAC_DIFF`: concatenates the reactants feature with the difference in features between reactants and products (Default)
-- `PROD_DIFF`: concatenates the products feature with the difference in features between reactants and products
-- `REAC_PROD_BALANCE`: concatenates the reactants feature with the products feature, balances imbalanced reactions
-- `REAC_DIFF_BALANCE`: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions
-- `PROD_DIFF_BALANCE`: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions""",
+- ``REAC_PROD``: concatenates the reactants feature with the products feature
+- ``REAC_DIFF``: concatenates the reactants feature with the difference in features between reactants and products (Default)
+- ``PROD_DIFF``: concatenates the products feature with the difference in features between reactants and products
+- ``REAC_PROD_BALANCE``: concatenates the reactants feature with the products feature, balances imbalanced reactions
+- ``REAC_DIFF_BALANCE``: concatenates the reactants feature with the difference in features between reactants and products, balances imbalanced reactions
+- ``PROD_DIFF_BALANCE``: concatenates the products feature with the difference in features between reactants and products, balances imbalanced reactions""",
     )
     # TODO: Update documenation for multi_hot_atom_featurizer_mode
     featurization_args.add_argument(
@@ -71,11 +71,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=uppercase,
         default="V2",
         choices=list(AtomFeatureMode.keys()),
-        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reatction and reaction feturization (case insensitive):
+        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reaction and reaction feturization (case insensitive):
 
-- `V1`: Corresponds to the original configuration employed in the Chemprop V1
-- `V2`: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
-- `ORGANIC`: This configuration is designed specifically for use with organic molecules for drug research and development and includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
+- ``V1``: Corresponds to the original configuration employed in the Chemprop V1
+- ``V2``: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. Default in Chemprop V2.
+- ``ORGANIC``: This configuration is designed specifically for use with organic molecules for drug research and development and includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I""",
     )
     featurization_args.add_argument(
         "--keep-h",

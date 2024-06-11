@@ -47,7 +47,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Specify the path where predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as ``--test-path`` with '_preds' appended (e.g., 'PATH/TO/TEST_PATH_preds_0.csv').",
+        help="Specify the path where predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as ``--test-path`` with ``_preds`` appended (e.g., ``PATH/TO/TEST_PATH_preds_0.csv``).",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -63,7 +63,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--target-columns",
         nargs="+",
-        help="Column names to save the predictions to (by default, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.)",
+        help="Column names to save the predictions to (by default, the predictions will be saved to columns named ``pred_0``, ``pred_1``, etc.)",
     )
 
     # TODO: add uncertainty and calibration in v2.1
