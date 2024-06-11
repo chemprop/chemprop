@@ -21,9 +21,9 @@ class NoamLR(LRScheduler):
                 \mathtt{max\_lr} \cdot \left( \frac{\mathtt{final\_lr}}{\mathtt{max\_lr}} \right)^{\gamma(i)} &\text{otherwise} \\
             \end{cases}
         \\
-        \delta &\mathrel{\unicode{x2254}}
+        \delta &\mathrel{:=}
             \frac{\mathtt{max\_lr} - \mathtt{init\_lr}}{\mathtt{warmup\_steps}} \\
-        \gamma(i) &\mathrel{\unicode{x2254}}
+        \gamma(i) &\mathrel{:=}
             \frac{i - \mathtt{warmup\_steps}}{\mathtt{total\_steps} - \mathtt{warmup\_steps}}
 
 

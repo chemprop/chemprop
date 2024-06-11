@@ -1,7 +1,6 @@
 from abc import abstractmethod
-from itertools import chain
 
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from chemprop.nn.utils import get_activation_function
 
@@ -9,6 +8,7 @@ from chemprop.nn.utils import get_activation_function
 class FFN(nn.Module):
     r"""A :class:`FFN` is a differentiable function
     :math:`f_\theta : \mathbb R^i \mapsto \mathbb R^o`"""
+
     input_dim: int
     output_dim: int
 
@@ -21,20 +21,18 @@ class MLP(nn.Sequential, FFN):
     r"""An :class:`MLP` is an FFN that implements the following function:
 
     .. math::
-        \mathbf h_0 &= \mathbf x\,\mathbf W^{(0)} + \mathbf b^{(0)} \\
-        \mathbf h_l &= \mathtt{dropout} \left(
-            \sigma \left(\,\mathbf h_{l-1}\,\mathbf W^{{l)} \right)
-        \right) \\
-        \mathbf h_L &= \mathbf h_{L-1} \mathbf W^{{l)} + \mathbf b^{{l)},
+        \mathbf h_0 &= \mathbf W_0 \mathbf x \,+ \mathbf b_{0} \\
+        \mathbf h_l &= \mathbf W_l \left( \mathtt{dropout} \left( \sigma ( \,\mathbf h_{l-1}\, ) \right) \right) + \mathbf b_l\\
 
-    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W^{{l)}` is the learned weight matrix
-    for the :math:`l`-th layer, :math:`\mathbf b^{{l)}` is the bias vector for the :math:`l`-th layer,
-    :math:`\mathbf h^{{l)}` is the hidden representation at layer :math:`l`, :math:`\sigma` is the
-    activation function, and :math:`L` is the number of layers.
+    where :math:`\mathbf x` is the input tensor, :math:`\mathbf W_l` and :math:`\mathbf b_l`
+    are the learned weight matrix and bias, respectively, of the :math:`l`-th layer,
+    :math:`\mathbf h_l` is the hidden representation after layer :math:`l`, and :math:`\sigma`
+    is the activation function.
     """
 
-    def __init__(
-        self,
+    @classmethod
+    def build(
+        cls,
         input_dim: int,
         output_dim: int,
         hidden_dim: int = 300,
@@ -42,16 +40,24 @@ class MLP(nn.Sequential, FFN):
         dropout: float = 0.0,
         activation: str = "relu",
     ):
-        super().__init__()
-
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
+        dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
+        blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
+        if len(dims) > 2:
+            blocks.extend(
+                [
+                    nn.Sequential(act, dropout, nn.Linear(d1, d2))
+                    for d1, d2 in zip(dims[1:-1], dims[2:])
+                ]
+            )
 
-        dims = [input_dim, *([hidden_dim] * n_layers), output_dim]
-        blocks = ((dropout, nn.Linear(d1, d2), act) for d1, d2 in zip(dims[:-1], dims[1:]))
-        layers = list(chain(*blocks))
+        return cls(*blocks)
 
-        super().__init__(*layers[1:-1])
+    @property
+    def input_dim(self) -> int:
+        return self[0][-1].in_features
 
-        self.input_dim = self[0].in_features
-        self.output_dim = self[-1].out_features
+    @property
+    def output_dim(self) -> int:
+        return self[-1][-1].out_features

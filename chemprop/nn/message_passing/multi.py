@@ -4,8 +4,8 @@ import warnings
 from torch import Tensor, nn
 
 from chemprop.data import BatchMolGraph
-from chemprop.nn.message_passing.proto import MessagePassing
 from chemprop.nn.hparams import HasHParams
+from chemprop.nn.message_passing.proto import MessagePassing
 
 
 class MulticomponentMessagePassing(nn.Module, HasHParams):
@@ -15,7 +15,7 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
 
     Parameters
     ----------
-    blocks : Sequence[MolecularMessagePassingBlock]
+    blocks : Sequence[MessagePassing]
         the invidual message-passing blocks for each input
     n_components : int
         the number of components in each input
@@ -69,7 +69,8 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
         Returns
         -------
         list[Tensor]
-            a list of tensors of shape `b x d_i` containing the respective encodings of the `i`th component, where `b` is the number of components in the batch, and `d_i` is the output dimension of the `i`th encoder
+            a list of tensors of shape `V x d_i` containing the respective encodings of the `i`\th
+            component, where `d_i` is the output dimension of the `i`\th encoder
         """
         if V_ds is None:
             return [block(bmg) for block, bmg in zip(self.blocks, bmgs)]

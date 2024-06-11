@@ -1,3 +1,7 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath("../.."))
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -7,30 +11,36 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Chemprop"
-copyright = "2023, Chemprop developers"
+copyright = "2024, Chemprop developers"
 author = "Chemprop developers"
-release = "2.0.0b1"
+release = "2.0.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "autoapi.extension",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.bibtex"
+    "sphinxcontrib.bibtex",
+    "sphinx.ext.doctest",
+    "sphinxarg.ext",
+    "nbsphinx_link",
 ]
 
+nbsphinx_execute = "never"
 templates_path = ["_templates"]
 exclude_patterns = []
-autodoc_typehints = 'description'
+autodoc_typehints = "description"
 
 # -- AutoAPI configuration ---------------------------------------------------
-
-autoapi_dirs = ["../../chemprop/v2"]
-autoapi_ignore = ["*test*", "*cli*"]
+nbsphinx_allow_errors = True
+autoapi_dirs = ["../.."]
+autoapi_ignore = ["*/tests/*", "*/cli/*"]
+autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",
     "undoc-members",
@@ -43,7 +53,7 @@ autoapi_keep_files = True
 
 # -- bibtex configuration ---------------------------------------------------
 
-bibtex_bibfiles = ['refs.bib']
+bibtex_bibfiles = ["refs.bib"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

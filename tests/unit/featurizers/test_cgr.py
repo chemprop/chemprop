@@ -5,9 +5,8 @@ import uuid
 import numpy as np
 import pytest
 
-from chemprop.featurizers.molgraph import RxnMode, CGRFeaturizer
+from chemprop.featurizers.molgraph import CGRFeaturizer, RxnMode
 from chemprop.utils import make_mol
-
 
 AVAILABLE_RXN_MODE_NAMES = [
     "REAC_PROD",
@@ -268,11 +267,11 @@ class TestCondensedGraphOfReactionFeaturizer:
             [atom_featurizer.num_only(a) for a in reac.GetAtoms()]
             + [atom_featurizer.num_only(prod.GetAtomWithIdx(pid)) for pid in pids]
         )[
-            :, : atom_featurizer.max_atomic_num + 1
+            :, : len(atom_featurizer.atomic_nums) + 1
         ]  # only create and keep the atomic number features
 
         atomic_num_features = featurizer._calc_node_feature_matrix(reac, prod, ri2pj, pids, rids)[
-            :, : atom_featurizer.max_atomic_num + 1
+            :, : len(atom_featurizer.atomic_nums) + 1
         ]
 
         np.testing.assert_equal(atomic_num_features, atomic_num_features_expected)

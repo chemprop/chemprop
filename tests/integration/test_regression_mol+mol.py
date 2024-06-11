@@ -2,23 +2,18 @@
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
 
-import warnings
-from pathlib import Path
-
-import pandas as pd
+from lightning import pytorch as pl
 import pytest
 import torch
-from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
-from chemprop import featurizers, nn
+from chemprop import nn
 from chemprop.data import (
     MoleculeDatapoint,
     MoleculeDataset,
     MulticomponentDataset,
     collate_multicomponent,
 )
-from chemprop.models import multi
 
 N_COMPONENTS = 2
 pytestmark = [

@@ -1,25 +1,26 @@
 """Chemprop unit tests for chemprop/models/loss.py"""
+
 import numpy as np
-import torch
 import pytest
+import torch
 
 from chemprop.nn.loss import (
-    BoundedMSELoss,
-    MVELoss,
-    BinaryDirichletLoss,
-    MulticlassDirichletLoss,
-    EvidentialLoss,
     BCELoss,
-    CrossEntropyLoss,
+    BinaryDirichletLoss,
     BinaryMCCLoss,
+    BoundedMSELoss,
+    CrossEntropyLoss,
+    EvidentialLoss,
+    MulticlassDirichletLoss,
     MulticlassMCCLoss,
+    MVELoss,
     SIDLoss,
     WassersteinLoss,
 )
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,mse",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,mse",
     [
         (
             torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
@@ -53,17 +54,17 @@ from chemprop.nn.loss import (
         ),
     ],
 )
-def test_BoundedMSE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, mse):
+def test_BoundedMSE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, mse):
     """
     Testing the bounded_mse loss function
     """
-    bmse_loss = BoundedMSELoss()
-    loss = bmse_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    bmse_loss = BoundedMSELoss(task_weights)
+    loss = bmse_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, mse)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,likelihood",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,likelihood",
     [
         (
             torch.tensor([[0, 1]], dtype=torch.float),
@@ -77,18 +78,18 @@ def test_BoundedMSE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, mse):
         )
     ],
 )
-def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
+def test_MVE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, likelihood):
     """
     Tests the normal_mve loss function
     """
-    mve_loss = MVELoss()
-    nll_calc = mve_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    mve_loss = MVELoss(task_weights)
+    nll_calc = mve_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     likelihood_calc = np.exp(-1 * nll_calc)
     torch.testing.assert_close(likelihood_calc, likelihood)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
             torch.tensor([[2, 2]]),
@@ -114,19 +115,21 @@ def test_MVE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, likelihood):
         ),
     ],
 )
-def test_BinaryDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
+def test_BinaryDirichlet(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, v_kl, expected_loss
+):
     """
     Test on the dirichlet loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    binary_dirichlet_loss = BinaryDirichletLoss(v_kl=v_kl)
-    loss = binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    binary_dirichlet_loss = BinaryDirichletLoss(task_weights=task_weights, v_kl=v_kl)
+    loss = binary_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,",
     [
         (
             torch.ones([1, 1]),
@@ -139,18 +142,20 @@ def test_BinaryDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl,
         )
     ],
 )
-def test_BinaryDirichlet_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt_mask):
+def test_BinaryDirichlet_wrong_dimensions(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask
+):
     """
     Test on the dirichlet loss function for classification
     for dimension errors.
     """
     with pytest.raises(RuntimeError):
-        binary_dirichlet_loss = BinaryDirichletLoss()
-        binary_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+        binary_dirichlet_loss = BinaryDirichletLoss(task_weights)
+        binary_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
             torch.tensor([[[0.2, 0.1, 0.3], [0.1, 0.3, 0.1]], [[1.2, 0.5, 1.7], [1.1, 1.4, 0.8]]]),
@@ -176,19 +181,21 @@ def test_BinaryDirichlet_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mas
         ),
     ],
 )
-def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
+def test_MulticlassDirichlet(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, v_kl, expected_loss
+):
     """
     Test on the dirichlet loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    multiclass_dirichlet_loss = MulticlassDirichletLoss(v_kl)
-    loss = multiclass_dirichlet_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    multiclass_dirichlet_loss = MulticlassDirichletLoss(task_weights=task_weights, v_kl=v_kl)
+    loss = multiclass_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,v_kl,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
             torch.tensor([[2, 2, 2, 2]]),
@@ -214,19 +221,21 @@ def test_MulticlassDirichlet(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v
         ),
     ],
 )
-def test_Evidential(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expected_loss):
+def test_Evidential(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, v_kl, expected_loss
+):
     """
     Test on the evidential loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    evidential_loss = EvidentialLoss(v_kl=v_kl)
-    loss = evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    evidential_loss = EvidentialLoss(task_weights=task_weights, v_kl=v_kl)
+    loss = evidential_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask",
     [
         (
             torch.ones([2, 2]),
@@ -239,18 +248,18 @@ def test_Evidential(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, v_kl, expe
         )
     ],
 )
-def test_Evidential_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt_mask):
+def test_Evidential_wrong_dimensions(preds, targets, mask, weights, task_weights, lt_mask, gt_mask):
     """
     Test on the Evidential loss function for classification
     for dimension errors.
     """
-    evidential_loss = EvidentialLoss()
+    evidential_loss = EvidentialLoss(task_weights)
     with pytest.raises(ValueError):
-        evidential_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+        evidential_loss(preds, targets, mask, weights, lt_mask, gt_mask)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,expected_loss",
     [
         (
             torch.tensor([2, 2], dtype=torch.float),
@@ -274,17 +283,17 @@ def test_Evidential_wrong_dimensions(preds, targets, mask, w_s, w_t, lt_mask, gt
         ),
     ],
 )
-def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+def test_BCE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
     """
     Test on the BCE loss function for classification.
     """
-    bce_loss = BCELoss()
-    loss = bce_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    bce_loss = BCELoss(task_weights)
+    loss = bce_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,expected_loss",
     [
         (
             torch.tensor([[[1.2, 0.5, 0.7], [-0.1, 0.3, 0.1]], [[1.2, 0.5, 0.7], [1.1, 1.3, 1.1]]]),
@@ -308,19 +317,19 @@ def test_BCE(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
         ),
     ],
 )
-def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+def test_CrossEntropy(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
     """
     Test on the CE loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    cross_entropy_loss = CrossEntropyLoss()
-    loss = cross_entropy_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    cross_entropy_loss = CrossEntropyLoss(task_weights)
+    loss = cross_entropy_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,expected_loss",
     [
         (
             torch.tensor([0, 1, 1, 0]),
@@ -344,17 +353,17 @@ def test_CrossEntropy(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected
         ),
     ],
 )
-def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+def test_BinaryMCC(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
     """
     Test on the BinaryMCC loss function for classification. Values have been checked using TorchMetrics.
     """
-    binary_mcc_loss = BinaryMCCLoss()
-    loss = binary_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    binary_mcc_loss = BinaryMCCLoss(task_weights)
+    loss = binary_mcc_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,expected_loss",
     [
         (
             torch.tensor(
@@ -382,17 +391,19 @@ def test_BinaryMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_lo
         ),
     ],
 )
-def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expected_loss):
+def test_MulticlassMCC(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss
+):
     """
     Test on the MulticlassMCC loss function for classification.
     """
-    multiclass_mcc_loss = MulticlassMCCLoss()
-    loss = multiclass_mcc_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    multiclass_mcc_loss = MulticlassMCCLoss(task_weights)
+    loss = multiclass_mcc_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,threshold,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,threshold,expected_loss",
     [
         (
             torch.tensor([[0.8, 0.2], [0.3, 0.7]]),
@@ -429,18 +440,20 @@ def test_MulticlassMCC(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, expecte
         ),
     ],
 )
-def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expected_loss):
+def test_SID(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, threshold, expected_loss
+):
     """
     Test on the SID loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    sid_loss = SIDLoss(threshold)
-    loss = sid_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    sid_loss = SIDLoss(task_weights=task_weights, threshold=threshold)
+    loss = sid_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,w_s,w_t,lt_mask,gt_mask,threshold,expected_loss",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,threshold,expected_loss",
     [
         (
             torch.tensor([[0.1, 0.3, 0.5, 0.7], [0.2, 0.4, 0.6, 0.8]]),
@@ -477,11 +490,13 @@ def test_SID(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expect
         ),
     ],
 )
-def test_Wasserstein(preds, targets, mask, w_s, w_t, lt_mask, gt_mask, threshold, expected_loss):
+def test_Wasserstein(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, threshold, expected_loss
+):
     """
     Test on the Wasserstein loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    wasserstein_loss = WassersteinLoss(threshold)
-    loss = wasserstein_loss(preds, targets, mask, w_s, w_t, lt_mask, gt_mask)
+    wasserstein_loss = WassersteinLoss(task_weights=task_weights, threshold=threshold)
+    loss = wasserstein_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)

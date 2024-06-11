@@ -1,33 +1,51 @@
-from argparse import ArgumentError, ArgumentParser, Namespace
+from copy import deepcopy
+import json
 import logging
 from pathlib import Path
 import sys
-import json
-from copy import deepcopy
-import pandas as pd
-from rdkit import Chem
 
+from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from lightning.pytorch.strategies import DDPStrategy
+import numpy as np
+import pandas as pd
 import torch
-
-from chemprop.data import MolGraphDataLoader, MolGraphDataset, MulticomponentDataset
-from chemprop.data import SplitType, split_component
-from chemprop.utils import Factory
-from chemprop.models import MPNN, MulticomponentMPNN, save_model
-from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
-from chemprop.nn.message_passing import (
-    BondMessagePassing,
-    AtomMessagePassing,
-    MulticomponentMessagePassing,
-)
-from chemprop.nn.utils import Activation
+import torch.nn as nn
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.conf import NOW
-from chemprop.cli.utils import Subcommand, LookupAction, build_data_from_files, make_dataset
+from chemprop.cli.utils import (
+    LookupAction,
+    Subcommand,
+    build_data_from_files,
+    get_column_names,
+    make_dataset,
+    parse_indices,
+)
 from chemprop.cli.utils.args import uppercase
+from chemprop.data import (
+    MoleculeDataset,
+    MolGraphDataset,
+    MulticomponentDataset,
+    ReactionDatapoint,
+    SplitType,
+    build_dataloader,
+    make_split_indices,
+    split_data_by_indices,
+)
+from chemprop.featurizers import MoleculeFeaturizerRegistry
+from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
+from chemprop.nn.message_passing import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MulticomponentMessagePassing,
+)
+from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
+from chemprop.nn.utils import Activation
+from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +53,14 @@ logger = logging.getLogger(__name__)
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "train a chemprop model"
+    parser = None
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = add_common_args(parser)
-        return add_train_args(parser)
+        parser = add_train_args(parser)
+        cls.parser = parser
+        return parser
 
     @classmethod
     def func(cls, args: Namespace):
@@ -47,14 +68,23 @@ class TrainSubcommand(Subcommand):
         validate_common_args(args)
         args = process_train_args(args)
         validate_train_args(args)
+
+        args.output_dir.mkdir(exist_ok=True, parents=True)
+        config_path = args.output_dir / "config.toml"
+        save_config(cls.parser, args, config_path)
         main(args)
 
 
 def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
+        "--config-path",
+        type=Path,
+        is_config_file=True,
+        help="Path to a configuration file. Command line arguments override values in the configuration file.",
+    )
+    parser.add_argument(
         "-i",
         "--data-path",
-        required=True,
         type=Path,
         help="Path to an input CSV file containing SMILES and the associated target values.",
     )
@@ -63,7 +93,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--output-dir",
         "--save-dir",
         type=Path,
-        help="Directory where training outputs will be saved. Defaults to '<current directory>/chemprop_training/<stem of input>/<time stamp>'.",
+        help="Directory where training outputs will be saved. Defaults to 'CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP'.",
     )
     # TODO: as we plug the three checkpoint options, see if we can reduce from three option to two or to just one.
     #        similar to how --features-path is/will be implemented
@@ -72,65 +102,77 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint",
         help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
     )
-    # TODO: see if we can tell lightning how often to log training loss
-    parser.add_argument(
-        "--log-frequency",
-        type=int,
-        default=10,
-        help="The number of batches between each logging of the training loss.",
-    )
-    parser.add_argument(
-        "--checkpoint-frzn",
+
+    # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
+    # parser.add_argument(
+    #     "--log-frequency",
+    #     type=int,
+    #     default=10,
+    #     help="The number of batches between each logging of the training loss.",
+    # )
+
+    transfer_args = parser.add_argument_group("transfer learning args")
+    transfer_args.add_argument(
+        "--model-frzn",
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
     )
-    parser.add_argument(
+    transfer_args.add_argument(
         "--frzn-ffn-layers",
         type=int,
         default=0,
         help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input. Automatically also freezes mpnn weights.",
     )
+    # transfer_args.add_argument(
+    #     "--freeze-first-only",
+    #     action="store_true",
+    #     help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
+    # )
+
+    # TODO: Add in v2.1
+    # parser.add_argument(
+    #     "--resume-experiment",
+    #     action="store_true",
+    #     help="Whether to resume the experiment. Loads test results from any folds that have already been completed and skips training those folds.",
+    # )
+    # parser.add_argument(
+    #     "--config-path",
+    #     help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
+    # )
     parser.add_argument(
-        "--freeze-first-only",
-        action="store_true",
-        help="Determines whether or not to use checkpoint_frzn for just the first encoder. Default (False) is to use the checkpoint to freeze all encoders. (only relevant for number_of_molecules > 1, where checkpoint model has number_of_molecules = 1)",
+        "--ensemble-size",
+        type=int,
+        default=1,
+        help="Number of models in ensemble for each splitting of data.",
     )
-    parser.add_argument(
-        "--save-preds",
-        action="store_true",
-        help="Whether to save test split predictions during training.",
-    )
-    parser.add_argument(
-        "--resume-experiment",
-        action="store_true",
-        help="Whether to resume the experiment. Loads test results from any folds that have already been completed and skips training those folds.",
-    )
-    parser.add_argument(
-        "--config-path",
-        help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
-    )
-    parser.add_argument(
-        "--ensemble-size", type=int, default=1, help="Number of models in ensemble."
-    )
-    parser.add_argument(  # TODO: It looks like `reaction` is set later in main() based on rxn-idxs. Is that correct and do we need this argument?
-        "--reaction",
-        action="store_true",
-        help="Whether to adjust MPNN layer to take reactions as input instead of molecules.",
-    )
-    parser.add_argument(
-        "--is-atom-bond-targets",
-        action="store_true",
-        help="Whether this is atomic/bond properties prediction.",
-    )
-    parser.add_argument(
-        "--no-adding-bond-types",
-        action="store_true",
-        help="Whether the bond types determined by RDKit molecules added to the output of bond targets. This option is intended to be used with the :code:`is_atom_bond_targets`.",
-    )
-    parser.add_argument(
-        "--keeping-atom-map",
-        action="store_true",
-        help="Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with the :code:`is_atom_bond_targets`.",
-    )
+
+    # TODO: Add in v2.2
+    # abt_args = parser.add_argument_group("atom/bond target args")
+    # abt_args.add_argument(
+    #     "--is-atom-bond-targets",
+    #     action="store_true",
+    #     help="Whether this is atomic/bond properties prediction.",
+    # )
+    # abt_args.add_argument(
+    #     "--no-adding-bond-types",
+    #     action="store_true",
+    #     help="Whether the bond types determined by RDKit molecules added to the output of bond targets. This option is intended to be used with the :code:`is_atom_bond_targets`.",
+    # )
+    # abt_args.add_argument(
+    #     "--keeping-atom-map",
+    #     action="store_true",
+    #     help="Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with the :code:`is_atom_bond_targets`.",
+    # )
+    # abt_args.add_argument(
+    #     "--no-shared-atom-bond-ffn",
+    #     action="store_true",
+    #     help="Whether the FFN weights for atom and bond targets should be independent between tasks.",
+    # )
+    # abt_args.add_argument(
+    #     "--weights-ffn-num-layers",
+    #     type=int,
+    #     default=2,
+    #     help="Number of layers in FFN for determining weights used in constrained targets.",
+    # )
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
@@ -180,152 +222,100 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--atom-messages", action="store_true", help="pass messages on atoms rather than bonds"
     )
 
-    mpsolv_args = parser.add_argument_group("message passing with solvent")
-    mpsolv_args.add_argument(
-        "--reaction-solvent",
-        action="store_true",
-        help="Whether to adjust the MPNN layer to take as input a reaction and a molecule, and to encode them with separate MPNNs.",
-    )
-    mpsolv_args.add_argument(
-        "--bias-solvent",
-        action="store_true",
-        help="Whether to add bias to linear layers for solvent MPN if :code:`reaction_solvent` is True.",
-    )
-    mpsolv_args.add_argument(
-        "--hidden-size-solvent",
-        type=int,
-        default=300,
-        help="Dimensionality of hidden layers in solvent MPN if :code:`reaction_solvent` is True.",
-    )
-    mpsolv_args.add_argument(
-        "--depth-solvent",
-        type=int,
-        default=3,
-        help="Number of message passing steps for solvent if :code:`reaction_solvent` is True.",
-    )
+    # TODO: Add in v2.1
+    # mpsolv_args = parser.add_argument_group("message passing with solvent")
+    # mpsolv_args.add_argument(
+    #     "--reaction-solvent",
+    #     action="store_true",
+    #     help="Whether to adjust the MPNN layer to take as input a reaction and a molecule, and to encode them with separate MPNNs.",
+    # )
+    # mpsolv_args.add_argument(
+    #     "--bias-solvent",
+    #     action="store_true",
+    #     help="Whether to add bias to linear layers for solvent MPN if :code:`reaction_solvent` is True.",
+    # )
+    # mpsolv_args.add_argument(
+    #     "--hidden-size-solvent",
+    #     type=int,
+    #     default=300,
+    #     help="Dimensionality of hidden layers in solvent MPN if :code:`reaction_solvent` is True.",
+    # )
+    # mpsolv_args.add_argument(
+    #     "--depth-solvent",
+    #     type=int,
+    #     default=3,
+    #     help="Number of message passing steps for solvent if :code:`reaction_solvent` is True.",
+    # )
 
     ffn_args = parser.add_argument_group("FFN args")
-    ffn_args.add_argument(  # TODO: In v1 the mpn and fnn defaulted to the same hidden dim size. Now they can be different and have to be set separately. Do we want to change fnn_hidden_dims if message_hidden_dim is changed?
+    ffn_args.add_argument(
         "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
     )
     ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
         "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
     )
-    ffn_args.add_argument(
-        "--weights-ffn-num-layers",
-        type=int,
-        default=2,
-        help="Number of layers in FFN for determining weights used in constrained targets.",
-    )
-    ffn_args.add_argument(
-        "--features-only",
-        action="store_true",
-        help="Use only the additional features in an FFN, no graph network.",
-    )
-    ffn_args.add_argument(
-        "--no-shared-atom-bond-ffn",
-        action="store_true",
-        help="Whether the FFN weights for atom and bond targets should be independent between tasks.",
-    )
+    # TODO: Decide if we want to implment this in v2
+    # ffn_args.add_argument(
+    #     "--features-only",
+    #     action="store_true",
+    #     help="Use only the additional features in an FFN, no graph network.",
+    # )
 
-    exta_mpnn_args = parser.add_argument_group("extra MPNN args")
-    exta_mpnn_args.add_argument(
+    extra_mpnn_args = parser.add_argument_group("extra MPNN args")
+    extra_mpnn_args.add_argument(
+        "--no-batch-norm",
+        action="store_true",
+        help="Don't use batch normalization after aggregation.",
+    )
+    extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
         type=int,
         default=3,
         help="Number of classes when running multiclass classification.",
     )
-    exta_mpnn_args.add_argument(
-        "--spectral-activation",
-        default="exp",
-        choices=["softplus", "exp"],
-        help="Indicates which function to use in task_type spectra training to constrain outputs to be positive.",
-    )
+    # TODO: Add in v2.1
+    # extra_mpnn_args.add_argument(
+    #     "--spectral-activation",
+    #     default="exp",
+    #     choices=["softplus", "exp"],
+    #     help="Indicates which function to use in task_type spectra training to constrain outputs to be positive.",
+    # )
 
-    data_args = parser.add_argument_group("input data parsing args")
-    # data_args is added in add_common_args()
-    data_args.add_argument(
+    train_data_args = parser.add_argument_group("training input data args")
+    train_data_args.add_argument(
         "-w",
         "--weight-column",
         help="the name of the column in the input CSV containg individual data weights",
     )
-    data_args.add_argument(
+    train_data_args.add_argument(
         "--target-columns",
         nargs="+",
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
-    data_args.add_argument(
+    train_data_args.add_argument(
         "--ignore-columns",
         nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
+    train_data_args.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
+    )
+    # TODO: Add in v2.1
+    # train_data_args.add_argument(
+    #     "--spectra-phase-mask-path",
+    #     help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions.",
+    # )
 
-    data_args.add_argument(
+    train_args = parser.add_argument_group("training args")
+    train_args.add_argument(
         "-t",
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
         help="Type of dataset. This determines the default loss function used during training. Defaults to regression.",
     )
-    data_args.add_argument(
-        "--spectra-phase-mask-path",
-        help="Path to a file containing a phase mask array, used for excluding particular regions in spectra predictions.",
-    )
-    data_args.add_argument(
-        "--data-weights-path",
-        help="a plaintext file that is parallel to the input data file and contains a single float per line that corresponds to the weight of the respective input weight during training. v1 help message: Path to weights for each molecule in the training data, affecting the relative weight of molecules in the loss function.",
-    )
-    data_args.add_argument("--separate-val-path", help="Path to separate val set, optional.")
-    data_args.add_argument(
-        "--separate-val-features-path", help="Path to file with features for separate val set."
-    )
-    data_args.add_argument(
-        "--separate-val-phase-features-path",
-        help="Path to file with phase features for separate val set.",
-    )
-    data_args.add_argument(
-        "--separate-val-atom-descriptors-path",
-        help="Path to file with extra atom descriptors for separate val set.",
-    )
-    data_args.add_argument(
-        "--separate-val-atom-features-path",
-        help="Path to file with extra atom features for separate val set.",
-    )
-    data_args.add_argument(
-        "--separate-val-bond-features-path",
-        help="Path to file with extra bond features for separate val set.",
-    )
-    data_args.add_argument(
-        "--separate-val-constraints-path",
-        help="Path to file with constraints for separate val set.",
-    )
-
-    data_args.add_argument("--separate-test-path", help="Path to separate test set, optional.")
-    data_args.add_argument(
-        "--separate-test-features-path", help="Path to file with features for separate test set."
-    )
-    data_args.add_argument(
-        "--separate-test-phase-features-path",
-        help="Path to file with phase features for separate test set.",
-    )
-    data_args.add_argument(
-        "--separate-test-atom-descriptors-path",
-        help="Path to file with extra atom descriptors for separate test set.",
-    )
-    data_args.add_argument(
-        "--separate-test-atom-features-path",
-        help="Path to file with extra bond features for separate test set.",
-    )
-    data_args.add_argument(
-        "--separate-test-bond-features-path",
-        help="Path to file with extra atom features for separate test set.",
-    )
-    data_args.add_argument(
-        "--separate-test-constraints-path",
-        help="Path to file with constraints for separate test set.",
-    )
-
-    train_args = parser.add_argument_group("training args")
     train_args.add_argument(
         "-l",
         "--loss-function",
@@ -343,29 +333,29 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
     )
-
-    train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
-        "-T",
-        "--threshold",
-        "--spectra-target-floor",
-        type=float,
-        default=1e-8,
-        help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
-    )
+    # TODO: Add in v2.1
+    # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
+    #     "-T",
+    #     "--threshold",
+    #     "--spectra-target-floor",
+    #     type=float,
+    #     default=1e-8,
+    #     help="spectral threshold limit. v1 help string: Values in targets for dataset type spectra are replaced with this value, intended to be a small positive number used to enforce positive values.",
+    # )
     train_args.add_argument(
-        "--metric",
         "--metrics",
+        "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
+    # TODO: Add in v2.1
+    # train_args.add_argument(
+    #     "--show-individual-scores",
+    #     action="store_true",
+    #     help="Show all scores for individual targets, not just average, at the end.",
+    # )
     train_args.add_argument(
-        "--show-individual-scores",
-        action="store_true",
-        help="Show all scores for individual targets, not just average, at the end.",
-    )
-    train_args.add_argument(  # TODO: What is this for? I don't see it in v1.
-        "-tw",
         "--task-weights",
         nargs="+",
         type=float,
@@ -373,12 +363,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_args.add_argument(
         "--warmup-epochs",
-        type=int,  # TODO: This was a float in v1. I'm not sure why so I think int is better.
+        type=int,
         default=2,
         help="Number of epochs during which learning rate increases linearly from :code:`init_lr` to :code:`max_lr`. Afterwards, learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr`.",
     )
-
-    train_args.add_argument("--num-lrs", type=int, default=1)
 
     train_args.add_argument("--init-lr", type=float, default=1e-4, help="Initial learning rate.")
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
@@ -387,13 +375,22 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
-        "--grad-clip", type=float, help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details."
+        "--patience",
+        type=int,
+        default=None,
+        help="Number of epochs to wait for improvement before early stopping.",
     )
     train_args.add_argument(
-        "--class-balance",
-        action="store_true",
-        help="Trains with an equal number of positives and negatives in each batch.",
+        "--grad-clip",
+        type=float,
+        help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details.",
     )
+    # TODO: Add in v2.1
+    # train_args.add_argument(
+    #     "--class-balance",
+    #     action="store_true",
+    #     help="Trains with an equal number of positives and negatives in each batch.",
+    # )
 
     split_args = parser.add_argument_group("split args")
     split_args.add_argument(
@@ -424,57 +421,47 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=1,
         help="Number of folds when performing cross validation.",
     )
-    # split_args.add_argument("--folds-file", help="Optional file of fold labels.")
-    # split_args.add_argument(
-    #     "--val-fold-index", type=int, help="Which fold to use as val for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--test-fold-index", type=int, help="Which fold to use as test for leave-one-out cross val."
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-dir",
-    #     help="Directory in which to find cross validation index files.",
-    # )
-    # split_args.add_argument(
-    #     "--crossval-index-file",
-    #     help="Indices of files to use as train/val/test. Overrides :code:`--num_folds` and :code:`--seed`.",
-    # )
-    split_args.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed.",
-    )
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
         help="Save smiles for each train/val/test splits for prediction convenience later.",
     )
-
-    parser.add_argument(  # TODO: do we need this?
-        "--pytorch-seed",
+    split_args.add_argument(
+        "--splits-file",
+        type=Path,
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys 'train', 'val', and 'test' and values as lists of indices or strings formatted like '0-2,4'. See documentation for more details.",
+    )
+    train_data_args.add_argument(
+        "--splits-column",
+        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
+    )
+    split_args.add_argument(
+        "--data-seed",
         type=int,
         default=0,
-        help="Seed for PyTorch randomness (e.g., random initial weights).",
+        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`build_dataloader` when :code:`shuffle` is True.",
     )
+
     parser.add_argument(
-        "--patience",
+        "--pytorch-seed",
         type=int,
         default=None,
-        help="Number of epochs to wait for improvement before early stopping.",
+        help="Seed for PyTorch randomness (e.g., random initial weights).",
     )
 
     return parser
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.config_path is None and args.data_path is None:
+        raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
-    args.output_dir.mkdir(exist_ok=True, parents=True)
 
     return args
 
@@ -483,14 +470,106 @@ def validate_train_args(args):
     pass
 
 
-def save_config(args: Namespace):
-    command_config_path = args.output_dir / "config.json"
-    with open(command_config_path, "w") as f:
-        config = deepcopy(vars(args))
-        for key in config:
-            if isinstance(config[key], Path):
-                config[key] = str(config[key])
-        json.dump(config, f, indent=4)
+def normalize_inputs(train_dset, val_dset, args):
+    multicomponent = isinstance(train_dset, MulticomponentDataset)
+    num_components = train_dset.n_components if multicomponent else 1
+
+    X_d_transform = None
+    V_f_transforms = [nn.Identity()] * num_components
+    E_f_transforms = [nn.Identity()] * num_components
+    V_d_transforms = [None] * num_components
+    graph_transforms = []
+
+    d_xd = train_dset.d_xd
+    d_vf = train_dset.d_vf
+    d_ef = train_dset.d_ef
+    d_vd = train_dset.d_vd
+
+    if d_xd > 0 and not args.no_descriptor_scaling:
+        scaler = train_dset.normalize_inputs("X_d")
+        val_dset.normalize_inputs("X_d", scaler)
+
+        scaler = scaler if not isinstance(scaler, list) else scaler[0]
+
+        if scaler is not None:
+            logger.info(
+                f"Descriptors: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            X_d_transform = ScaleTransform.from_standard_scaler(scaler)
+
+    if d_vf > 0 and not args.no_atom_feature_scaling:
+        scaler = train_dset.normalize_inputs("V_f")
+        val_dset.normalize_inputs("V_f", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Atom features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            V_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.atom_fdim - featurizer.extra_atom_fdim
+            )
+
+    if d_ef > 0 and not args.no_bond_feature_scaling:
+        scaler = train_dset.normalize_inputs("E_f")
+        val_dset.normalize_inputs("E_f", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Bond features for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            featurizer = (
+                train_dset.datasets[i].featurizer if multicomponent else train_dset.featurizer
+            )
+            E_f_transforms[i] = ScaleTransform.from_standard_scaler(
+                scaler, pad=featurizer.bond_fdim - featurizer.extra_bond_fdim
+            )
+
+    for V_f_transform, E_f_transform in zip(V_f_transforms, E_f_transforms):
+        graph_transforms.append(GraphTransform(V_f_transform, E_f_transform))
+
+    if d_vd > 0 and not args.no_atom_descriptor_scaling:
+        scaler = train_dset.normalize_inputs("V_d")
+        val_dset.normalize_inputs("V_d", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Atom descriptors for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
+
+    return X_d_transform, graph_transforms, V_d_transforms
+
+
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
+    config_args = deepcopy(args)
+    for key, value in vars(config_args).items():
+        if isinstance(value, Path):
+            setattr(config_args, key, str(value))
+
+    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+        if getattr(config_args, key) is not None:
+            for index, path in getattr(config_args, key).items():
+                getattr(config_args, key)[index] = str(path)
+
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -513,53 +592,56 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     logger.info(f"Pulling data from file: {args.data_path}")
     all_data = build_data_from_files(
         args.data_path,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
         **format_kwargs,
         **featurization_kwargs,
     )
-    multicomponent = len(all_data) > 1
 
-    split_kwargs = dict(sizes=args.split_sizes, seed=args.seed, num_folds=args.num_folds)
-    split_kwargs["key_index"] = args.split_key_molecule if multicomponent else 0
-
-    if args.separate_val_path is None and args.separate_test_path is None:
-        train_data, val_data, test_data = split_component(all_data, args.split, **split_kwargs)
-    elif args.separate_test_path is not None:
-        test_data = build_data_from_files(
-            args.separate_test_path,
-            p_features=args.separate_test_features_path,
-            p_atom_feats=args.separate_test_atom_features_path,
-            p_bond_feats=args.separate_test_bond_features_path,
-            p_atom_descs=args.separate_test_atom_descriptors_path,
-            **format_kwargs,
-            **featurization_kwargs,
+    if args.splits_column is not None:
+        df = pd.read_csv(
+            args.data_path, header=None if args.no_header_row else "infer", index_col=False
         )
+        grouped = df.groupby(df[args.splits_column].str.lower())
+        train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+        val_indices = grouped.groups.get("val", pd.Index([])).tolist()
+        test_indices = grouped.groups.get("test", pd.Index([])).tolist()
+        train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
 
-        if args.separate_val_path is not None:
-            val_data = build_data_from_files(
-                args.separate_val_path,
-                p_features=args.separate_val_features_path,
-                p_atom_feats=args.separate_val_atom_features_path,
-                p_bond_feats=args.separate_val_bond_features_path,
-                p_atom_descs=args.separate_val_atom_descriptors_path,
-                **format_kwargs,
-                **featurization_kwargs,
-            )
-            train_data = all_data
-        else:
-            train_data, val_data, _ = split_component(all_data, args.split, **split_kwargs)
+    elif args.splits_file is not None:
+        with open(args.splits_file, "rb") as json_file:
+            split_idxss = json.load(json_file)
+        train_indices = [parse_indices(d["train"]) for d in split_idxss]
+        val_indices = [parse_indices(d["val"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+
     else:
-        raise ArgumentError(
-            argument=None,
-            message="'--separate-test-path' must be specified if '--separate-val-path' is provided!",
-        )  # TODO: In v1 this wasn't the case?
+        splitting_data = all_data[args.split_key_molecule]
+        if isinstance(splitting_data[0], ReactionDatapoint):
+            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        else:
+            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+        train_indices, val_indices, test_indices = make_split_indices(
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
+        )
+        if not (
+            SplitType.get(args.split) == SplitType.CV_NO_VAL
+            or SplitType.get(args.split) == SplitType.CV
+        ):
+            train_indices, val_indices, test_indices = (
+                [train_indices],
+                [val_indices],
+                [test_indices],
+            )
 
-    sizes = [len(train_data[0]), len(val_data[0]), len(test_data[0])]
-
-    logger.info(f"train/val/test sizes: {sizes}")
+    train_data, val_data, test_data = split_data_by_indices(
+        all_data, train_indices, val_indices, test_indices
+    )
+    for i_split in range(len(train_data)):
+        sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
+        logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
 
@@ -568,12 +650,21 @@ def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
     multicomponent = len(train_data) > 1
     if multicomponent:
-        train_dsets = [make_dataset(data, args.rxn_mode) for data in train_data]
-        val_dsets = [make_dataset(data, args.rxn_mode) for data in val_data]
+        train_dsets = [
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            for data in train_data
+        ]
+        val_dsets = [
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            for data in val_data
+        ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
-            test_dsets = [make_dataset(data, args.rxn_mode) for data in test_data]
+            test_dsets = [
+                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                for data in test_data
+            ]
             test_dset = MulticomponentDataset(test_dsets)
         else:
             test_dset = None
@@ -582,18 +673,25 @@ def build_datasets(args, train_data, val_data, test_data):
         val_data = val_data[0]
         test_data = test_data[0]
 
-        train_dset = make_dataset(train_data, args.rxn_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode)
+        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode)
+            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
 
     return train_dset, val_dset, test_dset
 
 
-def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MPNN:
+def build_model(
+    args,
+    train_dset: MolGraphDataset | MulticomponentDataset,
+    output_transform: UnscaleTransform,
+    input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
+) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+
+    X_d_transform, graph_transforms, V_d_transforms = input_transforms
 
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -601,11 +699,18 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
                 train_dset.datasets[i].featurizer.atom_fdim,
                 train_dset.datasets[i].featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
+                d_vd=(
+                    train_dset.datasets[i].d_vd
+                    if isinstance(train_dset.datasets[i], MoleculeDataset)
+                    else 0
+                ),
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
+                V_d_transform=V_d_transforms[i],
+                graph_transform=graph_transforms[i],
             )
             for i in range(train_dset.n_components)
         ]
@@ -621,7 +726,7 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         # if args.mpn_shared:
         #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
         # else:
-        d_xf = sum(dset.d_xf for dset in train_dset.datasets)
+        d_xd = train_dset.datasets[0].d_xd
         n_tasks = train_dset.datasets[0].Y.shape[1]
         mpnn_cls = MulticomponentMPNN
     else:
@@ -629,13 +734,16 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
             train_dset.featurizer.atom_fdim,
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
+            d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
             dropout=args.dropout,
             activation=args.activation,
+            V_d_transform=V_d_transforms[0],
+            graph_transform=graph_transforms[0],
         )
-        d_xf = train_dset.d_xf
+        d_xd = train_dset.d_xd
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
@@ -644,16 +752,21 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
     if args.loss_function is not None:
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
+            task_weights=args.task_weights,
             v_kl=args.v_kl,
-            threshold=args.threshold,
+            # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
         )
     else:
         criterion = None
+    if args.metrics is not None:
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+    else:
+        metrics = None
 
     predictor = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xf,
+        input_dim=mp_block.output_dim + d_xd,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
@@ -661,34 +774,59 @@ def build_model(args, train_dset: MolGraphDataset | MulticomponentDataset) -> MP
         activation=args.activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
-        spectral_activation=args.spectral_activation,
+        output_transform=output_transform,
+        # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
 
     if args.loss_function is None:
         logger.info(
-            f"No loss function was specified! Using class default: {predictor_cls._default_criterion}"
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
+
+    if args.model_frzn is not None:
+        model = mpnn_cls.load_from_file(args.model_frzn)
+        model.message_passing.apply(lambda module: module.requires_grad_(False))
+        model.message_passing.apply(
+            lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
+        )
+        model.bn.apply(lambda module: module.requires_grad_(False))
+        for idx in range(args.frzn_ffn_layers):
+            model.predictor.ffn[idx].requires_grad_(False)
+            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+
+        return model
 
     return mpnn_cls(
         mp_block,
         agg,
         predictor,
-        True,
-        None,
-        args.task_weights,
+        not args.no_batch_norm,
+        metrics,
         args.warmup_epochs,
         args.init_lr,
         args.max_lr,
         args.final_lr,
+        X_d_transform=X_d_transform,
     )
 
 
-def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler):
+def train_model(
+    args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
+):
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
 
-        model = build_model(args, train_loader.dataset)
+        if args.pytorch_seed is None:
+            seed = torch.seed()
+            deterministic = False
+        else:
+            seed = args.pytorch_seed + model_idx
+            deterministic = True
+
+        torch.manual_seed(seed)
+
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
@@ -701,7 +839,7 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
 
         checkpointing = ModelCheckpoint(
             model_output_dir / "checkpoints",
-            "{epoch}-{val_loss:.2f}",
+            "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
             save_last=True,
@@ -713,79 +851,163 @@ def train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
         trainer = pl.Trainer(
             logger=trainer_logger,
             enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
+            accelerator=args.accelerator,
+            devices=args.devices,
             max_epochs=args.epochs,
             callbacks=[checkpointing, early_stopping],
             gradient_clip_val=args.grad_clip,
+            deterministic=deterministic,
         )
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            if args.task_type == "regression":
-                model.predictor.register_buffer("loc", torch.tensor(scaler.mean_).view(-1, 1))
-                model.predictor.register_buffer("scale", torch.tensor(scaler.scale_).view(-1, 1))
-            results = trainer.test(model, test_loader)[0]
-            logger.info(f"Test results: {results}")
+            if isinstance(trainer.strategy, DDPStrategy):
+                torch.distributed.destroy_process_group()
 
-        p_model = model_output_dir / "model.pt"
-        input_scalers = []
-        output_scaler = scaler
-        save_model(p_model, model, input_scalers, output_scaler)
-        logger.info(f"Model saved to '{p_model}'")
+                best_ckpt_path = trainer.checkpoint_callback.best_model_path
+                trainer = pl.Trainer(
+                    logger=trainer_logger,
+                    enable_progress_bar=True,
+                    accelerator=args.accelerator,
+                    devices=1,
+                )
+                model = model.load_from_checkpoint(best_ckpt_path)
+                predss = trainer.predict(model, dataloaders=test_loader)
+            else:
+                predss = trainer.predict(dataloaders=test_loader)
+            preds = torch.concat(predss, 0).numpy()
+
+            if isinstance(test_loader.dataset, MulticomponentDataset):
+                test_dset = test_loader.dataset.datasets[0]
+            else:
+                test_dset = test_loader.dataset
+            targets = test_dset.Y
+            mask = torch.from_numpy(np.isfinite(targets))
+            targets = np.nan_to_num(targets, nan=0.0)
+            weights = torch.from_numpy(test_dset.weights)
+            lt_mask = (
+                torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+            )
+            gt_mask = (
+                torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+            )
+            preds_losses = [
+                metric(
+                    torch.from_numpy(preds),
+                    torch.from_numpy(targets),
+                    mask,
+                    weights,
+                    lt_mask,
+                    gt_mask,
+                )
+                for metric in model.metrics
+            ]
+            preds_metrics = {
+                f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
+            }
+            print(f"Entire Test Set results: {preds_metrics}")
+
+            columns = get_column_names(
+                args.data_path,
+                args.smiles_columns,
+                args.reaction_columns,
+                args.target_columns,
+                args.ignore_columns,
+                args.splits_column,
+                args.weight_column,
+                args.no_header_row,
+            )
+            names = test_loader.dataset.names
+            if isinstance(test_loader.dataset, MulticomponentDataset):
+                namess = list(zip(*names))
+            else:
+                namess = [names]
+            if "multiclass" in args.task_type:
+                df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+            else:
+                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+            df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+
+        best_model_path = checkpointing.best_model_path
+        model = model.__class__.load_from_checkpoint(best_model_path)
+        p_model = model_output_dir / "best.pt"
+        save_model(p_model, model)
+        logger.info(f"Best model saved to '{p_model}'")
 
 
 def main(args):
-    save_config(args)
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
+        splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
+    if args.features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
+        features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in args.features_generators
+        ]
+    else:
+        features_generators = None
+
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    no_cv = args.num_folds == 1
-    train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
-
-    if no_cv:
-        splits = ([train_data], [val_data], [test_data])
-    else:
-        splits = (train_data, val_data, test_data)
+    splits = build_splits(args, format_kwargs, featurization_kwargs)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if not no_cv:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
-        else:
+        if args.num_folds == 1:
             output_dir = args.output_dir
+        else:
+            output_dir = args.output_dir / f"fold_{fold_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
+
+        input_transforms = normalize_inputs(train_dset, val_dset, args)
+
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-        if args.task_type == "regression":
-            scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(scaler)
-            logger.info(f"Train data: mean = {scaler.mean_} | std = {scaler.scale_}")
+        if "regression" in args.task_type:
+            output_scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(output_scaler)
+            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
+        else:
+            output_transform = None
 
-        train_loader = MolGraphDataLoader(train_dset, args.batch_size, args.num_workers)
-        val_loader = MolGraphDataLoader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        if not args.no_cache:
+            train_dset.cache = True
+            val_dset.cache = True
+
+        train_loader = build_dataloader(
+            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        )
+        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
-            test_loader = MolGraphDataLoader(
+            test_loader = build_dataloader(
                 test_dset, args.batch_size, args.num_workers, shuffle=False
             )
         else:
             test_loader = None
 
-        train_model(args, train_loader, val_loader, test_loader, output_dir, scaler)
+        train_model(
+            args,
+            train_loader,
+            val_loader,
+            test_loader,
+            output_dir,
+            output_transform,
+            input_transforms,
+        )
 
 
 if __name__ == "__main__":

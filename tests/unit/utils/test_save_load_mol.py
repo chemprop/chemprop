@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from lightning import pytorch as pl
 import numpy as np
 import pytest
-from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
@@ -53,8 +53,8 @@ def ys(model, test_loader, trainer):
 
 
 def test_roundtrip(tmp_path, model, test_loader, trainer, ys):
-    save_path = Path(tmp_path) / "test.pkl"
-    save_model(save_path, model, None, None)
+    save_path = Path(tmp_path) / "test.pt"
+    save_model(save_path, model)
 
     model_from_file = MPNN.load_from_file(save_path)
 
@@ -74,8 +74,8 @@ def test_checkpoint_is_valid(checkpoint_path, test_loader, trainer, ys):
 
 
 def test_checkpoint_roundtrip(checkpoint_path, model_path, trainer, test_loader):
-    model_from_checkpoint = MPNN.load_from_checkpoint(checkpoint_path)
-    model_from_file = MPNN.load_from_file(model_path)
+    model_from_checkpoint = MPNN.load_from_checkpoint(checkpoint_path, map_location="cpu")
+    model_from_file = MPNN.load_from_file(model_path, map_location="cpu")
 
     predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)

@@ -5,8 +5,6 @@ import pandas as pd
 import pytest
 from rdkit import Chem
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-
 _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
 _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
@@ -55,7 +53,7 @@ def mol(request):
 
 @pytest.fixture
 def mol_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mol.csv")
+    df = pd.read_csv(data_dir / "regression/mol/mol.csv")
     smis = df["smiles"].to_list()
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
@@ -64,7 +62,7 @@ def mol_regression_data(data_dir):
 
 @pytest.fixture
 def rxn_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/rxn.csv")
+    df = pd.read_csv(data_dir / "regression/rxn/rxn.csv")
     smis = df["smiles"].to_list()
     Y = df["ea"].to_numpy().reshape(-1, 1)
 
@@ -73,7 +71,7 @@ def rxn_regression_data(data_dir):
 
 @pytest.fixture
 def mol_mol_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mol+mol.csv")
+    df = pd.read_csv(data_dir / "regression/mol+mol/mol+mol.csv")
     smis1 = df["smiles"].to_list()
     smis2 = df["solvent"].to_list()
     Y = df["peakwavs_max"].to_numpy().reshape(-1, 1)
@@ -83,9 +81,33 @@ def mol_mol_regression_data(data_dir):
 
 @pytest.fixture
 def rxn_mol_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/rxn+mol.csv")
+    df = pd.read_csv(data_dir / "regression/rxn+mol/rxn+mol.csv")
     rxns = df["rxn_smiles"].to_list()
     smis = df["solvent_smiles"].to_list()
     Y = df["target"].to_numpy().reshape(-1, 1)
 
     return rxns, smis, Y
+
+
+@pytest.fixture
+def mol_classification_data(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol.csv")
+    smis = df["smiles"].to_list()
+    Y = df["NR-AhR"].to_numpy().reshape(-1, 1)
+
+    return smis, Y
+
+
+@pytest.fixture
+def mol_classification_data_multiclass(data_dir):
+    df = pd.read_csv(data_dir / "classification" / "mol_multiclass.csv")
+    smis = df["smiles"].to_list()
+    activities = df["activity"].unique()
+    Y = (
+        df["activity"]
+        .map({activity: i for i, activity in enumerate(activities)})
+        .to_numpy()
+        .reshape(-1, 1)
+    )
+
+    return smis, Y

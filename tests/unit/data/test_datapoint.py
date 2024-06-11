@@ -2,10 +2,8 @@ import numpy as np
 import pytest
 
 from chemprop.data import MoleculeDatapoint
-
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.utils.registry import Factory
-
 
 SMI = "c1ccccc1"
 
@@ -37,7 +35,7 @@ def test_features_and_fg(features_generators):
     targets = np.random.rand(1, 1)
     features = np.random.rand(1024)
     with pytest.raises(ValueError):
-        MoleculeDatapoint.from_smi(SMI, y=targets, x_f=features, mfs=features_generators)
+        MoleculeDatapoint.from_smi(SMI, y=targets, x_d=features, mfs=features_generators)
 
 
 def test_num_tasks(targets):
@@ -57,6 +55,6 @@ def test_replace_token(smi, targets, features_with_nans):
     if not np.isnan(features_with_nans).any():
         pytest.skip("no `nan`s")
 
-    d = MoleculeDatapoint.from_smi(smi, y=targets, x_f=features_with_nans)
+    d = MoleculeDatapoint.from_smi(smi, y=targets, x_d=features_with_nans)
 
-    assert not np.isnan(d.x_f).any()
+    assert not np.isnan(d.x_d).any()

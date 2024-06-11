@@ -1,6 +1,7 @@
 """This integration test is designed to ensure that the chemprop model can _overfit_ the training
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
+
 from lightning import pytorch as pl
 import pytest
 import torch
@@ -10,12 +11,12 @@ from chemprop import nn
 from chemprop.data import (
     MoleculeDatapoint,
     MoleculeDataset,
+    MulticomponentDataset,
     ReactionDatapoint,
     ReactionDataset,
-    MulticomponentDataset,
     collate_multicomponent,
 )
-from chemprop.featurizers import CondensedGraphOfReactionFeaturizer
+from chemprop.featurizers.molgraph import CondensedGraphOfReactionFeaturizer
 
 N_COMPONENTS = 2
 SHAPE = CondensedGraphOfReactionFeaturizer().shape

@@ -2,19 +2,17 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
-import pandas as pd
 
 from lightning import pytorch as pl
+import pandas as pd
 import torch
 
 from chemprop import data
-from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.models import MPNN, load_model
-from chemprop.models.multi import MulticomponentMPNN
-
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-
+from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.models import load_model
+from chemprop.nn.loss import LossFunctionRegistry
+from chemprop.nn.predictors import MulticlassClassificationFFN
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +47,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds.csv'.",
+        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds_0.csv'.",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -59,11 +57,17 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--model-path",
         required=True,
-        help="Path to a pretrained model checkpoint (.ckpt) or a pretrained model file (.pt).",
+        type=Path,
+        help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+    )
+    parser.add_argument(
+        "--target-columns",
+        nargs="+",
+        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
     )
 
-    # TODO: add uncertainty and calibration
-    # unc_args = parser.add_argument_group("uncertainty and calibration args")
+    # TODO: add uncertainty and calibration in v2.1
+    # unc_args = parser.add_argument_group("Uncertainty and calibration args")
     # unc_args.add_argument("--cal-path")
     # unc_args.add_argument("--cal-features-path")
     # unc_args.add_argument("--cal-atom-features-path")
@@ -162,22 +166,17 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def main(args):
-    match (args.smiles_columns, args.reaction_columns):
-        case [None, None]:
-            n_components = 1
-        case [_, None]:
-            n_components = len(args.smiles_columns)
-        case [None, _]:
-            n_components = len(args.reaction_columns)
-        case _:
-            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+def find_models(model_path: Path):
+    if model_path.suffix in [".ckpt", ".pt"]:
+        return [model_path]
+    elif model_path.is_dir():
+        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
 
-    multicomponent = n_components > 1
 
-    model, input_scalers, output_scaler = load_model(
-        args.model_path, multicomponent
-    )  # TODO: connect input_scalers and output_scaler to the model
+def make_prediction_for_model(
+    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
+):
+    model = load_model(model_path, multicomponent)
 
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -189,8 +188,9 @@ def main(args):
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=None,
+        target_cols=[],
         ignore_cols=None,
+        splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
@@ -201,14 +201,16 @@ def main(args):
     test_data = build_data_from_files(
         args.test_path,
         **format_kwargs,
-        p_features=args.features_path,
+        p_descriptors=args.descriptors_path,
         p_atom_feats=args.atom_features_path,
         p_bond_feats=args.bond_features_path,
         p_atom_descs=args.atom_descriptors_path,
         **featurization_kwargs,
     )
     logger.info(f"test size: {len(test_data[0])}")
-    test_dsets = [make_dataset(d, args.rxn_mode) for d in test_data]
+    test_dsets = [
+        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+    ]
 
     if multicomponent:
         test_dset = data.MulticomponentDataset(test_dsets)
@@ -231,27 +233,21 @@ def main(args):
     # else:
     #     cal_data = None
 
-    test_loader = data.MolGraphDataLoader(
-        test_dset, args.batch_size, args.num_workers, shuffle=False
-    )
+    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
     # TODO: add uncertainty and calibration
     # if cal_data is not None:
     #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
-    #     cal_loader = data.MolGraphDataLoader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
+    #     cal_loader = data.build_dataloader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
     # else:
     #     cal_loader = None
 
     logger.info(model)
 
-    with torch.inference_mode():
-        trainer = pl.Trainer(
-            logger=False,
-            enable_progress_bar=True,
-            accelerator="auto",
-            devices=args.n_gpu if torch.cuda.is_available() else 1,
-        )
+    trainer = pl.Trainer(
+        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+    )
 
-        predss = trainer.predict(model, test_loader)
+    predss = trainer.predict(model, test_loader)
 
     # TODO: add uncertainty and calibration
     # if cal_dset is not None:
@@ -261,16 +257,51 @@ def main(args):
 
     # TODO: might want to write a shared function for this as train.py might also want to do this.
     df_test = pd.read_csv(args.test_path)
-    preds = torch.concat(predss, 1).numpy()
-    df_test["preds"] = (
-        preds.flatten()
-    )  # TODO: this will not work correctly for multi-target predictions
-    if args.output.suffix == ".pkl":
-        df_test = df_test.reset_index(drop=True)
-        df_test.to_pickle(args.output)
+    preds = torch.concat(predss, 0)
+
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        preds = torch.argmax(preds, dim=-1)
+
+    if args.target_columns is not None:
+        assert (
+            len(args.target_columns) == model.n_tasks
+        ), "Number of target columns must match the number of tasks."
+        target_columns = args.target_columns
     else:
-        df_test.to_csv(args.output, index=False)
-    logger.info(f"Predictions saved to '{args.output}'")
+        target_columns = [
+            f"pred_{i}" for i in range(preds.shape[1])
+        ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+
+    df_test[target_columns] = preds
+    if output_path.suffix == ".pkl":
+        df_test = df_test.reset_index(drop=True)
+        df_test.to_pickle(output_path)
+    else:
+        df_test.to_csv(output_path, index=False)
+    logger.info(f"Predictions saved to '{output_path}'")
+
+
+def main(args):
+    match (args.smiles_columns, args.reaction_columns):
+        case [None, None]:
+            n_components = 1
+        case [_, None]:
+            n_components = len(args.smiles_columns)
+        case [None, _]:
+            n_components = len(args.reaction_columns)
+        case _:
+            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+
+    multicomponent = n_components > 1
+
+    model_paths = find_models(args.model_path)
+
+    for i, model_path in enumerate(model_paths):
+        logger.info(f"Predicting with model at '{model_path}'")
+        output_path = args.output.parent / Path(
+            str(args.output.stem) + f"_{i}" + str(args.output.suffix)
+        )
+        make_prediction_for_model(args, model_path, multicomponent, output_path)
 
 
 if __name__ == "__main__":

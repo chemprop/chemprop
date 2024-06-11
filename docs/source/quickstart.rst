@@ -3,86 +3,82 @@
 Quickstart
 ==========
 
-To get started with chemprop, first install the package from PyPI::
+To get started with Chemprop, first install the package using the instructions in the :ref:`installation` section. Once you have Chemprop installed, you can train a model on your own data or use the pre-packaged solubility dataset to get a feel for how the package works.
 
-    pip install chemprop
+Let's use the solubility data that comes pre-packaged in the Chemprop directory:
 
-Next, download a tarball of datasets from from the `GitHub repository`_ and unpack it:
+.. code-block:: text
 
-.. code-block:: bash
-
-    wget https://raw.githubusercontent.com/chemprop/chemprop/data.tar.gz
-    tar -xvzf data.tar.gz
-
-Let's use the `FreeSolv dataset`_, a collection of experimental and calculated hydration free energies for small molecules, as an example::
-
-    $ head data/freesolv.csv
-    smiles,freesolv
-    CN(C)C(=O)c1ccc(cc1)OC,-11.01
-    CS(=O)(=O)Cl,-4.87
-    CC(C)C=C,1.83
-    CCc1cnccn1,-5.45
-    CCCCCCCO,-4.21
-    Cc1cc(cc(c1)O)C,-6.27
-    CC(C)C(C)C,2.34
-    CCCC(C)(C)O,-3.92
-    C[C@@H]1CCCC[C@@H]1C,1.58
+    $ head tests/data/regression.csv
+    smiles,logSolubility
+    OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O,-0.77
+    Cc1occc1C(=O)Nc2ccccc2,-3.3
+    CC(C)=CCCC(C)=CC(=O),-2.06
+    c1ccc2c(c1)ccc3c2ccc4c5ccccc5ccc43,-7.87
+    c1ccsc1,-1.33
+    c2ccc1scnc1c2,-1.5
+    Clc1cc(Cl)c(c(Cl)c1)c2c(Cl)cccc2Cl,-7.32
+    CC12CCC3C(CCc4cc(O)ccc34)C2CCC1O,-5.03
+    ClC4=C(Cl)C5(Cl)C3C1CC(C2OC12)C3C4(Cl)C5(Cl)Cl,-6.29
+    ...
 
 Now we're ready to train a simple Chemprop model:
 
 .. code-block:: bash
 
-    chemprop train data/freesolv.csv --dataset-type regression --output-dir freesolv
+    chemprop train --data-path tests/data/regression.csv \
+        --task-type regression \
+        --output-dir train_example
 
-This will train a model on the FreeSolv dataset (``data/freesolv.csv``) and save the model and training logs in the ``freesolv`` directory. You should see some output printed to your terminal:
+This will train a model on the solubility dataset (``tests/data/regression.csv``) and save the model and training logs in the ``train_example`` directory. You should see some output printed to your terminal that shows the model architecture, number of parameters, and a progress bar for each epoch of training. At the end, you should see something like:
 
 .. code-block:: text
 
-    Training for property freesolv
-    Splitting data with seed 0
-    Training for 100 epochs...
-    | MSE: 0.00000, MAE: 0.00000, R^2: 1.00000
+    ───────────────────────────────────────────────────────
+       Test metric             DataLoader 0
+    ───────────────────────────────────────────────────────
+        test/mse             0.7716904154601469
+    ───────────────────────────────────────────────────────
 
-With our trained model in hand, we can now use it to predict the solvation free energy of some new molecules:
+With our trained model in hand, we can now use it to predict solubilities of new molecules. In the absence of additional data, for demonstration purposes, let's just test on the same molecules that we trained on:
 
 .. code-block:: bash
 
-    chemprop predict data/freesolv.csv \
-        --checkpoint-dir freesolv \
-        --preds_path freesolv/predictions.csv
+    chemprop predict --test-path tests/data/regression.csv \
+        --model-path train_example/model_0/best.pt \
+        --preds-path train_example/predictions.csv
 
-This should output a file ``freesolv/predictions.csv`` containing the predicted solvation free energies for the molecules contained in ``data/freesolv.csv``.
+This should output a file ``train_example/predictions_0.csv`` containing the predicted log(solubility) values for the molecules contained in ``tests/data/regression.csv``.
 
 .. code-block:: text
 
-    $ head freesolv/predictions.csv
-    smiles,prediction
-    CN(C)C(=O)c1ccc(cc1)OC,-11.01
-    CS(=O)(=O)Cl,-4.87
-    CC(C)C=C,1.83
+    $ head train_example/predictions_0.csv
+    smiles,logSolubility,pred_0
+    OCC3OC(OCC2OC(OC(C#N)c1ccccc1)C(O)C(O)C2O)C(O)C(O)C3O,-0.77,-1.0349703
+    Cc1occc1C(=O)Nc2ccccc2,-3.3,-3.0304263
+    CC(C)=CCCC(C)=CC(=O),-2.06,-2.0320206
     ...
 
-Given that our test data is identical to our train data, it makes sense that the predictions are nearly identical to the ground truth values.
+Given that our test data is identical to our training data, it makes sense that the predictions are similar to the ground truth values.
 
 In the rest of this documentation, we'll go into more detail about how to:
 
-* Install Chemprop
-* Customize model architecture and task type
-* Specify training parameters: split type, learning rate, batch size, loss function, etc.
-* Quantify prediction uncertainty
-* Optimize hyperparameters
-* Use Chemprop as a python pacakge
+* :ref:`Install Chemprop<installation>`
+* :ref:`Customize model architecture and task type<train>`
+* :ref:`Specify training parameters: split type, learning rate, batch size, loss function, etc. <train>`
+* :ref:`Use Chemprop as a Python package <notebooks>`
 
-.. note::
-
-    The above list should use hyperlinks to the relevant sections of the documentation.
+..
+     Optimize hyperparameters
+    * :ref:`Quantify prediction uncertainty<predict>`
 
 Summary
 -------
 
-* Install chemprop with ``pip install chemprop``
-* Train a model with ``chemprop train INPUT dataset-type TYPE --output-dir DIR``
-* Use a saved model for prediction with ``chemprop predict INPUT --checkpoint-dir DIR --preds_path PATH``
+* Install Chemprop using the instructions in the :ref:`installation` section
+* Train a model with ``chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>``
+* Use a saved model for prediction with ``chemprop predict --test-path <test_path> --checkpoint-dir <dir> --preds-path <path>``
 
 .. _GitHub repository: https://github.com/chemprop/chemprop
-.. _FreeSolv dataset: https://pubmed.ncbi.nlm.nih.gov/24928188/
+..
+    .. _FreeSolv dataset: https://pubmed.ncbi.nlm.nih.gov/24928188/

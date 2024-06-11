@@ -1,13 +1,14 @@
 import csv
-import pytest
-import numpy as np
-
-from pathlib import Path
 
 from lightning import pytorch as pl
+import numpy as np
+import pytest
 
-from chemprop import data
-from chemprop import featurizers
+from chemprop.data.dataloader import build_dataloader
+from chemprop.data.datapoints import MoleculeDatapoint
+from chemprop.data.datasets import MoleculeDataset
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
+from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
 from chemprop.models.model import MPNN
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
@@ -26,13 +27,13 @@ def example_model_v1_prediction(data_dir):
         next(reader)
         smis, ys = zip(*[(smi, float(score)) for smi, score in reader])
 
-    featurizer = featurizers.SimpleMoleculeMolGraphFeaturizer()
+    featurizer = SimpleMoleculeMolGraphFeaturizer(atom_featurizer=MultiHotAtomFeaturizer.v1())
 
     ys = np.array(ys).reshape(-1, 1)
-    test_data = [data.MoleculeDatapoint.from_smi(smi, None) for smi in smis]
-    test_dset = data.MoleculeDataset(test_data, featurizer)
+    test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
+    test_dset = MoleculeDataset(test_data, featurizer)
 
-    test_loader = data.MolGraphDataLoader(test_dset)
+    test_loader = build_dataloader(test_dset, shuffle=False)
     return ys, test_loader
 
 

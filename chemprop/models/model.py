@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import Iterable, Union
-from sklearn.preprocessing import StandardScaler
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import nn, Tensor, optim
+from torch import Tensor, distributed, nn, optim
 
-from chemprop.data import TrainingBatch, BatchMolGraph
+from chemprop.data import BatchMolGraph, TrainingBatch
+from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
-from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import NoamLR
 
 
@@ -19,7 +18,7 @@ class MPNN(pl.LightningModule):
     predictor routine.
 
     The first two modules calculate learned fingerprints from an input molecule
-    reaction graph, and the final module takes these leared fingerprints as input to calculate a
+    reaction graph, and the final module takes these learned fingerprints as input to calculate a
     final prediction. I.e., the following operation:
 
     .. math::
@@ -40,8 +39,6 @@ class MPNN(pl.LightningModule):
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
         the metrics to use to evaluate the model during training and evaluation
-    w_t : Tensor | None, default=None
-        the weights to use for each task during training. If `None`, use uniform weights
     warmup_epochs : int, default=2
         the number of epochs to use for the learning rate warmup
     init_lr : int, default=1e-4
@@ -65,11 +62,11 @@ class MPNN(pl.LightningModule):
         predictor: Predictor,
         batch_norm: bool = True,
         metrics: Iterable[Metric] | None = None,
-        w_t: Tensor | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__()
 
@@ -87,14 +84,13 @@ class MPNN(pl.LightningModule):
         self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
 
-        # NOTE(degraff): should think about how to handle no supplied metric
+        self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
+
         self.metrics = (
             [*metrics, self.criterion]
             if metrics
-            else [self.predictor._default_metric, self.criterion]
+            else [self.predictor._T_default_metric(), self.criterion]
         )
-        w_t = torch.ones(self.n_tasks) if w_t is None else torch.tensor(w_t)
-        self.w_t = nn.Parameter(w_t.unsqueeze(0), False)
 
         self.warmup_epochs = warmup_epochs
         self.init_lr = init_lr
@@ -118,64 +114,73 @@ class MPNN(pl.LightningModule):
         return self.predictor.criterion
 
     def fingerprint(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
         H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
 
-        return H if X_f is None else torch.cat((H, X_f), 1)
+        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
     def encoding(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None, i: int = -1
     ) -> Tensor:
-        """the final hidden representations for the input molecules"""
-        return self.predictor[:-1](self.fingerprint(bmg, V_d, X_f))
+        """Calculate the :attr:`i`-th hidden representation"""
+        return self.predictor.encode(self.fingerprint(bmg, V_d, X_d), i)
 
     def forward(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_f: Tensor | None = None
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
-        return self.predictor(self.fingerprint(bmg, V_d, X_f))
+        return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
     def training_step(self, batch: TrainingBatch, batch_idx):
-        bmg, V_d, X_f, targets, w_s, lt_mask, gt_mask = batch
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
 
-        Z = self.fingerprint(bmg, V_d, X_f)
+        Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
-        l = self.criterion(preds, targets, mask, w_s, self.w_t, lt_mask, gt_mask)
+        l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train/loss", l, prog_bar=True)
+        self.log("train_loss", l, prog_bar=True)
 
         return l
+
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        self.predictor.output_transform.train()
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
-        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
+        self.log(
+            "val_loss",
+            losses[0],
+            batch_size=len(batch[0]),
+            prog_bar=True,
+            sync_dist=distributed.is_initialized(),
+        )
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         losses = self._evaluate_batch(batch)
-        metric2loss = {f"test/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        metric2loss = {f"batch_averaged_test/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
     def _evaluate_batch(self, batch) -> list[Tensor]:
-        bmg, V_d, X_f, targets, _, lt_mask, gt_mask = batch
+        bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
-        preds = self(bmg, V_d, X_f)
+        preds = self(bmg, V_d, X_d)
 
         return [
-            metric(preds, targets, mask, None, None, lt_mask, gt_mask)
-            for metric in self.metrics[:-1]
+            metric(preds, targets, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
@@ -192,15 +197,16 @@ class MPNN(pl.LightningModule):
             a tensor of varying shape depending on the task type:
 
             * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-            molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
-            per task. The final dimension is flattened, so that the targets for each task are
-            grouped. I.e., the first ``t`` elements are the first target for each task, the second
-            ``t`` elements the second target, etc.
+              molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
+              per task. The final dimension is flattened, so that the targets for each task are
+              grouped. I.e., the first ``t`` elements are the first target for each task, the second
+              ``t`` elements the second target, etc.
+
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
-        bmg, X_vd, X_f, *_ = batch
+        bmg, X_vd, X_d, *_ = batch
 
-        return self(bmg, X_vd, X_f)
+        return self(bmg, X_vd, X_d)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
@@ -222,16 +228,21 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
+    def load_submodules(cls, checkpoint_path, **kwargs):
         hparams = torch.load(checkpoint_path)["hyper_parameters"]
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor") if key not in kwargs
+            for key in ("message_passing", "agg", "predictor")
+            if key not in kwargs
         }
+        return kwargs
 
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
@@ -255,4 +266,3 @@ class MPNN(pl.LightningModule):
         model.load_state_dict(state_dict, strict=strict)
 
         return model
-

@@ -1,24 +1,13 @@
-from abc import ABC, abstractmethod
 from typing import Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
 
-
-class BondFeaturizer(ABC):
-    """A :class:`BondFeaturizer` calculates feature vectors of RDKit bonds"""
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """the length of a bond feature vector"""
-
-    @abstractmethod
-    def __call__(self, b: Bond) -> np.ndarray:
-        """featurize the bond ``b``"""
+from chemprop.featurizers.base import VectorFeaturizer
 
 
-class MultiHotBondFeaturizer(BondFeaturizer):
-    """A :class:`BondFeaturizer` feauturizes bonds based on the following attributes:
+class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
+    """A :class:`MultiHotBondFeaturizer` feauturizes bonds based on the following attributes:
 
     * ``null``-ity (i.e., is the bond ``None``?)
     * bond type
@@ -96,7 +85,8 @@ class MultiHotBondFeaturizer(BondFeaturizer):
 
     @classmethod
     def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """the index of ``x`` in ``xs``, if it exists. Otherwise, return ``len(xs) + 1``."""
+        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
+        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
         n = len(xs)
 
         return xs.index(x) if x in xs else n, n + 1

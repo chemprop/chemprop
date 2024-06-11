@@ -1,15 +1,16 @@
-from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import auto
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, TypeAlias
 import warnings
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
 
-from chemprop.featurizers.molgraph.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
 
 
@@ -35,41 +36,10 @@ class RxnMode(EnumMapping):
     products and balances imbalanced reactions"""
 
 
-class RxnMolGraphFeaturizer(ABC):
-    """A :class:`RxnMolGraphFeaturizer` featurizes reactions (i.e., a 2-tuple of reactant
-    and product molecules) into :class:`MolGraph`s"""
-
-    @abstractmethod
-    def __call__(
-        self,
-        rxn: tuple[Chem.Mol, Chem.Mol],
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        """Featurize the input reaction into a molecular graph
-
-        Parameters
-        ----------
-        rxn : tuple[Chem.Mol, Chem.Mol]
-            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
-            1st element is the product
-        atom_features_extra : np.ndarray | None, default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-        bond_features_extra : np.ndarray | None, default=None
-            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
-            `MoleculeFeaturizer`
-
-        Returns
-        -------
-        MolGraph
-            the molecular graph of the reaction
-        """
-
-
 @dataclass
-class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFeaturizer):
-    """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed reaction graph method utilized in [1]_
+class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Rxn]):
+    """A :class:`CondensedGraphOfReactionFeaturizer` featurizes reactions using the condensed
+    reaction graph method utilized in [1]_
 
     **NOTE**: This class *does not* accept a :class:`AtomFeaturizer` instance. This is because
     it requries the :meth:`num_only()` method, which is only implemented in the concrete
@@ -99,7 +69,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         super().__post_init__()
 
         self.mode = mode_
-        self.atom_fdim += len(self.atom_featurizer) - self.atom_featurizer.max_atomic_num - 1
+        self.atom_fdim += len(self.atom_featurizer) - len(self.atom_featurizer.atomic_nums) - 1
         self.bond_fdim *= 2
 
     @property
@@ -116,6 +86,26 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
+        """Featurize the input reaction into a molecular graph
+
+        Parameters
+        ----------
+        rxn : Rxn
+            a 2-tuple of atom-mapped rdkit molecules, where the 0th element is the reactant and the
+            1st element is the product
+        atom_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+        bond_features_extra : np.ndarray | None, default=None
+            *UNSUPPORTED* maintained only to maintain parity with the method signature of the
+            `MoleculeFeaturizer`
+
+        Returns
+        -------
+        MolGraph
+            the molecular graph of the reaction
+        """
+
         if atom_features_extra is not None:
             warnings.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
@@ -179,9 +169,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
-                    if a.GetIdx() not in reac_idxs
-                    else self.atom_featurizer.num_only(a)
+                    (
+                        self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                        if a.GetIdx() not in reac_idxs
+                        else self.atom_featurizer.num_only(a)
+                    )
                     for a in rct.GetAtoms()
                 ]
             )
@@ -198,9 +190,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
             # (2) regular features for each atom only in the products
             X_v_p1 = np.array(
                 [
-                    self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
-                    if a.GetIdx() not in reac_idxs
-                    else self.atom_featurizer(a)
+                    (
+                        self.atom_featurizer(pdt.GetAtomWithIdx(r2p_idx_map[a.GetIdx()]))
+                        if a.GetIdx() not in reac_idxs
+                        else self.atom_featurizer(a)
+                    )
                     for a in rct.GetAtoms()
                 ]
             )
@@ -211,13 +205,13 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         m = min(len(X_v_r), len(X_v_p))
 
         if self.mode in [RxnMode.REAC_PROD, RxnMode.REAC_PROD_BALANCE]:
-            X_v = np.hstack((X_v_r[:m], X_v_p[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+            X_v = np.hstack((X_v_r[:m], X_v_p[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
         else:
             X_v_d = X_v_p[:m] - X_v_r[:m]
             if self.mode in [RxnMode.REAC_DIFF, RxnMode.REAC_DIFF_BALANCE]:
-                X_v = np.hstack((X_v_r[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+                X_v = np.hstack((X_v_r[:m], X_v_d[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
             else:
-                X_v = np.hstack((X_v_p[:m], X_v_d[:m, self.atom_featurizer.max_atomic_num + 1 :]))
+                X_v = np.hstack((X_v_p[:m], X_v_d[:m, len(self.atom_featurizer.atomic_nums) + 1 :]))
 
         return X_v
 
@@ -336,4 +330,4 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, RxnMolGraphFe
         return r2p_idx_map, pdt_idxs, rct_idxs
 
 
-CGRFeaturizer = CondensedGraphOfReactionFeaturizer
+CGRFeaturizer: TypeAlias = CondensedGraphOfReactionFeaturizer

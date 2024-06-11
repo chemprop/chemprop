@@ -3,28 +3,32 @@
 Prediction
 ----------
 
-To load a trained model and make predictions, run ``chemprop predict`` and specify:
+To load a trained model and make predictions, run:
 
-* ``--test_path <path>`` Path to the data to predict on.
-* A checkpoint by using either:
+.. code-block::
+   
+   chemprop predict --test-path <test_path> --model-path <model_path>
 
-  #. ``--checkpoint_dir <dir>`` Directory where the model checkpoint(s) are saved (i.e. ``--save_dir`` during training). This will walk the directory, load all ``.pt`` files it finds, and treat the models as an ensemble.
-  #. ``--checkpoint_path <path>`` Path to a model checkpoint file (``.pt`` file).
-
-* ``--preds_path`` Path where a CSV file containing the predictions will be saved.
+where :code:`<test_path>` is the path to the data to test on, and :code:`<model_path>` is the path to the trained model. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--preds-path <path>`
 
 For example:
 
 .. code-block::
+  
+    chemprop predict --test-path tests/data/smis.csv \
+        --model-path tests/data/example_model_v2_regression_mol.ckpt \
+        --preds-path preds.csv
 
-    chemprop predict --test_path data/tox21.csv \
-        --checkpoint_dir tox21_checkpoints \
-        --preds_path tox21_preds.csv
 
-or
+Specifying Data to Parse
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block::
+By default, Chemprop will assume that the the 0th column in the data .csv will have the data. To use a separate column, specify:
 
-    chemprop predict --test_path data/tox21.csv \
-        --checkpoint_path tox21_checkpoints/fold_0/model_0/model.pt \
-        --preds_path tox21_preds.csv
+ * :code:`--smiles-columns` Text label of the column that includes the SMILES strings
+
+If atom-mapped reaction SMILES are used, specify:
+
+ * :code:`--reaction-columns` Text labels of the columns that include the reaction SMILES
+
+If :code:`--reaction-mode` was specified during training, those same flags must be specified for the prediction step.

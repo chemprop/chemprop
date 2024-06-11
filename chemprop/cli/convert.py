@@ -1,7 +1,7 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
-import sys
 import logging
 from pathlib import Path
+import sys
 
 from chemprop.cli.utils import Subcommand
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
@@ -26,7 +26,7 @@ class ConvertSubcommand(Subcommand):
             "-o",
             "--output-path",
             type=Path,
-            help="The path to which the converted model will be saved. Defaults to '<current working directory>/<stem of input>_v2.ckpt'",
+            help="The path to which the converted model will be saved. Defaults to 'CURRENT_DIRECTORY/STEM_OF_INPUT_v2.ckpt'",
         )
         return parser
 
