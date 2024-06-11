@@ -128,9 +128,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.criterion = criterion or Factory.build(
             self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
-        self.hparams["criterion"] = self.criterion
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
-        self.hparams["output_transform"] = self.output_transform
 
     @property
     def input_dim(self) -> int:

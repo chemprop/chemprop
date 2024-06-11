@@ -43,7 +43,9 @@ class UnscaleTransform(_ScaleTransformMixin):
 
 
 class GraphTransform(nn.Module):
-    def __init__(self, V_transform: ScaleTransform, E_transform: ScaleTransform):
+    def __init__(
+        self, V_transform: ScaleTransform | nn.Identity, E_transform: ScaleTransform | nn.Identity
+    ):
         super().__init__()
 
         self.V_transform = V_transform

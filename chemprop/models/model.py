@@ -9,7 +9,7 @@ from torch import Tensor, distributed, nn, optim
 from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
-from chemprop.nn.transforms import ScaleTransform
+from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.schedulers import NoamLR
 
 
@@ -70,7 +70,7 @@ class MPNN(pl.LightningModule):
     ):
         super().__init__()
 
-        self.save_hyperparameters(ignore=["message_passing", "agg", "predictor"])
+        self.save_hyperparameters(ignore=["message_passing", "agg", "predictor", "X_d_transform"])
         self.hparams.update(
             {
                 "message_passing": message_passing.hparams,
@@ -228,41 +228,84 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, **kwargs):
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
+    def load_submodules(cls, path, map_location, **kwargs):
+        d = torch.load(path, map_location)
+
+        try:
+            hparams = d["hyper_parameters"]
+            state_dict = d["state_dict"]
+        except KeyError:
+            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
+
+        if "message_passing.V_d_transform.mean" in state_dict:
+            dummy_tensor = (
+                torch.zeros_like(state_dict["message_passing.V_d_transform.mean"])
+                .squeeze(0)
+                .numpy()
+            )
+            hparams["message_passing"]["V_d_transform"] = ScaleTransform(
+                mean=dummy_tensor, scale=dummy_tensor
+            )
+
+        if "message_passing.graph_transform.E_transform.mean" in state_dict:
+            dummy_tensor = (
+                torch.zeros_like(state_dict["message_passing.graph_transform.E_transform.mean"])
+                .squeeze(0)
+                .numpy()
+            )
+            E_f_transform = ScaleTransform(mean=dummy_tensor, scale=dummy_tensor)
+        else:
+            E_f_transform = nn.Identity()
+
+        if "message_passing.graph_transform.V_transform.mean" in state_dict:
+            dummy_tensor = (
+                torch.zeros_like(state_dict["message_passing.graph_transform.V_transform.mean"])
+                .squeeze(0)
+                .numpy()
+            )
+            V_f_transform = ScaleTransform(mean=dummy_tensor, scale=dummy_tensor)
+        else:
+            V_f_transform = nn.Identity()
+
+        if isinstance(E_f_transform, nn.Identity) and isinstance(V_f_transform, nn.Identity):
+            pass
+        else:
+            hparams["message_passing"]["graph_transform"] = GraphTransform(
+                V_f_transform, E_f_transform
+            )
+
+        if "predictor.output_transform.mean" in state_dict:
+            dummy_tensor = (
+                torch.zeros_like(state_dict["predictor.output_transform.mean"]).squeeze(0).numpy()
+            )
+            hparams["predictor"]["output_transform"] = UnscaleTransform(
+                mean=dummy_tensor, scale=dummy_tensor
+            )
+
+        if "X_d_transform.mean" in state_dict and "X_d_transform" not in kwargs:
+            dummy_tensor = torch.zeros_like(state_dict["X_d_transform.mean"]).squeeze(0).numpy()
+            kwargs["X_d_transform"] = ScaleTransform(mean=dummy_tensor, scale=dummy_tensor)
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
             for key in ("message_passing", "agg", "predictor")
             if key not in kwargs
         }
-        return kwargs
+        return kwargs, state_dict
 
     @classmethod
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
-        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
+        kwargs, _ = cls.load_submodules(checkpoint_path, map_location, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
 
     @classmethod
-    def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
-        d = torch.load(model_path, map_location=map_location)
-
-        try:
-            hparams = d["hyper_parameters"]
-            state_dict = d["state_dict"]
-        except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {model_path}. ")
-
-        for key in ["message_passing", "agg", "predictor"]:
-            hparam_kwargs = hparams[key]
-            hparam_cls = hparam_kwargs.pop("cls")
-            hparams[key] = hparam_cls(**hparam_kwargs)
-
-        model = cls(**hparams)
+    def load_from_file(cls, model_path, map_location=None, strict=True, **kwargs) -> MPNN:
+        kwargs, state_dict = cls.load_submodules(model_path, map_location, **kwargs)
+        model = cls(**kwargs)
         model.load_state_dict(state_dict, strict=strict)
 
         return model
