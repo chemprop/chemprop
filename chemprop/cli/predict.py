@@ -167,7 +167,7 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def find_models(model_paths: Path):
+def find_models(model_paths: list[Path]):
     collected_model_paths = []
 
     for model_path in model_paths:
