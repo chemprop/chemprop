@@ -13,7 +13,7 @@ from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils import Factory, make_mol
+from chemprop.utils import make_mol
 
 logger = logging.getLogger(__name__)
 
@@ -371,7 +371,8 @@ def load_input_feats_and_descs(
             for index in paths:
                 if index >= n_molecules:
                     raise ValueError(
-                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be specified for indices 0-{n_molecules - 1}! Got index {index}."
+                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be "
+                        f"specified for indices 0-{n_molecules - 1}! Got index {index}."
                     )
 
             features = []
