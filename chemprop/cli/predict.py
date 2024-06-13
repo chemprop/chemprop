@@ -2,6 +2,7 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+from typing import Iterator
 
 from lightning import pytorch as pl
 import pandas as pd
@@ -185,16 +186,14 @@ def find_models(model_paths: list[Path]):
 
 
 def make_prediction_for_model(
-    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
+    args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent)
-
+    model = load_model(model_paths[0], multicomponent)
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
         if "bounded" in loss_function
     )
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
@@ -252,27 +251,36 @@ def make_prediction_for_model(
     # else:
     #     cal_loader = None
 
-    logger.info(model)
+    individual_preds = []
+    for model_path in model_paths:
+        logger.info(f"Predicting with model at '{model_path}'")
 
-    trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
-    )
+        model = load_model(model_path, multicomponent)
 
-    predss = trainer.predict(model, test_loader)
+        logger.info(model)
 
-    # TODO: add uncertainty and calibration
-    # if cal_dset is not None:
-    #     if args.task_type == "regression":
-    #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-    #     predss_cal = trainer.predict(model, cal_loader)[0]
+        trainer = pl.Trainer(
+            logger=False,
+            enable_progress_bar=True,
+            accelerator=args.accelerator,
+            devices=args.devices,
+        )
 
-    # TODO: might want to write a shared function for this as train.py might also want to do this.
-    df_test = pd.read_csv(args.test_path)
-    preds = torch.concat(predss, 0)
+        predss = trainer.predict(model, test_loader)
 
-    if isinstance(model.predictor, MulticlassClassificationFFN):
-        preds = torch.argmax(preds, dim=-1)
+        # TODO: add uncertainty and calibration
+        # if cal_dset is not None:
+        #     if args.task_type == "regression":
+        #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
+        #     predss_cal = trainer.predict(model, cal_loader)[0]
 
+        # TODO: might want to write a shared function for this as train.py might also want to do this.
+        preds = torch.concat(predss, 0)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            preds = torch.argmax(preds, dim=-1)
+        individual_preds.append(preds)
+
+    average_preds = torch.mean(torch.stack(individual_preds), dim=0)
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -283,13 +291,33 @@ def make_prediction_for_model(
             f"pred_{i}" for i in range(preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test[target_columns] = preds
+    df_test = pd.read_csv(args.test_path)
+    df_test[target_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
     else:
         df_test.to_csv(output_path, index=False)
     logger.info(f"Predictions saved to '{output_path}'")
+
+    if len(model_paths) > 1:
+        individual_preds = torch.concat(individual_preds, 1)
+        target_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
+        ]
+
+        df_test = pd.read_csv(args.test_path)
+        df_test[target_columns] = individual_preds
+
+        output_path = output_path.parent / Path(
+            str(args.output.stem) + "_individual" + str(output_path.suffix)
+        )
+        if output_path.suffix == ".pkl":
+            df_test = df_test.reset_index(drop=True)
+            df_test.to_pickle(output_path)
+        else:
+            df_test.to_csv(output_path, index=False)
+        logger.info(f"Individual predictions saved to '{output_path}'")
 
 
 def main(args):
@@ -307,12 +335,7 @@ def main(args):
 
     model_paths = find_models(args.model_path)
 
-    for i, model_path in enumerate(model_paths):
-        logger.info(f"Predicting with model at '{model_path}'")
-        output_path = args.output.parent / Path(
-            str(args.output.stem) + f"_{i}" + str(args.output.suffix)
-        )
-        make_prediction_for_model(args, model_path, multicomponent, output_path)
+    make_prediction_for_model(args, model_paths, multicomponent, output_path=args.output)
 
 
 if __name__ == "__main__":
