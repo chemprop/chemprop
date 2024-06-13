@@ -266,6 +266,9 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
     args.search_parameter_keywords = list(search_parameters)
 
+    if not args.hyperopt_n_initial_points:
+        args.hyperopt_n_initial_points = args.raytune_num_samples // 2
+
     return args
 
 
