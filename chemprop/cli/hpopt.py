@@ -225,6 +225,18 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         help="Passed directly to Ray Tune init to control number of GPUs to use",
     )
 
+    raytune_args.add_argument(
+        "--raytune-cpu-resources-per-worker",
+        type=int,
+        help="Passed directly to Ray Tune ScalingConfig to control cpu resources per worker",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-gpu-resources-per-worker",
+        type=int,
+        help="Passed directly to Ray Tune ScalingConfig to control gpu resources per worker",
+    )
+
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
 
     hyperopt_args.add_argument(
@@ -349,8 +361,16 @@ def tune_model(
         case _:
             raise ValueError(f"Invalid trial scheduler! got: {args.raytune_trial_scheduler}.")
 
+    resources_per_worker = {}
+    if args.raytune_cpu_resources_per_worker:
+        resources_per_worker["CPU"] = args.raytune_cpu_resources_per_worker
+    if args.raytune_gpu_resources_per_worker:
+        resources_per_worker["GPU"] = args.raytune_gpu_resources_per_worker
+    if not resources_per_worker:
+        resources_per_worker = None
+
     scaling_config = ScalingConfig(
-        num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
+        num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu, resources_per_worker=resources_per_worker,
     )
 
     checkpoint_config = CheckpointConfig(
