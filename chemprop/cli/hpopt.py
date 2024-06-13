@@ -31,7 +31,22 @@ from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 NO_RAY = False
-DEFAULT_SEARCH_SPACE = {}
+DEFAULT_SEARCH_SPACE = {
+    "activation": None,
+    "aggregation": None,
+    "aggregation_norm": None,
+    "batch_size": None,
+    "depth": None,
+    "dropout": None,
+    "ffn_hidden_dim": None,
+    "ffn_num_layers": None,
+    "final_lr_ratio": None,
+    "message_hidden_dim": None,
+    "init_lr_ratio": None,
+    "max_lr": None,
+    "warmup_epochs": None,
+}
+
 try:
     import ray
     from ray import tune
