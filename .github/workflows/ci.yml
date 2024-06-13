@@ -97,6 +97,7 @@ jobs:
         run: |
           python -m pip install matplotlib
           pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'hpopting.ipynb')
+          pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
       - name: Test hpopting.ipynb (Python 3.11 only)
         if: ${{ matrix.python-version == '3.11' }}
         shell: bash -l {0}
