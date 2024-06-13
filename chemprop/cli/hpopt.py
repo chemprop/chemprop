@@ -207,6 +207,24 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
     )
 
+    raytune_args.add_argument(
+        "--raytune-temp-dir",
+        type=Path,
+        help="Passed directly to Ray Tune init to control temporary directory",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-num-cpus",
+        type=int,
+        help="Passed directly to Ray Tune init to control number of CPUs to use",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-num-gpus",
+        type=int,
+        help="Passed directly to Ray Tune init to control number of GPUs to use",
+    )
+
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
 
     hyperopt_args.add_argument(
@@ -397,6 +415,11 @@ def main(args: Namespace):
         raise ImportError(
             "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install ray or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
         )
+    
+    if not ray.is_initialized():
+        ray.init(_temp_dir=args.raytune_temp_dir, num_cpus=args.raytune_num_cpus, num_gpus=args.raytune_num_gpus)
+    else:
+        logger.info("Ray is already initialized.")
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
