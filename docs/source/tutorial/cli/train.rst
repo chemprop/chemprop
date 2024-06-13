@@ -251,44 +251,42 @@ Note that bond descriptors are not currently supported because the post message 
 The bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-features-scaling`.
 
 
-Extra Descriptors
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Extra Datapoint Descriptors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Additional descriptors can be concatenated to the learned representaiton after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
-
-1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features. 
-2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
+Additional datapoint descriptors can be concatenated to the learned representaiton after aggregation. These extra descriptors could be molecule-level features. They are provided using :code:`--descriptors-path /path/to/descriptors.npz` where the descriptors are saved as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
 
 
 Molecule-Level 2D Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Morgan fingerprints can be generated as molecular 2D features using :code:`--features-generators`:
+Chemprop provides several molecule featurizers that automatically calculates molecular features and uses them as extra datapoint descriptors. These are specified using :code:`--features-generators` followed by one or more of the following:
 
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
 * :code:`rdkit_2d` RDKit 2D features
 
-Note that the RDKit 2D features are not normalized. In Chemprop v1, descriptastorus was used to automatically calculate normalized RDKit 2D features. This was removed in v2 both because it reduces the number of dependencies and because the origin of the descriptastorus scalers is unknown.
+.. note::
+   The Morgan fingerprints should not be scaled. Use :code:`--no-descriptor-scaling` to ensure this.
 
-If you would like to use the descriptastorus normalized features, you can calculate them manually as shown below::
+   The RDKit 2D features are not normalized. The :code:`StandardScaler` used in the CLI to normalize is non-optimal for some of the RDKit features. It is recommended to precompute and scale these features outside of the CLI using an appropriate scaler and then provide them using :code:`--descriptors-path` and :code:`--no-descriptor-scaling` as described above. 
+   
+   In Chemprop v1, :code:`descriptastorus` was used to automatically calculate normalized RDKit 2D features. This was removed in v2 because it reduces the number of dependencies and the origin of the descriptastorus scalers is unknown. If you would like to use the descriptastorus normalized features, you can calculate them manually as shown below::
 
-   # First make sure you have descriptastorus installed in your environment
-   pip install git+https://github.com/bp-kelley/descriptastorus
+      # First make sure you have descriptastorus installed in your environment
+      pip install git+https://github.com/bp-kelley/descriptastorus
 
-   # Then run a script like the following
-   import numpy as np
-   import pandas as pd
-   from descriptastorus.descriptors import rdNormalizedDescriptors
+      # Then run a script like the following
+      import numpy as np
+      import pandas as pd
+      from descriptastorus.descriptors import rdNormalizedDescriptors
 
-   df = pd.read_csv("mydata.csv") # Replace with your data file. The SMILES column should be named "smiles".
+      df = pd.read_csv("mydata.csv") # Replace with your data file. The SMILES column should be named "smiles".
 
-   generator = rdNormalizedDescriptors.RDKit2DNormalized()
-   rdkit_descriptors = np.array([generator.process(smi)[1:] for smi in df.smiles]) 
-   np.savez("rdkit_descriptors.npz", rdkit_descriptors)
+      generator = rdNormalizedDescriptors.RDKit2DNormalized()
+      rdkit_descriptors = np.array([generator.process(smi)[1:] for smi in df.smiles]) 
+      np.savez("rdkit_descriptors.npz", rdkit_descriptors)
 
-   # Finally run Chemprop with the --descriptors-path and --no-descriptor-scaling flags
-   chemprop train --data-path mydata.csv --descriptors-path rdkit_descriptors.npz --no-descriptor-scaling
 
 Missing Target Values
 ^^^^^^^^^^^^^^^^^^^^^
