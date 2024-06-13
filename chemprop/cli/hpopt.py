@@ -415,9 +415,13 @@ def main(args: Namespace):
         raise ImportError(
             "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install ray or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
         )
-    
+
     if not ray.is_initialized():
-        ray.init(_temp_dir=args.raytune_temp_dir, num_cpus=args.raytune_num_cpus, num_gpus=args.raytune_num_gpus)
+        ray.init(
+            _temp_dir=args.raytune_temp_dir,
+            num_cpus=args.raytune_num_cpus,
+            num_gpus=args.raytune_num_gpus,
+        )
     else:
         logger.info("Ray is already initialized.")
 
