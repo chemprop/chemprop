@@ -358,7 +358,7 @@ def tune_model(
         case "hyperopt":
             if NO_HYPEROPT:
                 raise ImportError(
-                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U hyperopt' to install."
+                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U hyperopt' to install or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
                 )
 
             search_alg = HyperOptSearch(
@@ -368,7 +368,7 @@ def tune_model(
         case "optuna":
             if NO_OPTUNA:
                 raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install."
+                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
                 )
 
             search_alg = OptunaSearch()
@@ -395,7 +395,7 @@ def tune_model(
 def main(args: Namespace):
     if NO_RAY:
         raise ImportError(
-            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install."
+            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install ray or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
         )
 
     format_kwargs = dict(
