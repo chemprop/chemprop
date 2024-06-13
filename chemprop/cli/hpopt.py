@@ -230,7 +230,6 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     hyperopt_args.add_argument(
         "--hyperopt-n-initial-points",
         type=int,
-        default=20,
         help="Passed directly to HyperOptSearch to control number of initial points to sample",
     )
 
