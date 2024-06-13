@@ -418,7 +418,7 @@ def main(args: Namespace):
 
     if not ray.is_initialized():
         ray.init(
-            _temp_dir=args.raytune_temp_dir,
+            _temp_dir=str(args.raytune_temp_dir),
             num_cpus=args.raytune_num_cpus,
             num_gpus=args.raytune_num_gpus,
         )
