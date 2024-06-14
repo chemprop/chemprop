@@ -453,9 +453,14 @@ def main(args: Namespace):
             "Ray Tune requires ray to be installed. If you installed Chemprop from PyPI, make sure that your Python version is 3.11 and use 'pip install -U ray[tune]' to install ray. If you installed from source, use 'pip install -e .[hpopt]' in Chemprop folder to install all hpopt relevant packages."
         )
 
+    if args.raytune_temp_dir:
+        temp_dir = str(args.raytune_temp_dir)
+    else:
+        temp_dir = None
+
     if not ray.is_initialized():
         ray.init(
-            _temp_dir=str(args.raytune_temp_dir),
+            _temp_dir=temp_dir,
             num_cpus=args.raytune_num_cpus,
             num_gpus=args.raytune_num_gpus,
         )
