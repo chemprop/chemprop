@@ -435,15 +435,7 @@ def tune_model(
         tune_config=tune_config,
     )
 
-    try:
-        return tuner.fit()
-    except OSError as e:
-        if "AF_UNIX path length cannot exceed 107 bytes" in str(e):
-            raise OSError(
-                f"Ray Tune fails due to: {e}. This can sometimes be solved by providing a temporary directory, num_cpus, and num_gpus to Ray Tune via the CLI: --raytune-temp-dir <absolute_path> --raytune-num-cpus <int> --raytune-num-gpus <int>."
-            )
-        else:
-            raise e
+    return tuner.fit()
 
 
 def main(args: Namespace):
@@ -453,11 +445,19 @@ def main(args: Namespace):
         )
 
     if not ray.is_initialized():
-        ray.init(
-            _temp_dir=args.raytune_temp_dir,
-            num_cpus=args.raytune_num_cpus,
-            num_gpus=args.raytune_num_gpus,
-        )
+        try:
+            ray.init(
+                _temp_dir=args.raytune_temp_dir,
+                num_cpus=args.raytune_num_cpus,
+                num_gpus=args.raytune_num_gpus,
+            )
+        except OSError as e:
+            if "AF_UNIX path length cannot exceed 107 bytes" in str(e):
+                raise OSError(
+                    f"Ray Tune fails due to: {e}. This can sometimes be solved by providing a temporary directory, num_cpus, and num_gpus to Ray Tune via the CLI: --raytune-temp-dir <absolute_path> --raytune-num-cpus <int> --raytune-num-gpus <int>."
+                )
+            else:
+                raise e
     else:
         logger.info("Ray is already initialized.")
 
