@@ -434,7 +434,15 @@ def tune_model(
         tune_config=tune_config,
     )
 
-    return tuner.fit()
+    try:
+        return tuner.fit()
+    except OSError as e:
+        if "AF_UNIX path length cannot exceed 107 bytes" in str(e):
+            raise OSError(
+                f"Ray Tune fails due to: {e}. This can sometimes be solved by providing a temporary directory, num_cpus, and num_gpus to Ray Tune via the CLI: --raytune-temp-dir <absolute_path> --raytune-num-cpus <int> --raytune-num-gpus <int>."
+            )
+        else:
+            raise e
 
 
 def main(args: Namespace):
