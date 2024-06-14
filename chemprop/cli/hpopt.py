@@ -258,10 +258,6 @@ def process_hpopt_args(args: Namespace) -> Namespace:
     search_parameters = set()
 
     available_search_parameters = list(SEARCH_SPACE.keys()) + list(SEARCH_PARAM_KEYWORDS_MAP.keys())
-    available_search_parameters.remove("init_lr_ratio")
-    available_search_parameters.remove("final_lr_ratio")
-    available_search_parameters.append("init_lr")
-    available_search_parameters.append("final_lr")
 
     for keyword in args.search_parameter_keywords:
         if keyword not in available_search_parameters:
