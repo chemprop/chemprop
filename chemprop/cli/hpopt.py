@@ -413,7 +413,7 @@ def tune_model(
         case "optuna":
             if NO_OPTUNA:
                 raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
+                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install or use 'pip install -e .[hpopt]' in chemprop folder if you installed from source to install all hpopt relevant packages."
                 )
 
             search_alg = OptunaSearch()
@@ -440,7 +440,7 @@ def tune_model(
 def main(args: Namespace):
     if NO_RAY:
         raise ImportError(
-            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install ray or use 'pip install -e .[hpopt]' in chemprop folder to install all hpopt relevant packages."
+            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install ray or use 'pip install -e .[hpopt]' in chemprop folder if you installed from source to install all hpopt relevant packages."
         )
 
     if not ray.is_initialized():
