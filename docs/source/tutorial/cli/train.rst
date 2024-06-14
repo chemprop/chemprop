@@ -252,7 +252,7 @@ The bond-level features are scaled by default. This can be disabled with the opt
 Extra Descriptors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Additional descriptors can be concatenated to the learned representaiton after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
+Additional descriptors can be concatenated to the learned representation after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
 
 1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features. 
 2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.

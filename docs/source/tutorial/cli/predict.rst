@@ -9,7 +9,7 @@ To load a trained model and make predictions, run:
    
    chemprop predict --test-path <test_path> --model-path <model_path>
 
-where :code:`<test_path>` is the path to the data to test on, and :code:`<model_path>` is the path to the trained model. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--preds-path <path>`
+where :code:`<test_path>` is the path to the data to test on, and :code:`<model_path>` is the path to the trained model (.ckpt or .pt file) or a directory containing the trained model files. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--preds-path <path>`
 
 For example:
 
