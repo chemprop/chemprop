@@ -280,7 +280,7 @@ def make_prediction_for_model(
             preds = torch.argmax(preds, dim=-1)
         individual_preds.append(preds)
 
-    average_preds = torch.mean(torch.stack(individual_preds), dim=0)
+    average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
