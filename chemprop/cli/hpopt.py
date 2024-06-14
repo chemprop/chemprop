@@ -368,9 +368,14 @@ def tune_model(
         resources_per_worker["GPU"] = args.raytune_gpu_resources_per_worker
     if not resources_per_worker:
         resources_per_worker = None
+    
+    if args.raytune_gpu_resources_per_worker:
+        use_gpu = True
+    else:
+        use_gpu = args.raytune_use_gpu
 
     scaling_config = ScalingConfig(
-        num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu, resources_per_worker=resources_per_worker,
+        num_workers=args.raytune_num_workers, use_gpu=use_gpu, resources_per_worker=resources_per_worker,
     )
 
     checkpoint_config = CheckpointConfig(
