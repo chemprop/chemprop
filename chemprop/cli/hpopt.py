@@ -99,6 +99,8 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "message_hidden_dim"],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
+    "init_lr": ["init_lr_ratio"],
+    "final_lr": ["final_lr_ratio"],
 }
 
 
@@ -208,8 +210,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     raytune_args.add_argument(
-        "--raytune-temp-dir",
-        help="Passed directly to Ray Tune init to control temporary directory",
+        "--raytune-temp-dir", help="Passed directly to Ray Tune init to control temporary directory"
     )
 
     raytune_args.add_argument(
