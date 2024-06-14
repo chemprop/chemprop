@@ -209,7 +209,6 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
     raytune_args.add_argument(
         "--raytune-temp-dir",
-        type=Path,
         help="Passed directly to Ray Tune init to control temporary directory",
     )
 
@@ -453,14 +452,9 @@ def main(args: Namespace):
             "Ray Tune requires ray to be installed. If you installed Chemprop from PyPI, make sure that your Python version is 3.11 and use 'pip install -U ray[tune]' to install ray. If you installed from source, use 'pip install -e .[hpopt]' in Chemprop folder to install all hpopt relevant packages."
         )
 
-    if args.raytune_temp_dir:
-        temp_dir = str(args.raytune_temp_dir)
-    else:
-        temp_dir = None
-
     if not ray.is_initialized():
         ray.init(
-            _temp_dir=temp_dir,
+            _temp_dir=args.raytune_temp_dir,
             num_cpus=args.raytune_num_cpus,
             num_gpus=args.raytune_num_gpus,
         )
