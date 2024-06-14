@@ -58,7 +58,8 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--model-path",
         required=True,
         type=Path,
-        help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+        nargs="+",
+        help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
     )
     parser.add_argument(
         "--target-columns",
@@ -166,11 +167,21 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def find_models(model_path: Path):
-    if model_path.suffix in [".ckpt", ".pt"]:
-        return [model_path]
-    elif model_path.is_dir():
-        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
+def find_models(model_paths: list[Path]):
+    collected_model_paths = []
+
+    for model_path in model_paths:
+        if model_path.suffix in [".ckpt", ".pt"]:
+            collected_model_paths.append(model_path)
+        elif model_path.is_dir():
+            collected_model_paths.extend(list(model_path.rglob("*.pt")))
+        else:
+            raise ArgumentError(
+                argument=None,
+                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
+            )
+
+    return collected_model_paths
 
 
 def make_prediction_for_model(

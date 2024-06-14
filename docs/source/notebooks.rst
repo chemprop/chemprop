@@ -1,7 +1,7 @@
 .. _notebooks:
 
-Jupyter Notebook Tutorials
-==========================
+Jupyter Notebook Examples
+=========================
 
 Chemprop's usage within Python scripts is also illustrated by the Jupyter notebooks on the following pages.
 
@@ -17,5 +17,4 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     training_regression_reaction
     predicting_regression_reaction
     mpnn_fingerprints
-    extra_features_from_featurizer
     convert_v1_to_v2
