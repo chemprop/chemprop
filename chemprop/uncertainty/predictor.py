@@ -14,7 +14,7 @@ class UncertaintyPredictor:
         return self._calc_prediction_uncertainty(dataloader, models, trainer)
 
     @abstractmethod
-    def _calc_prediction_uncertainty(self, dataloader, models) -> Tensor:
+    def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         """
         Calculate the uncalibrated predictions and uncertainties for the dataloader.
         """
