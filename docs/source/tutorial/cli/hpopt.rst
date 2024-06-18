@@ -4,7 +4,7 @@ Hyperparameter Optimization
 ============================
 
 .. note::
-   Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization, which is not yet compatible with python=3.12 and is an optional install. To install the required dependencies, run :code:`pip install 'chemprop[hpopt]'` if installing with Option 1, or :code:`pip install -e ".[hpopt]"` if installing with Option 2 or 3.
+   Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization, which is not yet compatible with python=3.12 and is an optional install. To install the required dependencies, make sure your Python version is 3.11 and run :code:`pip install -U ray[tune]` if installing with PyPI, or :code:`pip install -e .[hpopt]` if installing from source.
 
 Searching Hyperparameter Space
 --------------------------------
@@ -26,34 +26,37 @@ For example:
 
 The search parameters can be any combination of hyperparameters or a predefined set. Options include :code:`basic` (default), which consists of:
 
- * :code:`depth` 
- * :code:`ffn_num_layers`
- * :code:`dropout` 
- * :code:`message_hidden_dim`
- * :code:`ffn_hidden_dim`
+ * :code:`depth` The number of message passing steps
+ * :code:`ffn_num_layers` The number of layers in the FFN model
+ * :code:`dropout` The probability (from 0 to 1) of dropout in the MPNN & FNN layers
+ * :code:`message_hidden_dim` The hidden dimension in the message passing step 
+ * :code:`ffn_hidden_dim` The hidden dimension in the FFN model
 
 Another option is :code:`learning_rate` which includes:
 
- * :code:`max_lr`
- * :code:`init_lr_ratio`
- * :code:`final_lr_ratio`
- * :code:`warmup_epochs`
+ * :code:`max_lr` The maximum learning rate
+ * :code:`init_lr_ratio` Ratio of the initial learning rate to the max learning rate
+ * :code:`final_lr_ratio` Ratio of the final learning rate to the max learning rate 
+ * :code:`warmup_epochs` Number of warmup epochs, during which the learning rate linearly increases from the initial to the maximum learning rate
 
 Other individual search parameters include:
 
- * :code:`activation`
- * :code:`aggregation`
- * :code:`aggregation_norm`
- * :code:`batch_size`
+ * :code:`activation` The activation function used in the MPNN & FFN layers. Choices include ``relu``, ``leakyrelu``, ``prelu``, ``tanh``, ``selu``, and ``elu``
+ * :code:`aggregation` Aggregation mode used during molecule-level predictor. Choices include ``mean``, ``sum``, ``norm``
+ * :code:`aggregation_norm` For ``norm`` aggregation, the normalization factor by which atomic features are divided
+ * :code:`batch_size` Batch size for dataloader
 
 Specifying :code:`--search-parameter-keywords all` will search over all 13 of the above parameters.
 
 The following other common keywords may be used:
-
+ 
  * :code:`--raytune-num-samples <num_samples>` The number of conditions to sample 
- * :code:`--hyperopt-random-state-seed <seed>` The random state seed used during hyperparameter optimization.
+ * :code:`--raytune-num-cpus <num_cpus>` The number of CPUs to use  
+ * :code:`--raytune-num-gpus <num_gpus>` The number of GPUs to use  
+ * :code:`--raytune-max-concurrent-trials <num_trials>` The maximum number of concurrent trials
+ * :code:`--raytune-search-algorithm <algorithm>` The choice of control search algorithm (either ``random``, ``hyperopt``, or ``optuna``). If ``hyperopt`` is specified, then the arguments ``--hyperopt-n-initial-points <num_points>`` and ``--hyperopt-random-state-seed <seed>`` can be specified.
 
-Other keywords related to Raytune training are also available (see :ref:`cmd` for a full list).
+Other keywords related to hyperparameter optimization are also available (see :ref:`cmd` for a full list).
 
 Applying Optimal Hyperparameters
 ---------------------------------
