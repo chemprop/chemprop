@@ -338,7 +338,7 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    model_paths = find_models(args.model_path)
+    model_paths = find_models(args.model_paths)
 
     make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 
