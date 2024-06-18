@@ -318,6 +318,10 @@ def make_prediction_for_models(
         else:
             df_test.to_csv(output_path, index=False)
         logger.info(f"Individual predictions saved to '{output_path}'")
+        for i, model_path in enumerate(model_paths):
+            logger.info(
+                f"Results from model path {model_path} are saved under the column name ending with 'model_{i}'"
+            )
 
 
 def main(args):
