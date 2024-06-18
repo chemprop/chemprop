@@ -61,7 +61,11 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         # layers_per_message: int = 1,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
+        # about double saving their state_dict values.
+        self.save_hyperparameters(ignore=["V_d_transform", "graph_transform"])
+        self.hparams["V_d_transform"] = V_d_transform
+        self.hparams["graph_transform"] = graph_transform
         self.hparams["cls"] = self.__class__
 
         self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
