@@ -1,11 +1,14 @@
 from dataclasses import InitVar, dataclass
+from typing import List, Optional
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Mol
 
 from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.featurizers.base import GraphFeaturizer
+from chemprop.featurizers.bond import MultiHotBondFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
 
@@ -28,10 +31,16 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
+    keep_atom_features : Optional[List[bool]], optional
+        a list of booleans to indicate which atom features to keep. If None, all features are kept.
+    keep_bond_features : Optional[List[bool]], optional
+        a list of booleans to indicate which bond features to keep. If None, all features are kept.
     """
 
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
+    keep_atom_features: Optional[List[bool]] = None
+    keep_bond_features: Optional[List[bool]] = None
 
     def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
         super().__post_init__()
@@ -40,6 +49,12 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         self.extra_bond_fdim = extra_bond_fdim
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
+
+        # Ensure atom and bond featurizers have keep_features if they are specified
+        if isinstance(self.atom_featurizer, MultiHotAtomFeaturizer) and self.keep_atom_features is not None:
+            self.atom_featurizer.keep_features = self.keep_atom_features
+        if isinstance(self.bond_featurizer, MultiHotBondFeaturizer) and self.keep_bond_features is not None:
+            self.bond_featurizer.keep_features = self.keep_bond_features
 
     def __call__(
         self,
