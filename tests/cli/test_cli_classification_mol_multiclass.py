@@ -31,6 +31,7 @@ def test_train_quick(monkeypatch, data_path):
         "0",
         "--task-type",
         "multiclass",
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:
