@@ -132,6 +132,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         data_path,
         "--model-path",
         model_path,
+        model_path,
         "--output",
         str(tmp_path / "preds.csv"),
     ]
@@ -141,6 +142,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         main()
 
     assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_individual.csv").exists()
 
 
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
