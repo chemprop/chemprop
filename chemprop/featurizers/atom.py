@@ -1,5 +1,5 @@
 from enum import auto
-from typing import Sequence
+from typing import List, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Atom, HybridizationType
@@ -45,6 +45,8 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         the choices for number of bonded hydrogen atoms.
     hybridizations : Sequence[int]
         the choices for an atom’s hybridization type. See :class:`rdkit.Chem.rdchem.HybridizationType` for possible integer values.
+    keep_features : List[bool], optional
+        a list of booleans to indicate which atom features to keep. If None, all features are kept. If False, corresponding feature is set to zeros. Useful for ablation and SHAP analysis.
     """
 
     def __init__(
@@ -55,6 +57,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         chiral_tags: Sequence[int],
         num_Hs: Sequence[int],
         hybridizations: Sequence[int],
+        keep_features: List[bool] = None,
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {i: i for i in degrees}
@@ -81,7 +84,12 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             1,
             1,
         ]
+        
         self.__size = sum(subfeat_sizes)
+
+        if keep_features is None:
+            keep_features = [True] * len(subfeat_sizes)
+        self.keep_features = keep_features
 
     def __len__(self) -> int:
         return self.__size
@@ -101,12 +109,15 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             a.GetHybridization(),
         ]
         i = 0
-        for feat, choices in zip(feats, self._subfeats):
+        for feat, choices, keep in zip(feats, self._subfeats, self.keep_features[:len(feats)]):
             j = choices.get(feat, len(choices))
-            x[i + j] = 1
+            if keep:
+                x[i + j] = 1
             i += len(choices) + 1
-        x[i] = int(a.GetIsAromatic())
-        x[i + 1] = 0.01 * a.GetMass()
+        if self.keep_features[len(feats)]:
+            x[i] = int(a.GetIsAromatic())
+        if self.keep_features[len(feats) + 1]:
+            x[i + 1] = 0.01 * a.GetMass()
 
         return x
 
