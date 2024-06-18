@@ -57,6 +57,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--model-path",
+        "--model-paths",
         required=True,
         type=Path,
         nargs="+",
