@@ -96,7 +96,11 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             x[i + stereo_bit] = 1
 
         return x
-
+    
+    def zero_mask(self) -> np.ndarray:
+        """featurize the bond by setting all bits to zero"""
+        return np.zeros(len(self), int)
+        
     @classmethod
     def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
         """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.

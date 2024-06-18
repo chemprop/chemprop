@@ -132,7 +132,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         x[i] = 1
 
         return x
-
+    
+    def zero_mask(self) -> np.ndarray:
+        """featurize the atom by setting all bits to zero"""
+        return np.zeros(len(self))
+    
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
         """The original implementation used in Chemprop V1 [1]_, [2]_.

@@ -32,15 +32,21 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
     keep_atom_features : Optional[List[bool]], optional
-        a list of booleans to indicate which atom features to keep. If None, all features are kept.
+        a list of booleans to indicate which atom features from atom featurizer to keep. If None, all features are kept.
     keep_bond_features : Optional[List[bool]], optional
-        a list of booleans to indicate which bond features to keep. If None, all features are kept.
+        a list of booleans to indicate which bond features from bond featurizer to keep. If None, all features are kept.
+    keep_atoms : Optional[List[bool]], optional
+        a list of booleans to indicate which atoms/nodes to keep. If None, all atoms are kept.
+    keep_bonds : Optional[List[bool]], optional
+        a list of booleans to indicate which bonds/edges to keep. If None, all bonds are kept.        
     """
 
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
     keep_atom_features: Optional[List[bool]] = None
     keep_bond_features: Optional[List[bool]] = None
+    keep_atoms: Optional[List[bool]] = None
+    keep_bonds: Optional[List[bool]] = None
 
     def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
         super().__post_init__()
@@ -64,6 +70,11 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     ) -> MolGraph:
         n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
+        
+        if self.keep_atoms is None:
+            self.keep_atoms = [True] * n_atoms
+        if self.keep_bonds is None:
+            self.keep_bonds = [True] * n_bonds
 
         if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
             raise ValueError(
@@ -79,13 +90,15 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
         else:
-            V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
-        E = np.empty((2 * n_bonds, self.bond_fdim))
-        edge_index = [[], []]
+            V = np.array([self.atom_featurizer(a) if self.keep_atoms[a.GetIdx()] else self.atom_featurizer.zero_mask()
+                          for a in mol.GetAtoms()], dtype=np.single)
 
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
-
+        
+        E = np.empty((2 * n_bonds, self.bond_fdim))
+        edge_index = [[], []]
+        
         i = 0
         for u in range(n_atoms):
             for v in range(u + 1, n_atoms):
@@ -93,7 +106,8 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
                 if bond is None:
                     continue
 
-                x_e = self.bond_featurizer(bond)
+                x_e = self.bond_featurizer(bond) if self.keep_bonds[bond.GetIdx()] else self.bond_featurizer.zero_mask()
+                
                 if bond_features_extra is not None:
                     x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
 
