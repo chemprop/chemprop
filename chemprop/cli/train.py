@@ -96,23 +96,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
     )
 
-    # TODO: Add in v2.1
-    # parser.add_argument(
-    #     "--checkpoint-dir",
-    #     help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
-    # )
-    # parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
-    # parser.add_argument(
-    #     "--checkpoint-paths",
-    #     type=list[str],
-    #     help="List of paths to model checkpoints (:code:`.pt` files).",
-    # )
-    # # TODO: Is this a prediction only argument?
-    # parser.add_argument(
-    #     "--checkpoint",
-    #     help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
-    # )
-
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
     # parser.add_argument(
     #     "--log-frequency",
