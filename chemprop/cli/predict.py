@@ -185,7 +185,7 @@ def find_models(model_paths: list[Path]):
     return collected_model_paths
 
 
-def make_prediction_for_model(
+def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
     model = load_model(model_paths[0], multicomponent)
@@ -335,7 +335,7 @@ def main(args):
 
     model_paths = find_models(args.model_path)
 
-    make_prediction_for_model(args, model_paths, multicomponent, output_path=args.output)
+    make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 
 
 if __name__ == "__main__":
