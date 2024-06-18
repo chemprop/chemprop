@@ -48,7 +48,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds.csv'.",
+        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
