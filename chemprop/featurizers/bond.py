@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import List, Sequence
 
 import numpy as np
 from rdkit.Chem.rdchem import Bond, BondType
@@ -40,6 +40,8 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         the known bond types
     stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
         the known bond stereochemistries. See [1]_ for more details
+    keep_features : List[bool], optional
+        a list of booleans to indicate which bond features to keep except for nullity. If None, all features are kept. If False, corresponding feature is set to zeros. Useful for ablation and SHAP analysis.
 
     References
     ----------
@@ -47,7 +49,10 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     """
 
     def __init__(
-        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
+        self, 
+        bond_types: Sequence[BondType] | None = None, 
+        stereos: Sequence[int] | None = None,
+        keep_features: List[bool] = None,
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -57,8 +62,14 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         ]
         self.stereo = stereos or range(6)
 
-    def __len__(self):
-        return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
+        self.__size = 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
+
+        if keep_features is None:
+            keep_features = [True] * 4 
+        self.keep_features = keep_features        
+
+    def __len__(self) -> int:
+        return self.__size
 
     def __call__(self, b: Bond) -> np.ndarray:
         x = np.zeros(len(self), int)
@@ -70,16 +81,19 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         i = 1
         bond_type = b.GetBondType()
         bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
-        if bt_bit != size:
+        if self.keep_features[0] and bt_bit != size:
             x[i + bt_bit] = 1
         i += size - 1
 
-        x[i] = int(b.GetIsConjugated())
-        x[i + 1] = int(b.IsInRing())
+        if self.keep_features[1]:
+            x[i] = int(b.GetIsConjugated())
+        if self.keep_features[2]:
+            x[i + 1] = int(b.IsInRing())
         i += 2
 
-        stereo_bit, _ = self.one_hot_index(int(b.GetStereo()), self.stereo)
-        x[i + stereo_bit] = 1
+        if self.keep_features[3]:
+            stereo_bit, _ = self.one_hot_index(int(b.GetStereo()), self.stereo)
+            x[i + stereo_bit] = 1
 
         return x
 
