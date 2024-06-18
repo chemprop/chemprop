@@ -14,7 +14,7 @@ class UncertaintyPredictor:
         return self._calc_prediction_uncertainty(dataloader, models, trainer)
 
     @abstractmethod
-    def _calc_prediction_uncertainty(self, dataloader, models) -> Tensor:
+    def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         """
         Calculate the uncalibrated predictions and uncertainties for the dataloader.
         """
@@ -41,7 +41,9 @@ class MVEPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("ensemble")
 class EnsemblePredictor(UncertaintyPredictor):
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
-        ...
+        for model in models:
+            preds = trainer.predict(model, dataloader)
+            print(preds.shape)
         return
 
 
@@ -76,7 +78,10 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("dropout")
 class DropoutPredictor(UncertaintyPredictor):
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
-        ...
+        assert num_models == 1, "Dropout method for uncertainty should be used for a single model rather than an ensemble."
+        
+        model = next(models)
+        
         return
 
 
