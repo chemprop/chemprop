@@ -56,8 +56,8 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
     )
     parser.add_argument(
-        "--model-path",
         "--model-paths",
+        "--model-path",
         required=True,
         type=Path,
         nargs="+",
