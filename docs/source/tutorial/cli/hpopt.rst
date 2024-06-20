@@ -60,7 +60,7 @@ Other keywords related to hyperparameter optimization are also available (see :r
 
 Splitting
 ----------
-By default, Chemprop will split the data into train / validation / test data splits. The splitting behavior can be modified using the same splitting arguments used in training, i.e. section :ref:`train_validation_test_splits`.
+By default, Chemprop will split the data into train / validation / test data splits. The splitting behavior can be modified using the same splitting arguments used in training, i.e., section :ref:`train_validation_test_splits`.
 
 .. note::
    This default splitting behavior is different from Chemprop v1, wherein the hyperparameter optimization was performed on the entirety of the data provided to it.
