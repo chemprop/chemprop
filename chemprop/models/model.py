@@ -69,8 +69,10 @@ class MPNN(pl.LightningModule):
         X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__()
-
-        self.save_hyperparameters(ignore=["message_passing", "agg", "predictor"])
+        # manually add X_d_transform to hparams to suppress lightning's warning about double saving
+        # its state_dict values.
+        self.save_hyperparameters(ignore=["X_d_transform", "message_passing", "agg", "predictor"])
+        self.hparams["X_d_transform"] = X_d_transform
         self.hparams.update(
             {
                 "message_passing": message_passing.hparams,
