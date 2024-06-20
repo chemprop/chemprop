@@ -49,6 +49,7 @@ The data file must be be a **CSV file with a header row**. For example:
 
 By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively. To simultaneously train multiple molecules (such as a solute and a solvent), supply two column headers in :code:`--smiles-columns <columns>`.
 
+.. _train_validation_test_splits:
 
 Train/Validation/Test Splits
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
