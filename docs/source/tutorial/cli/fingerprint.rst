@@ -9,15 +9,15 @@ To calculate the learned representations (encodings) of model inputs from a pret
    
    chemprop fingerprint --test-path <test_path> --model-path <model_path> 
 
-where :code:`<test_path>` is the path to the CSV file containing SMILES strings, and :code:`<model_path>` is the path to the trained model (.ckpt or .pt file) or a directory containing the trained model files. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--output <path>`
+where :code:`<test_path>` is the path to the CSV file containing SMILES strings, and :code:`<model_path>` is the location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--output <path>`
 
 For example:
 
 .. code-block::
   
-    chemprop predict --test-path tests/data/smis.csv \
-        --model-path tests/data/example_model_v2_regression_mol.ckpt \
-        --output fps.csv
+    chemprop fingerprint --test-path tests/data/smis.csv \
+    --model-path tests/data/example_model_v2_regression_mol.ckpt \
+    --output fps.csv
 
 
 Specifying FFN encoding layer
