@@ -28,15 +28,15 @@ The search parameters can be any combination of hyperparameters or a predefined 
 
  * :code:`depth` The number of message passing steps
  * :code:`ffn_num_layers` The number of layers in the FFN model
- * :code:`dropout` The probability (from 0 to 1) of dropout in the MPNN & FNN layers
+ * :code:`dropout` The probability (from 0.0 to 1.0) of dropout in the MPNN & FNN layers
  * :code:`message_hidden_dim` The hidden dimension in the message passing step 
  * :code:`ffn_hidden_dim` The hidden dimension in the FFN model
 
 Another option is :code:`learning_rate` which includes:
 
  * :code:`max_lr` The maximum learning rate
- * :code:`init_lr_ratio` Ratio of the initial learning rate to the max learning rate
- * :code:`final_lr_ratio` Ratio of the final learning rate to the max learning rate 
+ * :code:`init_lr` The initial learning rate. It is searched as a ratio relative to the max learning rate
+ * :code:`final_lr` The initial learning rate. It is searched as a ratio relative to the max learning rate 
  * :code:`warmup_epochs` Number of warmup epochs, during which the learning rate linearly increases from the initial to the maximum learning rate
 
 Other individual search parameters include:
@@ -50,7 +50,7 @@ Specifying :code:`--search-parameter-keywords all` will search over all 13 of th
 
 The following other common keywords may be used:
  
- * :code:`--raytune-num-samples <num_samples>` The number of conditions to sample 
+ * :code:`--raytune-num-samples <num_samples>` The number of trials to perform
  * :code:`--raytune-num-cpus <num_cpus>` The number of CPUs to use  
  * :code:`--raytune-num-gpus <num_gpus>` The number of GPUs to use  
  * :code:`--raytune-max-concurrent-trials <num_trials>` The maximum number of concurrent trials
