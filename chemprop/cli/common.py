@@ -5,6 +5,7 @@ from pathlib import Path
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
+from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,13 @@ def process_common_args(args: Namespace) -> Namespace:
             ind_path_dict[int(ind)] = Path(path)
 
         setattr(args, key, ind_path_dict)
+    
+    if args.features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
+        args.features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in args.features_generators
+        ]
 
     return args
 
