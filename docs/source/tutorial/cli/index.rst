@@ -47,7 +47,7 @@ For more details on each command, see the corresponding section below:
 * :ref:`hpopt`
 * :ref:`fingerprint`
 
-The following features are not yet implemented, but may be included in a future release:
+The following features are not yet implemented, but will be included in a future release:
 
 * ``interpret``: Interpret model predictions.
 
