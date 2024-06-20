@@ -71,10 +71,9 @@ If ``--num-folds`` is greater than one, Chemprop will only use the first split t
 Applying Optimal Hyperparameters
 ---------------------------------
 
-Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path. For example:
+Once hyperparameter optimization is complete, the optimal hyperparameters can be applied during training by specifying the config path. If an argument is both provided via the command line and the config file, the command line takes precedence. For example:
 
 .. code-block::
 
    chemprop train --data-path tests/data/regression.csv \
-   --task-type regression \
-   --config-path results/best_config.toml \
+   --config-path results/best_config.toml
