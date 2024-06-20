@@ -40,6 +40,7 @@ class FingerprintSubcommand(Subcommand):
             help="Path to which predictions will be saved. If the file extension is .npz, they will be saved as a npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
         )
         parser.add_argument(
+            "--model-paths",
             "--model-path",
             required=True,
             type=Path,
@@ -173,7 +174,7 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_path)):
+    for i, model_path in enumerate(find_models(args.model_paths)):
         logger.info(f"Fingerprints with model at '{model_path}'")
         output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
         make_fingerprint_for_model(args, model_path, multicomponent, output_path)
