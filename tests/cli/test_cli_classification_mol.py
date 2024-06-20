@@ -36,6 +36,7 @@ def test_train_quick(monkeypatch, data_path):
         "accuracy",
         "f1",
         "roc",
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:
