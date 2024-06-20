@@ -23,9 +23,7 @@ For example:
 Specifying FFN encoding layer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-By default, the encodings are returned from the penultimate linear layer of the model's FFN. However, the exact layer to draw encodings from can be specified using
-
- * :code:`--ffn-block-index` <index>
+By default, the encodings are returned from the penultimate linear layer of the model's FFN. However, the exact layer to draw encodings from can be specified using :code:`--ffn-block-index <index>`.
 
 An index of 0 will simply return the post-aggregation representation without passing through the FFN. Here, an index of 1 will return the output of the first linear layer of the FFN, an index of 2 the second layer, and so on.
 

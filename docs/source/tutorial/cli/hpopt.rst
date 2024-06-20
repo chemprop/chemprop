@@ -58,6 +58,16 @@ The following other common keywords may be used:
 
 Other keywords related to hyperparameter optimization are also available (see :ref:`cmd` for a full list).
 
+Splitting
+----------
+By default, Chemprop will split the data into train / validation / test data splits. The splitting behavior can be modified using the same splitting arguments used in training, i.e. section :ref:`train-validation-test-splits`.
+
+.. note::
+   This default splitting behavior is different from Chemprop v1, wherein the hyperparameter optimization was performed on the entirety of the data provided to it.
+
+If ``--num-folds`` is greater than one, Chemprop will only use the first split to perform hyperparameter optimization. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run :code:`chemprop hpopt` separately on each split.
+
+
 Applying Optimal Hyperparameters
 ---------------------------------
 
@@ -68,7 +78,3 @@ Once hyperparameter optimization is complete, the optimal hyperparameters can be
    chemprop train --data-path tests/data/regression.csv \
    --task-type regression \
    --config-path results/best_config.toml \
-
-Note that the hyperparameter optimization script sees all the data given to it. The intended use is to run the hyperparameter optimization script on a dataset with the eventual test set held out. 
-
-.. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run :code:`chemprop hpopt` separately on each split's training and validation data with test held out.
