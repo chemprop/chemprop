@@ -16,8 +16,8 @@ For example:
 .. code-block::
   
     chemprop fingerprint --test-path tests/data/smis.csv \
-    --model-path tests/data/example_model_v2_regression_mol.ckpt \
-    --output fps.csv
+        --model-path tests/data/example_model_v2_regression_mol.ckpt \
+        --output fps.csv
 
 
 Specifying FFN encoding layer

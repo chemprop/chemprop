@@ -20,9 +20,9 @@ For example:
 .. code-block::
 
    chemprop hpopt --data-path tests/data/regression.csv \
-   --task-type regression \
-   --search-parameter-keywords depth ffn_num_layers message_hidden_dim \
-   --hpopt-save-dir results 
+      --task-type regression \
+      --search-parameter-keywords depth ffn_num_layers message_hidden_dim \
+      --hpopt-save-dir results 
 
 The search parameters can be any combination of hyperparameters or a predefined set. Options include :code:`basic` (default), which consists of:
 
@@ -76,4 +76,4 @@ Once hyperparameter optimization is complete, the optimal hyperparameters can be
 .. code-block::
 
    chemprop train --data-path tests/data/regression.csv \
-   --config-path results/best_config.toml
+      --config-path results/best_config.toml

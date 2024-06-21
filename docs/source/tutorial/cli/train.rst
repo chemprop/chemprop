@@ -16,8 +16,8 @@ For example:
 .. code-block::
 
    chemprop train --data-path tests/data/regression.csv \
-   --task-type regression \
-   --output-dir solubility_checkpoints
+      --task-type regression \
+      --output-dir solubility_checkpoints
 
 The following modeling tasks are supported:
 
