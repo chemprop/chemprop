@@ -164,8 +164,9 @@ def make_datapoints(
     molecule_featurizers : list[str] | None
         a list of molecule featurizer names to generate additional molecule features to use as extra
         descriptors. If there are multiple molecules per datapoint, the featurizers will be applied
-        to each molecule and concatenated. Note that a :code:`ReactionDatapoint` has two molecules,
-        reactant and product, so the molecule_featurizers will be applied to both.
+        to each molecule and concatenated. Note that a :code:`ReactionDatapoint` has two
+        RDKit :class:`~rdkit.Chem.Mol` objects, reactant(s) and product(s). Each
+        ``molecule_featurizer`` will be applied to both of these objects.
     keep_h : bool
     add_h : bool
 
