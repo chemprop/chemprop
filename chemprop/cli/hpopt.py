@@ -374,6 +374,7 @@ def tune_model(
         num_workers=args.raytune_num_workers,
         use_gpu=use_gpu,
         resources_per_worker=resources_per_worker,
+        trainer_resources={"CPU": 0},
     )
 
     checkpoint_config = CheckpointConfig(
