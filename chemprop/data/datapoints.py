@@ -57,7 +57,7 @@ class _MoleculeDatapointMixin:
         return cls(mol, *args, **kwargs)
 
 
-@dataclass(slots=True)
+@dataclass
 class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
 
@@ -86,7 +86,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
         if self.V_d is not None:
             self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
 
-        super(MoleculeDatapoint, self).__post_init__()
+        super().__post_init__()
 
     def __len__(self) -> int:
         return 1
@@ -130,7 +130,7 @@ class _ReactionDatapointMixin:
         return cls(rct, pdt, *args, **kwargs)
 
 
-@dataclass(slots=True)
+@dataclass
 class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
     """A :class:`ReactionDatapoint` contains a single reaction and its associated features and targets."""
 
@@ -140,7 +140,7 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
         if self.pdt is None:
             raise ValueError("Product cannot be `None`!")
 
-        return super(ReactionDatapoint, self).__post_init__()
+        return super().__post_init__()
 
     def __len__(self) -> int:
         return 2
