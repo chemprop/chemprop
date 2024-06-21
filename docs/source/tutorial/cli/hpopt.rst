@@ -4,7 +4,7 @@ Hyperparameter Optimization
 ============================
 
 .. note::
-   Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization, which is not yet compatible with python=3.12 and is an optional install. To install the required dependencies, make sure your Python version is 3.11 and run :code:`pip install -U ray[tune]` if installing with PyPI, or :code:`pip install -e .[hpopt]` if installing from source.
+    Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization, which is not yet compatible with python=3.12 and is an optional install. To install the required dependencies, make sure your Python version is 3.11 and run :code:`pip install -U ray[tune]` if installing with PyPI, or :code:`pip install -e .[hpopt]` if installing from source.
 
 Searching Hyperparameter Space
 --------------------------------
@@ -13,16 +13,16 @@ We include an automated hyperparameter optimization procedure through the Ray Tu
 
 .. code-block::
 
-   chemprop hpopt --data-path <data_path> --task-type <task> --search-parameter-keywords <keywords> --hpopt-save-dir <save_dir>
+    chemprop hpopt --data-path <data_path> --task-type <task> --search-parameter-keywords <keywords> --hpopt-save-dir <save_dir>
 
 For example:
 
 .. code-block::
 
-   chemprop hpopt --data-path tests/data/regression.csv \
-      --task-type regression \
-      --search-parameter-keywords depth ffn_num_layers message_hidden_dim \
-      --hpopt-save-dir results 
+    chemprop hpopt --data-path tests/data/regression.csv \
+        --task-type regression \
+        --search-parameter-keywords depth ffn_num_layers message_hidden_dim \
+        --hpopt-save-dir results 
 
 The search parameters can be any combination of hyperparameters or a predefined set. Options include :code:`basic` (default), which consists of:
 
@@ -63,7 +63,7 @@ Splitting
 By default, Chemprop will split the data into train / validation / test data splits. The splitting behavior can be modified using the same splitting arguments used in training, i.e., section :ref:`train_validation_test_splits`.
 
 .. note::
-   This default splitting behavior is different from Chemprop v1, wherein the hyperparameter optimization was performed on the entirety of the data provided to it.
+    This default splitting behavior is different from Chemprop v1, wherein the hyperparameter optimization was performed on the entirety of the data provided to it.
 
 If ``--num-folds`` is greater than one, Chemprop will only use the first split to perform hyperparameter optimization. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run :code:`chemprop hpopt` separately on each split.
 
@@ -75,5 +75,5 @@ Once hyperparameter optimization is complete, the optimal hyperparameters can be
 
 .. code-block::
 
-   chemprop train --data-path tests/data/regression.csv \
-      --config-path results/best_config.toml
+    chemprop train --data-path tests/data/regression.csv \
+        --config-path results/best_config.toml

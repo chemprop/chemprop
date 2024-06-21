@@ -7,7 +7,7 @@ To train a model, run:
 
 .. code-block::
    
-   chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
+    chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
 
 where ``<input_path>`` is the path to a CSV file containing a dataset, ``<task>`` is the type of modeling task, and ``<dir>`` is the directory where model checkpoints will be saved.
 
@@ -15,9 +15,9 @@ For example:
 
 .. code-block::
 
-   chemprop train --data-path tests/data/regression.csv \
-      --task-type regression \
-      --output-dir solubility_checkpoints
+    chemprop train --data-path tests/data/regression.csv \
+        --task-type regression \
+        --output-dir solubility_checkpoints
 
 The following modeling tasks are supported:
 
@@ -42,10 +42,10 @@ The data file must be be a **CSV file with a header row**. For example:
 
 .. code-block::
 
-   smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
-   CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
-   CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
-   ...
+    smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
+    CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
+    CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
+    ...
 
 By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively. To simultaneously train multiple molecules (such as a solute and a solvent), supply two column headers in :code:`--smiles-columns <columns>`.
 
