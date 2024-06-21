@@ -59,6 +59,7 @@ def test_train_quick(monkeypatch, data_path):
         *bond_feat_path_0,
         "--atom-descriptors-path",
         *atom_desc_path_1,
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:
