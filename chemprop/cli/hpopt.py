@@ -24,11 +24,9 @@ from chemprop.cli.train import (
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
-from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
-from chemprop.utils import Factory
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {
