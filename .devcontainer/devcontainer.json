@@ -7,7 +7,7 @@
     "settings": {
         "terminal.integrated.shell.linux": "/bin/bash"
     },
-    "postCreateCommand": "pip install -e .",
+    "postCreateCommand": "pip install -e \".[hpopt,dev,docs,test,notebooks]\"",
     "extensions": [
         "ms-python.python",
         "ms-toolsai.jupyter",
