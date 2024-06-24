@@ -3,8 +3,8 @@ from typing import Iterator
 
 from lightning import pytorch as pl
 from torch import Tensor
+from torch.utils.data import DataLoader
 
-from chemprop.data import DataLoader
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
 
