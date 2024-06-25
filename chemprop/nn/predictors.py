@@ -76,13 +76,13 @@ class Predictor(nn.Module, HasHParams):
             input dimensionality.
         i : int
             The stop index of slice of the MLP used to encode the input. That is, use all
-            layers in the MLP _up to_ :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
+            layers in the MLP *up to* :attr:`i` (i.e., ``MLP[:i]``). This can be any integer
             value, and the behavior of this function is dependent on the underlying list
             slicing behavior. For example:
 
             * ``i=0``: use a 0-layer MLP (i.e., a no-op)
             * ``i=1``: use only the first block
-            * ``i=-1``: use _up to_ the final block
+            * ``i=-1``: use *up to* the final block
 
         Returns
         -------
@@ -118,7 +118,11 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
+        # manually add criterion and output_transform to hparams to suppress lightning's warning
+        # about double saving their state_dict values.
         self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        self.hparams["criterion"] = criterion
+        self.hparams["output_transform"] = output_transform
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
@@ -128,9 +132,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.criterion = criterion or Factory.build(
             self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
-        self.hparams["criterion"] = self.criterion
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
-        self.hparams["output_transform"] = self.output_transform
 
     @property
     def input_dim(self) -> int:

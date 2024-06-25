@@ -1,10 +1,10 @@
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
-import json
 import logging
 from pathlib import Path
+import shutil
 import sys
 
+from configargparse import ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 import numpy as np
@@ -12,12 +12,14 @@ import torch
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.train import (
+    TrainSubcommand,
     add_train_args,
     build_datasets,
     build_model,
     build_splits,
     normalize_inputs,
     process_train_args,
+    save_config,
     validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
@@ -29,7 +31,22 @@ from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 NO_RAY = False
-DEFAULT_SEARCH_SPACE = {}
+DEFAULT_SEARCH_SPACE = {
+    "activation": None,
+    "aggregation": None,
+    "aggregation_norm": None,
+    "batch_size": None,
+    "depth": None,
+    "dropout": None,
+    "ffn_hidden_dim": None,
+    "ffn_num_layers": None,
+    "final_lr_ratio": None,
+    "message_hidden_dim": None,
+    "init_lr_ratio": None,
+    "max_lr": None,
+    "warmup_epochs": None,
+}
+
 try:
     import ray
     from ray import tune
@@ -82,6 +99,8 @@ SEARCH_PARAM_KEYWORDS_MAP = {
     "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "message_hidden_dim"],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
+    "init_lr": ["init_lr_ratio"],
+    "final_lr": ["final_lr_ratio"],
 }
 
 
@@ -190,12 +209,33 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
     )
 
+    raytune_args.add_argument(
+        "--raytune-temp-dir", help="Passed directly to Ray Tune init to control temporary directory"
+    )
+
+    raytune_args.add_argument(
+        "--raytune-num-cpus",
+        type=int,
+        help="Passed directly to Ray Tune init to control number of CPUs to use",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-num-gpus",
+        type=int,
+        help="Passed directly to Ray Tune init to control number of GPUs to use",
+    )
+
+    raytune_args.add_argument(
+        "--raytune-max-concurrent-trials",
+        type=int,
+        help="Passed directly to Ray Tune TuneConfig to control maximum concurrent trials",
+    )
+
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
 
     hyperopt_args.add_argument(
         "--hyperopt-n-initial-points",
         type=int,
-        default=20,
         help="Passed directly to HyperOptSearch to control number of initial points to sample",
     )
 
@@ -217,10 +257,12 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
     search_parameters = set()
 
+    available_search_parameters = list(SEARCH_SPACE.keys()) + list(SEARCH_PARAM_KEYWORDS_MAP.keys())
+
     for keyword in args.search_parameter_keywords:
-        if keyword not in SEARCH_PARAM_KEYWORDS_MAP and keyword not in SEARCH_SPACE:
+        if keyword not in available_search_parameters:
             raise ValueError(
-                f"Search parameter keyword: {keyword} not in available options: {list(SEARCH_PARAM_KEYWORDS_MAP.keys()) + list(SEARCH_SPACE.keys())}."
+                f"Search parameter keyword: {keyword} not in available options: {available_search_parameters}."
             )
 
         search_parameters.update(
@@ -231,11 +273,17 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
     args.search_parameter_keywords = list(search_parameters)
 
+    if not args.hyperopt_n_initial_points:
+        args.hyperopt_n_initial_points = args.raytune_num_samples // 2
+
     return args
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
     if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
+        assert (
+            train_epochs >= 6
+        ), "Training epochs must be at least 6 to perform hyperparameter optimization for warmup_epochs."
         SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
@@ -247,10 +295,10 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
     for key, value in config.items():
         match key:
             case "final_lr_ratio":
-                setattr(args, "final_lr", value * args.max_lr)
+                setattr(args, "final_lr", value * config.get("max_lr", args.max_lr))
 
             case "init_lr_ratio":
-                setattr(args, "init_lr", value * args.max_lr)
+                setattr(args, "init_lr", value * config.get("max_lr", args.max_lr))
 
             case _:
                 assert key in args, f"Key: {key} not found in args."
@@ -260,7 +308,7 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
 
 def train_model(config, args, train_dset, val_dset, logger, output_transform, input_transforms):
-    update_args_with_config(args, config)
+    args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -309,8 +357,24 @@ def tune_model(
         case _:
             raise ValueError(f"Invalid trial scheduler! got: {args.raytune_trial_scheduler}.")
 
+    resources_per_worker = {}
+    if args.raytune_num_cpus and args.raytune_max_concurrent_trials:
+        resources_per_worker["CPU"] = args.raytune_num_cpus / args.raytune_max_concurrent_trials
+    if args.raytune_num_gpus and args.raytune_max_concurrent_trials:
+        resources_per_worker["GPU"] = args.raytune_num_gpus / args.raytune_max_concurrent_trials
+    if not resources_per_worker:
+        resources_per_worker = None
+
+    if args.raytune_num_gpus:
+        use_gpu = True
+    else:
+        use_gpu = args.raytune_use_gpu
+
     scaling_config = ScalingConfig(
-        num_workers=args.raytune_num_workers, use_gpu=args.raytune_use_gpu
+        num_workers=args.raytune_num_workers,
+        use_gpu=use_gpu,
+        resources_per_worker=resources_per_worker,
+        trainer_resources={"CPU": 0},
     )
 
     checkpoint_config = CheckpointConfig(
@@ -338,7 +402,7 @@ def tune_model(
         case "hyperopt":
             if NO_HYPEROPT:
                 raise ImportError(
-                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U  hyperopt' to install."
+                    "HyperOptSearch requires hyperopt to be installed. Use 'pip install -U hyperopt' to install or use 'pip install -e .[hpopt]' in chemprop folder if you installed from source to install all hpopt relevant packages."
                 )
 
             search_alg = HyperOptSearch(
@@ -348,7 +412,7 @@ def tune_model(
         case "optuna":
             if NO_OPTUNA:
                 raise ImportError(
-                    "OptunaSearch requires optuna to be installed. Use 'pip install -U  optuna' to install."
+                    "OptunaSearch requires optuna to be installed. Use 'pip install -U optuna' to install or use 'pip install -e .[hpopt]' in chemprop folder if you installed from source to install all hpopt relevant packages."
                 )
 
             search_alg = OptunaSearch()
@@ -375,8 +439,25 @@ def tune_model(
 def main(args: Namespace):
     if NO_RAY:
         raise ImportError(
-            "Ray Tune requires ray to be installed. Use 'pip install -U ray[tune]' to install."
+            "Ray Tune requires ray to be installed. If you installed Chemprop from PyPI, make sure that your Python version is 3.11 and use 'pip install -U ray[tune]' to install ray. If you installed from source, use 'pip install -e .[hpopt]' in Chemprop folder to install all hpopt relevant packages."
         )
+
+    if not ray.is_initialized():
+        try:
+            ray.init(
+                _temp_dir=args.raytune_temp_dir,
+                num_cpus=args.raytune_num_cpus,
+                num_gpus=args.raytune_num_gpus,
+            )
+        except OSError as e:
+            if "AF_UNIX path length cannot exceed 107 bytes" in str(e):
+                raise OSError(
+                    f"Ray Tune fails due to: {e}. This can sometimes be solved by providing a temporary directory, num_cpus, and num_gpus to Ray Tune via the CLI: --raytune-temp-dir <absolute_path> --raytune-num-cpus <int> --raytune-num-gpus <int>."
+                )
+            else:
+                raise e
+    else:
+        logger.info("Ray is already initialized.")
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -427,23 +508,31 @@ def main(args: Namespace):
     )
 
     best_result = results.get_best_result()
-    best_config = best_result.config
-    best_checkpoint = best_result.checkpoint  # Get best trial's best checkpoint
+    best_config = best_result.config["train_loop_config"]
+    best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
 
-    logger.info(f"Saving best hyperparameter parameters: {best_config}")
+    best_config_save_path = args.hpopt_save_dir / "best_config.toml"
+    best_checkpoint_save_path = args.hpopt_save_dir / "best_checkpoint.ckpt"
+    all_progress_save_path = args.hpopt_save_dir / "all_progress.csv"
 
-    with open(args.hpopt_save_dir / "best_params.json", "w") as f:
-        json.dump(best_config, f, indent=4)
+    logger.info(f"Best hyperparameters saved to: '{best_config_save_path}'")
 
-    logger.info(f"Saving best hyperparameter configuration checkpoint: {best_checkpoint}")
+    args = update_args_with_config(args, best_config)
 
-    torch.save(best_checkpoint, args.hpopt_save_dir / "best_checkpoint.ckpt")
+    args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
+    save_config(TrainSubcommand.parser, args, best_config_save_path)
+
+    logger.info(
+        f"Best hyperparameter configuration checkpoint saved to '{best_checkpoint_save_path}'"
+    )
+
+    shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
+
+    logger.info(f"Hyperparameter optimization results saved to '{all_progress_save_path}'")
 
     result_df = results.get_dataframe()
 
-    logger.info(f"Saving hyperparameter optimization results: {result_df}")
-
-    result_df.to_csv(args.hpopt_save_dir / "all_progress.csv", index=False)
+    result_df.to_csv(all_progress_save_path, index=False)
 
     ray.shutdown()
 

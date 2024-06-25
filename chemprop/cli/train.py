@@ -8,6 +8,7 @@ from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
+from lightning.pytorch.strategies import DDPStrategy
 import numpy as np
 import pandas as pd
 import torch
@@ -69,7 +70,8 @@ class TrainSubcommand(Subcommand):
         validate_train_args(args)
 
         args.output_dir.mkdir(exist_ok=True, parents=True)
-        save_config(cls.parser, args)
+        config_path = args.output_dir / "config.toml"
+        save_config(cls.parser, args, config_path)
         main(args)
 
 
@@ -93,23 +95,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         help="Directory where training outputs will be saved. Defaults to 'CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP'.",
     )
-
-    # TODO: Add in v2.1
-    # parser.add_argument(
-    #     "--checkpoint-dir",
-    #     help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
-    # )
-    # parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
-    # parser.add_argument(
-    #     "--checkpoint-paths",
-    #     type=list[str],
-    #     help="List of paths to model checkpoints (:code:`.pt` files).",
-    # )
-    # # TODO: Is this a prediction only argument?
-    # parser.add_argument(
-    #     "--checkpoint",
-    #     help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
-    # )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
     # parser.add_argument(
@@ -305,6 +290,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         nargs="+",
         help="Name of the columns to ignore when :code:`target_columns` is not provided.",
     )
+    train_data_args.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
+    )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
     #     "--spectra-phase-mask-path",
@@ -352,12 +342,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
-    # TODO: Add in v2.1
-    # train_args.add_argument(
-    #     "--show-individual-scores",
-    #     action="store_true",
-    #     help="Show all scores for individual targets, not just average, at the end.",
-    # )
+    train_args.add_argument(
+        "--show-individual-scores",
+        action="store_true",
+        help="Show all scores for individual targets, not just average, at the end.",
+    )
     train_args.add_argument(
         "--task-weights",
         nargs="+",
@@ -561,7 +550,7 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_transform, graph_transforms, V_d_transforms
 
 
-def save_config(parser: ArgumentParser, args: Namespace):
+def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
     config_args = deepcopy(args)
     for key, value in vars(config_args).items():
         if isinstance(value, Path):
@@ -572,8 +561,7 @@ def save_config(parser: ArgumentParser, args: Namespace):
             for index, path in getattr(config_args, key).items():
                 getattr(config_args, key)[index] = str(path)
 
-    config_path = str(args.output_dir / "config.toml")
-    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[config_path])
+    parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
@@ -865,7 +853,20 @@ def train_model(
         trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
-            predss = trainer.predict(dataloaders=test_loader)
+            if isinstance(trainer.strategy, DDPStrategy):
+                torch.distributed.destroy_process_group()
+
+                best_ckpt_path = trainer.checkpoint_callback.best_model_path
+                trainer = pl.Trainer(
+                    logger=trainer_logger,
+                    enable_progress_bar=True,
+                    accelerator=args.accelerator,
+                    devices=1,
+                )
+                model = model.load_from_checkpoint(best_ckpt_path)
+                predss = trainer.predict(model, dataloaders=test_loader)
+            else:
+                predss = trainer.predict(dataloaders=test_loader)
             preds = torch.concat(predss, 0).numpy()
 
             if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -875,28 +876,12 @@ def train_model(
             targets = test_dset.Y
             mask = torch.from_numpy(np.isfinite(targets))
             targets = np.nan_to_num(targets, nan=0.0)
-            weights = torch.from_numpy(test_dset.weights)
             lt_mask = (
                 torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
             )
             gt_mask = (
                 torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
             )
-            preds_losses = [
-                metric(
-                    torch.from_numpy(preds),
-                    torch.from_numpy(targets),
-                    mask,
-                    weights,
-                    lt_mask,
-                    gt_mask,
-                )
-                for metric in model.metrics
-            ]
-            preds_metrics = {
-                f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
-            }
-            print(f"Entire Test Set results: {preds_metrics}")
 
             columns = get_column_names(
                 args.data_path,
@@ -908,6 +893,44 @@ def train_model(
                 args.weight_column,
                 args.no_header_row,
             )
+            input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+            target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+
+            individual_scores = dict()
+            for metric in model.metrics[:-1]:
+                individual_scores[metric.alias] = []
+                for i, col in enumerate(target_cols):
+                    if "multiclass" in args.task_type:
+                        preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
+                        targets_slice = torch.from_numpy(targets[:, i : i + 1])
+                    else:
+                        preds_slice = torch.from_numpy(preds[:, i])
+                        targets_slice = torch.from_numpy(targets[:, i])
+                    preds_loss = metric(
+                        preds_slice,
+                        targets_slice,
+                        mask[:, i],
+                        None,
+                        lt_mask[:, i] if lt_mask is not None else None,
+                        gt_mask[:, i] if gt_mask is not None else None,
+                    )
+                    individual_scores[metric.alias].append(preds_loss)
+
+            logger.info("Entire Test Set results:")
+            for metric in model.metrics[:-1]:
+                avg_loss = sum(individual_scores[metric.alias]) / len(
+                    individual_scores[metric.alias]
+                )
+                logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+
+            if args.show_individual_scores:
+                logger.info("Entire Test Set individual results:")
+                for metric in model.metrics[:-1]:
+                    for i, col in enumerate(target_cols):
+                        logger.info(
+                            f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
+                        )
+
             names = test_loader.dataset.names
             if isinstance(test_loader.dataset, MulticomponentDataset):
                 namess = list(zip(*names))
@@ -974,6 +997,10 @@ def main(args):
             output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
             output_transform = None
+
+        if not args.no_cache:
+            train_dset.cache = True
+            val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset, args.batch_size, args.num_workers, seed=args.data_seed

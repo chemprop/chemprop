@@ -129,16 +129,16 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         Parameters
         ----------
         max_atomic_num : int, default=100
-            Include a bit for all atomic numbers in the interval :math:`[1, \mathtt{max_atomic_num}]`
+            Include a bit for all atomic numbers in the interval :math:`[1, \mathtt{max\_atomic\_num}]`
 
         References
         -----------
         .. [1] Yang, K.; Swanson, K.; Jin, W.; Coley, C.; Eiden, P.; Gao, H.; Guzman-Perez, A.; Hopper, T.;
-        Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
-        J. Chem. Inf. Model. 2019, 59 (8), 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
+            Kelley, B.; Mathea, M.; Palmer, A. "Analyzing Learned Molecular Representations for Property Prediction."
+            J. Chem. Inf. Model. 2019, 59 (8), 3370–3388. https://doi.org/10.1021/acs.jcim.9b00237
         .. [2] Heid, E.; Greenman, K.P.; Chung, Y.; Li, S.C.; Graff, D.E.; Vermeire, F.H.; Wu, H.; Green, W.H.; McGill,
-        C.J. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
-        64 (1), 9–17. https://doi.org/10.1021/acs.jcim.3c01250
+            C.J. "Chemprop: A machine learning package for chemical property prediction." J. Chem. Inf. Model. 2024,
+            64 (1), 9–17. https://doi.org/10.1021/acs.jcim.3c01250
         """
 
         return cls(
