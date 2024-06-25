@@ -9,6 +9,7 @@ import torch
 
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.predict import find_models
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import load_model
@@ -40,10 +41,12 @@ class FingerprintSubcommand(Subcommand):
             help="Path to which predictions will be saved. If the file extension is .npz, they will be saved as a npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
         )
         parser.add_argument(
+            "--model-paths",
             "--model-path",
             required=True,
             type=Path,
-            help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+            nargs="+",
+            help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
         )
         parser.add_argument(
             "--ffn-block-index",
@@ -75,13 +78,6 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
             argument=None, message=f"Output must be a CSV or NPZ file. Got '{args.output}'."
         )
     return args
-
-
-def find_models(model_path: Path):
-    if model_path.suffix in [".ckpt", ".pt"]:
-        return [model_path]
-    elif model_path.is_dir():
-        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
 
 
 def make_fingerprint_for_model(
@@ -182,8 +178,8 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_path)):
-        logger.info(f"Fingerprints with model at '{model_path}'")
+    for i, model_path in enumerate(find_models(args.model_paths)):
+        logger.info(f"Fingerprints with model {i} at '{model_path}'")
         output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
         make_fingerprint_for_model(args, model_path, multicomponent, output_path)
 

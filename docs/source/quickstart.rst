@@ -67,10 +67,9 @@ In the rest of this documentation, we'll go into more detail about how to:
 * :ref:`Customize model architecture and task type<train>`
 * :ref:`Specify training parameters: split type, learning rate, batch size, loss function, etc. <train>`
 * :ref:`Use Chemprop as a Python package <notebooks>`
-
-..
-     Optimize hyperparameters
-    * :ref:`Quantify prediction uncertainty<predict>`
+* :ref:`Perform a hyperparameter optimization <hpopt>`
+* :ref:`Generate a molecular fingerprint <fingerprint>`
+.. * :ref:`Quantify prediction uncertainty<predict>`
 
 Summary
 -------
