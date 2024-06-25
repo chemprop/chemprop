@@ -11,7 +11,7 @@ def save_model(path: PathLike, model: MPNN, target_columns: list[str] = None) ->
         {
             "hyper_parameters": model.hparams,
             "state_dict": model.state_dict(),
-            "target_columns": target_columns,
+            "output_columns": output_columns,
         },
         path,
     )
@@ -26,6 +26,7 @@ def load_model(path: PathLike, multicomponent: bool) -> MPNN:
     return model
 
 
-def load_target_columns(path: PathLike) -> list[str] | None:
+def load_output_columns(path: PathLike) -> list[str] | None:
     model_file = torch.load(path)
-    return model_file.get("target_columns", None)
+    
+    return model_file.get("output_columns")

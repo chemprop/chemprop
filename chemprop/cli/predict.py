@@ -11,7 +11,7 @@ import torch
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.models.utils import load_model, load_target_columns
+from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.predictors import MulticlassClassificationFFN
 
@@ -278,8 +278,8 @@ def make_prediction_for_models(
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
 
-    target_columns = load_target_columns(model_paths[0])
-    if target_columns is None:
+    output_columns = load_output_columns(model_paths[0])
+    if output_columns is None:
         target_columns = [
             f"pred_{i}" for i in range(preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
