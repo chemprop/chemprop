@@ -945,7 +945,7 @@ def train_model(
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model)
+        save_model(p_model, model, target_cols)
         logger.info(f"Best model saved to '{p_model}'")
 
 
