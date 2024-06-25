@@ -17,3 +17,7 @@ def load_model(path: PathLike, multicomponent: bool) -> MPNN:
         model = MPNN.load_from_file(path)
 
     return model
+
+def load_target_columns(path: PathLike) -> list[str] | None:
+    model_file = torch.load(path)
+    return model_file.get("target_columns", None)
