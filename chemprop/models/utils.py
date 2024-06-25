@@ -6,7 +6,7 @@ from chemprop.models.model import MPNN
 from chemprop.models.multi import MulticomponentMPNN
 
 
-def save_model(path: PathLike, model: MPNN, target_columns: list[str] = None) -> None:
+def save_model(path: PathLike, model: MPNN, output_columns: list[str] = None) -> None:
     torch.save(
         {
             "hyper_parameters": model.hparams,
@@ -28,5 +28,5 @@ def load_model(path: PathLike, multicomponent: bool) -> MPNN:
 
 def load_output_columns(path: PathLike) -> list[str] | None:
     model_file = torch.load(path)
-    
+
     return model_file.get("output_columns")
