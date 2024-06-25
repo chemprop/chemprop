@@ -37,6 +37,7 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
+from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
@@ -50,16 +51,6 @@ from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
-
-TASK_TYPES = [
-    "regression",
-    "regression-mve",
-    "regression-evidential",
-    "classification",
-    "classification-dirichlet",
-    "multiclass",
-    "multiclass-dirichlet",
-]
 
 
 class TrainSubcommand(Subcommand):
@@ -667,9 +658,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     return train_data, val_data, test_data
 
-def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
-    if task_type in ["regression", "regression-mve", "regression-evidential"]:
-        y = np.array([datapoint.y[0] for datapoint in dataset.data])
+
+def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
+    if args.task_type == "spectral":
+        pass
+    elif args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+        y = dataset.Y
         y_mean = y.mean()
         y_std = y.std()
         y_median = np.median(y)
@@ -686,13 +680,13 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
             ["% within 2 s.d.", f"{frac_2_sigma:0.0%}"],
         ]
         return (column_headers, table_rows)
-    elif task_type in [
+    elif args.task_type in [
         "classification",
         "classification-dirichlet",
         "multiclass",
         "multiclass-dirichlet",
     ]:
-        y = np.array([datapoint.y[0] for datapoint in dataset.data])
+        y = dataset.Y
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
         class_counts = (classes[:, None] == y[None, :]).sum(1)
@@ -707,10 +701,10 @@ def summarize(task_type: str, dataset: MoleculeDataset) -> tuple[list, list]:
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
         return (column_headers, table_rows)
     else:
-        raise ValueError(f"invalid task type! got: '{task_type}'. expected one of {TASK_TYPES}.")
+        raise ValueError(f"Task type {args.task_type} was not recognized.")
 
 
-def build_table(column_headers: list, table_rows: list, title: str) -> str:
+def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
     right_justified_columns = [
         Column(header=column_header, justify="right") for column_header in column_headers
     ]
@@ -720,6 +714,7 @@ def build_table(column_headers: list, table_rows: list, title: str) -> str:
     console = Console(record=True)
     console.print(table)
     return console.export_text()
+
 
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
@@ -744,19 +739,19 @@ def build_datasets(args, train_data, val_data, test_data):
         else:
             test_dset = None
         for i, train_dataset in enumerate(train_dsets):
-            column_headers, table_rows = summarize(args.task_type, train_dataset)
+            column_headers, table_rows = summarize(args, train_dataset)
             output = build_table(
                 column_headers, table_rows, f"Summary of Training Data - Component {i}"
             )
             logger.info(output)
         for i, val_dataset in enumerate(val_dsets):
-            column_headers, table_rows = summarize(args.task_type, val_dataset)
+            column_headers, table_rows = summarize(args, val_dataset)
             output = build_table(
                 column_headers, table_rows, f"Summary of Validation Data - Component {i}"
             )
             logger.info(output)
         for i, test_dataset in enumerate(test_dsets):
-            column_headers, table_rows = summarize(args.task_type, test_dataset)
+            column_headers, table_rows = summarize(args, test_dataset)
             output = build_table(
                 column_headers, table_rows, f"Summary of Test Data - Component {i}"
             )
@@ -772,13 +767,13 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-        column_headers, table_rows = summarize(args.task_type, train_dset)
+        column_headers, table_rows = summarize(args, train_dset)
         output = build_table(column_headers, table_rows, "Summary of Training Data")
         logger.info(output)
-        column_headers, table_rows = summarize(args.task_type, val_dset)
+        column_headers, table_rows = summarize(args, val_dset)
         output = build_table(column_headers, table_rows, "Summary of Validation Data")
         logger.info(output)
-        column_headers, table_rows = summarize(args.task_type, test_dset)
+        column_headers, table_rows = summarize(args, test_dset)
         output = build_table(column_headers, table_rows, "Summary of Test Data")
         logger.info(output)
 
@@ -1120,5 +1115,3 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
     args = parser.parse_args()
     TrainSubcommand.func(args)
-
-
