@@ -671,9 +671,9 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         y = dataset.Y
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
-        class_counts = (classes[:, None] == y[None, :]).sum(1)
+        class_counts = (classes[:, None] == y[:, 0]).sum(1)
         class_fracs = class_counts / len(y)
-        nan_count = (mask).sum()
+        nan_count = (mask[:, 0]).sum()
         nan_frac = nan_count / len(y)
         column_headers = ["Class", "Count", "Percent"]
         table_rows = [
@@ -758,7 +758,6 @@ def build_datasets(args, train_data, val_data, test_data):
         column_headers, table_rows = summarize(args, test_dset)
         output = build_table(column_headers, table_rows, "Summary of Test Data")
         logger.info(output)
-
     return train_dset, val_dset, test_dset
 
 
