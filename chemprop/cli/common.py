@@ -28,6 +28,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="If specified, the first row in the input CSV will not be used as column names.",
     )
+    data_args.add_argument(
+        "--ignore-columns",
+        nargs="+",
+        help="Name of the columns to ignore.",
+    )
 
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(

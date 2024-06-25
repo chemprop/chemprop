@@ -286,11 +286,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
     )
     train_data_args.add_argument(
-        "--ignore-columns",
-        nargs="+",
-        help="Name of the columns to ignore when :code:`target_columns` is not provided.",
-    )
-    train_data_args.add_argument(
         "--no-cache",
         action="store_true",
         help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
