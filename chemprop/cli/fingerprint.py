@@ -96,7 +96,7 @@ def make_fingerprint_for_model(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=None,
+        target_cols=[],
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
