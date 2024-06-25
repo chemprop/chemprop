@@ -679,7 +679,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         table_rows = [
             (f"{k}", f"{class_counts[i]}", f"{class_fracs[i]:0.0%}") for i, k in enumerate(classes)
         ]
-        table_rows.append(["Nan", f"{nan_count}", f"{nan_frac:0.0%}"])
+        table_rows.append(["NAN", f"{nan_count}", f"{nan_frac:0.0%}"])
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
         return (column_headers, table_rows)
     else:
