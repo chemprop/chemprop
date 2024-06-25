@@ -683,7 +683,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         table_rows.append(["Total", f"{len(y)}", f"{100.00}%"])
         return (column_headers, table_rows)
     else:
-        raise ValueError(f"Task type {args.task_type} was not recognized.")
+        raise ValueError(f"unsupported task type! Task type '{args.task_type}' was not recognized.")
 
 
 def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
