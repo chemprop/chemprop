@@ -118,7 +118,11 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
+        # manually add criterion and output_transform to hparams to suppress lightning's warning
+        # about double saving their state_dict values.
         self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        self.hparams["criterion"] = criterion
+        self.hparams["output_transform"] = output_transform
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
@@ -128,9 +132,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.criterion = criterion or Factory.build(
             self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
-        self.hparams["criterion"] = self.criterion
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
-        self.hparams["output_transform"] = self.output_transform
 
     @property
     def input_dim(self) -> int:
