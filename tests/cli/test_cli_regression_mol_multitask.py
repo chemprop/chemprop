@@ -44,19 +44,6 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         data_path,
         "--model-path",
         model_path,
-        "--target-columns",
-        "mu",
-        "alpha",
-        "homo",
-        "lumo",
-        "gap",
-        "r2",
-        "zpve",
-        "cv",
-        "u0",
-        "u298",
-        "h298",
-        "g298",
     ]
 
     with monkeypatch.context() as m:
