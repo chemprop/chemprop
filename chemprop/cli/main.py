@@ -1,16 +1,16 @@
-from configargparse import ArgumentParser
 import logging
-import sys
 from pathlib import Path
+import sys
 
-from chemprop.cli.train import TrainSubcommand
-from chemprop.cli.predict import PredictSubcommand
+from configargparse import ArgumentParser
+
+from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 from chemprop.cli.convert import ConvertSubcommand
 from chemprop.cli.fingerprint import FingerprintSubcommand
 from chemprop.cli.hpopt import HpoptSubcommand
-
+from chemprop.cli.predict import PredictSubcommand
+from chemprop.cli.train import TrainSubcommand
 from chemprop.cli.utils import pop_attr
-from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 
 logger = logging.getLogger(__name__)
 

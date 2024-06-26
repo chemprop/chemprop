@@ -1,8 +1,9 @@
 """This tests the CLI functionality of training and predicting a regression model on a multi-molecule.
 """
 
-import pytest
 import json
+
+import pytest
 
 from chemprop.cli.main import main
 
@@ -58,6 +59,7 @@ def test_train_quick(monkeypatch, data_path):
         *bond_feat_path_0,
         "--atom-descriptors-path",
         *atom_desc_path_1,
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:

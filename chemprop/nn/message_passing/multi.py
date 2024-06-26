@@ -4,8 +4,8 @@ import warnings
 from torch import Tensor, nn
 
 from chemprop.data import BatchMolGraph
-from chemprop.nn.message_passing.proto import MessagePassing
 from chemprop.nn.hparams import HasHParams
+from chemprop.nn.message_passing.proto import MessagePassing
 
 
 class MulticomponentMessagePassing(nn.Module, HasHParams):
