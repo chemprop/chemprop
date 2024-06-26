@@ -2,6 +2,8 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 
+import torch
+
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
@@ -145,6 +147,9 @@ Warning: setting num_workers>0 can cause hangs on Windows and MacOS.""",
 
 
 def process_common_args(args: Namespace) -> Namespace:
+    if not torch.backends.mps.is_available() and (getattr(args, "accelerator") in {"mps", "auto"}):
+        print("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+        setattr(args, "accelerator", "cpu")
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)
 
