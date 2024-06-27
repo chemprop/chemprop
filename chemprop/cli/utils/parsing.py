@@ -4,16 +4,16 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-from rdkit.Chem import Mol
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
-from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
+from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def make_datapoints(
     V_fss: list[list[np.ndarray] | list[None]] | None,
     E_fss: list[list[np.ndarray] | list[None]] | None,
     V_dss: list[list[np.ndarray] | list[None]] | None,
-    features_generators: list[VectorFeaturizer[Mol]] | None,
+    features_generators: list[str] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
@@ -161,9 +161,9 @@ def make_datapoints(
         the number of extra atom descriptors used for the j-th molecules. Any of the ``j`` lists can
         be a list of None values if the corresponding component does not use extra atom features. If
         ``None``, ``V_d`` for all datapoints will be ``None``.
-    features_generators : list[MoleculeFeaturizer] | None
-        a list of :class:`MoleculeFeaturizer` instances to generate additional molecule features to
-        use as extra descriptors
+    features_generators : list[str] | None
+        a list of molecule featurizer names to generate additional molecule features to use as extra
+        descriptors
     keep_h : bool
     add_h : bool
 
@@ -206,6 +206,14 @@ def make_datapoints(
     V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
     E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
     V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
+
+    if features_generators is not None:
+        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements.
+        # Should we expose these through the CLI?
+        features_generators = [
+            Factory.build(MoleculeFeaturizerRegistry[features_generator])
+            for features_generator in features_generators
+        ]
 
     mol_data = [
         [
