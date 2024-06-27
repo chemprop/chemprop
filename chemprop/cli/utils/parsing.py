@@ -4,16 +4,16 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-from rdkit.Chem import Mol
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
-from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
+from chemprop.utils import make_mol
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def make_datapoints(
     V_fss: list[list[np.ndarray] | list[None]] | None,
     E_fss: list[list[np.ndarray] | list[None]] | None,
     V_dss: list[list[np.ndarray] | list[None]] | None,
-    features_generators: list[VectorFeaturizer[Mol]] | None,
+    molecule_featurizers: list[str] | None,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
@@ -161,9 +161,12 @@ def make_datapoints(
         the number of extra atom descriptors used for the j-th molecules. Any of the ``j`` lists can
         be a list of None values if the corresponding component does not use extra atom features. If
         ``None``, ``V_d`` for all datapoints will be ``None``.
-    features_generators : list[MoleculeFeaturizer] | None
-        a list of :class:`MoleculeFeaturizer` instances to generate additional molecule features to
-        use as extra descriptors
+    molecule_featurizers : list[str] | None
+        a list of molecule featurizer names to generate additional molecule features to use as extra
+        descriptors. If there are multiple molecules per datapoint, the featurizers will be applied
+        to each molecule and concatenated. Note that a :code:`ReactionDatapoint` has two
+        RDKit :class:`~rdkit.Chem.Mol` objects, reactant(s) and product(s). Each
+        ``molecule_featurizer`` will be applied to both of these objects.
     keep_h : bool
     add_h : bool
 
@@ -197,28 +200,78 @@ def make_datapoints(
     else:
         N = len(smiss[0])
 
+    if len(smiss) > 0:
+        molss = [[make_mol(smi, keep_h, add_h) for smi in smis] for smis in smiss]
+    if len(rxnss) > 0:
+        rctss = [
+            [
+                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h)
+                for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
+            ]
+            for rxns in rxnss
+        ]
+        pdtss = [
+            [make_mol(pdt_smi, keep_h, add_h) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
+            for rxns in rxnss
+        ]
+
     weights = np.ones(N, dtype=np.single) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
 
     n_mols = len(smiss) if smiss else 0
-    X_d = [None] * N if X_d is None else X_d
     V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
     E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
     V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
 
+    if X_d is None and molecule_featurizers is None:
+        X_d = [None] * N
+    elif molecule_featurizers is None:
+        pass
+    else:
+        molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
+
+        if len(smiss) > 0:
+            mol_descriptors = np.hstack(
+                [
+                    np.vstack([np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols])
+                    for mols in molss
+                ]
+            )
+            if X_d is None:
+                X_d = mol_descriptors
+            else:
+                X_d = np.hstack([X_d, mol_descriptors])
+
+        if len(rxnss) > 0:
+            rct_pdt_descriptors = np.hstack(
+                [
+                    np.vstack(
+                        [
+                            np.hstack(
+                                [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
+                            )
+                            for rct, pdt in zip(rcts, pdts)
+                        ]
+                    )
+                    for rcts, pdts in zip(rctss, pdtss)
+                ]
+            )
+            if X_d is None:
+                X_d = rct_pdt_descriptors
+            else:
+                X_d = np.hstack([X_d, rct_pdt_descriptors])
+
     mol_data = [
         [
-            MoleculeDatapoint.from_smi(
-                smis[i],
-                keep_h=keep_h,
-                add_h=add_h,
+            MoleculeDatapoint(
+                mol=molss[mol_idx][i],
+                name=smis[i],
                 y=Y[i],
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
                 x_d=X_d[i],
-                mfs=features_generators,
                 x_phase=None,
                 V_f=V_fss[mol_idx][i],
                 E_f=E_fss[mol_idx][i],
@@ -230,16 +283,15 @@ def make_datapoints(
     ]
     rxn_data = [
         [
-            ReactionDatapoint.from_smi(
-                rxns[i],
-                keep_h=keep_h,
-                add_h=add_h,
+            ReactionDatapoint(
+                rct=rctss[rxn_idx][i],
+                pdt=pdtss[rxn_idx][i],
+                name=rxns[i],
                 y=Y[i],
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
                 x_d=X_d[i],
-                mfs=features_generators,
                 x_phase=None,
             )
             for i in range(N)
@@ -321,7 +373,8 @@ def load_input_feats_and_descs(
             for index in paths:
                 if index >= n_molecules:
                     raise ValueError(
-                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be specified for indices 0-{n_molecules - 1}! Got index {index}."
+                        f"For {n_molecules} molecules, atom/bond features/descriptors can only be "
+                        f"specified for indices 0-{n_molecules - 1}! Got index {index}."
                     )
 
             features = []

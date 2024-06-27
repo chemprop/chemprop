@@ -197,7 +197,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--metrics",
         "mse",
         "rmse",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
     ]
 
@@ -394,7 +394,7 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "optuna",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
         "--search-parameter-keywords",
         "all",
@@ -442,7 +442,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
         "--search-parameter-keywords",
         "all",
