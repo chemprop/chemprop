@@ -122,7 +122,7 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-quantile-regression")
-class ConformalRegressionCalibrator(UncertaintyCalibrator):
+class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
     def calibrate(self, preds, uncs, targets, mask) -> Tensor:
         ...
         return
