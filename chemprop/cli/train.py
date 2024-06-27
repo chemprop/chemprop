@@ -961,7 +961,7 @@ def main(args):
     )
 
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
