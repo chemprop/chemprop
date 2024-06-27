@@ -26,7 +26,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--no-header-row",
         action="store_true",
-        help="Do not use the first row in the input CSV as column names.",
+        help="Turn off using the first row in the input CSV as column names",
     )
 
     dataloader_args = parser.add_argument_group("Dataloader args")
@@ -38,7 +38,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="""Number of workers for parallel data loading where 0 means sequential
 (Warning: setting ``num_workers`` to a value greater than 0 can cause hangs on Windows and MacOS)""",
     )
-    dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size.")
+    dataloader_args.add_argument("-b", "--batch-size", type=int, default=64, help="Batch size")
 
     parser.add_argument(
         "--accelerator", default="auto", help="Passed directly to the lightning ``Trainer()``"

@@ -172,7 +172,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--message-hidden-dim", type=int, default=300, help="Hidden dimension of the messages"
     )
     mp_args.add_argument(
-        "--message-bias", action="store_true", help="Add bias to the message passing layers."
+        "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
     mp_args.add_argument("--depth", type=int, default=3, help="Number of message passing steps")
     mp_args.add_argument(
@@ -258,7 +258,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     extra_mpnn_args.add_argument(
         "--no-batch-norm",
         action="store_true",
-        help="Do not use batch normalization after aggregation.",
+        help="Turn off batch normalization after aggregation",
     )
     extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
@@ -293,7 +293,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "--no-cache",
         action="store_true",
-        help="Whether to not cache the featurized ``MolGraph`` s at the beginning of training.",
+        help="Turn off caching the featurized ``MolGraph`` s at the beginning of training",
     )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
@@ -324,7 +324,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     train_args.add_argument(
-        "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
+        "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
     )
     # TODO: Add in v2.1
     # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
@@ -352,7 +352,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-weights",
         nargs="+",
         type=float,
-        help="Weight to apply to an individual task in the overall loss",
+        help="Weights to apply to an individual task in the overall loss",
     )
     train_args.add_argument(
         "--warmup-epochs",
@@ -365,7 +365,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
     train_args.add_argument(
-        "--epochs", type=int, default=50, help="The number of epochs to train over."
+        "--epochs", type=int, default=50, help="Number of epochs to train over"
     )
     train_args.add_argument(
         "--patience",
@@ -417,7 +417,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
-        help="Save smiles for each train/val/test splits for prediction convenience later.",
+        help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
         "--splits-file",
