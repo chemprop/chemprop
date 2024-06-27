@@ -6,8 +6,8 @@ import numpy as np
 from lightning import pytorch as pl
 from torch import Tensor
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
-from chemprop.data import DataLoader
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
 
@@ -49,7 +49,6 @@ class EnsemblePredictor(UncertaintyPredictor):
     """
     def __init__(self, individual_ensemble_predictions):
         self.individual_ensemble_predictions = individual_ensemble_predictions
-
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         num_models = 0
@@ -128,7 +127,7 @@ class DropoutPredictor(UncertaintyPredictor):
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         # TODO: uses first model if multiple are given, should throw error if multiple are given.
-        model = next(models)
+        model = next(iter(models))
         model.apply(self.activate_dropout)
 
         for i in range(self.sampling_size):
