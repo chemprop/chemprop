@@ -11,10 +11,8 @@ from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.predict import find_models
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -96,24 +94,15 @@ def make_fingerprint_for_model(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=None,
+        target_cols=[],
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
 
-    if args.features_generators is not None:
-        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
-        features_generators = [
-            Factory.build(MoleculeFeaturizerRegistry[features_generator])
-            for features_generator in args.features_generators
-        ]
-    else:
-        features_generators = None
-
     featurization_kwargs = dict(
-        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(

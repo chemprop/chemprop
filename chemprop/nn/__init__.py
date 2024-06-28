@@ -66,7 +66,7 @@ from .predictors import (
     RegressionFFN,
     SpectralFFN,
 )
-from .transforms import UnscaleTransform
+from .transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from .utils import Activation
 
 __all__ = [
@@ -129,5 +129,7 @@ __all__ = [
     "MulticlassDirichletFFN",
     "SpectralFFN",
     "Activation",
+    "GraphTransform",
+    "ScaleTransform",
     "UnscaleTransform",
 ]
