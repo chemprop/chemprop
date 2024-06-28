@@ -352,7 +352,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-weights",
         nargs="+",
         type=float,
-        help="Weights to apply to an individual task in the overall loss",
+        help="Weights to apply for whole tasks in the loss function",
     )
     train_args.add_argument(
         "--warmup-epochs",
