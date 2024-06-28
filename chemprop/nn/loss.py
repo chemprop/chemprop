@@ -16,7 +16,6 @@ __all__ = [
     "EvidentialLoss",
     "BCELoss",
     "CrossEntropyLoss",
-    "MccMixin",
     "BinaryMCCLoss",
     "MulticlassMCCLoss",
     "DirichletMixin",
@@ -182,7 +181,31 @@ class CrossEntropyLoss(LossFunction):
         return F.cross_entropy(preds, targets, reduction="none")
 
 
-class MccMixin:
+@LossFunctionRegistry.register("binary-mcc")
+class BinaryMCCLoss(LossFunction):
+
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+        if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
+            preds = preds.sigmoid()
+
+        L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
+        L = L * self.task_weights
+
+        return L.mean()
+
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
+        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
+        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
+        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
+        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
+
+        MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN) + 1e-8).sqrt()
+
+        return 1 - MCC
+
+
+@LossFunctionRegistry.register("multiclass-mcc")
+class MulticlassMCCLoss(LossFunction):
     """Calculate a soft Matthews correlation coefficient ([mccWiki]_) loss for multiclass
     classification based on the implementataion of [mccSklearn]_
 
@@ -191,8 +214,7 @@ class MccMixin:
     .. [mccWiki] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
-
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
@@ -201,22 +223,6 @@ class MccMixin:
 
         return L.mean()
 
-
-@LossFunctionRegistry.register("binary-mcc")
-class BinaryMCCLoss(LossFunction, MccMixin):
-    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
-        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
-        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
-        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
-        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
-
-        MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)).sqrt()
-
-        return 1 - MCC
-
-
-@LossFunctionRegistry.register("multiclass-mcc")
-class MulticlassMCCLoss(LossFunction, MccMixin):
     def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
         device = preds.device
 
