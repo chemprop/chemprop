@@ -183,7 +183,6 @@ class CrossEntropyLoss(LossFunction):
 
 @LossFunctionRegistry.register("binary-mcc")
 class BinaryMCCLoss(LossFunction):
-
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
@@ -214,6 +213,7 @@ class MulticlassMCCLoss(LossFunction):
     .. [mccWiki] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
+
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
