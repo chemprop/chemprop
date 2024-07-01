@@ -81,7 +81,7 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent)
+    model = load_model(model_path, multicomponent, args.accelerator)
     model.eval()
 
     bounded = any(
