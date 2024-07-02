@@ -189,7 +189,7 @@ def find_models(model_paths: list[Path]):
 def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_paths[0], multicomponent, args.accelerator)
+    model = load_model(model_paths[0], multicomponent)
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
@@ -256,7 +256,7 @@ def make_prediction_for_models(
     for model_path in model_paths:
         logger.info(f"Predicting with model at '{model_path}'")
 
-        model = load_model(model_path, multicomponent, args.accelerator)
+        model = load_model(model_path, multicomponent)
 
         logger.info(model)
 

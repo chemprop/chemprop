@@ -10,15 +10,10 @@ def save_model(path: PathLike, model: MPNN) -> None:
     torch.save({"hyper_parameters": model.hparams, "state_dict": model.state_dict()}, path)
 
 
-def load_model(path: PathLike, multicomponent: bool, accelerator: str) -> MPNN:
-    if accelerator == "cpu":
-        map_location = torch.device("cpu")
-    else:
-        map_location = None
-
+def load_model(path: PathLike, multicomponent: bool) -> MPNN:
     if multicomponent:
-        model = MulticomponentMPNN.load_from_file(path, map_location=map_location)
+        model = MulticomponentMPNN.load_from_file(path, map_location=lambda storage, loc: storage)
     else:
-        model = MPNN.load_from_file(path, map_location=map_location)
+        model = MPNN.load_from_file(path, map_location=lambda storage, loc: storage)
 
     return model
