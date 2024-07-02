@@ -462,7 +462,7 @@ def main(args: Namespace):
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
-        ignore_cols=args.ignore_columns,
+        ignore_cols=None,
         splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
