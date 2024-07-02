@@ -39,7 +39,7 @@ def construct_parser():
         "-v",
         "--verbose",
         action="count",
-        default=0,
+        default=2,
         help="The verbosity level, specify the flag multiple times to increase verbosity.",
     )
 
