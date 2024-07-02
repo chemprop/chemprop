@@ -139,7 +139,7 @@ class EvidentialLoss(LossFunction):
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
-    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2, eps: float = 1e-8):
+    def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2, eps: float = 1e-8):
         super().__init__(task_weights)
         self.v_kl = v_kl
         self.eps = eps
@@ -252,7 +252,7 @@ class DirichletMixin:
     .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
-    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
+    def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2):
         super().__init__(task_weights)
         self.v_kl = v_kl
 
@@ -305,7 +305,7 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 
 @LossFunctionRegistry.register("sid")
 class SIDLoss(LossFunction):
-    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
         super().__init__(task_weights)
 
         self.threshold = threshold
@@ -327,7 +327,7 @@ class SIDLoss(LossFunction):
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
-    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
         super().__init__(task_weights)
 
         self.threshold = threshold
