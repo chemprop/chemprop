@@ -129,6 +129,7 @@ def make_fingerprint_for_model(
     logger.info(model)
 
     with torch.no_grad():
+        model.bn.eval()  # freeze batch norm running stats.
         if multicomponent:
             encodings = [
                 model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
