@@ -777,14 +777,12 @@ def build_model(
     if args.model_frzn is not None:
         model = mpnn_cls.load_from_file(args.model_frzn)
         model.message_passing.apply(lambda module: module.requires_grad_(False))
-        model.message_passing.apply(
-            lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
-        )
+        model.message_passing.eval()
         model.bn.apply(lambda module: module.requires_grad_(False))
         model.bn.eval()
         for idx in range(args.frzn_ffn_layers):
             model.predictor.ffn[idx].requires_grad_(False)
-            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+            model.predictor.ffn[idx + 1].eval()
 
         return model
 
