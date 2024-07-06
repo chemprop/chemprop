@@ -898,7 +898,9 @@ def train_model(
         logger.info(f"Best model saved to '{p_model}'")
 
 
-def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args, columns, target_cols):
+def evaluate_and_save_predictions(
+    preds, test_loader, metrics, model_output_dir, args, columns, target_cols
+):
     if isinstance(test_loader.dataset, MulticomponentDataset):
         test_dset = test_loader.dataset.datasets[0]
     else:
