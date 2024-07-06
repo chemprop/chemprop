@@ -19,9 +19,9 @@ def save_model(path: PathLike, model: MPNN, output_columns: list[str] = None) ->
 
 def load_model(path: PathLike, multicomponent: bool) -> MPNN:
     if multicomponent:
-        model = MulticomponentMPNN.load_from_file(path)
+        model = MulticomponentMPNN.load_from_file(path, map_location=lambda storage, loc: storage)
     else:
-        model = MPNN.load_from_file(path)
+        model = MPNN.load_from_file(path, map_location=lambda storage, loc: storage)
 
     return model
 
