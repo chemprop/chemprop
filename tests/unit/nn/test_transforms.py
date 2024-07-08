@@ -123,7 +123,6 @@ def test_unscale_transform_forward_eval(mean, scale, unscale_transform, predicti
     unscale_transform.eval()
     output = unscale_transform(prediction)
     expected = prediction * scale + mean
-    print(output, expected)
     assert torch.equal(output, expected)
 
 
