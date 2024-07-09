@@ -742,9 +742,10 @@ def build_model(
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
     if args.loss_function is not None:
+        task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
-            task_weights=args.task_weights,
+            task_weights=task_weights,
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
@@ -893,6 +894,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     targets = test_dset.Y
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
+    weights = torch.ones(len(test_dset))
     lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
     gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
 
@@ -923,7 +925,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
                 preds_slice,
                 targets_slice,
                 mask[:, i],
-                None,
+                weights,
                 lt_mask[:, i] if lt_mask is not None else None,
                 gt_mask[:, i] if gt_mask is not None else None,
             )
