@@ -20,7 +20,6 @@ from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
     build_data_from_files,
-    get_column_names,
     make_dataset,
     parse_indices,
 )
@@ -862,8 +861,6 @@ def train_model(
             args.weight_column,
             args.no_header_row,
         )
-        input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-        target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
 
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
@@ -888,18 +885,18 @@ def train_model(
                 preds = np.split(preds, 4, axis=1)[0]
 
             evaluate_and_save_predictions(
-                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns, target_cols
+                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns,
             )
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model, target_cols)
+        save_model(p_model, model, args.target_cols)
         logger.info(f"Best model saved to '{p_model}'")
 
 
 def evaluate_and_save_predictions(
-    preds, test_loader, metrics, model_output_dir, args, columns, target_cols
+    preds, test_loader, metrics, model_output_dir, args, columns,
 ):
     if isinstance(test_loader.dataset, MulticomponentDataset):
         test_dset = test_loader.dataset.datasets[0]
