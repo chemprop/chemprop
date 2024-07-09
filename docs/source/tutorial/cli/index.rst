@@ -1,7 +1,7 @@
 .. _tutorial:
 
-Command Line Tutorial
-=====================
+Command Line Tutorials
+======================
 
 .. note::
     Chemprop recently underwent a ground-up rewrite and new major release (v2.0.0). A helpful transition guide from Chemprop v1 to v2 can be found `here <https://docs.google.com/spreadsheets/u/3/d/e/2PACX-1vRshySIknVBBsTs5P18jL4WeqisxDAnDE5VRnzxqYEhYrMe4GLS17w5KeKPw9sged6TmmPZ4eEZSTIy/pubhtml>`_. This includes a side-by-side comparison of CLI argument options, a list of which arguments will be implemented in later versions of v2, and a list of changes to default hyperparameters.
@@ -17,6 +17,8 @@ where ``COMMAND`` is one of the following:
 * ``train``: Train a model.
 * ``predict``: Make predictions with a trained model.
 * ``convert``: Convert a trained Chemprop model from v1 to v2.
+* ``hpopt``: Perform hyperparameter optimization.
+* ``fingerprint``: Use a trained model to compute a learned representation.
 
 and ``ARGS`` are command-specific arguments. To see the arguments for a specific command, run:
 
@@ -42,13 +44,12 @@ For more details on each command, see the corresponding section below:
 * :ref:`train`
 * :ref:`predict`
 * :ref:`convert`
+* :ref:`hpopt`
+* :ref:`fingerprint`
 
-The following features are not yet implemented, but will soon be included in a future release:
+The following features are not yet implemented, but will be included in a future release:
 
-* ``hyperopt``: Perform hyperparameter optimization.
 * ``interpret``: Interpret model predictions.
-* ``fingerprint``: Use a trained model to compute a learned representation.
-
 
 .. toctree::
     :maxdepth: 1
@@ -57,3 +58,5 @@ The following features are not yet implemented, but will soon be included in a f
     train
     predict
     convert
+    hpopt
+    fingerprint

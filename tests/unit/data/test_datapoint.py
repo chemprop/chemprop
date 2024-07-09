@@ -2,8 +2,6 @@ import numpy as np
 import pytest
 
 from chemprop.data import MoleculeDatapoint
-from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.utils.registry import Factory
 
 SMI = "c1ccccc1"
 
@@ -24,18 +22,6 @@ def features_with_nans(features):
     features[idxs] = np.nan
 
     return features
-
-
-@pytest.fixture
-def features_generators():
-    return [Factory.build(featurizer) for featurizer in MoleculeFeaturizerRegistry.values()]
-
-
-def test_features_and_fg(features_generators):
-    targets = np.random.rand(1, 1)
-    features = np.random.rand(1024)
-    with pytest.raises(ValueError):
-        MoleculeDatapoint.from_smi(SMI, y=targets, x_d=features, mfs=features_generators)
 
 
 def test_num_tasks(targets):

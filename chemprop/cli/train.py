@@ -35,7 +35,6 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
-from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
@@ -43,6 +42,7 @@ from chemprop.nn.message_passing import (
     BondMessagePassing,
     MulticomponentMessagePassing,
 )
+from chemprop.nn.predictors import EvidentialFFN, MveFFN
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
@@ -95,23 +95,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         help="Directory where training outputs will be saved. Defaults to 'CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP'.",
     )
-
-    # TODO: Add in v2.1
-    # parser.add_argument(
-    #     "--checkpoint-dir",
-    #     help="Directory from which to load model checkpoints (walks directory and ensembles all models that are found).",
-    # )
-    # parser.add_argument("--checkpoint-path", help="Path to model checkpoint (:code:`.pt` file).")
-    # parser.add_argument(
-    #     "--checkpoint-paths",
-    #     type=list[str],
-    #     help="List of paths to model checkpoints (:code:`.pt` files).",
-    # )
-    # # TODO: Is this a prediction only argument?
-    # parser.add_argument(
-    #     "--checkpoint",
-    #     help="Location of checkpoint(s) to use for ... If the location is a directory, chemprop walks it and ensembles all models that are found. If the location is a path or list of paths to model checkpoints (:code:`.pt` files), only those models will be loaded.",
-    # )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
     # parser.add_argument(
@@ -218,7 +201,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     mp_args.add_argument(
         "--aggregation",
         "--agg",
-        default="mean",
+        default="norm",
         action=LookupAction(AggregationRegistry),
         help="the aggregation mode to use during graph predictor",
     )
@@ -359,12 +342,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action=LookupAction(MetricRegistry),
         help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
     )
-    # TODO: Add in v2.1
-    # train_args.add_argument(
-    #     "--show-individual-scores",
-    #     action="store_true",
-    #     help="Show all scores for individual targets, not just average, at the end.",
-    # )
+    train_args.add_argument(
+        "--show-individual-scores",
+        action="store_true",
+        help="Show all scores for individual targets, not just average, at the end.",
+    )
     train_args.add_argument(
         "--task-weights",
         nargs="+",
@@ -885,64 +867,91 @@ def train_model(
                 predss = trainer.predict(model, dataloaders=test_loader)
             else:
                 predss = trainer.predict(dataloaders=test_loader)
+
             preds = torch.concat(predss, 0).numpy()
+            if isinstance(model.predictor, MveFFN):
+                preds = np.split(preds, 2, axis=1)[0]
+            elif isinstance(model.predictor, EvidentialFFN):
+                preds = np.split(preds, 4, axis=1)[0]
 
-            if isinstance(test_loader.dataset, MulticomponentDataset):
-                test_dset = test_loader.dataset.datasets[0]
-            else:
-                test_dset = test_loader.dataset
-            targets = test_dset.Y
-            mask = torch.from_numpy(np.isfinite(targets))
-            targets = np.nan_to_num(targets, nan=0.0)
-            weights = torch.from_numpy(test_dset.weights)
-            lt_mask = (
-                torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+            evaluate_and_save_predictions(
+                preds, test_loader, model.metrics[:-1], model_output_dir, args
             )
-            gt_mask = (
-                torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
-            )
-            preds_losses = [
-                metric(
-                    torch.from_numpy(preds),
-                    torch.from_numpy(targets),
-                    mask,
-                    weights,
-                    lt_mask,
-                    gt_mask,
-                )
-                for metric in model.metrics
-            ]
-            preds_metrics = {
-                f"entire_test/{m.alias}": l.item() for m, l in zip(model.metrics, preds_losses)
-            }
-            print(f"Entire Test Set results: {preds_metrics}")
-
-            columns = get_column_names(
-                args.data_path,
-                args.smiles_columns,
-                args.reaction_columns,
-                args.target_columns,
-                args.ignore_columns,
-                args.splits_column,
-                args.weight_column,
-                args.no_header_row,
-            )
-            names = test_loader.dataset.names
-            if isinstance(test_loader.dataset, MulticomponentDataset):
-                namess = list(zip(*names))
-            else:
-                namess = [names]
-            if "multiclass" in args.task_type:
-                df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
-            else:
-                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
-            df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
+
+
+def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
+    if isinstance(test_loader.dataset, MulticomponentDataset):
+        test_dset = test_loader.dataset.datasets[0]
+    else:
+        test_dset = test_loader.dataset
+    targets = test_dset.Y
+    mask = torch.from_numpy(np.isfinite(targets))
+    targets = np.nan_to_num(targets, nan=0.0)
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+
+    columns = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+
+    individual_scores = dict()
+    for metric in metrics:
+        individual_scores[metric.alias] = []
+        for i, col in enumerate(target_cols):
+            if "multiclass" in args.task_type:
+                preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
+                targets_slice = torch.from_numpy(targets[:, i : i + 1])
+            else:
+                preds_slice = torch.from_numpy(preds[:, i])
+                targets_slice = torch.from_numpy(targets[:, i])
+            preds_loss = metric(
+                preds_slice,
+                targets_slice,
+                mask[:, i],
+                None,
+                lt_mask[:, i] if lt_mask is not None else None,
+                gt_mask[:, i] if gt_mask is not None else None,
+            )
+            individual_scores[metric.alias].append(preds_loss)
+
+    logger.info("Entire Test Set results:")
+    for metric in metrics:
+        avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
+        logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+
+    if args.show_individual_scores:
+        logger.info("Entire Test Set individual results:")
+        for metric in metrics:
+            for i, col in enumerate(target_cols):
+                logger.info(
+                    f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
+                )
+
+    names = test_loader.dataset.names
+    if isinstance(test_loader.dataset, MulticomponentDataset):
+        namess = list(zip(*names))
+    else:
+        namess = [names]
+    if "multiclass" in args.task_type:
+        df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+    else:
+        df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+    df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
 def main(args):
@@ -956,17 +965,9 @@ def main(args):
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
-    if args.features_generators is not None:
-        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
-        features_generators = [
-            Factory.build(MoleculeFeaturizerRegistry[features_generator])
-            for features_generator in args.features_generators
-        ]
-    else:
-        features_generators = None
 
     featurization_kwargs = dict(
-        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
