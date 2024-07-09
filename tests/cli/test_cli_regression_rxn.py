@@ -41,6 +41,50 @@ def test_train_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+    
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "smiles",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--show-individual-scores",
+        "--task-type",
+        "regression-mve",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+    
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "smiles",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--show-individual-scores",
+        "--task-type",
+        "regression-evidential",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
