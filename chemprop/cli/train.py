@@ -20,6 +20,7 @@ from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
     build_data_from_files,
+    get_column_names,
     make_dataset,
     parse_indices,
 )
@@ -885,7 +886,7 @@ def train_model(
                 preds = np.split(preds, 4, axis=1)[0]
 
             evaluate_and_save_predictions(
-                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns,
+                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns
             )
 
         best_model_path = checkpointing.best_model_path
@@ -895,9 +896,7 @@ def train_model(
         logger.info(f"Best model saved to '{p_model}'")
 
 
-def evaluate_and_save_predictions(
-    preds, test_loader, metrics, model_output_dir, args, columns,
-):
+def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args, columns):
     if isinstance(test_loader.dataset, MulticomponentDataset):
         test_dset = test_loader.dataset.datasets[0]
     else:
@@ -911,7 +910,7 @@ def evaluate_and_save_predictions(
     individual_scores = dict()
     for metric in metrics:
         individual_scores[metric.alias] = []
-        for i, col in enumerate(target_cols):
+        for i, col in enumerate(args.target_columns):
             if "multiclass" in args.task_type:
                 preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
                 targets_slice = torch.from_numpy(targets[:, i : i + 1])
@@ -936,7 +935,7 @@ def evaluate_and_save_predictions(
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
         for metric in metrics:
-            for i, col in enumerate(target_cols):
+            for i, col in enumerate(args.target_columns):
                 logger.info(
                     f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
                 )
