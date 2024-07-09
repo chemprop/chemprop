@@ -280,12 +280,12 @@ def make_prediction_for_models(
 
     output_columns = load_output_columns(model_paths[0])
     if output_columns is None:
-        target_columns = [
+        output_columns = [
             f"pred_{i}" for i in range(preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds
+    df_test[output_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -295,12 +295,12 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
-        target_columns = [
-            f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
+        output_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds
+        df_test[output_columns] = individual_preds
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)
