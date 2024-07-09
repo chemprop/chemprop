@@ -182,6 +182,8 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets)
 
+        preds = torch.split(preds, preds.size(1) // self.n_targets, dim=1)[0]
+
         return [
             metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
