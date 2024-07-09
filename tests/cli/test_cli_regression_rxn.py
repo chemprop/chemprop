@@ -41,7 +41,7 @@ def test_train_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
-    
+
     args = [
         "chemprop",
         "train",
@@ -63,7 +63,7 @@ def test_train_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
-    
+
     args = [
         "chemprop",
         "train",
