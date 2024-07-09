@@ -57,7 +57,7 @@ rxn_smis = [
     # reactant and product has different numbers of atoms
     "[CH4:1]>>[CH2:1].[H:2][H:3]",  # product has more atoms and more atom-mapped atoms
     "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]",  # reactant with more atoms and atom-mapped atoms.
-    "[CH4:1]>>[CH3:1].[H:2]"  # reactant with more atoms and atom-mapped atoms with 0 edge
+    "[CH4:1]>>[CH3:1].[H:2]",  # reactant with more atoms and atom-mapped atoms with 0 edge
 ]
 
 # Expected output for CGRFeaturizer.map_reac_to_prod
@@ -68,7 +68,7 @@ reac_prod_maps = {
     "[CH3:1][H:2]>>[H].[CH3:1]": ({0: 1}, [0], [1]),
     "[CH4:1]>>[CH2:1].[H:2][H:3]": ({0: 0}, [1, 2], []),
     "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]": ({1: 0, 2: 1}, [], [0]),
-    "[CH4:1]>>[CH3:1].[H:2]": ({0 : 0}, [1], [])
+    "[CH4:1]>>[CH3:1].[H:2]": ({0: 0}, [1], []),
 }
 
 
@@ -107,9 +107,7 @@ bond_expect_imbalanced = {
         BondExpectation((0, 2), bond_reac_none=True, bond_prod_none=True),
         BondExpectation((1, 2), bond_reac_none=False, bond_prod_none=False),
     ],
-    "[CH4:1]>>[CH3:1].[H:2]": [
-        BondExpectation((0, 0), bond_reac_none=True, bond_prod_none=True),
-    ],
+    "[CH4:1]>>[CH3:1].[H:2]": [BondExpectation((0, 0), bond_reac_none=True, bond_prod_none=True)],
 }
 bond_expect_balanced = bond_expect_imbalanced.copy()
 bond_expect_balanced.update(
@@ -354,7 +352,7 @@ class TestCondensedGraphOfReactionFeaturizer:
         for i, bond in enumerate(bonds):
             expect_edge_index.extend([bond, bond[::-1]])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
-            
+
         if len(expect_edge_index) == 0:
             assert np.array_equiv(molgraph.edge_index, expect_edge_index)
         else:
@@ -364,7 +362,6 @@ class TestCondensedGraphOfReactionFeaturizer:
             assert np.array_equiv(molgraph.rev_edge_index, expect_rev_edge_index)
         else:
             assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
-
 
     def test_featurize_imbalanced(self, rxn_smi, mode_imbalanced):
         """
@@ -395,7 +392,7 @@ class TestCondensedGraphOfReactionFeaturizer:
         for i, bond in enumerate(bonds):
             expect_edge_index.extend([bond, bond[::-1]])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
-        
+
         if len(expect_edge_index) == 0:
             assert np.array_equiv(molgraph.edge_index, expect_edge_index)
         else:
