@@ -136,7 +136,7 @@ def test_unscale_transform_variance_eval(scale, unscale_transform, variance):
     unscale_transform.eval()
     output_variance = unscale_transform.transform_variance(variance)
     expected_variance = variance * scale**2
-    assert torch.allclose(output_variance, expected_variance.float())
+    torch.testing.assert_close(output_variance, expected_variance)
 
 
 def test_graph_transform_forward_train(graph_transform, bmg):
