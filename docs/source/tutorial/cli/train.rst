@@ -7,7 +7,7 @@ To train a model, run:
 
 .. code-block::
    
-   chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
+    chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
 
 where ``<input_path>`` is the path to a CSV file containing a dataset, ``<task>`` is the type of modeling task, and ``<dir>`` is the directory where model checkpoints will be saved.
 
@@ -15,9 +15,9 @@ For example:
 
 .. code-block::
 
-   chemprop train --data-path tests/data/regression.csv \
-   --task-type regression \
-   --output-dir solubility_checkpoints
+    chemprop train --data-path tests/data/regression.csv \
+        --task-type regression \
+        --output-dir solubility_checkpoints
 
 The following modeling tasks are supported:
 
@@ -42,13 +42,14 @@ The data file must be be a **CSV file with a header row**. For example:
 
 .. code-block::
 
-   smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
-   CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
-   CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
-   ...
+    smiles,NR-AR,NR-AR-LBD,NR-AhR,NR-Aromatase,NR-ER,NR-ER-LBD,NR-PPAR-gamma,SR-ARE,SR-ATAD5,SR-HSE,SR-MMP,SR-p53
+    CCOc1ccc2nc(S(N)(=O)=O)sc2c1,0,0,1,,,0,0,1,0,0,0,0
+    CCN1C(=O)NC(c2ccccc2)C1=O,0,0,0,0,0,0,0,,0,,0,0
+    ...
 
 By default, it is assumed that the SMILES are in the first column and the targets are in the remaining columns. However, the specific columns containing the SMILES and targets can be specified using the :code:`--smiles-columns <column>` and :code:`--target-columns <column_1> <column_2> ...` flags, respectively. To simultaneously train multiple molecules (such as a solute and a solvent), supply two column headers in :code:`--smiles-columns <columns>`.
 
+.. _train_validation_test_splits:
 
 Train/Validation/Test Splits
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +85,7 @@ Model performance is often highly dependent on the hyperparameters used. Below i
  * :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN (default 300)
  * :code:`--depth <n>` Number of message-passing steps (default 3)
  * :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers (default 0)
- * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default :code:`relu``)
+ * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default :code:`relu`)
  * :code:`--epochs <n>` How many epochs to train over (default 50)
  * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2)
  * :code:`--init_lr <n>` Initial learning rate (default 0.0001)
@@ -173,8 +174,6 @@ Pretraining
 It is possible to freeze the weights of a loaded model during training, such as for transfer learning applications. To do so, specify :code:`--model-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
 
  * :code:`--frzn-ffn-layers <n>` Overwrites weights for the first n layers of the FFN from the checkpoint (default 0)  
-..  * :code:`--freeze-first-only` Determines whether to use the loaded checkpoint for just the first encoder. Only relevant if the number of molecules is greater than one, i.e. two SMILES columns are provided for training (default :code:`false`)
-
 
 .. _train-on-reactions:
 
@@ -228,7 +227,7 @@ While the model works very well on its own, especially after hyperparameter opti
 
 
 Atom-Level Features/Descriptors
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can provide additional atom features via :code:`--atom-features-path /path/to/atom/features.npz` as a numpy :code:`.npz` file. This command concatenates the features to each atomic feature vector before the D-MPNN, so that they are used during message-passing. This file can be saved using :code:`np.savez("atom_features.npz", *V_fs)`, where :code:`V_fs` is a list containing the atom features :code:`V_f` for each molecule, where :code:`V_f` is a 2D array with a shape of number of atoms by number of atom features in the exact same order as the SMILES strings in your data file.
 
@@ -254,7 +253,7 @@ The bond-level features are scaled by default. This can be disabled with the opt
 Extra Descriptors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Additional descriptors can be concatenated to the learned representaiton after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
+Additional descriptors can be concatenated to the learned representation after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
 
 1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features. 
 2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
@@ -263,7 +262,7 @@ Additional descriptors can be concatenated to the learned representaiton after a
 Molecule-Level 2D Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Morgan fingerprints can be generated as molecular 2D features using :code:`--features-generators`:
+Morgan fingerprints can be generated as molecular 2D features using :code:`--molecule-featurizers`:
 
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.

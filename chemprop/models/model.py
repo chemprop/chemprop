@@ -180,9 +180,10 @@ class MPNN(pl.LightningModule):
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
+        weights = torch.ones_like(targets)
 
         return [
-            metric(preds, targets, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
+            metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
