@@ -46,6 +46,9 @@ def validate_loss_function(
         case predictors.EvidentialFFN:
             if criterion is not loss.EvidentialLoss:
                 raise ValueError(f"Expected an evidential loss function! got: {criterion.__name__}")
+        case predictors.QuantileFFN:
+            if criterion is not loss.QuantileLoss:
+                raise ValueError(f"Expected an quantile loss function! got: {criterion.__name__}")
         case predictors.BinaryClassificationFFN:
             if criterion not in (loss.BCELoss, loss.BinaryMCCLoss):
                 raise ValueError(
