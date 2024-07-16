@@ -66,14 +66,17 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(UncertaintyCalibrator):
-    """
-    A calibration method for classification datasets based on the Platt scaling algorithm.
-    As discussed in https://arxiv.org/abs/1706.04599 and Platt, J. (2000). Probabilistic outputs for
-    support vector machines and comparison to regularized likelihood methods. In A. Smola, P.
-    Bartlett, B. Schölkopf, & D. Schuurmans (Eds.), Advances in large margin classifiers. Cambridge:
-    MIT Press.
-    In Platt's paper, he suggests using the number of positive and negative examples in the dataset
-    used to train the model to adjust the value of target probabilities used to fit the parameters.
+    """A calibration method for classification datasets based on the Platt scaling algorithm, as
+    discussed in [guo2017]_ and [platt1999]_. In Platt's paper, he suggests using the number of
+    positive and negative examples in the dataset used to train the model to adjust the value of
+    target probabilities used to fit the parameters.
+
+    References
+    ----------
+    .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+    .. [platt1999] Platt, J.. "Probabilistic Outputs for Support Vector Machines and Comparisons to
+        Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
     """
 
     def calibrate(self, preds, targets, mask, training_targets: None | Tensor = None):
