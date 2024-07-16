@@ -56,8 +56,8 @@ rxn_smis = [
     "[CH3:1][H:2]>>[H].[CH3:1]",  # reactant and product are balanced and but product has less atom-mapped atoms
     # reactant and product has different numbers of atoms
     "[CH4:1]>>[CH2:1].[H:2][H:3]",  # product has more atoms and more atom-mapped atoms
-    "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]",  # reactant with more atoms and atom-mapped atoms.
-    "[CH4:1]>>[CH3:1].[H:2]",  # reactant with more atoms and atom-mapped atoms with 0 edge
+    "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]",  # reactant with more atoms and atom-mapped atoms
+    "[CH4:1]>>[CH3:1].[H:2]",  # product with more atoms and atom-mapped atoms with 0 edge
 ]
 
 # Expected output for CGRFeaturizer.map_reac_to_prod
