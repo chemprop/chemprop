@@ -291,8 +291,8 @@ class TestCondensedGraphOfReactionFeaturizer:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
-        assert (bond_reac is None) == bond_expect.bond_reac_none
-        assert (bond_prod is None) == bond_expect.bond_prod_none
+            assert (bond_reac is None) == bond_expect.bond_reac_none
+            assert (bond_prod is None) == bond_expect.bond_prod_none
 
     def test_get_bonds_balanced(self, rxn_smi, mode_balanced):
         """
@@ -306,8 +306,8 @@ class TestCondensedGraphOfReactionFeaturizer:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
-        assert (bond_reac is None) == bond_expect.bond_reac_none
-        assert (bond_prod is None) == bond_expect.bond_prod_none
+            assert (bond_reac is None) == bond_expect.bond_reac_none
+            assert (bond_prod is None) == bond_expect.bond_prod_none
 
     @pytest.mark.parametrize(
         "reac_prod_bonds", [(bond, bond), (bond, None), (None, bond), (None, None)]
