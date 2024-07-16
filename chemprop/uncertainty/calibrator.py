@@ -77,9 +77,10 @@ class PlattCalibrator(UncertaintyCalibrator):
     """
 
     def calibrate(self, preds, targets, mask, training_targets: None | Tensor = None):
-        if (targets[mask] != 0).any() or (targets[mask] == 1).any():
+        if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
             raise ValueError(
-                "Platt scaling is only implemented for binary classification tasks! Input tensor must contain only 0's and 1's."
+                "Platt scaling is only implemented for binary classification tasks! Input tensor "
+                "must contain only 0's and 1's."
             )
 
         if training_targets is not None:
