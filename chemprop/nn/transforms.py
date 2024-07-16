@@ -1,6 +1,6 @@
-import torch
 from numpy.typing import ArrayLike
 from sklearn.preprocessing import StandardScaler
+import torch
 from torch import Tensor, nn
 
 from chemprop.data.collate import BatchMolGraph
@@ -40,6 +40,11 @@ class UnscaleTransform(_ScaleTransformMixin):
             return X
 
         return X * self.scale + self.mean
+
+    def transform_variance(self, var: Tensor) -> Tensor:
+        if self.training:
+            return var
+        return var * (self.scale**2)
 
 
 class GraphTransform(nn.Module):

@@ -5,7 +5,6 @@ import pandas as pd
 import pytest
 from rdkit import Chem
 
-
 _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
 _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
