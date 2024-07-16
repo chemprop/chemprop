@@ -115,7 +115,9 @@ bond_expect_imbalanced = {
         BondExpectation((0, 2), bond_reac_none=True, bond_prod_none=True),
         BondExpectation((1, 2), bond_reac_none=False, bond_prod_none=False),
     ],
-    "[CH4:1]>>[CH3:1].[H:2]": [BondExpectation((0, 0), bond_reac_none=True, bond_prod_none=True)],
+    "[CH4:1]>>[CH3:1].[H:2]": [
+        BondExpectation((0, 0), bond_reac_none=True, bond_prod_none=True)
+    ],  # this last entry doesn't test for anything meaningful, only to enable other tests for graph with zero edges
 }
 bond_expect_balanced = bond_expect_imbalanced.copy()
 bond_expect_balanced.update(
