@@ -7,7 +7,7 @@ from chemprop.utils.registry import ClassRegistry
 
 class UncertaintyCalibrator:
     @abstractmethod
-    def calibrate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+    def calibrate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         """
         Fit calibration method for the calibration data.
         """
@@ -24,7 +24,7 @@ UncertaintyCalibratorRegistry = ClassRegistry[UncertaintyCalibrator]()
 
 @UncertaintyCalibratorRegistry.register("zscaling")
 class ZScalingCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -35,7 +35,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("tscaling")
 class TScalingCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -46,7 +46,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -57,7 +57,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -68,7 +68,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -79,7 +79,7 @@ class PlattCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class ConformalMultilabelCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -90,7 +90,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-multiclass")
 class ConformalMulticlassCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -101,7 +101,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-adaptive")
 class ConformalAdaptiveMulticlassCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -112,7 +112,7 @@ class ConformalAdaptiveMulticlassCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class ConformalRegressionCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -123,7 +123,7 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-quantile-regression")
 class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -134,7 +134,7 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic")
 class IsotonicCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
@@ -145,7 +145,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
 class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
-    def calibrate(self, preds, uncs, targets, mask) -> Tensor:
+    def calibrate(self, preds, uncs, targets, mask) -> None:
         ...
         return
 
