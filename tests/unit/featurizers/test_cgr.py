@@ -364,9 +364,6 @@ class TestCondensedGraphOfReactionFeaturizer:
             expect_edge_index[1].extend(bond[::-1])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
 
-        expect_edge_index = np.array(expect_edge_index)
-        expect_rev_edge_index = np.array(expect_rev_edge_index)
-
         assert np.array_equal(molgraph.edge_index, expect_edge_index)
         assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
 
