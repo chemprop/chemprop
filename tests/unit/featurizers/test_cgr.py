@@ -1,4 +1,4 @@
-from collections import namedtuple
+from typing import NamedTuple
 import random
 import uuid
 
@@ -77,8 +77,16 @@ def rxn_smi(request):
     return request.param
 
 
-# whether elements in the returns for _get_bonds are Nones under imbalanced and balanced modes
-BondExpectation = namedtuple("BondExpectation", ["bond", "bond_reac_none", "bond_prod_none"])
+class BondExpectation(NamedTuple):
+    """
+    whether elements in the returns for _get_bonds are Nones under
+    imbalanced and balanced modes for provided bond
+    """
+
+    bond: tuple
+    bond_reac_none: bool
+    bond_prod_none: bool
+
 
 bond_expect_imbalanced = {
     "[CH3:1][H:2]>>[CH3:1].[H:2]": [
