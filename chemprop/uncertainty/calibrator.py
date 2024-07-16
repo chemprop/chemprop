@@ -84,31 +84,34 @@ class PlattCalibrator(UncertaintyCalibrator):
             )
 
         if training_targets is not None:
-            negative_targets = (1 / ((training_targets == 0).sum(dim=0) + 2)).expand_as(targets)
-            positive_targets = (
-                ((training_targets == 1).sum(dim=0) + 1) / ((training_targets == 1).sum(dim=0) + 2)
+            n_negative_examples = (training_targets == 0).sum(dim=0)
+            n_positive_examples = (training_targets == 1).sum(dim=0)
+
+            negative_target_bayes_MAP = (1 / (n_negative_examples + 2)).expand_as(targets)
+            positive_target_bayes_MAP = (
+                (n_positive_examples + 1) / (n_positive_examples + 2)
             ).expand_as(targets)
 
             targets = targets.float()
-            targets[targets == 0] = negative_targets[targets == 0]
-            targets[targets == 1] = positive_targets[targets == 1]
+            targets[targets == 0] = negative_target_bayes_MAP[targets == 0]
+            targets[targets == 1] = positive_target_bayes_MAP[targets == 1]
 
-        platt_a = []
-        platt_b = []
+        self.a = []
+        self.b = []
         for j in range(preds.shape[1]):
             mask_j = mask[:, j]
             preds_j = preds[:, j][mask_j]
-            preds_j = targets[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
 
             # if is_atom_bond_targets: # Not yet implemented
 
             def objective(parameters):
                 a = parameters[0]
                 b = parameters[1]
-                scaled_preds = torch.sigmoid(a * torch.logit(t_preds) + b)
+                scaled_preds = torch.sigmoid(a * torch.logit(preds_j) + b)
                 nll = -1 * torch.sum(
-                    t_targets * torch.log(scaled_preds)
-                    + (1 - t_targets) * torch.log(1 - scaled_preds)
+                    targets_j * torch.log(scaled_preds)
+                    + (1 - targets_j) * torch.log(1 - scaled_preds)
                 )
                 return nll
 
@@ -116,11 +119,11 @@ class PlattCalibrator(UncertaintyCalibrator):
             self.a.append(a_j)
             self.a.append(b_j)
 
-        self.platt_a = torch.tensor(platt_a)
-        self.platt_b = torch.tensor(platt_b)
+        self.a = torch.tensor(self.a)
+        self.b = torch.tensor(self.b)
 
     def apply_calibration(self, preds) -> Tensor:
-        return torch.sigmoid(self.platt_a * torch.logit(preds) + self.platt_b)
+        return torch.sigmoid(self.a * torch.logit(preds) + self.b)
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
