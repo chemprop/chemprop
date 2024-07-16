@@ -1,5 +1,5 @@
-from typing import NamedTuple
 import random
+from typing import NamedTuple
 import uuid
 
 import numpy as np
