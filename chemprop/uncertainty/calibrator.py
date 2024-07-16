@@ -113,7 +113,7 @@ class PlattCalibrator(UncertaintyCalibrator):
                     targets_j * torch.log(scaled_preds)
                     + (1 - targets_j) * torch.log(1 - scaled_preds)
                 )
-                return nll
+                return nll.item()
 
             a_j, b_j = fmin(objective, x0=[1, 0], disp=False)
             self.a.append(a_j)
