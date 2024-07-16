@@ -347,21 +347,20 @@ class TestCondensedGraphOfReactionFeaturizer:
 
         assert molgraph.E.shape == (len(bonds) * 2, bond_fdim)
 
-        expect_edge_index = []
+        expect_edge_index = [[], []]
         expect_rev_edge_index = []
+
         for i, bond in enumerate(bonds):
-            expect_edge_index.extend([bond, bond[::-1]])
+            bond = list(bond)
+            expect_edge_index[0].extend(bond)
+            expect_edge_index[1].extend(bond[::-1])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
 
-        if len(expect_edge_index) == 0:
-            assert np.array_equiv(molgraph.edge_index, expect_edge_index)
-        else:
-            assert np.array_equal(molgraph.edge_index, expect_edge_index)
+        expect_edge_index = np.array(expect_edge_index)
+        expect_rev_edge_index = np.array(expect_rev_edge_index)
 
-        if len(expect_rev_edge_index) == 0:
-            assert np.array_equiv(molgraph.rev_edge_index, expect_rev_edge_index)
-        else:
-            assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
+        assert np.array_equal(molgraph.edge_index, expect_edge_index)
+        assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
 
     def test_featurize_imbalanced(self, rxn_smi, mode_imbalanced):
         """
