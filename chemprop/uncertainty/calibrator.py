@@ -81,8 +81,8 @@ class PlattCalibrator(UncertaintyCalibrator):
     """
 
     def calibrate(self, preds, targets, mask, training_targets: None | Tensor = None) -> Tensor:
-        if not torch.logical_or((targets[mask] == 0), (targets[mask] == 1)).all():
-            raise ValueError("Platt scaling is only implemented for binary classification tasks.")
+        if (targets[mask] != 0).any() or (targets[mask] == 1).any():
+            raise ValueError("Platt scaling is only implemented for binary classification tasks! Input tensor must contain only 0's and 1's.")
 
         if training_targets is not None:
             negative_targets = (1 / ((training_targets == 0).sum(dim=0) + 2)).expand_as(targets)
@@ -96,10 +96,10 @@ class PlattCalibrator(UncertaintyCalibrator):
 
         platt_a = []
         platt_b = []
-        for i in range(preds.shape[1]):
-            task_mask = mask[:, i]
-            t_preds = preds[:, i][task_mask]
-            t_targets = targets[:, i][task_mask]
+        for j in range(preds.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j]
+            preds_j = targets[:, j][mask_j]
 
             # if is_atom_bond_targets: # Not yet implemented
 
@@ -113,9 +113,9 @@ class PlattCalibrator(UncertaintyCalibrator):
                 )
                 return nll
 
-            parameters = fmin(objective, x0=[1, 0], disp=False)
-            platt_a.append(parameters[0])
-            platt_b.append(parameters[1])
+            a_j, b_j = fmin(objective, x0=[1, 0], disp=False)
+            self.a.append(a_j)
+            self.a.append(b_j)
 
         self.platt_a = torch.tensor(platt_a)
         self.platt_b = torch.tensor(platt_b)
