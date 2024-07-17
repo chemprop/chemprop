@@ -237,7 +237,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
 
-        F.softplus(Y) + 1
+        return F.softplus(Y) + 1
 
 
 @PredictorRegistry.register("multiclass")
