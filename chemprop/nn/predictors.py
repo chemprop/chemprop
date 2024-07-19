@@ -211,18 +211,18 @@ class QuantileFFN(RegressionFFN):
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
-        lower_pred, upper_pred = torch.chunk(Y, self.n_targets, 1)
+        lower_bound, upper_bound = torch.chunk(Y, self.n_targets, 1)
 
-        lower_pred = self.output_transform(lower_pred)
-        upper_pred = self.output_transform(upper_pred)
+        lower_bound = self.output_transform(lower_bound)
+        upper_bound = self.output_transform(upper_bound)
 
-        mean = (lower_pred + upper_pred) / 2
-        interval = upper_pred - lower_pred
+        mean = (lower_bound + upper_bound) / 2
+        interval = upper_bound - lower_bound
 
         return torch.cat((mean, interval), 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = self.forward(Z)
         mean, interval = torch.chunk(Y, self.n_targets, 1)
 
         return torch.cat((mean, interval), 1)
