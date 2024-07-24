@@ -829,7 +829,7 @@ def train_model(
             trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
         except ModuleNotFoundError as e:
             logger.warning(
-                f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {str(e)})."
+                f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
