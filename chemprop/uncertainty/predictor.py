@@ -150,7 +150,6 @@ class DropoutPredictor(UncertaintyPredictor):
             uncal_vars.tolist(),
         )
 
-    # TODO: move to sensible location
     def activate_dropout(self, module):
         if isinstance(module, nn.Dropout):
             module.p = self.dropout_p
