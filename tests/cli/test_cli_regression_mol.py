@@ -29,6 +29,13 @@ def data_path(data_dir):
 def model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
+@pytest.fixture
+def mve_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mve_mol.pt")
+
+@pytest.fixture
+def evidential_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_evidential_mol.pt")
 
 @pytest.fixture
 def config_path(data_dir):
@@ -172,6 +179,24 @@ def test_train_quick_features(monkeypatch, data_path):
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", evidential_model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
