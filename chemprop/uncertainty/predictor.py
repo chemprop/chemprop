@@ -117,7 +117,7 @@ class DropoutPredictor(UncertaintyPredictor):
     an ensemble's submodels.
     """
 
-    def __init__(self, sampling_size, dropout_p):
+    def __init__(self, sampling_size: int, dropout_p: float):
         self.sampling_size = sampling_size
         self.dropout_p = dropout_p
 
