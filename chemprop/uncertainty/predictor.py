@@ -56,6 +56,10 @@ class EnsemblePredictor(UncertaintyPredictor):
         self.individual_ensemble_predictions = individual_ensemble_predictions
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
+        if len(models) == 1:
+            raise ValueError(
+                "Ensemble method for uncertainty is only available when multiple models are provided."
+            )
         num_models = 0
         for i, model in enumerate(models):
             preds = trainer.predict(model, dataloader)
