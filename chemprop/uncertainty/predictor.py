@@ -124,7 +124,7 @@ class DropoutPredictor(UncertaintyPredictor):
         self.dropout_p = dropout_p
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
-        if len(models) == 1:
+        if len(models) != 1:
             raise ValueError(
                 "Dropout method for uncertainty only takes exactly one model."
             )
