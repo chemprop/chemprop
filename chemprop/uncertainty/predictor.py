@@ -60,38 +60,17 @@ class EnsemblePredictor(UncertaintyPredictor):
             raise ValueError(
                 "Ensemble method for uncertainty is only available when multiple models are provided."
             )
-        num_models = 0
-        for i, model in enumerate(models):
-            preds = trainer.predict(model, dataloader)
-            num_models += 1
-
-            if i == 0:
-                sum_preds = np.array(preds)
-                sum_squared = np.square(preds)
-
-                if self.individual_ensemble_predictions:
-                    individual_preds = np.expand_dims(np.array(preds), axis=-1)
-            else:
-                sum_preds += np.array(preds)
-                sum_squared += np.square(preds)
-
-                if self.individual_ensemble_predictions:
-                    individual_preds = np.append(
-                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
-                    )
-
-        uncal_preds = sum_preds / num_models
-        uncal_vars = (
-            sum_squared / num_models
-            - np.square(sum_preds) / num_models**2
-        )
-
-        final_preds = individual_preds if not self.individual_ensemble_predictions else uncal_preds
-
-        return (
-            final_preds.tolist(),
-            uncal_vars.tolist(),
-        )
+        individual_preds = []
+        for model in models:
+            predss = trainer.predict(model, dataloader)
+            preds = torch.concat(predss, 0)
+            if isinstance(model.predictor, MulticlassClassificationFFN):
+                preds = torch.argmax(preds, dim=-1)
+            individual_preds.append(preds)
+        stacked_preds = torch.stack(individual_preds).float()
+        means = torch.mean(stacked_preds, dim=0)
+        vars = torch.var(stacked_preds, dim=0, correction=0)
+        return means, vars
 
 
 @UncertaintyPredictorRegistry.register("classification")
