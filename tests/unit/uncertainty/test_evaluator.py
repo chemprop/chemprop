@@ -1,19 +1,19 @@
-import numpy as np
-import pytest
-import torch
+# import numpy as np
+# import pytest
+# import torch
 
-from chemprop.uncertainty.evaluator import (
-    CalibrationAreaEvaluator,
-    ConformalMulticlassEvaluator,
-    ConformalMultilabelEvaluator,
-    ConformalRegressionEvaluator,
-    ExpectedNormalizedErrorEvaluator,
-    MetricEvaluator,
-    NLLClassEvaluator,
-    NLLMultiEvaluator,
-    NLLRegressionEvaluator,
-    SpearmanEvaluator,
-)
+# from chemprop.uncertainty.evaluator import (
+#     CalibrationAreaEvaluator,
+#     ConformalMulticlassEvaluator,
+#     ConformalMultilabelEvaluator,
+#     ConformalRegressionEvaluator,
+#     ExpectedNormalizedErrorEvaluator,
+#     MetricEvaluator,
+#     NLLClassEvaluator,
+#     NLLMultiEvaluator,
+#     NLLRegressionEvaluator,
+#     SpearmanEvaluator,
+# )
 
 
 # # Example

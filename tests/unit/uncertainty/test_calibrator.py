@@ -1,20 +1,20 @@
-import pytest
-import torch
+# import pytest
+# import torch
 
-from chemprop.uncertainty.calibrator import (
-    ConformalAdaptiveMulticlassCalibrator,
-    ConformalMulticlassCalibrator,
-    ConformalMultilabelCalibrator,
-    ConformalQuantileRegressionCalibrator,
-    ConformalRegressionCalibrator,
-    IsotonicCalibrator,
-    IsotonicMulticlassCalibrator,
-    MVEWeightingCalibrator,
-    PlattCalibrator,
-    TScalingCalibrator,
-    ZelikmanCalibrator,
-    ZScalingCalibrator,
-)
+# from chemprop.uncertainty.calibrator import (
+#     ConformalAdaptiveMulticlassCalibrator,
+#     ConformalMulticlassCalibrator,
+#     ConformalMultilabelCalibrator,
+#     ConformalQuantileRegressionCalibrator,
+#     ConformalRegressionCalibrator,
+#     IsotonicCalibrator,
+#     IsotonicMulticlassCalibrator,
+#     MVEWeightingCalibrator,
+#     PlattCalibrator,
+#     TScalingCalibrator,
+#     ZelikmanCalibrator,
+#     ZScalingCalibrator,
+# )
 
 # # Example
 # @pytest.mark.parametrize(
