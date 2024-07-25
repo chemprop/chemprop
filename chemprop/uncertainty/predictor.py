@@ -4,11 +4,13 @@ from typing import Iterable
 import numpy as np
 
 from lightning import pytorch as pl
+import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
+from chemprop.nn.predictors import MulticlassClassificationFFN
 
 
 class UncertaintyPredictor:
@@ -56,7 +58,7 @@ class EnsemblePredictor(UncertaintyPredictor):
         self.individual_ensemble_predictions = individual_ensemble_predictions
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
-        if len(models) == 1:
+        if len(models) <= 1:
             raise ValueError(
                 "Ensemble method for uncertainty is only available when multiple models are provided."
             )
@@ -122,32 +124,29 @@ class DropoutPredictor(UncertaintyPredictor):
         self.dropout_p = dropout_p
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
-        # TODO: uses first model if multiple are given, should throw error if multiple are given.
+        if len(models) == 1:
+            raise ValueError(
+                "Dropout method for uncertainty only takes exactly one model."
+            )
         model = next(iter(models))
         model.apply(self.activate_dropout)
+        individual_preds = []
 
-        for i in range(self.sampling_size):
-            preds = trainer.predict(model, dataloader)
-            if i == 0:
-                sum_preds = np.array(preds)
-                sum_squared = np.square(preds)
-            else:
-                sum_preds += np.array(preds)
-                sum_squared += np.square(preds)
+        for _ in range(self.sampling_size):
+            predss = trainer.predict(model, dataloader)
+            preds = torch.concat(predss, 0)
+            if isinstance(model.predictor, MulticlassClassificationFFN):
+                preds = torch.argmax(preds, dim=-1)
+            individual_preds.append(preds)
 
-        uncal_preds = sum_preds / self.sampling_size
-        uncal_vars = (
-            sum_squared / self.sampling_size
-            - np.square(sum_preds) / self.sampling_size**2
-        )
+        stacked_preds = torch.stack(individual_preds).float()
+        means = torch.mean(stacked_preds, dim=0)
+        vars = torch.var(stacked_preds, dim=0, correction=0)
+        return means, vars
 
-        return (
-            uncal_preds.tolist(),
-            uncal_vars.tolist(),
-        )
-
+        
     def activate_dropout(self, module):
-        if isinstance(module, nn.Dropout):
+        if isinstance(module, torch.nn.Dropout):
             module.p = self.dropout_p
             module.train()
 
