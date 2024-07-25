@@ -29,13 +29,16 @@ def data_path(data_dir):
 def model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
+
 @pytest.fixture
 def mve_model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mve_mol.pt")
 
+
 @pytest.fixture
 def evidential_model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_evidential_mol.pt")
+
 
 @pytest.fixture
 def config_path(data_dir):
