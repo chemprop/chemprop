@@ -1,4 +1,3 @@
-# import numpy as np
 # import pytest
 # import torch
 
@@ -25,14 +24,14 @@
 #             torch.full((100, 1), 70),
 #             torch.arange(1, 101).view(100, 1),
 #             torch.full((1, 100), True, dtype=torch.bool),
-#             np.array([0.7]),
+#             torch.tensor([0.7]),
 #         ),
 #         (
 #             torch.tensor([[0, 0.3, 1]]),
 #             torch.tensor([[0.2, 0.3, 0.4]]),
 #             torch.tensor([[0.5, 0.5, 0.5]]),
 #             torch.full((3, 1), True, dtype=torch.bool),
-#             np.array([0, 1, 0]),
+#             torch.tensor([0, 1, 0]),
 #         ),
 #     ],
 # )
@@ -43,4 +42,4 @@
 #     evaluator = ConformalRegressionEvaluator()
 #     coverage = evaluator.evaluate(preds, uncs, targets, mask)
 
-#     np.testing.assert_array_almost_equal(coverage, coverage_exp, decimal=3)
+#     torch.testing.assert_close(coverage, coverage_exp, decimal=3)

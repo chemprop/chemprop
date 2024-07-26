@@ -40,8 +40,8 @@
 #     Testing the ConformalQuantileRegressionCalibrator
 #     """
 #     calibrator = ConformalQuantileRegressionCalibrator(conformal_alpha=0.1)
-#     calibrator.calibrate(cal_preds, cal_uncs, cal_targets, cal_mask)
-#     preds, uncs = calibrator.apply_calibration(test_preds, test_uncs)
+#     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+#     preds, uncs = calibrator.apply(test_preds, test_uncs)
 
 #     torch.testing.assert_close(preds, cal_test_preds)
 #     torch.testing.assert_close(uncs, cal_test_uncs)
