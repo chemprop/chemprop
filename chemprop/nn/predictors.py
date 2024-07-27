@@ -17,6 +17,7 @@ from chemprop.nn.loss import (
     MSELoss,
     MulticlassDirichletLoss,
     MVELoss,
+    QuantileLoss,
     SIDLoss,
 )
 from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, Metric, MSEMetric, SIDMetric
@@ -201,6 +202,30 @@ class EvidentialFFN(RegressionFFN):
         return torch.cat((mean, v, alpha, beta), 1)
 
     train_step = forward
+
+
+@PredictorRegistry.register("regression-quantile")
+class QuantileFFN(RegressionFFN):
+    n_targets = 2
+    _T_default_criterion = QuantileLoss
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        lower_bound, upper_bound = torch.chunk(Y, self.n_targets, 1)
+
+        lower_bound = self.output_transform(lower_bound)
+        upper_bound = self.output_transform(upper_bound)
+
+        mean = (lower_bound + upper_bound) / 2
+        interval = upper_bound - lower_bound
+
+        return torch.cat((mean, interval), 1)
+
+    def train_step(self, Z: Tensor) -> Tensor:
+        Y = self.forward(Z)
+        mean, interval = torch.chunk(Y, self.n_targets, 1)
+
+        return torch.cat((mean, interval), 1)
 
 
 class BinaryClassificationFFNBase(_FFNPredictorBase):

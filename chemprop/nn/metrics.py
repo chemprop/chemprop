@@ -13,6 +13,7 @@ from chemprop.nn.loss import (
     LossFunction,
     MSELoss,
     MulticlassMCCLoss,
+    QuantileLoss,
     SIDLoss,
     WassersteinLoss,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "MulticlassMCCMetric",
     "SIDMetric",
     "WassersteinMetric",
+    "QuantileMetric"
 ]
 
 
@@ -206,4 +208,9 @@ class SIDMetric(SIDLoss, Metric):
 
 @MetricRegistry.register("wasserstein")
 class WassersteinMetric(WassersteinLoss, Metric):
+    pass
+
+
+@MetricRegistry.register("quantile")
+class QuantileMetric(QuantileLoss, Metric):
     pass
