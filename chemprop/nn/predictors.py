@@ -178,7 +178,7 @@ class MveFFN(RegressionFFN):
         mean = self.output_transform(mean)
         var = self.output_transform.transform_variance(var)
 
-        return torch.cat((mean, var), 1)
+        return torch.cat((mean, var), dim=2)
 
     train_step = forward
 
@@ -198,7 +198,7 @@ class EvidentialFFN(RegressionFFN):
         mean = self.output_transform(mean)
         beta = self.output_transform.transform_variance(beta)
 
-        return torch.cat((mean, v, alpha, beta), 1)
+        return torch.cat((mean, v, alpha, beta), dim=2)
 
     train_step = forward
 
