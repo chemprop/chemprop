@@ -22,7 +22,8 @@ def model_path(data_dir):
 
 def test_train_quick(monkeypatch, data_path):
     input_path, descriptors_path = data_path
-    args = [
+
+    base_args = [
         "chemprop",
         "train",
         "-i",
@@ -38,53 +39,20 @@ def test_train_quick(monkeypatch, data_path):
         "--show-individual-scores",
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["", "regression-mve", "regression-evidential"]
 
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--reaction-columns",
-        "smiles",
-        "--epochs",
-        "1",
-        "--num-workers",
-        "0",
-        "--descriptors-path",
-        descriptors_path,
-        "--show-individual-scores",
-        "--task-type",
-        "regression-mve",
-    ]
+    for task_type in task_types:
+        args = base_args.copy()
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+        if task_type:
+            args.extend(["--task-type", task_type])
 
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--reaction-columns",
-        "smiles",
-        "--epochs",
-        "1",
-        "--num-workers",
-        "0",
-        "--descriptors-path",
-        descriptors_path,
-        "--show-individual-scores",
-        "--task-type",
-        "regression-evidential",
-    ]
+        if task_type == "regression-evidential":
+            args += ["--evidential-regularization", "0.2"]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
