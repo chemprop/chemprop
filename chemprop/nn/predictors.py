@@ -273,13 +273,10 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         self.n_classes = n_classes
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        Y = Y.reshape(Y.shape[0], -1, self.n_classes)
-
-        return Y.softmax(-1).unsqueeze(-1)
+        return self.train_step(Z).softmax(-2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes).unsqueeze(-1)
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes, 1)
 
 
 @PredictorRegistry.register("multiclass-dirichlet")
