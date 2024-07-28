@@ -147,7 +147,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.output_dim // self.n_targets
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
+        return self.ffn(Z).unsqueeze(-1)
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -160,7 +160,7 @@ class RegressionFFN(_FFNPredictorBase):
     _T_default_metric = MSEMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.output_transform(self.ffn(Z))
+        return self.output_transform(self.ffn(Z)).unsqueeze(-1)
 
     train_step = forward
 
