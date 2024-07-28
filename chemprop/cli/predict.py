@@ -293,7 +293,7 @@ def make_prediction_for_models(
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds
+    df_test[target_columns] = average_preds[..., 0]
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -308,7 +308,7 @@ def make_prediction_for_models(
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds
+        df_test[target_columns] = individual_preds[..., 0]
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)
