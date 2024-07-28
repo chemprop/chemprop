@@ -143,7 +143,6 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def output_dim(self) -> int:
         return self.ffn.output_dim
 
-
     def forward(self, Z: Tensor) -> Tensor:
         return self.ffn(Z).unsqueeze(-1)
 

@@ -42,7 +42,6 @@ from chemprop.nn.message_passing import (
     BondMessagePassing,
     MulticomponentMessagePassing,
 )
-from chemprop.nn.predictors import EvidentialFFN, MveFFN
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
