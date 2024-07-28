@@ -116,7 +116,7 @@ class MVELoss(LossFunction):
     """
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, var = torch.chunk(preds, 2, 1)
+        mean, var = torch.unbind(preds, dim=-1)
 
         L_sos = (mean - targets) ** 2 / (2 * var)
         L_kl = (2 * torch.pi * var).log() / 2
@@ -144,7 +144,7 @@ class EvidentialLoss(LossFunction):
         self.eps = eps
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, v, alpha, beta = torch.chunk(preds, 4, 1)
+        mean, v, alpha, beta = torch.unbind(preds, dim=-1)
 
         residuals = targets - mean
         twoBlambda = 2 * beta * (1 + v)
