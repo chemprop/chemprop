@@ -944,7 +944,6 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         namess = list(zip(*names))
     else:
         namess = [names]
-    print("preds.shape 3:", preds.shape)
     if "multiclass" in args.task_type:
         df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
     else:
