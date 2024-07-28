@@ -303,6 +303,8 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            individual_preds = torch.argmax(individual_preds, dim=2)
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
