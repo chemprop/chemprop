@@ -105,7 +105,7 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
+        squared_errors = super()._calc_unreduced_loss(preds.unsqueeze(-1), targets, mask, lt_mask, gt_mask)
 
         return squared_errors[mask].mean().sqrt()
 
