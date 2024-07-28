@@ -278,7 +278,7 @@ def make_prediction_for_models(
         # TODO: might want to write a shared function for this as train.py might also want to do this.
         preds = torch.concat(predss, 0)
         if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=2)
+            preds[..., 0] = torch.argmax(preds[..., 0], dim=2)
         individual_preds.append(preds)
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
