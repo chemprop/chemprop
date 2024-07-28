@@ -277,11 +277,11 @@ def make_prediction_for_models(
 
         # TODO: might want to write a shared function for this as train.py might also want to do this.
         preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds[..., 0] = torch.argmax(preds[..., 0], dim=2)
         individual_preds.append(preds)
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        average_preds = torch.argmax(average_preds, dim=2)
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
