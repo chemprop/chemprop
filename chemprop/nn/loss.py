@@ -90,6 +90,7 @@ LossFunctionRegistry = ClassRegistry[LossFunction]()
 @LossFunctionRegistry.register("mse")
 class MSELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         return F.mse_loss(preds, targets, reduction="none")
 
 
@@ -169,12 +170,14 @@ class EvidentialLoss(LossFunction):
 @LossFunctionRegistry.register("bce")
 class BCELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 @LossFunctionRegistry.register("ce")
 class CrossEntropyLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         preds = preds.transpose(1, 2)
         targets = targets.long()
 
