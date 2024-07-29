@@ -68,6 +68,4 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
             dtype=float,
         )
 
-        NAN_TOKEN = 0
-        features[np.isnan(features)] = NAN_TOKEN
         return features
