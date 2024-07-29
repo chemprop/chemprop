@@ -72,22 +72,18 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             V = np.hstack((V, atom_features_extra))
 
         i = 0
-        for u in range(n_atoms):
-            for v in range(u + 1, n_atoms):
-                bond = mol.GetBondBetweenAtoms(u, v)
-                if bond is None:
-                    continue
+        for bond in mol.GetBonds():
+            x_e = self.bond_featurizer(bond)
+            if bond_features_extra is not None:
+                x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
 
-                x_e = self.bond_featurizer(bond)
-                if bond_features_extra is not None:
-                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
+            E[i : i + 2] = x_e
 
-                E[i : i + 2] = x_e
+            u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+            edge_index[0].extend([u, v])
+            edge_index[1].extend([v, u])
 
-                edge_index[0].extend([u, v])
-                edge_index[1].extend([v, u])
-
-                i += 2
+            i += 2
 
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
