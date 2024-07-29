@@ -827,7 +827,10 @@ def train_model(
 
         try:
             trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
+            logger.warning(
+                f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
+            )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         checkpointing = ModelCheckpoint(
