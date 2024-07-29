@@ -267,27 +267,15 @@ Chemprop provides several molecule featurizers that automatically calculate mole
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
 * :code:`rdkit_2d` RDKit 2D features
+* :code:`v1_rdkit_2d` The RDKit 2D features used in Chemprop v1
+* :code:`v1_rdkit_2d_normalized` The normalized RDKit 2D features used in Chemprop v1
 
 .. note::
    The Morgan fingerprints should not be scaled. Use :code:`--no-descriptor-scaling` to ensure this.
 
    The RDKit 2D features are not normalized. The :code:`StandardScaler` used in the CLI to normalize is non-optimal for some of the RDKit features. It is recommended to precompute and scale these features outside of the CLI using an appropriate scaler and then provide them using :code:`--descriptors-path` and :code:`--no-descriptor-scaling` as described above. 
-   
-   In Chemprop v1, :code:`descriptastorus` was used to automatically calculate normalized RDKit 2D features. This was removed in v2 because it reduces the number of dependencies and the origin of the descriptastorus scalers is unknown. If you would like to use the descriptastorus normalized features, you can calculate them manually as shown below::
 
-      # First make sure you have descriptastorus installed in your environment
-      pip install git+https://github.com/bp-kelley/descriptastorus
-
-      # Then run a script like the following
-      import numpy as np
-      import pandas as pd
-      from descriptastorus.descriptors import rdNormalizedDescriptors
-
-      df = pd.read_csv("mydata.csv") # Replace with your data file. The SMILES column should be named "smiles".
-
-      generator = rdNormalizedDescriptors.RDKit2DNormalized()
-      rdkit_descriptors = np.array([generator.process(smi)[1:] for smi in df.smiles]) 
-      np.savez("rdkit_descriptors.npz", rdkit_descriptors)
+   In Chemprop v1, :code:`descriptastorus`` was used to calculate RDKit 2D features. This package offers normalization of the features, with the normalizations fit to a set of molecules randomly selected from ChEMBL. Several descriptors have been added to :code:`rdkit` recently which are not included in :code:`descriptastorus` including 'AvgIpc', 'BCUT2D_CHGHI', 'BCUT2D_CHGLO', 'BCUT2D_LOGPHI', 'BCUT2D_LOGPLOW', 'BCUT2D_MRHI', 'BCUT2D_MRLOW', 'BCUT2D_MWHI', 'BCUT2D_MWLOW', and 'SPS'.
 
 
 Missing Target Values
