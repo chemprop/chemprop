@@ -260,7 +260,7 @@ Additional datapoint descriptors can be concatenated to the learned representait
 Molecule-Level 2D Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Chemprop provides several molecule featurizers that automatically calculates molecular features and uses them as extra datapoint descriptors. These are specified using :code:`--features-generators` followed by one or more of the following:
+Chemprop provides several molecule featurizers that automatically calculate molecular features and uses them as extra datapoint descriptors. These are specified using :code:`--features-generators` followed by one or more of the following:
 
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.

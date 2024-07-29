@@ -11,7 +11,7 @@ from chemprop.utils import ClassRegistry
 MoleculeFeaturizerRegistry = ClassRegistry[VectorFeaturizer[Mol]]()
 
 
-class MorganFeaturizerMixin(VectorFeaturizer[Mol]):
+class MorganFeaturizerMixin:
     def __init__(self, radius: int = 2, length: int = 2048, include_chirality: bool = True):
         if radius < 0:
             raise ValueError(f"arg 'radius' must be >= 0! got: {radius}")
@@ -58,12 +58,15 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
         return len(Descriptors.descList)
 
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
-        if mol.GetNumHeavyAtoms() == 0:
-            features = np.array(
-                [0 if name == "SPS" else func(mol) for name, func in Descriptors.descList], float
-            )
-        else:
-            features = np.array([func(mol) for name, func in Descriptors.descList], float)
+        features = np.array(
+            [
+                func(mol)
+                for _, func in filter(
+                    lambda i: i[0] != "SPS" or mol.GetNumHeavyAtoms() > 0, Descriptors.descList
+                )
+            ],
+            dtype=float,
+        )
 
         NAN_TOKEN = 0
         features[np.isnan(features)] = NAN_TOKEN
