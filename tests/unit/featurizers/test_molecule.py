@@ -3,7 +3,12 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.featurizers import MorganBinaryFeaturizer, MorganCountFeaturizer, RDKit2DFeaturizer, V1RDKit2DFeaturizer
+from chemprop.featurizers import (
+    MorganBinaryFeaturizer,
+    MorganCountFeaturizer,
+    RDKit2DFeaturizer,
+    V1RDKit2DFeaturizer,
+)
 from chemprop.featurizers.molecule import NO_DESCRIPTASTORUS
 
 

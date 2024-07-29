@@ -78,6 +78,7 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
 
 
 if not NO_DESCRIPTASTORUS:
+
     class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
         def __len__(self) -> int:
             return 200
@@ -99,6 +100,7 @@ if not NO_DESCRIPTASTORUS:
             self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
 
 else:
+
     @MoleculeFeaturizerRegistry("v1_rdkit_2d")
     class V1RDKit2DFeaturizer:
         """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
