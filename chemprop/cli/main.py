@@ -35,12 +35,12 @@ def construct_parser():
         const="default",
         help=f"The path to which the log file should be written. Specifying just the flag (i.e., '--log/--logfile') will automatically log to a file '{LOG_DIR}/MODE/TIMESTAMP.log', where 'MODE' is the CLI mode chosen. An example 'TIMESTAMP' is {NOW}.",
     )
+    parent.add_argument("-v", action="store_true", help="Increase verbosity level to DEBUG.")
     parent.add_argument(
-        "-v",
-        "--verbose",
+        "-q",
         action="count",
-        default=2,
-        help="The verbosity level, specify the flag multiple times to increase verbosity.",
+        default=0,
+        help="Decrease verbosity level to WARNING or ERROR if specified twice.",
     )
 
     parents = [parent]
@@ -53,9 +53,12 @@ def construct_parser():
 def main():
     parser = construct_parser()
     args = parser.parse_args()
-    logfile, verbose, mode, func = (
-        pop_attr(args, attr) for attr in ["logfile", "verbose", "mode", "func"]
+    logfile, v_flag, q_count, mode, func = (
+        pop_attr(args, attr) for attr in ["logfile", "v", "q", "mode", "func"]
     )
+
+    if v_flag and q_count:
+        parser.error("The -v and -q options cannot be used together.")
 
     match logfile:
         case None:
@@ -67,10 +70,12 @@ def main():
             Path(logfile).parent.mkdir(parents=True, exist_ok=True)
             handler = logging.FileHandler(logfile)
 
+    verbosity = q_count * -1 if q_count else (1 if v_flag else 0)
+    logging_level = LOG_LEVELS.get(verbosity, logging.ERROR)
     logging.basicConfig(
         handlers=[handler],
         format="%(asctime)s - %(levelname)s:%(name)s - %(message)s",
-        level=LOG_LEVELS[min(verbose, len(LOG_LEVELS) - 1)],
+        level=logging_level,
         datefmt="%Y-%m-%dT%H:%M:%S",
         force=True,
     )
