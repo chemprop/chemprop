@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.featurizers import MorganBinaryFeaturizer, MorganCountFeaturizer, RDKit2DFeaturizer
+from chemprop.featurizers import MorganBinaryFeaturizer, MorganCountFeaturizer, RDKit2DFeaturizer, V1RDKit2DFeaturizer
+from chemprop.featurizers.molecule import NO_DESCRIPTASTORUS
 
 
 @pytest.fixture
@@ -93,6 +94,59 @@ def rdkit_2d_values():
                            0.    ,       0.    ,       0.    ,       0.    ,
                            0.    ,       0.    ,       0.    ,       0.    ,
                            0.    ,       0.    ])
+
+@pytest.fixture
+def v1_rdkit_2d_values():  
+    return np.array([      1.5168,    1143.0568,      19.6836,      15.9753,
+                          15.9753,      14.244 ,       9.8787,       9.8787,
+                           7.5208,       7.5208,       5.8214,       5.8214,
+                           4.26  ,       4.26  ,       5.415 ,       4.3904,
+                           0.    ,       5.8172,      44.2577,      11.1269,
+                          16.8388,      12.1327,      24.2655,      34.4628,
+                           9.154 ,     388.1587,       0.8966,       1.6897,
+                           2.5517,       0.25  ,      -3.05  ,      29.    ,
+                         367.274 , 9626644.372 ,      18.0088,       7.4091,
+                           3.3162,     167.8922,      13.9511,       0.4239,
+                          13.9511,       0.2267,       0.2603,       0.2267,
+                          -0.5096,      -0.4239,       5.0492,     108.285 ,
+                         388.442 ,       0.    ,       4.    ,       0.    ,
+                           1.    ,       1.    ,       3.    ,       1.    ,
+                           4.    ,       4.    ,       0.    ,       5.    ,
+                           0.    ,       4.    ,       0.    ,       1.    ,
+                           1.    ,     146.    ,       9.154 ,       5.8172,
+                           0.    ,      11.7814,       0.    ,       0.    ,
+                           0.    ,       4.3904,       0.    ,      10.1974,
+                          54.5973,      46.8737,      13.2138,      11.8358,
+                           5.    ,      13.5444,      10.7724,       0.    ,
+                          10.1974,       0.    ,      24.6775,      13.2138,
+                          95.4556,       0.    ,       0.    ,       0.    ,
+                           4.3904,       0.    ,       0.    ,      23.4111,
+                          16.5727,       5.8172,      35.75  ,      71.1472,
+                           0.    ,      10.7724,       0.    ,      48.15  ,
+                          25.6895,       0.    ,       0.    ,      11.1016,
+                           1.4962,       0.851 ,      21.1832,       1.9333,
+                           1.1618,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       2.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       2.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           3.    ,       0.    ,       1.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       1.    ,
+                           0.    ,       0.    ,       1.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.    ,
+                           0.    ,       0.    ,       0.    ,       0.4909])
 # fmt: on
 
 
@@ -122,3 +176,11 @@ def test_rdkit_2d(mol, rdkit_2d_values):
     features = featurizer(mol)
 
     np.testing.assert_array_almost_equal(features, rdkit_2d_values, decimal=2)
+
+
+@pytest.mark.skipif(NO_DESCRIPTASTORUS, reason="Descriptastorus not installed")
+def test_v1_rdkit_2d(mol, v1_rdkit_2d_values):
+    featurizer = V1RDKit2DFeaturizer()
+    features = featurizer(mol)
+
+    np.testing.assert_array_almost_equal(features, v1_rdkit_2d_values, decimal=2)

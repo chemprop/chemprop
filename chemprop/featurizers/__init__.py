@@ -9,6 +9,8 @@ from .molecule import (
     MorganCountFeaturizer,
     MorganFeaturizerMixin,
     RDKit2DFeaturizer,
+    V1RDKit2DFeaturizer,
+    V1RDKit2DNormalizedFeaturizer,
 )
 from .molgraph import (
     CGRFeaturizer,
@@ -45,4 +47,6 @@ __all__ = [
     "MorganCountFeaturizer",
     "RDKit2DFeaturizer",
     "MoleculeFeaturizerRegistry",
+    "V1RDKit2DFeaturizer",
+    "V1RDKit2DNormalizedFeaturizer",
 ]
