@@ -4,5 +4,5 @@ import os
 from pathlib import Path
 
 LOG_DIR = Path(os.getenv("CHEMPROP_LOG_DIR", "chemprop_logs"))
-LOG_LEVELS = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+LOG_LEVELS = {0: logging.INFO, 1: logging.DEBUG, -1: logging.WARNING, -2: logging.ERROR}
 NOW = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
