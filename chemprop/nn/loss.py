@@ -191,7 +191,7 @@ class BinaryMCCLoss(LossFunction):
             preds = preds.sigmoid()
 
         L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
-        L = L * self.task_weights
+        L = L * self.task_weights.to(preds.device)
 
         return L.mean()
 
@@ -222,7 +222,7 @@ class MulticlassMCCLoss(LossFunction):
             preds = preds.softmax(2)
 
         L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
-        L = L * self.task_weights
+        L = L * self.task_weights.to(preds.device)
 
         return L.mean()
 
