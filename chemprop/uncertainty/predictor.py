@@ -145,7 +145,7 @@ class DropoutPredictor(UncertaintyPredictor):
         return means, vars
 
         
-    def activate_dropout(self, module):
+    def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
             module.p = self.dropout_p
             module.train()
