@@ -119,9 +119,10 @@ class DropoutPredictor(UncertaintyPredictor):
     an ensemble's submodels.
     """
 
-    def __init__(self, sampling_size: int, dropout_p: float):
-        self.sampling_size = sampling_size
-        self.dropout_p = dropout_p
+    sampling_size: int
+    """The number of samples to draw for the ensemble."""
+    dropout_p: float
+    """The probability of dropping out units in the dropout layers."""
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         if len(models) != 1:
