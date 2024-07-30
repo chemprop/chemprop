@@ -213,20 +213,17 @@ class MPNN(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
-
-        lr_sched = NoamLR(
-            opt,
-            self.warmup_epochs,
-            self.trainer.max_epochs,
-            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
-            self.init_lr,
-            self.max_lr,
-            self.final_lr,
+        lr_kwargs = dict(
+            warmup_epochs=self.warmup_epochs,
+            total_epochs=self.trainer.max_epochs,
+            steps_per_epoch=self.trainer.num_training_batches,
+            init_lr=self.init_lr,
+            max_lr=self.max_lr,
+            final_lr=self.final_lr,
         )
-        lr_sched_config = {
-            "scheduler": lr_sched,
-            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
-        }
+        lr_sched = NoamLR(opt, **lr_kwargs)
+
+        lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
