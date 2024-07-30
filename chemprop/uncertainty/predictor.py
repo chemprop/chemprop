@@ -130,7 +130,7 @@ class DropoutPredictor(UncertaintyPredictor):
                 "Dropout method for uncertainty only takes exactly one model."
             )
         model = next(iter(models))
-        model.apply(self.activate_dropout)
+        model.apply(self._activate_dropout)
         individual_preds = []
 
         for _ in range(self.sampling_size):
