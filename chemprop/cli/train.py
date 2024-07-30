@@ -364,6 +364,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
     train_args.add_argument(
+        "--weight-decay", type=float, default=1e-2, help="Weight decay coefficient."
+    )
+    train_args.add_argument(
         "--epochs", type=int, default=50, help="the number of epochs to train over"
     )
     train_args.add_argument(
@@ -799,6 +802,7 @@ def build_model(
         args.init_lr,
         args.max_lr,
         args.final_lr,
+        args.weight_decay,
         X_d_transform=X_d_transform,
     )
 

@@ -47,6 +47,8 @@ class MPNN(pl.LightningModule):
         the maximum learning rate
     final_lr : float, default=1e-4
         the final learning rate
+    weight_decay : float, default=1e-2
+        the weight decay coefficient
 
     Raises
     ------
@@ -66,6 +68,7 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
+        weight_decay: float = 1e-2,
         X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__()
@@ -98,6 +101,7 @@ class MPNN(pl.LightningModule):
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
+        self.weight_decay = weight_decay
 
     @property
     def output_dim(self) -> int:
@@ -212,7 +216,22 @@ class MPNN(pl.LightningModule):
         return self(bmg, X_vd, X_d)
 
     def configure_optimizers(self):
-        opt = optim.Adam(self.parameters(), self.init_lr)
+        no_decay = ["bias", "bn.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [
+                    p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": self.weight_decay,
+            },
+            {
+                "params": [
+                    p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": 0.0,
+            },
+        ]
+        opt = optim.AdamW(optimizer_grouped_parameters, self.init_lr)
         lr_kwargs = dict(
             warmup_epochs=self.warmup_epochs,
             total_epochs=self.trainer.max_epochs,
