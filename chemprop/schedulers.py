@@ -1,11 +1,16 @@
-from functools import partial
-
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
 
-class NoamLR(LambdaLR):
-    r"""A Noam learning rate scheduler schedules the learning rate with a piecewise linear followed
+def get_NoamLR_sched(
+    optimizer: Optimizer,
+    warmup_steps: int,
+    cooldown_steps: int,
+    init_lr: float,
+    max_lr: float,
+    final_lr: float,
+):
+    r"""Get a Noam learning rate scheduler which schedules the learning rate with a piecewise linear followed
     by an exponential decay.
 
     The learning rate increases linearly from ``init_lr`` to ``max_lr`` over the course of
@@ -38,50 +43,23 @@ class NoamLR(LambdaLR):
     init_lr : float
         The initial learning rate.
     max_lr : float
-        The maximum learning rate (achieved after ``warmup_epochs``).
+        The maximum learning rate (achieved after ``warmup_steps``).
     final_lr : float
-        The final learning rate (achieved after ``total_epochs``).
+        The final learning rate (achieved after ``cooldown_steps``).
 
     References
     ----------
     .. [1] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, Ł. and Polosukhin, I. "Attention is all you need." Advances in neural information processing systems, 2017, 30. https://arxiv.org/abs/1706.03762
     """
 
-    def __init__(
-        self,
-        optimizer: Optimizer,
-        warmup_steps: int,
-        cooldown_steps: int,
-        init_lr: float,
-        max_lr: float,
-        final_lr: float,
-    ):
-        super().__init__(
-            optimizer,
-            partial(
-                self.lr_lambda,
-                warmup_steps=warmup_steps,
-                cooldown_steps=cooldown_steps,
-                init_lr=init_lr,
-                max_lr=max_lr,
-                final_lr=final_lr,
-            ),
-        )
-
-    @staticmethod
-    def lr_lambda(
-        step: int,
-        warmup_steps: int,
-        cooldown_steps: int,
-        init_lr: float,
-        max_lr: float,
-        final_lr: float,
-    ):
+    def lr_lambda(step: int):
         if step < warmup_steps:
             warmup_factor = (max_lr - init_lr) / warmup_steps
             return step * warmup_factor / init_lr + 1
         elif step > warmup_steps + cooldown_steps:
-            return final_lr
+            return final_lr / init_lr
         else:
             cooldown_factor = (final_lr / max_lr) ** (1 / cooldown_steps)
-            return max_lr * (cooldown_factor ** (step - warmup_steps))
+            return (max_lr * (cooldown_factor ** (step - warmup_steps))) / init_lr
+
+    return LambdaLR(optimizer, lr_lambda)
