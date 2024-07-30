@@ -54,9 +54,6 @@ class EnsemblePredictor(UncertaintyPredictor):
     Class that predicts uncertainty for predictions based on the variance in predictions among
     an ensemble's submodels.
     """
-    def __init__(self, individual_ensemble_predictions):
-        self.individual_ensemble_predictions = individual_ensemble_predictions
-
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         if len(models) <= 1:
             raise ValueError(
@@ -70,9 +67,8 @@ class EnsemblePredictor(UncertaintyPredictor):
                 preds = torch.argmax(preds, dim=-1)
             individual_preds.append(preds)
         stacked_preds = torch.stack(individual_preds).float()
-        means = torch.mean(stacked_preds, dim=0)
         vars = torch.var(stacked_preds, dim=0, correction=0)
-        return means, vars
+        return stacked_preds, vars
 
 
 @UncertaintyPredictorRegistry.register("classification")
@@ -145,7 +141,6 @@ class DropoutPredictor(UncertaintyPredictor):
         vars = torch.var(stacked_preds, dim=0, correction=0)
         return means, vars
 
-        
     def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
             module.p = self.dropout_p
