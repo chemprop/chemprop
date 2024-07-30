@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable
+import warnings
 
 from lightning import pytorch as pl
 import torch
@@ -231,11 +232,22 @@ class MPNN(pl.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
+
         opt = optim.AdamW(optimizer_grouped_parameters, self.init_lr)
+        steps_per_epoch = self.trainer.num_training_batches
+        warmup_steps = self.warmup_epochs * steps_per_epoch
+        if self.trainer.max_epochs == -1:
+            warnings.warn(
+                "For infinite training, the number of cooldown epochs in learninig rate scheduler is set to 100 times the number of warmup epochs."
+            )
+            cooldown_steps = 100 * warmup_steps
+        else:
+            cooldown_epochs = self.trainer.max_epochs - self.warmup_epochs
+            cooldown_steps = cooldown_epochs * steps_per_epoch
+
         lr_kwargs = dict(
-            warmup_epochs=self.warmup_epochs,
-            total_epochs=self.trainer.max_epochs,
-            steps_per_epoch=self.trainer.num_training_batches,
+            warmup_steps=warmup_steps,
+            cooldown_steps=cooldown_steps,
             init_lr=self.init_lr,
             max_lr=self.max_lr,
             final_lr=self.final_lr,

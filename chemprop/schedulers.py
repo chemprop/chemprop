@@ -31,12 +31,10 @@ class NoamLR(LambdaLR):
     -----------
     optimizer : Optimizer
         A PyTorch optimizer.
-    warmup_epochs : int
-        The number of epochs during which to linearly increase the learning rate.
-    total_epochs : int
-        The total number of epochs.
-    steps_per_epoch : int
-        The number of steps (batches) per epoch.
+    warmup_steps : int
+        The number of steps during which to linearly increase the learning rate.
+    cooldown_steps : int
+        The number of steps during which to exponential decay the learning rate.
     init_lr : float
         The initial learning rate.
     max_lr : float
@@ -52,22 +50,18 @@ class NoamLR(LambdaLR):
     def __init__(
         self,
         optimizer: Optimizer,
-        warmup_epochs: int,
-        total_epochs: int,
-        steps_per_epoch: int,
+        warmup_steps: int,
+        cooldown_steps: int,
         init_lr: float,
         max_lr: float,
         final_lr: float,
     ):
-        warmup_steps = warmup_epochs * steps_per_epoch
-        total_steps = total_epochs * steps_per_epoch
-
         super().__init__(
             optimizer,
             partial(
                 self.lr_lambda,
                 warmup_steps=warmup_steps,
-                total_steps=total_steps,
+                cooldown_steps=cooldown_steps,
                 init_lr=init_lr,
                 max_lr=max_lr,
                 final_lr=final_lr,
@@ -75,10 +69,19 @@ class NoamLR(LambdaLR):
         )
 
     @staticmethod
-    def lr_lambda(step, warmup_steps, total_steps, init_lr, max_lr, final_lr):
+    def lr_lambda(
+        step: int,
+        warmup_steps: int,
+        cooldown_steps: int,
+        init_lr: float,
+        max_lr: float,
+        final_lr: float,
+    ):
         if step < warmup_steps:
-            delta = (max_lr - init_lr) / warmup_steps
-            return step * delta / init_lr + 1
+            warmup_factor = (max_lr - init_lr) / warmup_steps
+            return step * warmup_factor / init_lr + 1
+        elif step > warmup_steps + cooldown_steps:
+            return final_lr
         else:
-            gammas = (final_lr / max_lr) ** (1 / (total_steps - warmup_steps))
-            return max_lr / init_lr * (gammas ** (step - warmup_steps))
+            cooldown_factor = (final_lr / max_lr) ** (1 / cooldown_steps)
+            return max_lr * (cooldown_factor ** (step - warmup_steps))

@@ -845,8 +845,12 @@ def train_model(
             save_last=True,
         )
 
-        patience = args.patience if args.patience is not None else args.epochs
-        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+        if args.epochs != -1:
+            patience = args.patience if args.patience is not None else args.epochs
+            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+            callbacks = [checkpointing, early_stopping]
+        else:
+            callbacks = [checkpointing]
 
         trainer = pl.Trainer(
             logger=trainer_logger,
@@ -854,7 +858,7 @@ def train_model(
             accelerator=args.accelerator,
             devices=args.devices,
             max_epochs=args.epochs,
-            callbacks=[checkpointing, early_stopping],
+            callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
         )
