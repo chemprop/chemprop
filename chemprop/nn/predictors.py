@@ -133,7 +133,6 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
             self._T_default_criterion, task_weights=task_weights, threshold=threshold
         )
         self.output_transform = output_transform if output_transform is not None else nn.Identity()
-        self.n_tasks = n_tasks
 
     @property
     def input_dim(self) -> int:
