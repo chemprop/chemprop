@@ -11,7 +11,7 @@ from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
 from chemprop.nn.transforms import ScaleTransform
-from chemprop.schedulers import get_NoamLR_sched
+from chemprop.schedulers import build_NoamLike_LRSched
 
 
 class MPNN(pl.LightningModule):
@@ -239,7 +239,7 @@ class MPNN(pl.LightningModule):
             cooldown_epochs = self.trainer.max_epochs - self.warmup_epochs
             cooldown_steps = cooldown_epochs * steps_per_epoch
 
-        lr_sched = get_NoamLR_sched(
+        lr_sched = build_NoamLike_LRSched(
             opt, warmup_steps, cooldown_steps, self.init_lr, self.max_lr, self.final_lr
         )
 

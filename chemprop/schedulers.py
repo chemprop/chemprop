@@ -2,7 +2,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
 
-def get_NoamLR_sched(
+def build_NoamLike_LRSched(
     optimizer: Optimizer,
     warmup_steps: int,
     cooldown_steps: int,
@@ -10,7 +10,7 @@ def get_NoamLR_sched(
     max_lr: float,
     final_lr: float,
 ):
-    r"""Get a Noam learning rate scheduler which schedules the learning rate with a piecewise linear followed
+    r"""Build a Noam-like learning rate scheduler which schedules the learning rate with a piecewise linear followed
     by an exponential decay.
 
     The learning rate increases linearly from ``init_lr`` to ``max_lr`` over the course of
