@@ -217,21 +217,15 @@ class MPNN(pl.LightningModule):
         return self(bmg, X_vd, X_d)
 
     def configure_optimizers(self):
-        no_decay = ["bias", "bn.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [
-                    p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": self.weight_decay,
-            },
-            {
-                "params": [
-                    p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": 0.0,
-            },
-        ]
+        no_decay_param_name = ["bias", "bn.weight"]
+        decayed_params = dict(params=[], "weight_decay"=self.weight_decay)
+        nondecayed_params = dict(params=[], "weight_decay"=0.0)
+        for name, parameter in self.named_parameters():
+            if any(no_decay_param_name in name for nd in no_decay):
+                nondecayed_params["params"].append(parameter)
+            else:
+                decayed_params["params"].append(parameter)
+        param_groups = [decayed_params, nondecayed_params]
 
         opt = optim.AdamW(optimizer_grouped_parameters, self.init_lr)
         steps_per_epoch = self.trainer.num_training_batches
