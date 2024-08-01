@@ -363,9 +363,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument("--init-lr", type=float, default=1e-4, help="Initial learning rate.")
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
-    train_args.add_argument(
-        "--epochs", type=int, default=50, help="Number of epochs to train over"
-    )
+    train_args.add_argument("--epochs", type=int, default=50, help="Number of epochs to train over")
     train_args.add_argument(
         "--patience",
         type=int,
