@@ -86,11 +86,16 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph"
     )
     featurization_args.add_argument(
+        "--molecule-featurizers",
         "--features-generators",
         nargs="+",
         action=LookupAction(MoleculeFeaturizerRegistry),
-        help="Method(s) of generating additional features",
+        help="Method(s) of generating molecule features to use as extra descriptors",
     )
+    # TODO: add in v2.1 to deprecate features-generators and then remove in v2.2
+    # featurization_args.add_argument(
+    #     "--features-generators", nargs="+", help="Renamed to `--molecule-featurizers`."
+    # )
     featurization_args.add_argument(
         "--descriptors-path",
         type=Path,
@@ -143,6 +148,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_common_args(args: Namespace) -> Namespace:
+    # TODO: add in v2.1 to deprecate features-generators and then remove in v2.2
+    # if args.features_generators is not None:
+    #     raise ArgumentError(
+    #         argument=None,
+    #         message="`--features-generators` has been renamed to `--molecule-featurizers`.",
+    #     )
+
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)
 

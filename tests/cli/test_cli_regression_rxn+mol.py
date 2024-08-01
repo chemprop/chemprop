@@ -55,6 +55,7 @@ def test_train_quick(monkeypatch, data_path):
         *bond_features_path,
         "--atom-descriptors-path",
         *atom_descriptors_path,
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:
@@ -98,6 +99,34 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
         model_path,
         "--ffn-block-index",
         ffn_block_index,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_molecule_featurizers(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "rxn_smiles",
+        "--smiles-columns",
+        "solvent_smiles",
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--split-key-molecule",
+        "1",
+        "--descriptors-path",
+        descriptors_path,
+        "--molecule-featurizers",
+        "morgan_count",
     ]
 
     with monkeypatch.context() as m:

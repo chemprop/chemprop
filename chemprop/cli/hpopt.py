@@ -24,11 +24,9 @@ from chemprop.cli.train import (
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
-from chemprop.featurizers import MoleculeFeaturizerRegistry
 from chemprop.nn import AggregationRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
-from chemprop.utils import Factory
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {
@@ -369,6 +367,7 @@ def tune_model(
         num_workers=args.raytune_num_workers,
         use_gpu=use_gpu,
         resources_per_worker=resources_per_worker,
+        trainer_resources={"CPU": 0},
     )
 
     checkpoint_config = CheckpointConfig(
@@ -464,17 +463,8 @@ def main(args: Namespace):
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
 
-    if args.features_generators is not None:
-        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
-        features_generators = [
-            Factory.build(MoleculeFeaturizerRegistry[features_generator])
-            for features_generator in args.features_generators
-        ]
-    else:
-        features_generators = None
-
     featurization_kwargs = dict(
-        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)

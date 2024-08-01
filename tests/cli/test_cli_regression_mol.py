@@ -38,7 +38,17 @@ def config_path(data_dir):
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
-    args = ["chemprop", "train", "-i", input_path, "--epochs", "1", "--num-workers", "0"]
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "1",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -187,7 +197,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--metrics",
         "mse",
         "rmse",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
     ]
 
@@ -267,6 +277,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         input_path,
         "--model-path",
         model_path,
+        model_path,
         "--output",
         str(tmp_path / "preds.csv"),
     ]
@@ -275,7 +286,8 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "preds_0.csv").exists()
+    assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_individual.csv").exists()
 
 
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
@@ -382,7 +394,7 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "optuna",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
         "--search-parameter-keywords",
         "all",
@@ -430,7 +442,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
-        "--features-generators",
+        "--molecule-featurizers",
         "morgan_count",
         "--search-parameter-keywords",
         "all",
