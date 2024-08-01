@@ -856,6 +856,17 @@ def train_model(
         )
         trainer.fit(model, train_loader, val_loader)
 
+        columns = get_column_names(
+            args.data_path,
+            args.smiles_columns,
+            args.reaction_columns,
+            args.target_columns,
+            args.ignore_columns,
+            args.splits_column,
+            args.weight_column,
+            args.no_header_row,
+        )
+
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
                 torch.distributed.destroy_process_group()
@@ -879,17 +890,17 @@ def train_model(
                 preds = np.split(preds, 4, axis=1)[0]
 
             evaluate_and_save_predictions(
-                preds, test_loader, model.metrics[:-1], model_output_dir, args
+                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns
             )
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model)
+        save_model(p_model, model, args.target_cols)
         logger.info(f"Best model saved to '{p_model}'")
 
 
-def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
+def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args, columns):
     if isinstance(test_loader.dataset, MulticomponentDataset):
         test_dset = test_loader.dataset.datasets[0]
     else:
@@ -901,23 +912,10 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
     gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
 
-    columns = get_column_names(
-        args.data_path,
-        args.smiles_columns,
-        args.reaction_columns,
-        args.target_columns,
-        args.ignore_columns,
-        args.splits_column,
-        args.weight_column,
-        args.no_header_row,
-    )
-    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-
     individual_scores = dict()
     for metric in metrics:
         individual_scores[metric.alias] = []
-        for i, col in enumerate(target_cols):
+        for i, col in enumerate(args.target_columns):
             if "multiclass" in args.task_type:
                 preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
                 targets_slice = torch.from_numpy(targets[:, i : i + 1])
@@ -942,7 +940,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
         for metric in metrics:
-            for i, col in enumerate(target_cols):
+            for i, col in enumerate(args.target_columns):
                 logger.info(
                     f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
                 )

@@ -2,7 +2,7 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 
-from chemprop.cli.utils import LookupAction
+from chemprop.cli.utils import LookupAction, get_column_names
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
 
@@ -156,6 +156,21 @@ def process_common_args(args: Namespace) -> Namespace:
     #         argument=None,
     #         message="`--features-generators` has been renamed to `--molecule-featurizers`.",
     #     )
+
+    columns = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+
+    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+    args.target_columns = target_cols
 
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         inds_paths = getattr(args, key)

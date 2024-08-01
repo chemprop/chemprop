@@ -11,7 +11,7 @@ import torch
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.models import load_model
+from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.predictors import MulticlassClassificationFFN
 
@@ -62,11 +62,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         nargs="+",
         help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
-    )
-    parser.add_argument(
-        "--target-columns",
-        nargs="+",
-        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
     )
 
     # TODO: add uncertainty and calibration in v2.1
@@ -282,18 +277,15 @@ def make_prediction_for_models(
         individual_preds.append(preds)
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
-    if args.target_columns is not None:
-        assert (
-            len(args.target_columns) == model.n_tasks
-        ), "Number of target columns must match the number of tasks."
-        target_columns = args.target_columns
-    else:
-        target_columns = [
+
+    output_columns = load_output_columns(model_paths[0])
+    if output_columns is None:
+        output_columns = [
             f"pred_{i}" for i in range(preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds
+    df_test[output_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -303,12 +295,12 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
-        target_columns = [
-            f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
+        output_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds
+        df_test[output_columns] = individual_preds
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)
