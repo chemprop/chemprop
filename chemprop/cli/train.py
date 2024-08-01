@@ -646,7 +646,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         pass
     elif args.task_type in ["regression", "regression-mve", "regression-evidential"]:
         y = dataset.Y
-        y_mean = y.mean()
+        y_mean = np.nanmean(y)
         y_std = y.std()
         y_median = np.median(y)
         mean_dev_abs = np.abs(y - y_mean)
@@ -693,10 +693,9 @@ def build_table(column_headers: list[str], table_rows: list[str], title: str | N
     table = Table(*right_justified_columns, title=title)
     for row in table_rows:
         table.add_row(*row)
-    console = Console(record=True)
+    console = Console(record = True, file = '/etc/null')
     console.print(table)
     return console.export_text()
-
 
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
@@ -752,9 +751,11 @@ def build_datasets(args, train_data, val_data, test_data):
         column_headers, table_rows = summarize(args, train_dset)
         output = build_table(column_headers, table_rows, "Summary of Training Data")
         logger.info(output)
+        
         column_headers, table_rows = summarize(args, val_dset)
         output = build_table(column_headers, table_rows, "Summary of Validation Data")
         logger.info(output)
+
         column_headers, table_rows = summarize(args, test_dset)
         output = build_table(column_headers, table_rows, "Summary of Test Data")
         logger.info(output)
@@ -770,7 +771,6 @@ def build_model(
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
-
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
             mp_cls(
