@@ -198,7 +198,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "mse",
         "rmse",
         "--molecule-featurizers",
-        "morgan_count",
+        "rdkit_2d",
     ]
 
     with monkeypatch.context() as m:
@@ -443,7 +443,7 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "--raytune-search-algorithm",
         "hyperopt",
         "--molecule-featurizers",
-        "morgan_count",
+        "morgan_binary",
         "--search-parameter-keywords",
         "all",
     ]
