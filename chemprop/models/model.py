@@ -217,7 +217,7 @@ class MPNN(pl.LightningModule):
         if self.trainer.train_dataloader is None:
             # Loading `train_dataloader` to estimate number of training batches.
             # Using this line of code can pypass the issue of using `num_training_batches` as described [here](https://github.com/Lightning-AI/pytorch-lightning/issues/16060).
-            self.trainer.estimated_stepping_batches()
+            self.trainer.estimated_stepping_batches
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
