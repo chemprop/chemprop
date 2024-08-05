@@ -91,7 +91,6 @@ Model performance is often highly dependent on the hyperparameters used. Below i
  * :code:`--init-lr <n>` Initial learning rate (default 0.0001)
  * :code:`--max-lr <n>` Maximum learning rate (default 0.001)
  * :code:`--final-lr <n>` Final learning rate (default 0.0001)
- * :code:`--weight-decay <n>` Weight decay coefficient (default 0.01)
 
 
 Loss Functions

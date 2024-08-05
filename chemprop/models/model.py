@@ -48,8 +48,6 @@ class MPNN(pl.LightningModule):
         the maximum learning rate
     final_lr : float, default=1e-4
         the final learning rate
-    weight_decay : float, default=1e-2
-        the weight decay coefficient
 
     Raises
     ------
@@ -69,7 +67,6 @@ class MPNN(pl.LightningModule):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        weight_decay: float = 1e-2,
         X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__()
@@ -102,7 +99,6 @@ class MPNN(pl.LightningModule):
         self.init_lr = init_lr
         self.max_lr = max_lr
         self.final_lr = final_lr
-        self.weight_decay = weight_decay
 
     @property
     def output_dim(self) -> int:
@@ -217,17 +213,7 @@ class MPNN(pl.LightningModule):
         return self(bmg, X_vd, X_d)
 
     def configure_optimizers(self):
-        no_decay_param_name = ["bias", "bn.weight"]
-        decayed_params = dict(params=[], weight_decay=self.weight_decay)
-        nondecayed_params = dict(params=[], weight_decay=0.0)
-        for name, parameter in self.named_parameters():
-            if any(nd in name for nd in no_decay_param_name):
-                nondecayed_params["params"].append(parameter)
-            else:
-                decayed_params["params"].append(parameter)
-        param_groups = [decayed_params, nondecayed_params]
-
-        opt = optim.AdamW(param_groups, self.init_lr)
+        opt = optim.Adam(self.parameters(), self.init_lr)
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:

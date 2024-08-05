@@ -22,7 +22,6 @@ class MulticomponentMPNN(MPNN):
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
         final_lr: float = 1e-4,
-        weight_decay: float = 1e-2,
         X_d_transform: ScaleTransform | None = None,
     ):
         super().__init__(
@@ -35,7 +34,6 @@ class MulticomponentMPNN(MPNN):
             init_lr,
             max_lr,
             final_lr,
-            weight_decay,
             X_d_transform,
         )
         self.message_passing: MulticomponentMessagePassing
