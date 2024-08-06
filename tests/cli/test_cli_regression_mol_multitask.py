@@ -25,7 +25,7 @@ def test_train_quick(monkeypatch, data_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--show-individual-scores",

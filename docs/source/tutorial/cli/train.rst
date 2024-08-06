@@ -88,7 +88,7 @@ Model performance is often highly dependent on the hyperparameters used. Below i
  * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default :code:`relu`)
  * :code:`--epochs <n>` How many epochs to train over (default 50)
  * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2)
- * :code:`--init_lr <n>` Initial learning rate (default 0.0001)
+ * :code:`--init-lr <n>` Initial learning rate (default 0.0001)
  * :code:`--max-lr <n>` Maximum learning rate (default 0.001)
  * :code:`--final-lr <n>` Final learning rate (default 0.0001)
 
