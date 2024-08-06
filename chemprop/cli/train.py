@@ -750,15 +750,13 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-    column_headers, table_rows = summarize(args, train_dset)
-    output = build_table(column_headers, table_rows, "Summary of Training Data")
-    logger.info(output)
-    column_headers, table_rows = summarize(args, val_dset)
-    output = build_table(column_headers, table_rows, "Summary of Validation Data")
-    logger.info(output)
-    column_headers, table_rows = summarize(args, test_dset)
-    output = build_table(column_headers, table_rows, "Summary of Test Data")
-    logger.info(output)
+    for dataset, label in zip(
+        [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+    ):
+        column_headers, table_rows = summarize(args, dataset)
+        output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+        logger.info(output)
+
     return train_dset, val_dset, test_dset
 
 
