@@ -671,7 +671,10 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         "multiclass",
         "multiclass-dirichlet",
     ]:
-        y = dataset.Y
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
 
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
