@@ -643,7 +643,10 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
     if args.task_type == "spectral":
         pass
     elif args.task_type in ["regression", "regression-mve", "regression-evidential"]:
-        y = dataset.Y
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
         y_mean = np.nanmean(y, axis=0)
         print("YMEAN", y_mean)
         y_std = np.nanstd(y, axis=0)
@@ -734,15 +737,6 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = MulticomponentDataset(test_dsets)
         else:
             test_dset = None
-        column_headers, table_rows = summarize(args, train_dsets[0])
-        output = build_table(column_headers, table_rows, "Summary of Training Data")
-        logger.info(output)
-        column_headers, table_rows = summarize(args, val_dsets[0])
-        output = build_table(column_headers, table_rows, "Summary of Validation Data")
-        logger.info(output)
-        column_headers, table_rows = summarize(args, test_dsets[0])
-        output = build_table(column_headers, table_rows, "Summary of Test Data")
-        logger.info(output)
     else:
         train_data = train_data[0]
         val_data = val_data[0]
@@ -753,15 +747,15 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-        column_headers, table_rows = summarize(args, train_dset)
-        output = build_table(column_headers, table_rows, "Summary of Training Data")
-        logger.info(output)
-        column_headers, table_rows = summarize(args, val_dset)
-        output = build_table(column_headers, table_rows, "Summary of Validation Data")
-        logger.info(output)
-        column_headers, table_rows = summarize(args, test_dset)
-        output = build_table(column_headers, table_rows, "Summary of Test Data")
-        logger.info(output)
+    column_headers, table_rows = summarize(args, train_dset)
+    output = build_table(column_headers, table_rows, "Summary of Training Data")
+    logger.info(output)
+    column_headers, table_rows = summarize(args, val_dset)
+    output = build_table(column_headers, table_rows, "Summary of Validation Data")
+    logger.info(output)
+    column_headers, table_rows = summarize(args, test_dset)
+    output = build_table(column_headers, table_rows, "Summary of Test Data")
+    logger.info(output)
     return train_dset, val_dset, test_dset
 
 
