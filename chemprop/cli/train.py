@@ -640,9 +640,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
 
 def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
-    if args.task_type == "spectral":
-        pass
-    elif args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
@@ -750,12 +748,13 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
-    for dataset, label in zip(
-        [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
-    ):
-        column_headers, table_rows = summarize(args, dataset)
-        output = build_table(column_headers, table_rows, f"Summary of {label} Data")
-        logger.info(output)
+    if args.task_type != "spectral":
+        for dataset, label in zip(
+            [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+        ):
+            column_headers, table_rows = summarize(args, dataset)
+            output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+            logger.info(output)
 
     return train_dset, val_dset, test_dset
 
