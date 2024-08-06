@@ -11,6 +11,8 @@ from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 from lightning.pytorch.strategies import DDPStrategy
 import numpy as np
 import pandas as pd
+from rich.console import Console
+from rich.table import Column, Table
 import torch
 import torch.nn as nn
 
@@ -35,6 +37,7 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
+from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
@@ -636,6 +639,83 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     return train_data, val_data, test_data
 
 
+def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
+    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
+        y_mean = np.nanmean(y, axis=0)
+        print("YMEAN", y_mean)
+        y_std = np.nanstd(y, axis=0)
+        y_median = np.nanmedian(y, axis=0)
+        mean_dev_abs = np.abs(y - y_mean)
+        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / len(y)
+        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / len(y)
+
+        column_headers = ["Statistic"] + [f"Value {i}" for i in range(y.shape[1])]
+        table_rows = [
+            ["Num. datapoints"] + [f"{len(y)}" for i in range(y.shape[1])],
+            ["Mean"] + [f"{mean:0.2f}" for mean in y_mean],
+            ["Std. dev."] + [f"{std:0.2f}" for std in y_std],
+            ["Median"] + [f"{median:0.2f}" for median in y_median],
+            ["% within 1 s.d."] + [f"{sigma:0.0%}" for sigma in frac_1_sigma],
+            ["% within 2 s.d."] + [f"{sigma:0.0%}" for sigma in frac_2_sigma],
+        ]
+        return (column_headers, table_rows)
+    elif args.task_type in [
+        "classification",
+        "classification-dirichlet",
+        "multiclass",
+        "multiclass-dirichlet",
+    ]:
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
+
+        mask = np.isnan(y)
+        classes = np.sort(np.unique(y[~mask]))
+
+        class_counts = np.stack([(classes[:, None] == y[:, i]).sum(1) for i in range(y.shape[1])])
+        class_fracs = class_counts / y.shape[0]
+        nan_count = np.nansum(mask, axis=0)
+        nan_frac = nan_count / len(y)
+
+        column_headers = ["Class"] + [f"Count/Percent {i}" for i in range(y.shape[1])]
+
+        table_rows = []
+        for i, k in enumerate(classes):
+            class_row = [f"{k}"] + [
+                f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])
+            ]
+            table_rows.append(class_row)
+
+        nan_row = ["NAN"] + [f"{nan_count[i]}/{nan_frac[i]:0.0%}" for i in range(y.shape[1])]
+        table_rows.append(nan_row)
+
+        total_row = ["Total"] + [f"{y.shape[0]}/{100.00}%" for i in range(y.shape[1])]
+        table_rows.append(total_row)
+
+        return (column_headers, table_rows)
+    else:
+        raise ValueError(f"unsupported task type! Task type '{args.task_type}' was not recognized.")
+
+
+def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
+    right_justified_columns = [
+        Column(header=column_header, justify="right") for column_header in column_headers
+    ]
+    table = Table(*right_justified_columns, title=title)
+    for row in table_rows:
+        table.add_row(*row)
+    from io import StringIO
+
+    console = Console(record=True, file=StringIO())
+    console.print(table)
+    return console.export_text()
+
+
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
     multicomponent = len(train_data) > 1
@@ -662,13 +742,19 @@ def build_datasets(args, train_data, val_data, test_data):
         train_data = train_data[0]
         val_data = val_data[0]
         test_data = test_data[0]
-
         train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         if len(test_data) > 0:
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
+    if args.task_type != "spectral":
+        for dataset, label in zip(
+            [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+        ):
+            column_headers, table_rows = summarize(args, dataset)
+            output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+            logger.info(output)
 
     return train_dset, val_dset, test_dset
 
@@ -682,7 +768,6 @@ def build_model(
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
-
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
             mp_cls(
