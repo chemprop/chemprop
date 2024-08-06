@@ -450,8 +450,15 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
+
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
+
+    if args.epochs != -1 and args.epochs <= args.warmup_epochs:
+        raise ArgumentError(
+            argument=None,
+            message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
+        )
 
     return args
 
@@ -839,12 +846,7 @@ def train_model(
             save_last=True,
         )
 
-        if args.epochs <= args.warmup_epochs:
-            raise ArgumentError(
-                argument=None,
-                message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
-            )
-        elif args.epochs != -1:
+        if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
             early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
             callbacks = [checkpointing, early_stopping]
