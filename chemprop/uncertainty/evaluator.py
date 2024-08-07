@@ -85,7 +85,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         masked_uncs = uncs * mask
         masked_errs = (masked_preds - masked_targets).abs()
         spearman = SpearmanCorrCoef(num_outputs = masked_targets.shape[1])
-        return spearman(masked_uncs, masked_errs)
+        return spearman(masked_uncs, masked_errs).unsqueeze(0)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
