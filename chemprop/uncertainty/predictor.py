@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from typing import Iterable
 
-
 from lightning import pytorch as pl
 import torch
 from torch import Tensor
@@ -114,10 +113,15 @@ class DropoutPredictor(UncertaintyPredictor):
     an ensemble's submodels.
     """
 
-    sampling_size: int
-    """The number of samples to draw for the ensemble."""
-    dropout_p: float
-    """The probability of dropping out units in the dropout layers."""
+    def __init__(self, sampling_size: int, dropout_p: float):
+        """
+        Parameters
+        ----------
+        sampling_size (int): The number of samples to draw for the ensemble.
+        dropout_p (float): The probability of dropping out units in the dropout layers.
+        """
+        self.sampling_size = sampling_size
+        self.dropout_p = dropout_p
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         if len(models) != 1:
@@ -125,7 +129,7 @@ class DropoutPredictor(UncertaintyPredictor):
                 "Dropout method for uncertainty only takes exactly one model."
             )
         model = next(iter(models))
-        model.apply(self._activate_dropout)
+        self._setup_predict_wrapper(model)
         individual_preds = []
 
         for _ in range(self.sampling_size):
@@ -140,10 +144,22 @@ class DropoutPredictor(UncertaintyPredictor):
         vars = torch.var(stacked_preds, dim=0, correction=0)
         return means, vars
 
+    def _setup_predict_wrapper(self, model):
+        model.original_predict_step = model.predict_step
+        model.predict_step = self._predict_step(model)
+
+    def _predict_step(self, model):
+        def _wrapped_predict_step(*args, **kwargs):
+            model.apply(self._activate_dropout)
+            return model.original_predict_step(*args, **kwargs)
+
+        return _wrapped_predict_step
+
     def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
             module.p = self.dropout_p
             module.train()
+
 
 @UncertaintyPredictorRegistry.register("spectra-roundrobin")
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
