@@ -41,19 +41,19 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES.",
+        help="Path to an input CSV file containing SMILES",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns",
     )
     parser.add_argument(
         "--model-paths",
@@ -66,7 +66,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--target-columns",
         nargs="+",
-        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+        help="Column names to save the predictions to (by default, the predictions will be saved to columns named ``pred_0``, ``pred_1``, etc.)",
     )
 
     # TODO: add uncertainty and calibration in v2.1

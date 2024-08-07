@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
-    HELP = "use a pretrained chemprop model for to calculate learned representations"
+    HELP = "Use a pretrained chemprop model to calculate learned representations."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -29,14 +29,14 @@ class FingerprintSubcommand(Subcommand):
             "--test-path",
             required=True,
             type=Path,
-            help="Path to an input CSV file containing SMILES.",
+            help="Path to an input CSV file containing SMILES",
         )
         parser.add_argument(
             "-o",
             "--output",
             "--preds-path",
             type=Path,
-            help="Path to which predictions will be saved. If the file extension is .npz, they will be saved as a npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
+            help="Specify the path where predictions will be saved. If the file extension is .npz, they will be saved as a npz file. Otherwise, the predictions will be saved as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as ``--test-path`` with '_fps' appended (e.g., 'PATH/TO/TEST_PATH_fps_0.csv').",
         )
         parser.add_argument(
             "--model-paths",
@@ -44,7 +44,7 @@ class FingerprintSubcommand(Subcommand):
             required=True,
             type=Path,
             nargs="+",
-            help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
+            help="Specify location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, chemprop will recursively search and predict on all found (.pt) models.",
         )
         parser.add_argument(
             "--ffn-block-index",
