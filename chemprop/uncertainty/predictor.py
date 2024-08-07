@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Iterable
+import copy
 
 from lightning import pytorch as pl
 import torch
@@ -128,7 +129,7 @@ class DropoutPredictor(UncertaintyPredictor):
             raise ValueError(
                 "Dropout method for uncertainty only takes exactly one model."
             )
-        model = next(iter(models))
+        model = copy.copy(next(iter(models)))
         self._setup_predict_wrapper(model)
         individual_preds = []
 
