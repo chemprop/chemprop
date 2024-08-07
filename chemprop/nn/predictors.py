@@ -142,12 +142,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def output_dim(self) -> int:
         return self.ffn.output_dim
 
-    @property
-    def n_tasks(self) -> int:
-        return self.output_dim // self.n_targets
-
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z)
+        return self.ffn(Z).unsqueeze(-1)
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -160,7 +156,7 @@ class RegressionFFN(_FFNPredictorBase):
     _T_default_metric = MSEMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.output_transform(self.ffn(Z))
+        return self.output_transform(self.ffn(Z)).unsqueeze(-1)
 
     train_step = forward
 
@@ -178,7 +174,7 @@ class MveFFN(RegressionFFN):
         mean = self.output_transform(mean)
         var = self.output_transform.transform_variance(var)
 
-        return torch.cat((mean, var), 1)
+        return torch.stack((mean, var), dim=2)
 
     train_step = forward
 
@@ -198,7 +194,7 @@ class EvidentialFFN(RegressionFFN):
         mean = self.output_transform(mean)
         beta = self.output_transform.transform_variance(beta)
 
-        return torch.cat((mean, v, alpha, beta), 1)
+        return torch.stack((mean, v, alpha, beta), dim=2)
 
     train_step = forward
 
@@ -276,13 +272,10 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         self.n_classes = n_classes
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        Y = Y.reshape(Y.shape[0], -1, self.n_classes)
-
-        return Y.softmax(-1)
+        return self.train_step(Z).softmax(-2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes, 1)
 
 
 @PredictorRegistry.register("multiclass-dirichlet")

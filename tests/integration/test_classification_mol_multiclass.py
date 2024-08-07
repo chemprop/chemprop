@@ -70,7 +70,7 @@ def test_overfit(classification_mpnn_multiclass, dataloader):
         predss.append(preds)
         targetss.append(targets)
 
-    preds = torch.cat(predss)
+    preds = torch.cat(predss)[..., 0]
     targets = torch.cat(targetss)
     accuracy = torchmetrics.functional.accuracy(
         preds, targets.long(), task="multiclass", num_classes=3

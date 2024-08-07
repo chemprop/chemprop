@@ -277,11 +277,11 @@ def make_prediction_for_models(
 
         # TODO: might want to write a shared function for this as train.py might also want to do this.
         preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=-1)
         individual_preds.append(preds)
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        average_preds = torch.argmax(average_preds, dim=2)
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -293,7 +293,7 @@ def make_prediction_for_models(
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds
+    df_test[target_columns] = average_preds[..., 0]
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -303,12 +303,14 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            individual_preds = torch.argmax(individual_preds, dim=2)
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds
+        df_test[target_columns] = individual_preds[..., 0]
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)

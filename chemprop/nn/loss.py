@@ -52,8 +52,8 @@ class LossFunction(nn.Module):
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x (t * s)` (regression), `b x t` (binary classification), or
-            `b x t x c` (multiclass classification) containing the predictions, where `b` is the
+            a tensor of shape `b x t x s` (regression), `b x t x s` (binary classification), or
+            `b x t x c x s` (multiclass classification) containing the predictions, where `b` is the
             batch size, `t` is the number of tasks to predict, `s` is the number of
             targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
@@ -90,6 +90,7 @@ LossFunctionRegistry = ClassRegistry[LossFunction]()
 @LossFunctionRegistry.register("mse")
 class MSELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         return F.mse_loss(preds, targets, reduction="none")
 
 
@@ -116,7 +117,7 @@ class MVELoss(LossFunction):
     """
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, var = torch.chunk(preds, 2, 1)
+        mean, var = torch.unbind(preds, dim=-1)
 
         L_sos = (mean - targets) ** 2 / (2 * var)
         L_kl = (2 * torch.pi * var).log() / 2
@@ -144,7 +145,7 @@ class EvidentialLoss(LossFunction):
         self.eps = eps
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, v, alpha, beta = torch.chunk(preds, 4, 1)
+        mean, v, alpha, beta = torch.unbind(preds, dim=-1)
 
         residuals = targets - mean
         twoBlambda = 2 * beta * (1 + v)
@@ -169,12 +170,14 @@ class EvidentialLoss(LossFunction):
 @LossFunctionRegistry.register("bce")
 class BCELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 @LossFunctionRegistry.register("ce")
 class CrossEntropyLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        preds = preds[..., 0]
         preds = preds.transpose(1, 2)
         targets = targets.long()
 
