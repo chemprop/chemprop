@@ -38,8 +38,10 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
         masked_preds = preds * mask
         masked_targets = targets * mask
         masked_uncs = uncs * mask
-        nlls = (2 * torch.pi * masked_uncs).log() / 2 + (masked_preds - masked_targets) ** 2 / (2 * masked_uncs)
-        return nlls.mean(dim = 0)
+        nlls = (2 * torch.pi * masked_uncs).log() / 2 + (masked_preds - masked_targets) ** 2 / (
+            2 * masked_uncs
+        )
+        return nlls.mean(dim=0)
 
 
 @UncertaintyEvaluatorRegistry.register("nll-classification")
@@ -49,18 +51,18 @@ class NLLClassEvaluator(UncertaintyEvaluator):
         masked_uncs = uncs * mask
         likelihoods = masked_uncs * masked_targets + (1 - masked_uncs) * (1 - masked_targets)
         nlls = -1 * likelihoods.log()
-        return nlls.mean(dim = 0)
+        return nlls.mean(dim=0)
 
 
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
 class NLLMultiEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         masked_targets = targets * mask
-        masked_uncs = uncs * mask
+        masked_uncs = uncs * mask.unsqueeze(dim=1)
         targets_shape = torch.nn.functional.one_hot(masked_targets, masked_uncs.shape[-1])
-        likelihoods = (targets_shape * masked_uncs).sum(dim = -1)
+        likelihoods = (targets_shape * masked_uncs).sum(dim=-1)
         nlls = -1 * likelihoods.log()
-        return nlls.mean(dim = 0)
+        return nlls.mean(dim=0)
 
 
 @UncertaintyEvaluatorRegistry.register("miscalibration_area")
@@ -84,7 +86,7 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         masked_targets = targets * mask
         masked_uncs = uncs * mask
         masked_errs = (masked_preds - masked_targets).abs()
-        spearman = SpearmanCorrCoef(num_outputs = masked_targets.shape[1])
+        spearman = SpearmanCorrCoef(num_outputs=masked_targets.shape[1])
         return spearman(masked_uncs, masked_errs).unsqueeze(0)
 
 
