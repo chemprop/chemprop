@@ -58,14 +58,13 @@ class EnsemblePredictor(UncertaintyPredictor):
             raise ValueError(
                 "Ensemble method for uncertainty is only available when multiple models are provided."
             )
-        individual_preds = []
+        ensemble_preds = []
         for model in models:
-            predss = trainer.predict(model, dataloader)
-            preds = torch.concat(predss, 0)
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
             if isinstance(model.predictor, MulticlassClassificationFFN):
                 preds = torch.argmax(preds, dim=-1)
-            individual_preds.append(preds)
-        stacked_preds = torch.stack(individual_preds).float()
+            ensemble_preds.append(preds)
+        stacked_preds = torch.stack(ensemble_preds).float()
         vars = torch.var(stacked_preds, dim=0, correction=0)
         return stacked_preds, vars
 
@@ -109,45 +108,56 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("dropout")
 class DropoutPredictor(UncertaintyPredictor):
     """
-    Class that creates an artificial ensemble of models by applying monte carlo dropout to the loaded
+    A :class:`DropoutPredictor` creates a virtual ensemble of via Monte Carlo dropout with the provided models [1]_.
+    
+    References
+    -----------
+    .. [1] arXiv:1506.02142 [stat.ML]
     model parameters. Predicts uncertainty for predictions based on the variance in predictions among
     an ensemble's submodels.
     """
 
-    def __init__(self, sampling_size: int, dropout_p: float):
+    def __init__(self, ensemble_size: int, dropout: float):
         """
         Parameters
         ----------
-        sampling_size (int): The number of samples to draw for the ensemble.
-        dropout_p (float): The probability of dropping out units in the dropout layers.
+        ensemble_size (int): The number of samples to draw for the ensemble.
+        dropout (float): The probability of dropping out units in the dropout layers.
         """
-        self.sampling_size = sampling_size
-        self.dropout_p = dropout_p
+        self.ensemble_size = ensemble_size
+        self.dropout = dropout
 
     def _calc_prediction_uncertainty(self, dataloader, models, trainer) -> Tensor:
         if len(models) != 1:
             raise ValueError(
                 "Dropout method for uncertainty only takes exactly one model."
             )
-        model = copy.copy(next(iter(models)))
+        model = next(iter(models))
         self._setup_predict_wrapper(model)
         individual_preds = []
 
-        for _ in range(self.sampling_size):
+        for _ in range(self.ensemble_size):
             predss = trainer.predict(model, dataloader)
             preds = torch.concat(predss, 0)
             if isinstance(model.predictor, MulticlassClassificationFFN):
                 preds = torch.argmax(preds, dim=-1)
             individual_preds.append(preds)
 
-        stacked_preds = torch.stack(individual_preds).float()
+        stacked_preds = torch.stack(individual_preds, dim=0).float()
         means = torch.mean(stacked_preds, dim=0)
         vars = torch.var(stacked_preds, dim=0, correction=0)
+
+        self._restore_model(model)
         return means, vars
 
     def _setup_predict_wrapper(self, model):
-        model.original_predict_step = model.predict_step
+        model._predict_step = model.predict_step
         model.predict_step = self._predict_step(model)
+
+    def _restore_model(self, model):
+        model.predict_step = model._predict_step
+        del model._predict_step
+        model.apply(self._restore_dropout)
 
     def _predict_step(self, model):
         def _wrapped_predict_step(*args, **kwargs):
@@ -158,8 +168,14 @@ class DropoutPredictor(UncertaintyPredictor):
 
     def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
-            module.p = self.dropout_p
+            module._p = module.p
+            module.p = self.dropout
             module.train()
+
+    def _restore_dropout(self, module):
+        if isinstance(module, torch.nn.Dropout):
+            module.p = module._p
+            del module._p
 
 
 @UncertaintyPredictorRegistry.register("spectra-roundrobin")
