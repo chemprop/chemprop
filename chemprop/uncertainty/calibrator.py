@@ -24,6 +24,13 @@ UncertaintyCalibratorRegistry = ClassRegistry[UncertaintyCalibrator]()
 
 @UncertaintyCalibratorRegistry.register("zscaling")
 class ZScalingCalibrator(UncertaintyCalibrator):
+    """
+    A class that calibrates regression uncertainty models by applying
+    a scaling value to the uncalibrated standard deviation, fitted by minimizing the
+    negative log likelihood of a normal distribution around each prediction
+    with scaling given by the uncalibrated variance. Method is described
+    in https://arxiv.org/abs/1905.11659.
+    """
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         ...
         return
@@ -35,6 +42,14 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(UncertaintyCalibrator):
+    """
+    A calibrator for regression datasets that does not depend on a particular probability
+    function form. Designed to be used with interval output. Uses the "CRUDE" method as
+    described in https://arxiv.org/abs/2005.12496. As implemented here, the interval
+    bounds are constrained to be symmetrical, though this is not required in the source method.
+    The probability density to be used for NLL evaluator for the zelikman interval method is
+    approximated here as a histogram function.
+    """
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         ...
         return
@@ -46,6 +61,12 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(UncertaintyCalibrator):
+    """
+    A method of calibration for models that have ensembles of individual models that
+    make variance predictions. Minimizes the negative log likelihood for the
+    predictions versus the targets by applying a weighted average across the
+    variance predictions of the ensemble. Discussed in https://doi.org/10.1186/s13321-021-00551-x.
+    """
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         ...
         return
