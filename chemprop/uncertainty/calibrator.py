@@ -69,7 +69,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(UncertaintyCalibrator):
     """Calibrate classification datasets using the Platt scaling algorithm [guo2017]_, [platt1999]_.
-    
+
     In [platt1999]_, Platt suggests using the number of positive and negative training examples to
     adjust the value of target probabilities used to fit the parameters.
 
@@ -80,7 +80,15 @@ class PlattCalibrator(UncertaintyCalibrator):
     .. [platt1999] Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to
     Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
     """
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, training_targets: None | Tensor = None) -> None:
+
+    def fit(
+        self,
+        preds: Tensor,
+        uncs: Tensor,
+        targets: Tensor,
+        mask: Tensor,
+        training_targets: Tensor | None = None,
+    ) -> None:
         if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
             raise ValueError(
                 "Platt scaling is only implemented for binary classification tasks! Input tensor "
@@ -109,11 +117,10 @@ class PlattCalibrator(UncertaintyCalibrator):
             # if is_atom_bond_targets: # Not yet implemented
 
             def objective(parameters):
-                a ,b = parameters
+                a, b = parameters
                 scaled_preds = expit(a * logit(preds_j) + b)
                 nll = -1 * np.sum(
-                    targets_j * np.log(scaled_preds)
-                    + (1 - targets_j) * np.log(1 - scaled_preds)
+                    targets_j * np.log(scaled_preds) + (1 - targets_j) * np.log(1 - scaled_preds)
                 )
                 return nll
 
