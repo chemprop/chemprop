@@ -68,17 +68,17 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(UncertaintyCalibrator):
-    """A calibration method for classification datasets based on the Platt scaling algorithm, as
-    discussed in [guo2017]_ and [platt1999]_. In Platt's paper, he suggests using the number of
-    positive and negative examples in the dataset used to train the model to adjust the value of
-    target probabilities used to fit the parameters.
+    """Calibrate classification datasets using the Platt scaling algorithm [guo2017]_, [platt1999]_.
+    
+    In [platt1999]_, Platt suggests using the number of positive and negative training examples to
+    adjust the value of target probabilities used to fit the parameters.
 
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
-    .. [platt1999] Platt, J.. "Probabilistic Outputs for Support Vector Machines and Comparisons to
-        Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
+    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+    .. [platt1999] Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to
+    Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
     """
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, training_targets: None | Tensor = None) -> None:
         if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
@@ -100,8 +100,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             targets[targets == 0] = negative_target_bayes_MAP[targets == 0]
             targets[targets == 1] = positive_target_bayes_MAP[targets == 1]
 
-        self.a = []
-        self.b = []
+        xs = []
         for j in range(preds.shape[1]):
             mask_j = mask[:, j]
             preds_j = preds[:, j][mask_j].numpy()
@@ -110,8 +109,7 @@ class PlattCalibrator(UncertaintyCalibrator):
             # if is_atom_bond_targets: # Not yet implemented
 
             def objective(parameters):
-                a = parameters[0]
-                b = parameters[1]
+                a ,b = parameters
                 scaled_preds = expit(a * logit(preds_j) + b)
                 nll = -1 * np.sum(
                     targets_j * np.log(scaled_preds)
@@ -119,12 +117,10 @@ class PlattCalibrator(UncertaintyCalibrator):
                 )
                 return nll
 
-            a_j, b_j = fmin(objective, x0=[1, 0], disp=False)
-            self.a.append(a_j)
-            self.b.append(b_j)
+            xs.append(fmin(objective, x0=[1, 0], disp=False))
 
-        self.a = torch.tensor(self.a)
-        self.b = torch.tensor(self.b)
+        xs = np.vstack(xs)
+        self.a, self.b = torch.tensor(xs).T.unbind(dim=0)
 
     def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
         return torch.sigmoid(self.a * torch.logit(preds) + self.b), None
