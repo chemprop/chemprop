@@ -1,6 +1,8 @@
 from abc import abstractmethod
 
+import numpy as np
 from scipy.optimize import fmin
+from scipy.special import expit, logit
 import torch
 from torch import Tensor
 
@@ -102,20 +104,20 @@ class PlattCalibrator(UncertaintyCalibrator):
         self.b = []
         for j in range(preds.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j][mask_j]
-            targets_j = targets[:, j][mask_j]
+            preds_j = preds[:, j][mask_j].numpy()
+            targets_j = targets[:, j][mask_j].numpy()
 
             # if is_atom_bond_targets: # Not yet implemented
 
             def objective(parameters):
                 a = parameters[0]
                 b = parameters[1]
-                scaled_preds = torch.sigmoid(a * torch.logit(preds_j) + b)
-                nll = -1 * torch.sum(
-                    targets_j * torch.log(scaled_preds)
-                    + (1 - targets_j) * torch.log(1 - scaled_preds)
+                scaled_preds = expit(a * logit(preds_j) + b)
+                nll = -1 * np.sum(
+                    targets_j * np.log(scaled_preds)
+                    + (1 - targets_j) * np.log(1 - scaled_preds)
                 )
-                return nll.item()
+                return nll
 
             a_j, b_j = fmin(objective, x0=[1, 0], disp=False)
             self.a.append(a_j)
