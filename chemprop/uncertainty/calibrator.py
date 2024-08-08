@@ -119,13 +119,13 @@ class PlattCalibrator(UncertaintyCalibrator):
 
             a_j, b_j = fmin(objective, x0=[1, 0], disp=False)
             self.a.append(a_j)
-            self.a.append(b_j)
+            self.b.append(b_j)
 
         self.a = torch.tensor(self.a)
         self.b = torch.tensor(self.b)
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
-        return torch.sigmoid(self.a * torch.logit(preds) + self.b)
+    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
+        return torch.sigmoid(self.a * torch.logit(preds) + self.b), None
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
