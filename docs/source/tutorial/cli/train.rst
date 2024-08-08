@@ -262,7 +262,7 @@ Additional descriptors can be concatenated to the learned representation after a
 Molecule-Level 2D Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Morgan fingerprints can be generated as molecular 2D features using :code:`--features-generators`:
+Morgan fingerprints can be generated as molecular 2D features using :code:`--molecule-featurizers`:
 
 * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
 * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.

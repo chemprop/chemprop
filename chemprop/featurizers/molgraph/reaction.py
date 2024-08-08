@@ -121,7 +121,6 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         n_atoms_tot = len(V)
         n_atoms_reac = reac.GetNumAtoms()
 
-        i = 0
         for u in range(n_atoms_tot):
             for v in range(u + 1, n_atoms_tot):
                 b_reac, b_prod = self._get_bonds(
@@ -135,9 +134,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
 
-                i += 2
-
-        E = np.array(E)
+        E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
 
