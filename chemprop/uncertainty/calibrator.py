@@ -33,17 +33,6 @@ class ZScalingCalibrator(UncertaintyCalibrator):
         return
 
 
-@UncertaintyCalibratorRegistry.register("tscaling")
-class TScalingCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
-        ...
-        return
-
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
-        ...
-        return
-
-
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(UncertaintyCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
