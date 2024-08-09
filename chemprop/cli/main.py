@@ -1,16 +1,16 @@
-from configargparse import ArgumentParser
 import logging
-import sys
 from pathlib import Path
+import sys
 
-from chemprop.cli.train import TrainSubcommand
-from chemprop.cli.predict import PredictSubcommand
+from configargparse import ArgumentParser
+
+from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 from chemprop.cli.convert import ConvertSubcommand
 from chemprop.cli.fingerprint import FingerprintSubcommand
 from chemprop.cli.hpopt import HpoptSubcommand
-
+from chemprop.cli.predict import PredictSubcommand
+from chemprop.cli.train import TrainSubcommand
 from chemprop.cli.utils import pop_attr
-from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,14 @@ def construct_parser():
         "--log",
         nargs="?",
         const="default",
-        help=f"The path to which the log file should be written. Specifying just the flag (i.e., '--log/--logfile') will automatically log to a file '{LOG_DIR}/MODE/TIMESTAMP.log', where 'MODE' is the CLI mode chosen. An example 'TIMESTAMP' is {NOW}.",
+        help=f"Path to which the log file should be written (specifying just the flag alone will automatically log to a file ``{LOG_DIR}/MODE/TIMESTAMP.log`` , where 'MODE' is the CLI mode chosen, e.g., ``{LOG_DIR}/MODE/{NOW}.log``)",
     )
     parent.add_argument(
         "-v",
         "--verbose",
         action="count",
         default=0,
-        help="The verbosity level, specify the flag multiple times to increase verbosity.",
+        help="Verbosity level (specify the flag multiple times to increase verbosity)",
     )
 
     parents = [parent]

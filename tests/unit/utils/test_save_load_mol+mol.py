@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from lightning import pytorch as pl
 import numpy as np
 import pytest
-from lightning import pytorch as pl
 from torch.utils.data import DataLoader
 
 from chemprop.data import (
