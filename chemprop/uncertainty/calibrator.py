@@ -1,21 +1,58 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyCalibrator:
+class UncertaintyCalibrator(ABC):
+    """
+    A class for calibrating the predicted uncertainties.
+    """
+
     @abstractmethod
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         """
         Fit calibration method for the calibration data.
+
+        **NOTE**: The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
+        the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties of varying shape depending on the task type:
+
+            * regression/binary classification: ``n x t``
+
+            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : UncertaintyCalibrator
+            the fitted calibrator
         """
 
     @abstractmethod
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         """
-        Take in predictions and uncertainty parameters from a model and apply the calibration method using fitted parameters.
+        Take in uncertainty from a model and apply the calibration method using fitted parameters.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            a tensor containinig uncalibrated uncertainties
+
+        Returns
+        -------
+            a tensor including the calibrated uncertainties
         """
 
 
@@ -24,131 +61,131 @@ UncertaintyCalibratorRegistry = ClassRegistry[UncertaintyCalibrator]()
 
 @UncertaintyCalibratorRegistry.register("zscaling")
 class ZScalingCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("tscaling")
 class TScalingCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class ConformalMultilabelCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multiclass")
 class ConformalMulticlassCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-adaptive")
 class ConformalAdaptiveMulticlassCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class ConformalRegressionCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-quantile-regression")
 class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("isotonic")
 class IsotonicCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
 class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         ...
-        return
+        return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         ...
         return
