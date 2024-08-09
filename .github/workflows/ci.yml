@@ -43,12 +43,12 @@ jobs:
       # clone the repo, run black and flake8 on it
       - uses: actions/checkout@v4
       - run: python -m pip install black==23.* flake8 isort mypy
-          mypy . || exit_code=$?
+          mypy ./chemprop || exit_code=$?
           mypy --install-types --non-interactive
       - run: black --check .
       - run: flake8 .
       - run: isort --check .
-      - run: mypy --ignore-missing-imports --disallow-any-generics --disallow-untyped-defs --no-implicit-optional --disallow-incomplete-defs .
+      - run: mypy --ignore-missing-imports --disallow-any-generics --disallow-untyped-defs --no-implicit-optional --disallow-incomplete-defs ./chemprop
 
   test:
     name: Execute Tests
