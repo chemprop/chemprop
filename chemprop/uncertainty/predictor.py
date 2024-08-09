@@ -10,6 +10,10 @@ from chemprop.utils.registry import ClassRegistry
 
 
 class UncertaintyPredictor(ABC):
+    """
+    A class for making model predictions and associated predictions of uncertainty.
+    """
+
     def __call__(self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer):
         return self._calc_prediction_uncertainty(dataloader, models, trainer)
 
@@ -19,8 +23,23 @@ class UncertaintyPredictor(ABC):
     ) -> tuple[Tensor, Tensor]:
         """
         Calculate the uncalibrated predictions and uncertainties for the dataloader.
+
+        dataloader: DataLoader
+            the dataloader used for model predictions and uncertainty predictions
+        models: Iterable[MPNN]
+            the models used for model predictions and uncertainty predictions
+        trainer: pl.Trainer
+            an instance of the :class:`~lightning.pytorch.trainer.trainer.Trainer` used to manage model inference
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            A tuple containing two tensors: the first tensor represents the model predictions, with shape varying by task type
+            —``(n, t, m)`` for regression or binary classification, and ``(n, t, c, m)`` for multiclass classification,
+            where ``n`` is the number of inputs, ``t`` is the number of tasks, ``c`` is the number of classes, and ``m``
+            is the number of models. The second tensor represents the predicted uncertainties, with shapes of ``(n, t)`` for regression
+            or binary classification, and ``(n, t, c)`` for multiclass classification.
         """
-        pass
 
 
 UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
