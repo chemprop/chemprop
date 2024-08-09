@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Iterable
 
 from lightning import pytorch as pl
@@ -9,7 +9,7 @@ from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyPredictor:
+class UncertaintyPredictor(ABC):
     def __call__(self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer):
         return self._calc_prediction_uncertainty(dataloader, models, trainer)
 

@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyCalibrator:
+class UncertaintyCalibrator(ABC):
     @abstractmethod
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
         """

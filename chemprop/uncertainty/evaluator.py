@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyEvaluator:
+class UncertaintyEvaluator(ABC):
     """
     A class for evaluating the effectiveness of uncertainty estimates with metrics.
     """
