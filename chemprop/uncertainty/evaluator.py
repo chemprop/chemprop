@@ -6,14 +6,11 @@ from chemprop.utils.registry import ClassRegistry
 
 
 class UncertaintyEvaluator(ABC):
-    """
-    A class for evaluating the effectiveness of uncertainty estimates with metrics.
-    """
+    """A :class:`UncertaintyEvaluator` evaluates the quality of uncertainty estimates using a specified metric."""
 
     @abstractmethod
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        """
-        Evaluate the performance of uncertainty predictions against the model target values.
+        """Evaluate the performance of uncertainty predictions against the model target values.
 
         **NOTE**: The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
         the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.

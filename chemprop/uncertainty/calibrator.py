@@ -11,12 +11,12 @@ class UncertaintyCalibrator(ABC):
     """
 
     @abstractmethod
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor):
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         """
         Fit calibration method for the calibration data.
 
-        **NOTE**: The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
-        the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
+        .. note::
+            The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks, the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
 
         Parameters
         ----------
@@ -43,7 +43,7 @@ class UncertaintyCalibrator(ABC):
     @abstractmethod
     def apply(self, uncs: Tensor) -> Tensor:
         """
-        Take in uncertainty from a model and apply the calibration method using fitted parameters.
+        Apply this calibrator to the input uncertainties.
 
         Parameters
         ----------
@@ -52,7 +52,8 @@ class UncertaintyCalibrator(ABC):
 
         Returns
         -------
-            a tensor including the calibrated uncertainties
+        Tensor
+            the calibrated uncertainties
         """
 
 
