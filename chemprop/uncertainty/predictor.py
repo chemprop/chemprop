@@ -33,11 +33,15 @@ class UncertaintyPredictor(ABC):
 
         Returns
         -------
-        tuple[Tensor, Tensor]
-            A tuple containing two tensors: the first tensor represents the model predictions, with shape varying by task type
-            —``(n, t, m)`` for regression or binary classification, and ``(n, t, c, m)`` for multiclass classification,
-            where ``n`` is the number of inputs, ``t`` is the number of tasks, ``c`` is the number of classes, and ``m``
-            is the number of models. The second tensor represents the predicted uncertainties, with shapes of ``(n, t)`` for regression
+        preds : Tensor
+            the model predictions, with shape varying by task type:
+
+            - ``(n, t, m)`` for regression or binary classification,
+            - ``(n, t, c, m)`` for multiclass classification,
+
+            where ``n`` is the number of inputs, ``t`` is the number of tasks, ``c`` is the number of classes, and ``m`` is the number of models.
+        uncs : Tensor
+            the predicted uncertainties, with shapes of ``(n, t)`` for regression
             or binary classification, and ``(n, t, c)`` for multiclass classification.
         """
 
