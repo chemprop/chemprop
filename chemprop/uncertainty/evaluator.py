@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
-from torch import Tensor
 import torch
+from torch import Tensor
 from torchmetrics.regression import SpearmanCorrCoef
 
 from chemprop.utils.registry import ClassRegistry
@@ -35,34 +35,56 @@ class MetricEvaluator(UncertaintyEvaluator):
 @UncertaintyEvaluatorRegistry.register("nll-regression")
 class NLLRegressionEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        masked_preds = preds * mask
-        masked_targets = targets * mask
-        masked_uncs = uncs * mask
-        nlls = (2 * torch.pi * masked_uncs).log() / 2 + (masked_preds - masked_targets) ** 2 / (
-            2 * masked_uncs
-        )
-        return nlls.mean(dim=0)
+        nlls = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j]
+            targets_j = targets[:, j]
+            uncs_j = uncs[:, j]
+            masked_preds = preds_j[mask_j]
+            masked_targets = targets_j[mask_j]
+            masked_uncs = uncs_j[mask_j]
+            errors = masked_preds - masked_targets
+            nll = (2 * torch.pi * masked_uncs).log() / 2 + errors**2 / (2 * masked_uncs)
+            nlls.append(nll.mean(dim=0))
+        return torch.stack(nlls)
 
 
 @UncertaintyEvaluatorRegistry.register("nll-classification")
 class NLLClassEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        masked_targets = targets * mask
-        masked_uncs = uncs * mask
-        likelihoods = masked_uncs * masked_targets + (1 - masked_uncs) * (1 - masked_targets)
-        nlls = -1 * likelihoods.log()
-        return nlls.mean(dim=0)
+        nlls = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j]
+            targets_j = targets[:, j]
+            uncs_j = uncs[:, j]
+            masked_preds = preds_j[mask_j]
+            masked_targets = targets_j[mask_j]
+            masked_uncs = uncs_j[mask_j]
+            likelihood = masked_uncs * masked_targets + (1 - masked_uncs) * (1 - masked_targets)
+            nll = -1 * likelihood.log()
+            nlls.append(nll.mean(dim=0))
+        return torch.stack(nlls)
 
 
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
 class NLLMultiEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        masked_targets = targets * mask
-        masked_uncs = uncs * mask.unsqueeze(dim=1)
-        targets_shape = torch.nn.functional.one_hot(masked_targets, masked_uncs.shape[-1])
-        likelihoods = (targets_shape * masked_uncs).sum(dim=-1)
-        nlls = -1 * likelihoods.log()
-        return nlls.mean(dim=0)
+        nlls = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j]
+            targets_j = targets[:, j]
+            uncs_j = uncs[:, j]
+            masked_preds = preds_j[mask_j]
+            masked_targets = targets_j[mask_j]
+            masked_uncs = uncs_j[mask_j]
+            targets_one_hot = torch.eye(masked_uncs.shape[-1])[masked_targets.long()]
+            likelihood = (targets_one_hot * masked_uncs).sum(dim=-1)
+            nll = -1 * likelihood.log()
+            nlls.append(nll.mean(dim=0))
+        return torch.stack(nlls)
 
 
 @UncertaintyEvaluatorRegistry.register("miscalibration_area")
@@ -82,12 +104,20 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 @UncertaintyEvaluatorRegistry.register("spearman")
 class SpearmanEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        masked_preds = preds * mask
-        masked_targets = targets * mask
-        masked_uncs = uncs * mask
-        masked_errs = (masked_preds - masked_targets).abs()
-        spearman = SpearmanCorrCoef(num_outputs=masked_targets.shape[1])
-        return spearman(masked_uncs, masked_errs).unsqueeze(0)
+        spearman_coeffs = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j]
+            targets_j = targets[:, j]
+            uncs_j = uncs[:, j]
+            masked_preds = preds_j[mask_j]
+            masked_targets = targets_j[mask_j]
+            masked_uncs = uncs_j[mask_j]
+            masked_errs = (masked_preds - masked_targets).abs()
+            spearman = SpearmanCorrCoef()
+            spearman_coeff = spearman(masked_uncs, masked_errs)
+            spearman_coeffs.append(spearman_coeff)
+        return torch.stack(spearman_coeffs)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")

@@ -1,13 +1,7 @@
 import pytest
 import torch
 
-from chemprop.uncertainty.evaluator import (
-    # CalibrationAreaEvaluator,
-    # ConformalMulticlassEvaluator,
-    # ConformalMultilabelEvaluator,
-    # ConformalRegressionEvaluator,
-    # ExpectedNormalizedErrorEvaluator,
-    # MetricEvaluator,
+from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; ConformalMulticlassEvaluator,; ConformalMultilabelEvaluator,; ConformalRegressionEvaluator,; ExpectedNormalizedErrorEvaluator,; MetricEvaluator,
     NLLClassEvaluator,
     NLLMultiEvaluator,
     NLLRegressionEvaluator,
