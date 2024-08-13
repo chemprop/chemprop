@@ -34,6 +34,24 @@ class MetricEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("nll-regression")
 class NLLRegressionEvaluator(UncertaintyEvaluator):
+    """
+    Evaluate uncertainty values for regression datasets using the mean negative-log-likelihood
+    of the targets given the probability distributions estimated by the model.
+
+    The NLL is calculated using the formula:
+
+    .. math::
+
+        \text{NLL} = \frac{1}{2} \log(2 \pi \sigma^2) + \frac{(y - \hat{y})^2}{2 \sigma^2}
+
+    where:
+    - :math:`\hat{y}` is the predicted value,
+    - :math:`y` is the true value,
+    - :math:`\sigma^2` is the predicted uncertainty (variance).
+
+    The function returns a tensor containing the mean NLL for each task.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         nlls = []
         for j in range(uncs.shape[1]):
@@ -52,6 +70,23 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("nll-classification")
 class NLLClassEvaluator(UncertaintyEvaluator):
+    """
+    Evaluate uncertainty values for binary classification datasets using the mean negative-log-likelihood
+    of the targets given the assigned probabilities from the model.
+
+    The NLL for binary classification is calculated using the formula:
+
+        .. math::
+
+            \text{NLL} = -\log(\sigma \cdot y + (1 - \sigma) \cdot (1 - y))
+
+        where:
+        - :math:`y` is the true binary label (0 or 1),
+        - :math:`\sigma` is the predicted probability associated with the class label `1`.
+
+    The function returns a tensor containing the mean NLL for each task.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         nlls = []
         for j in range(uncs.shape[1]):
@@ -70,6 +105,32 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
 class NLLMultiEvaluator(UncertaintyEvaluator):
+    """
+    Evaluate uncertainty values for multiclass classification datasets using the mean negative-log-likelihood
+    of the targets given the assigned probabilities from the model.
+
+    The NLL for multiclass classification is calculated using the formula:
+
+        .. math::
+
+            \text{NLL} = -\log(p_{y_i})
+
+        where:
+        - :math:`p_{y_i}` is the predicted probability for the true class :math:`y_i`,
+          calculated as:
+
+          .. math::
+
+              p_{y_i} = \sum_{k=1}^{K} \mathbb{1}(y_i = k) \cdot p_k
+
+          Here:
+          - :math:`K` is the total number of classes,
+          - :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
+          - :math:`p_k` is the predicted probability for class :math:`k`.
+
+    The function returns a tensor containing the mean NLL for each prediction.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         nlls = []
         for j in range(uncs.shape[1]):
@@ -103,6 +164,18 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("spearman")
 class SpearmanEvaluator(UncertaintyEvaluator):
+    """
+    Evaluate the Spearman rank correlation coefficient between the uncertainties and errors in the model predictions.
+
+    The correlation coefficient returns a value in the [-1, 1] range, with better scores closer to 1
+    observed when the uncertainty values are predictive of the rank ordering of the errors in the model prediction.
+
+    References
+    ----------
+    .. [spearman1904] Spearman, C. "The Proof and Measurement of Association between Two Things."
+    Am. J. Psychology. 1904, 15 (1), 72-101.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         spearman_coeffs = []
         for j in range(uncs.shape[1]):
