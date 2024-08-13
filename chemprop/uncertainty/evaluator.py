@@ -91,10 +91,8 @@ class NLLClassEvaluator(UncertaintyEvaluator):
         nlls = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j]
             targets_j = targets[:, j]
             uncs_j = uncs[:, j]
-            masked_preds = preds_j[mask_j]
             masked_targets = targets_j[mask_j]
             masked_uncs = uncs_j[mask_j]
             likelihood = masked_uncs * masked_targets + (1 - masked_uncs) * (1 - masked_targets)
@@ -135,10 +133,8 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
         nlls = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j]
             targets_j = targets[:, j]
             uncs_j = uncs[:, j]
-            masked_preds = preds_j[mask_j]
             masked_targets = targets_j[mask_j]
             masked_uncs = uncs_j[mask_j]
             targets_one_hot = torch.eye(masked_uncs.shape[-1])[masked_targets.long()]
