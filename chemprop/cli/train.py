@@ -106,13 +106,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     transfer_args = parser.add_argument_group("transfer learning args")
     transfer_args.add_argument(
         "--model-frzn",
-        help="Path to model checkpoint file to be loaded for overwriting and freezing weights",
+        help="Path to model checkpoint file to be loaded for overwriting and freezing weights. By default, all MPNN weights are frozen with this option.",
     )
     transfer_args.add_argument(
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified ``model-frzn``), where n is specified in the input (also automatically freezes mpnn weights)",
+        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``model-frzn``).",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
