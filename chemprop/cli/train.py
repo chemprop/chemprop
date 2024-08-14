@@ -610,17 +610,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         else:
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
-            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
-        if not (
-            SplitType.get(args.split) == SplitType.CV_NO_VAL
-            or SplitType.get(args.split) == SplitType.CV
-        ):
-            train_indices, val_indices, test_indices = (
-                [train_indices],
-                [val_indices],
-                [test_indices],
-            )
 
     train_data, val_data, test_data = split_data_by_indices(
         all_data, train_indices, val_indices, test_indices
@@ -971,11 +962,11 @@ def main(args):
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
 
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if args.num_folds == 1:
+    for replicate_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+        if args.num_replicates == 1:
             output_dir = args.output_dir
         else:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
+            output_dir = args.output_dir / f"replicate_{replicate_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 
