@@ -162,8 +162,8 @@ The following evaluation metrics are supported during training:
 Advanced Training Methods
 -------------------------
 
-Pretraining
-^^^^^^^^^^^
+Pretraining and Transfer Learning
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
 
@@ -171,9 +171,7 @@ Pretraining
 ..  * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
 .. when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
 
-It is possible to freeze the weights of a loaded model during training, such as for transfer learning applications. To do so, specify :code:`--model-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
-
- * :code:`--frzn-ffn-layers <n>` Overwrites weights for the first n layers of the FFN from the checkpoint (default 0)  
+It is possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--model-frzn <path>`, where :code:`<path>` points to the checkpoint file location. After loading the model, the MPNN weights are automatically frozen. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
 .. _train-on-reactions:
 
