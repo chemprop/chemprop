@@ -871,7 +871,10 @@ def train_model(
             else:
                 predss = trainer.predict(dataloaders=test_loader)
 
-            preds = torch.concat(predss, 0)[..., 0].numpy()
+            preds = torch.concat(predss, 0)
+            if model.predictor.n_targets > 1:
+                preds = preds[..., 0]
+            preds = preds.numpy()
 
             evaluate_and_save_predictions(
                 preds, test_loader, model.metrics[:-1], model_output_dir, args

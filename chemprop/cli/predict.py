@@ -282,6 +282,8 @@ def make_prediction_for_models(
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
     if isinstance(model.predictor, MulticlassClassificationFFN):
         average_preds = torch.argmax(average_preds, dim=2)
+    elif isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+        average_preds = average_preds[..., 0]
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -293,7 +295,7 @@ def make_prediction_for_models(
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds[..., 0]
+    df_test[target_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)

@@ -63,7 +63,7 @@ class Metric(LossFunction):
         lt_mask: Tensor,
         gt_mask: Tensor,
     ):
-        return self._calc_unreduced_loss(preds.unsqueeze(-1), targets, mask, lt_mask, gt_mask)[
+        return self._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[
             mask
         ].mean()
 
@@ -106,7 +106,7 @@ class RMSEMetric(MSEMetric):
         gt_mask: Tensor,
     ):
         squared_errors = super()._calc_unreduced_loss(
-            preds.unsqueeze(-1), targets, mask, lt_mask, gt_mask
+            preds, targets, mask, lt_mask, gt_mask
         )
 
         return squared_errors[mask].mean().sqrt()

@@ -53,7 +53,7 @@ class LossFunction(nn.Module):
         ----------
         preds : Tensor
             a tensor of shape `b x t x s` (regression), `b x t x s` (binary classification), or
-            `b x t x c x s` (multiclass classification) containing the predictions, where `b` is the
+            `b x t x c` (multiclass classification) containing the predictions, where `b` is the
             batch size, `t` is the number of tasks to predict, `s` is the number of
             targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
@@ -90,7 +90,6 @@ LossFunctionRegistry = ClassRegistry[LossFunction]()
 @LossFunctionRegistry.register("mse")
 class MSELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        preds = preds[..., 0]
         return F.mse_loss(preds, targets, reduction="none")
 
 
@@ -170,14 +169,12 @@ class EvidentialLoss(LossFunction):
 @LossFunctionRegistry.register("bce")
 class BCELoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        preds = preds[..., 0]
         return F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
 
 
 @LossFunctionRegistry.register("ce")
 class CrossEntropyLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        preds = preds[..., 0]
         preds = preds.transpose(1, 2)
         targets = targets.long()
 
@@ -232,7 +229,7 @@ class MulticlassMCCLoss(LossFunction):
         C = preds.shape[2]
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
-        masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
+        masked_data_weights = weights * mask
 
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)

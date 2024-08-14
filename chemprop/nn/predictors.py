@@ -143,7 +143,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.ffn.output_dim
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.ffn(Z).unsqueeze(-1)
+        return self.ffn(Z)
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -156,7 +156,7 @@ class RegressionFFN(_FFNPredictorBase):
     _T_default_metric = MSEMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.output_transform(self.ffn(Z)).unsqueeze(-1)
+        return self.output_transform(self.ffn(Z))
 
     train_step = forward
 
@@ -165,6 +165,9 @@ class RegressionFFN(_FFNPredictorBase):
 class MveFFN(RegressionFFN):
     n_targets = 2
     _T_default_criterion = MVELoss
+
+    def __post_init__(self):
+        self.ffn.append(nn.Unflatten(-1, (self.n_tasks, self.n_targets)))
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = self.ffn(Z)
@@ -183,6 +186,9 @@ class MveFFN(RegressionFFN):
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _T_default_criterion = EvidentialLoss
+
+    def __post_init__(self):
+        self.ffn.append(nn.Unflatten(-1, (self.n_tasks, self.n_targets)))
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = self.ffn(Z)
