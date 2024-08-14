@@ -295,6 +295,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off caching the featurized ``MolGraph`` s at the beginning of training",
     )
+    train_data_args.add_argument(
+        "--splits-column",
+        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
+    )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
     #     "--spectra-phase-mask-path",
@@ -420,10 +424,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--splits-file",
         type=Path,
         help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or strings formatted (e.g., '0-2,4')",
-    )
-    train_data_args.add_argument(
-        "--splits-column",
-        help="Name of the column in the input CSV file containing ``train``, ``val``, or ``test`` for each row",
     )
     split_args.add_argument(
         "--data-seed",
