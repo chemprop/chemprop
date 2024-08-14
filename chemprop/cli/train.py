@@ -409,11 +409,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., ``scaffold_balanced`` or ``random_with_repeated_smiles``). Note that this index begins with zero for the first molecule.",
     )
     split_args.add_argument(
-        "-k",
-        "--num-folds",
-        type=int,
-        default=1,
-        help="Number of folds when performing cross validation",
+        "-k", "--num-replicates", type=int, default=1, help="Number of replicates."
     )
     split_args.add_argument(
         "--save-smiles-splits",
@@ -429,7 +425,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-seed",
         type=int,
         default=0,
-        help="Specify the random seed to use when splitting data into train/val/test sets. When ``num_folds`` > 1, the first fold uses this seed and all subsequent folds add 1 to the seed (also used for shuffling data in ``build_dataloader`` when ``shuffle`` is True).",
+        help="Specify the random seed to use when splitting data into train/val/test sets. When ``--num-replicates`` > 1, the first replicate uses this seed and all subsequent replicates add 1 to the seed (also used for shuffling data in ``build_dataloader`` when ``shuffle`` is True).",
     )
 
     parser.add_argument(
