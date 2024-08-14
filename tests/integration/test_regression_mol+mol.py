@@ -78,7 +78,7 @@ def test_overfit(mcmpnn, dataloader):
     errors = []
     for batch in dataloader:
         bmg, _, _, targets, *_ = batch
-        preds = mcmpnn(bmg)[..., 0]
+        preds = mcmpnn(bmg)
         errors.append(preds - targets)
 
     errors = torch.cat(errors)
