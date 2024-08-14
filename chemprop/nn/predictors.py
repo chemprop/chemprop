@@ -142,6 +142,10 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     def output_dim(self) -> int:
         return self.ffn.output_dim
 
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // self.n_targets
+
     def forward(self, Z: Tensor) -> Tensor:
         return self.ffn(Z)
 
@@ -281,7 +285,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         return self.train_step(Z).softmax(-2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes, 1)
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
 
 
 @PredictorRegistry.register("multiclass-dirichlet")

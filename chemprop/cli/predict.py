@@ -312,7 +312,9 @@ def make_prediction_for_models(
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds[..., 0]
+        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+            individual_preds = individual_preds[..., 0]
+        df_test[target_columns] = individual_preds
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)
