@@ -13,7 +13,7 @@ from chemprop.cli.common import add_common_args, process_common_args, validate_c
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 
 logger = logging.getLogger(__name__)
 
