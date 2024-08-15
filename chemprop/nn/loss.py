@@ -27,6 +27,8 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
+    minimize: bool = True
+
     def __init__(self, task_weights: ArrayLike = 1.0):
         """
         Parameters

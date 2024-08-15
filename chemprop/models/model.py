@@ -89,9 +89,9 @@ class MPNN(pl.LightningModule):
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
-            [*metrics, self.criterion]
+            nn.ModuleList([*metrics, self.criterion])
             if metrics
-            else [self.predictor._T_default_metric(), self.criterion]
+            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion])
         )
 
         self.warmup_epochs = warmup_epochs
@@ -162,7 +162,7 @@ class MPNN(pl.LightningModule):
         self.log_dict(metric2loss, batch_size=len(batch[0]))
         self.log(
             "val_loss",
-            losses[0],
+            losses[-1],
             batch_size=len(batch[0]),
             prog_bar=True,
             sync_dist=distributed.is_initialized(),
@@ -182,9 +182,7 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets)
 
-        return [
-            metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
-        ]
+        return [metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch

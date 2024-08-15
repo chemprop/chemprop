@@ -343,6 +343,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
+        "--tracking-metric",
+        default="val_loss",
+        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training.",
+    )
+    train_args.add_argument(
         "--show-individual-scores",
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
@@ -443,13 +448,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    if args.config_path is None and args.data_path is None:
-        raise ArgumentError(argument=None, message="Data path must be provided for training.")
-
-    if args.data_path.suffix not in [".csv"]:
-        raise ArgumentError(
-            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
-        )
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
 
@@ -457,7 +455,19 @@ def process_train_args(args: Namespace) -> Namespace:
 
 
 def validate_train_args(args):
-    pass
+    if args.config_path is None and args.data_path is None:
+        raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
+    if args.data_path.suffix not in [".csv"]:
+        raise ArgumentError(
+            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
+        )
+
+    if args.tracking_metric not in args.metrics + ["val_loss"]:
+        raise ArgumentError(
+            argument=None,
+            message=f"Tracking metric must be either 'val_loss' or one of the metrics specified via `--metrics`. Got {args.tracking_metric}",
+        )
 
 
 def normalize_inputs(train_dset, val_dset, args):
@@ -820,27 +830,36 @@ def train_model(
         model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
-        monitor_mode = "min" if model.metrics[0].minimize else "max"
-        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+        if args.tracking_metric == "val_loss":
+            tracking_metric_class = model.criterion
+        else:
+            tracking_metric_class = MetricRegistry[args.tracking_metric]
+            args.tracking_metric = "val/" + args.tracking_metric
+
+        monitor_mode = "min" if tracking_metric_class.minimize else "max"
+        logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
+
+        checkpointing = ModelCheckpoint(
+            model_output_dir / "checkpoints",
+            "best-epoch={epoch}-val_metric={" + args.tracking_metric + ":.2f}",
+            args.tracking_metric,
+            mode=monitor_mode,
+            save_last=True,
+            auto_insert_metric_name=False,
+        )
+
+        patience = args.patience if args.patience is not None else args.epochs
+        early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
 
         try:
-            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
+            trainer_logger = TensorBoardLogger(
+                model_output_dir, "trainer_logs", default_hp_metric=False
+            )
         except ModuleNotFoundError as e:
             logger.warning(
                 f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
-
-        checkpointing = ModelCheckpoint(
-            model_output_dir / "checkpoints",
-            "best-{epoch}-{val_loss:.2f}",
-            "val_loss",
-            mode=monitor_mode,
-            save_last=True,
-        )
-
-        patience = args.patience if args.patience is not None else args.epochs
-        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
 
         trainer = pl.Trainer(
             logger=trainer_logger,
