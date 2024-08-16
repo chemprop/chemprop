@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from typing import Iterable
-import copy
 
 from lightning import pytorch as pl
 import torch
@@ -109,21 +108,21 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 class DropoutPredictor(UncertaintyPredictor):
     """
     A :class:`DropoutPredictor` creates a virtual ensemble of via Monte Carlo dropout with the provided models [1]_.
-    
+
     References
     -----------
     .. [1] arXiv:1506.02142 [stat.ML]
-    model parameters. Predicts uncertainty for predictions based on the variance in predictions among
-    an ensemble's submodels.
+
+    Parameters
+    ----------
+    ensemble_size: int
+        The number of samples to draw for the ensemble.
+    dropout: float | None
+        The probability of dropping out units in the dropout layers. If unspecified,
+        dropout will be performed using training probability.
     """
 
-    def __init__(self, ensemble_size: int, dropout: float):
-        """
-        Parameters
-        ----------
-        ensemble_size (int): The number of samples to draw for the ensemble.
-        dropout (float): The probability of dropping out units in the dropout layers.
-        """
+    def __init__(self, ensemble_size: int, dropout : None | float = None):
         self.ensemble_size = ensemble_size
         self.dropout = dropout
 
@@ -139,12 +138,10 @@ class DropoutPredictor(UncertaintyPredictor):
         for _ in range(self.ensemble_size):
             predss = trainer.predict(model, dataloader)
             preds = torch.concat(predss, 0)
-            if isinstance(model.predictor, MulticlassClassificationFFN):
-                preds = torch.argmax(preds, dim=-1)
             individual_preds.append(preds)
 
         stacked_preds = torch.stack(individual_preds, dim=0).float()
-        means = torch.mean(stacked_preds, dim=0)
+        means = torch.mean(stacked_preds, dim=0).unsqueeze(-1)
         vars = torch.var(stacked_preds, dim=0, correction=0)
 
         self._restore_model(model)
@@ -162,14 +159,15 @@ class DropoutPredictor(UncertaintyPredictor):
     def _predict_step(self, model):
         def _wrapped_predict_step(*args, **kwargs):
             model.apply(self._activate_dropout)
-            return model.original_predict_step(*args, **kwargs)
+            return model._predict_step(*args, **kwargs)
 
         return _wrapped_predict_step
 
     def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
             module._p = module.p
-            module.p = self.dropout
+            if self.dropout:
+                module.p = self.dropout
             module.train()
 
     def _restore_dropout(self, module):
