@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from typing import Iterable
 
 from lightning import pytorch as pl
@@ -180,7 +181,7 @@ class MPNN(pl.LightningModule):
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
-        weights = torch.ones_like(targets)
+        weights = torch.ones_like(targets[:, 0])
 
         return [metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics]
 
@@ -229,39 +230,60 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, **kwargs):
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
-
-        kwargs |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-            if key not in kwargs
-        }
-        return kwargs
-
-    @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
-        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
-        return super().load_from_checkpoint(
-            checkpoint_path, map_location, hparams_file, strict, **kwargs
-        )
-
-    @classmethod
-    def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
-        d = torch.load(model_path, map_location=map_location)
+    def _load(cls, path, map_location, **submodules):
+        d = torch.load(path, map_location)
 
         try:
             hparams = d["hyper_parameters"]
             state_dict = d["state_dict"]
         except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {model_path}. ")
+            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
-        for key in ["message_passing", "agg", "predictor"]:
-            hparam_kwargs = hparams[key]
-            hparam_cls = hparam_kwargs.pop("cls")
-            hparams[key] = hparam_cls(**hparam_kwargs)
+        submodules |= {
+            key: hparams[key].pop("cls")(**hparams[key])
+            for key in ("message_passing", "agg", "predictor")
+            if key not in submodules
+        }
+        return submodules, state_dict, hparams
+
+    @classmethod
+    def _add_metric_task_weights_to_state_dict(cls, state_dict, hparams):
+        if "metrics.0.task_weights" not in state_dict:
+            print(state_dict)
+            metrics = hparams["metrics"]
+            n_metrics = len(metrics) if metrics is not None else 1
+            for i_metric in range(n_metrics):
+                state_dict[f"metrics.{i_metric}.task_weights"] = torch.tensor([[1.0]])
+            state_dict[f"metrics.{i_metric + 1}.task_weights"] = state_dict[
+                "predictor.criterion.task_weights"
+            ]
+        return state_dict
+
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        submodules = {
+            k: v for k, v in kwargs.items() if k in ["message_passing", "agg", "predictor"]
+        }
+        submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
+        kwargs.update(submodules)
+
+        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        d = torch.load(checkpoint_path, map_location)
+        d["state_dict"] = state_dict
+        buffer = io.BytesIO()
+        torch.save(d, buffer)
+        buffer.seek(0)
+
+        return super().load_from_checkpoint(buffer, map_location, hparams_file, strict, **kwargs)
+
+    @classmethod
+    def load_from_file(cls, model_path, map_location=None, strict=True, **submodules) -> MPNN:
+        submodules, state_dict, hparams = cls._load(model_path, map_location, **submodules)
+        hparams.update(submodules)
+
+        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)

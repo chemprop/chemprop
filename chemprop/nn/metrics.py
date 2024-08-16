@@ -73,7 +73,7 @@ class Metric(LossFunction):
 MetricRegistry = ClassRegistry[Metric]()
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ThresholdedMixin:
     threshold: float | None = 0.5
 

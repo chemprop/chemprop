@@ -463,7 +463,10 @@ def validate_train_args(args):
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
 
-    if args.tracking_metric not in args.metrics + ["val_loss"]:
+    valid_tracking_metrics = (
+        args.metrics or [PredictorRegistry[args.task_type]._T_default_metric.alias]
+    ) + ["val_loss"]
+    if args.tracking_metric not in valid_tracking_metrics:
         raise ArgumentError(
             argument=None,
             message=f"Tracking metric must be either 'val_loss' or one of the metrics specified via `--metrics`. Got {args.tracking_metric}",
