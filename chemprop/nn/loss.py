@@ -229,7 +229,7 @@ class MulticlassMCCLoss(LossFunction):
         C = preds.shape[2]
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
-        masked_data_weights = weights * mask
+        masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
 
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)
