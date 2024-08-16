@@ -36,18 +36,14 @@ class MetricEvaluator(UncertaintyEvaluator):
 class NLLRegressionEvaluator(UncertaintyEvaluator):
     """
     Evaluate uncertainty values for regression datasets using the mean negative-log-likelihood
-    of the targets given the probability distributions estimated by the model.
-
-    The NLL is calculated using the formula:
+    of the targets given the probability distributions estimated by the model:
 
     .. math::
 
-        \text{NLL} = \frac{1}{2} \log(2 \pi \sigma^2) + \frac{(y - \hat{y})^2}{2 \sigma^2}
+        \mathrm{NLL}(y, \hat y) = \frac{1}{2} \log(2 \pi \sigma^2) + \frac{(y - \hat{y})^2}{2 \sigma^2},
 
-    where:
-    - :math:`\hat{y}` is the predicted value,
-    - :math:`y` is the true value,
-    - :math:`\sigma^2` is the predicted uncertainty (variance).
+    where :math:`\hat{y}` is the predicted value, :math:`y` is the true value, and
+    :math:`\sigma^2` is the predicted uncertainty (variance).
 
     The function returns a tensor containing the mean NLL for each task.
     """
@@ -72,17 +68,14 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
 class NLLClassEvaluator(UncertaintyEvaluator):
     """
     Evaluate uncertainty values for binary classification datasets using the mean negative-log-likelihood
-    of the targets given the assigned probabilities from the model.
-
-    The NLL for binary classification is calculated using the formula:
+    of the targets given the assigned probabilities from the model:
 
         .. math::
 
             \text{NLL} = -\log(\sigma \cdot y + (1 - \sigma) \cdot (1 - y))
 
-        where:
-        - :math:`y` is the true binary label (0 or 1),
-        - :math:`\sigma` is the predicted probability associated with the class label `1`.
+        where :math:`y` is the true binary label (0 or 1), and
+        :math:`\sigma` is the predicted probability associated with the class label `1`.
 
     The function returns a tensor containing the mean NLL for each task.
     """
@@ -105,26 +98,22 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 class NLLMultiEvaluator(UncertaintyEvaluator):
     """
     Evaluate uncertainty values for multiclass classification datasets using the mean negative-log-likelihood
-    of the targets given the assigned probabilities from the model.
-
-    The NLL for multiclass classification is calculated using the formula:
+    of the targets given the assigned probabilities from the model:
 
         .. math::
 
             \text{NLL} = -\log(p_{y_i})
 
-        where:
-        - :math:`p_{y_i}` is the predicted probability for the true class :math:`y_i`,
+        where :math:`p_{y_i}` is the predicted probability for the true class :math:`y_i`,
           calculated as:
 
           .. math::
 
               p_{y_i} = \sum_{k=1}^{K} \mathbb{1}(y_i = k) \cdot p_k
 
-          Here:
-          - :math:`K` is the total number of classes,
-          - :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
-          - :math:`p_k` is the predicted probability for class :math:`k`.
+          Here: math:`K` is the total number of classes,
+          :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
+          and :math:`p_k` is the predicted probability for class :math:`k`.
 
     The function returns a tensor containing the mean NLL for each prediction.
     """
