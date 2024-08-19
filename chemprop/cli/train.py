@@ -582,7 +582,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
     if test_dset is not None:
         test_smis = test_dset.smiles
-        df_test = pd.DataFrame(test_smis, columns=args.column_labels)
+        df_test = pd.DataFrame(test_smis, columns=column_labels)
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
