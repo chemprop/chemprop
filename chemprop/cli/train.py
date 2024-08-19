@@ -565,11 +565,11 @@ def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
     match (args.smiles_columns, args.reaction_columns):
         case [_, None]:
-            column_labels = args.smiles_columns
+            column_labels = deepcopy(args.smiles_columns)
         case [None, _]:
-            column_labels = args.reaction_columns
+            column_labels = deepcopy(args.reaction_columns)
         case _:
-            column_labels = args.smiles_columns
+            column_labels = deepcopy(args.smiles_columns)
             column_labels.extend(args.reaction_columns)
 
     train_smis = train_dset.smiles
