@@ -33,7 +33,7 @@ dependencies = [
     "rdkit",
     "scikit-learn",
     "scipy",
-    "torch >= 2.1",
+    "torch >= 2.3",
     "astartes[molecules]",
     "ConfigArgParse",
 ]
