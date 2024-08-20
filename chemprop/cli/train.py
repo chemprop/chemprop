@@ -42,6 +42,7 @@ from chemprop.nn.message_passing import (
     BondMessagePassing,
     MulticomponentMessagePassing,
 )
+from chemprop.nn.predictors import EvidentialFFN, MveFFN
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
-    HELP = "train a chemprop model"
+    HELP = "Train a chemprop model."
     parser = None
 
     @classmethod
@@ -79,20 +80,20 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--config-path",
         type=Path,
         is_config_file=True,
-        help="Path to a configuration file. Command line arguments override values in the configuration file.",
+        help="Path to a configuration file (command line arguments override values in the configuration file)",
     )
     parser.add_argument(
         "-i",
         "--data-path",
         type=Path,
-        help="Path to an input CSV file containing SMILES and the associated target values.",
+        help="Path to an input CSV file containing SMILES and the associated target values",
     )
     parser.add_argument(
         "-o",
         "--output-dir",
         "--save-dir",
         type=Path,
-        help="Directory where training outputs will be saved. Defaults to 'CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP'.",
+        help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
     )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
@@ -106,13 +107,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     transfer_args = parser.add_argument_group("transfer learning args")
     transfer_args.add_argument(
         "--model-frzn",
-        help="Path to model checkpoint file to be loaded for overwriting and freezing weights.",
+        help="Path to model checkpoint file to be loaded for overwriting and freezing weights. By default, all MPNN weights are frozen with this option.",
     )
     transfer_args.add_argument(
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Overwrites weights for the first n layers of the ffn from checkpoint model (specified checkpoint_frzn), where n is specified in the input. Automatically also freezes mpnn weights.",
+        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``model-frzn``).",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -134,7 +135,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--ensemble-size",
         type=int,
         default=1,
-        help="Number of models in ensemble for each splitting of data.",
+        help="Number of models in ensemble for each splitting of data",
     )
 
     # TODO: Add in v2.2
@@ -168,50 +169,50 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
-        "--message-hidden-dim", type=int, default=300, help="hidden dimension of the messages"
+        "--message-hidden-dim", type=int, default=300, help="Hidden dimension of the messages"
     )
     mp_args.add_argument(
-        "--message-bias", action="store_true", help="add bias to the message passing layers"
+        "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
-    mp_args.add_argument("--depth", type=int, default=3, help="Number of message passing steps.")
+    mp_args.add_argument("--depth", type=int, default=3, help="Number of message passing steps")
     mp_args.add_argument(
         "--undirected",
         action="store_true",
-        help="Pass messages on undirected bonds/edges (always sum the two relevant bond vectors).",
+        help="Pass messages on undirected bonds/edges (always sum the two relevant bond vectors)",
     )
     mp_args.add_argument(
         "--dropout",
         type=float,
         default=0.0,
-        help="dropout probability in message passing/FFN layers",
+        help="Dropout probability in message passing/FFN layers",
     )
     mp_args.add_argument(
         "--mpn-shared",
         action="store_true",
-        help="Whether to use the same message passing neural network for all input molecules. Only relevant if :code:`number_of_molecules > 1`",
+        help="Whether to use the same message passing neural network for all input molecules (only relevant if ``number_of_molecules`` > 1)",
     )
     mp_args.add_argument(
         "--activation",
         type=uppercase,
         default="RELU",
         choices=list(Activation.keys()),
-        help="activation function in message passing/FFN layers",
+        help="Activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="norm",
         action=LookupAction(AggregationRegistry),
-        help="the aggregation mode to use during graph predictor",
+        help="Aggregation mode to use during graph predictor",
     )
     mp_args.add_argument(
         "--aggregation-norm",
         type=float,
         default=100,
-        help="normalization factor by which to divide summed up atomic features for 'norm' aggregation",
+        help="Normalization factor by which to divide summed up atomic features for ``norm`` aggregation",
     )
     mp_args.add_argument(
-        "--atom-messages", action="store_true", help="pass messages on atoms rather than bonds"
+        "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
     )
 
     # TODO: Add in v2.1
@@ -241,10 +242,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     ffn_args = parser.add_argument_group("FFN args")
     ffn_args.add_argument(
-        "--ffn-hidden-dim", type=int, default=300, help="hidden dimension in the FFN top model"
+        "--ffn-hidden-dim", type=int, default=300, help="Hidden dimension in the FFN top model"
     )
     ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
-        "--ffn-num-layers", type=int, default=1, help="number of layers in FFN top model"
+        "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
     )
     # TODO: Decide if we want to implment this in v2
     # ffn_args.add_argument(
@@ -257,13 +258,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     extra_mpnn_args.add_argument(
         "--no-batch-norm",
         action="store_true",
-        help="Don't use batch normalization after aggregation.",
+        help="Turn off batch normalization after aggregation",
     )
     extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
         type=int,
         default=3,
-        help="Number of classes when running multiclass classification.",
+        help="Number of classes when running multiclass classification",
     )
     # TODO: Add in v2.1
     # extra_mpnn_args.add_argument(
@@ -277,22 +278,22 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "-w",
         "--weight-column",
-        help="the name of the column in the input CSV containg individual data weights",
+        help="Name of the column in the input CSV containing individual data weights",
     )
     train_data_args.add_argument(
         "--target-columns",
         nargs="+",
-        help="Name of the columns containing target values. By default, uses all columns except the SMILES column and the :code:`ignore_columns`.",
+        help="Name of the columns containing target values (by default, uses all columns except the SMILES column and the ``ignore_columns``)",
     )
     train_data_args.add_argument(
         "--ignore-columns",
         nargs="+",
-        help="Name of the columns to ignore when :code:`target_columns` is not provided.",
+        help="Name of the columns to ignore when ``target_columns`` is not provided",
     )
     train_data_args.add_argument(
         "--no-cache",
         action="store_true",
-        help="Whether to not cache the featurized :code:`MolGraph`s at the beginning of training.",
+        help="Turn off caching the featurized ``MolGraph`` s at the beginning of training",
     )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
@@ -306,24 +307,24 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-type",
         default="regression",
         action=LookupAction(PredictorRegistry),
-        help="Type of dataset. This determines the default loss function used during training. Defaults to regression.",
+        help="Type of dataset (determines the default loss function used during training, defaults to ``regression``)",
     )
     train_args.add_argument(
         "-l",
         "--loss-function",
         action=LookupAction(LossFunctionRegistry),
-        help="Loss function to use during training. If not specified, will use the default loss function for the given task type (see documentation).",
+        help="Loss function to use during training (will use the default loss function for the given task type if not specified)",
     )
     train_args.add_argument(
         "--v-kl",
         "--evidential-regularization",
         type=float,
         default=0.0,
-        help="Value used in regularization for evidential loss function. The default value recommended by Soleimany et al.(2021) is 0.2. Optimal value is dataset-dependent; it is recommended that users test different values to find the best value for their model.",
+        help="Specify the value used in regularization for evidential loss function. The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
     )
 
     train_args.add_argument(
-        "--eps", type=float, default=1e-8, help="evidential regularization epsilon"
+        "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
     )
     # TODO: Add in v2.1
     # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
@@ -339,7 +340,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
-        help="evaluation metrics. If unspecified, will use the following metrics for given dataset types: regression->rmse, classification->roc, multiclass->ce ('cross entropy'), spectral->sid. If multiple metrics are provided, the 0th one will be used for early stopping and checkpointing",
+        help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -350,31 +351,29 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--task-weights",
         nargs="+",
         type=float,
-        help="the weight to apply to an individual task in the overall loss",
+        help="Weights to apply for whole tasks in the loss function",
     )
     train_args.add_argument(
         "--warmup-epochs",
         type=int,
         default=2,
-        help="Number of epochs during which learning rate increases linearly from :code:`init_lr` to :code:`max_lr`. Afterwards, learning rate decreases exponentially from :code:`max_lr` to :code:`final_lr`.",
+        help="Number of epochs during which learning rate increases linearly from ``init_lr`` to ``max_lr`` (afterwards, learning rate decreases exponentially from ``max_lr`` to ``final_lr``)",
     )
 
     train_args.add_argument("--init-lr", type=float, default=1e-4, help="Initial learning rate.")
     train_args.add_argument("--max-lr", type=float, default=1e-3, help="Maximum learning rate.")
     train_args.add_argument("--final-lr", type=float, default=1e-4, help="Final learning rate.")
-    train_args.add_argument(
-        "--epochs", type=int, default=50, help="the number of epochs to train over"
-    )
+    train_args.add_argument("--epochs", type=int, default=50, help="Number of epochs to train over")
     train_args.add_argument(
         "--patience",
         type=int,
         default=None,
-        help="Number of epochs to wait for improvement before early stopping.",
+        help="Number of epochs to wait for improvement before early stopping",
     )
     train_args.add_argument(
         "--grad-clip",
         type=float,
-        help="Passed directly to the lightning trainer which controls grad clipping. See the :code:`Trainer()` docstring for details.",
+        help="Passed directly to the lightning trainer which controls grad clipping (see the ``Trainer()`` docstring for details)",
     )
     # TODO: Add in v2.1
     # train_args.add_argument(
@@ -390,54 +389,54 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=uppercase,
         default="RANDOM",
         choices=list(SplitType.keys()),
-        help="Method of splitting the data into train/val/test (case insensitive).",
+        help="Method of splitting the data into train/val/test (case insensitive)",
     )
     split_args.add_argument(
         "--split-sizes",
         type=float,
         nargs=3,
         default=[0.8, 0.1, 0.1],
-        help="Split proportions for train/validation/test sets.",
+        help="Split proportions for train/validation/test sets",
     )
     split_args.add_argument(
         "--split-key-molecule",
         type=int,
         default=0,
-        help="The index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., 'scaffold_balanced' or 'random_with_repeated_smiles'). Note that this index begins with zero for the first molecule.",
+        help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., ``scaffold_balanced`` or ``random_with_repeated_smiles``). Note that this index begins with zero for the first molecule.",
     )
     split_args.add_argument(
         "-k",
         "--num-folds",
         type=int,
         default=1,
-        help="Number of folds when performing cross validation.",
+        help="Number of folds when performing cross validation",
     )
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
-        help="Save smiles for each train/val/test splits for prediction convenience later.",
+        help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
         "--splits-file",
         type=Path,
-        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys 'train', 'val', and 'test' and values as lists of indices or strings formatted like '0-2,4'. See documentation for more details.",
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or strings formatted (e.g., '0-2,4')",
     )
     train_data_args.add_argument(
         "--splits-column",
-        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
+        help="Name of the column in the input CSV file containing ``train``, ``val``, or ``test`` for each row",
     )
     split_args.add_argument(
         "--data-seed",
         type=int,
         default=0,
-        help="Random seed to use when splitting data into train/val/test sets. When :code`num_folds > 1`, the first fold uses this seed and all subsequent folds add 1 to the seed. Also used for shuffling data in :code:`build_dataloader` when :code:`shuffle` is True.",
+        help="Specify the random seed to use when splitting data into train/val/test sets. When ``num_folds`` > 1, the first fold uses this seed and all subsequent folds add 1 to the seed (also used for shuffling data in ``build_dataloader`` when ``shuffle`` is True).",
     )
 
     parser.add_argument(
         "--pytorch-seed",
         type=int,
         default=None,
-        help="Seed for PyTorch randomness (e.g., random initial weights).",
+        help="Seed for PyTorch randomness (e.g., random initial weights)",
     )
 
     return parser
@@ -741,9 +740,10 @@ def build_model(
     agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
     if args.loss_function is not None:
+        task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
         criterion = Factory.build(
             LossFunctionRegistry[args.loss_function],
-            task_weights=args.task_weights,
+            task_weights=task_weights,
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
@@ -825,7 +825,10 @@ def train_model(
 
         try:
             trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
+            logger.warning(
+                f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
+            )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         checkpointing = ModelCheckpoint(
@@ -866,86 +869,92 @@ def train_model(
                 predss = trainer.predict(model, dataloaders=test_loader)
             else:
                 predss = trainer.predict(dataloaders=test_loader)
+
             preds = torch.concat(predss, 0).numpy()
+            if isinstance(model.predictor, MveFFN):
+                preds = np.split(preds, 2, axis=1)[0]
+            elif isinstance(model.predictor, EvidentialFFN):
+                preds = np.split(preds, 4, axis=1)[0]
 
-            if isinstance(test_loader.dataset, MulticomponentDataset):
-                test_dset = test_loader.dataset.datasets[0]
-            else:
-                test_dset = test_loader.dataset
-            targets = test_dset.Y
-            mask = torch.from_numpy(np.isfinite(targets))
-            targets = np.nan_to_num(targets, nan=0.0)
-            lt_mask = (
-                torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+            evaluate_and_save_predictions(
+                preds, test_loader, model.metrics[:-1], model_output_dir, args
             )
-            gt_mask = (
-                torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
-            )
-
-            columns = get_column_names(
-                args.data_path,
-                args.smiles_columns,
-                args.reaction_columns,
-                args.target_columns,
-                args.ignore_columns,
-                args.splits_column,
-                args.weight_column,
-                args.no_header_row,
-            )
-            input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-            target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-
-            individual_scores = dict()
-            for metric in model.metrics[:-1]:
-                individual_scores[metric.alias] = []
-                for i, col in enumerate(target_cols):
-                    if "multiclass" in args.task_type:
-                        preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
-                        targets_slice = torch.from_numpy(targets[:, i : i + 1])
-                    else:
-                        preds_slice = torch.from_numpy(preds[:, i])
-                        targets_slice = torch.from_numpy(targets[:, i])
-                    preds_loss = metric(
-                        preds_slice,
-                        targets_slice,
-                        mask[:, i],
-                        None,
-                        lt_mask[:, i] if lt_mask is not None else None,
-                        gt_mask[:, i] if gt_mask is not None else None,
-                    )
-                    individual_scores[metric.alias].append(preds_loss)
-
-            logger.info("Entire Test Set results:")
-            for metric in model.metrics[:-1]:
-                avg_loss = sum(individual_scores[metric.alias]) / len(
-                    individual_scores[metric.alias]
-                )
-                logger.info(f"entire_test/{metric.alias}: {avg_loss}")
-
-            if args.show_individual_scores:
-                logger.info("Entire Test Set individual results:")
-                for metric in model.metrics[:-1]:
-                    for i, col in enumerate(target_cols):
-                        logger.info(
-                            f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
-                        )
-
-            names = test_loader.dataset.names
-            if isinstance(test_loader.dataset, MulticomponentDataset):
-                namess = list(zip(*names))
-            else:
-                namess = [names]
-            if "multiclass" in args.task_type:
-                df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
-            else:
-                df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
-            df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
+
+
+def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
+    if isinstance(test_loader.dataset, MulticomponentDataset):
+        test_dset = test_loader.dataset.datasets[0]
+    else:
+        test_dset = test_loader.dataset
+    targets = test_dset.Y
+    mask = torch.from_numpy(np.isfinite(targets))
+    targets = np.nan_to_num(targets, nan=0.0)
+    weights = torch.ones(len(test_dset))
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+
+    columns = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+
+    individual_scores = dict()
+    for metric in metrics:
+        individual_scores[metric.alias] = []
+        for i, col in enumerate(target_cols):
+            if "multiclass" in args.task_type:
+                preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
+                targets_slice = torch.from_numpy(targets[:, i : i + 1])
+            else:
+                preds_slice = torch.from_numpy(preds[:, i])
+                targets_slice = torch.from_numpy(targets[:, i])
+            preds_loss = metric(
+                preds_slice,
+                targets_slice,
+                mask[:, i],
+                weights,
+                lt_mask[:, i] if lt_mask is not None else None,
+                gt_mask[:, i] if gt_mask is not None else None,
+            )
+            individual_scores[metric.alias].append(preds_loss)
+
+    logger.info("Entire Test Set results:")
+    for metric in metrics:
+        avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
+        logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+
+    if args.show_individual_scores:
+        logger.info("Entire Test Set individual results:")
+        for metric in metrics:
+            for i, col in enumerate(target_cols):
+                logger.info(
+                    f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
+                )
+
+    names = test_loader.dataset.names
+    if isinstance(test_loader.dataset, MulticomponentDataset):
+        namess = list(zip(*names))
+    else:
+        namess = [names]
+    if "multiclass" in args.task_type:
+        df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+    else:
+        df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+    df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
 def main(args):

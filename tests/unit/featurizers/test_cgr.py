@@ -1,5 +1,5 @@
-from collections import namedtuple
 import random
+from typing import NamedTuple
 import uuid
 
 import numpy as np
@@ -56,7 +56,8 @@ rxn_smis = [
     "[CH3:1][H:2]>>[H].[CH3:1]",  # reactant and product are balanced and but product has less atom-mapped atoms
     # reactant and product has different numbers of atoms
     "[CH4:1]>>[CH2:1].[H:2][H:3]",  # product has more atoms and more atom-mapped atoms
-    "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]",  # reactant with more atoms and atom-mapped atoms.
+    "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]",  # reactant with more atoms and atom-mapped atoms
+    "[CH4:1]>>[CH3:1].[H:2]",  # product with more atoms and atom-mapped atoms with 0 edge
 ]
 
 # Expected output for CGRFeaturizer.map_reac_to_prod
@@ -67,6 +68,7 @@ reac_prod_maps = {
     "[CH3:1][H:2]>>[H].[CH3:1]": ({0: 1}, [0], [1]),
     "[CH4:1]>>[CH2:1].[H:2][H:3]": ({0: 0}, [1, 2], []),
     "[H:1].[CH2:2][H:3]>>[CH3:2][H:3]": ({1: 0, 2: 1}, [], [0]),
+    "[CH4:1]>>[CH3:1].[H:2]": ({0: 0}, [1], []),
 }
 
 
@@ -75,8 +77,16 @@ def rxn_smi(request):
     return request.param
 
 
-# whether elements in the returns for _get_bonds are Nones under imbalanced and balanced modes
-BondExpectation = namedtuple("BondExpectation", ["bond", "bond_reac_none", "bond_prod_none"])
+class BondExpectation(NamedTuple):
+    """
+    whether elements in the returns for _get_bonds are Nones under
+    imbalanced and balanced modes for provided bond
+    """
+
+    bond: tuple
+    bond_reac_none: bool
+    bond_prod_none: bool
+
 
 bond_expect_imbalanced = {
     "[CH3:1][H:2]>>[CH3:1].[H:2]": [
@@ -105,6 +115,9 @@ bond_expect_imbalanced = {
         BondExpectation((0, 2), bond_reac_none=True, bond_prod_none=True),
         BondExpectation((1, 2), bond_reac_none=False, bond_prod_none=False),
     ],
+    "[CH4:1]>>[CH3:1].[H:2]": [
+        BondExpectation((0, 0), bond_reac_none=True, bond_prod_none=True)
+    ],  # this last entry doesn't test for anything meaningful, only to enable other tests for graph with zero edges
 }
 bond_expect_balanced = bond_expect_imbalanced.copy()
 bond_expect_balanced.update(
@@ -288,8 +301,8 @@ class TestCondensedGraphOfReactionFeaturizer:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
-        assert (bond_reac is None) == bond_expect.bond_reac_none
-        assert (bond_prod is None) == bond_expect.bond_prod_none
+            assert (bond_reac is None) == bond_expect.bond_reac_none
+            assert (bond_prod is None) == bond_expect.bond_prod_none
 
     def test_get_bonds_balanced(self, rxn_smi, mode_balanced):
         """
@@ -303,8 +316,8 @@ class TestCondensedGraphOfReactionFeaturizer:
             bond_reac, bond_prod = featurizer._get_bonds(
                 reac, prod, ri2pj, pids, reac.GetNumAtoms(), *bond_expect.bond
             )
-        assert (bond_reac is None) == bond_expect.bond_reac_none
-        assert (bond_prod is None) == bond_expect.bond_prod_none
+            assert (bond_reac is None) == bond_expect.bond_reac_none
+            assert (bond_prod is None) == bond_expect.bond_prod_none
 
     @pytest.mark.parametrize(
         "reac_prod_bonds", [(bond, bond), (bond, None), (None, bond), (None, None)]
@@ -344,11 +357,15 @@ class TestCondensedGraphOfReactionFeaturizer:
 
         assert molgraph.E.shape == (len(bonds) * 2, bond_fdim)
 
-        expect_edge_index = []
+        expect_edge_index = [[], []]
         expect_rev_edge_index = []
+
         for i, bond in enumerate(bonds):
-            expect_edge_index.extend([bond, bond[::-1]])
+            bond = list(bond)
+            expect_edge_index[0].extend(bond)
+            expect_edge_index[1].extend(bond[::-1])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
+
         assert np.array_equal(molgraph.edge_index, expect_edge_index)
         assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)
 
@@ -376,10 +393,14 @@ class TestCondensedGraphOfReactionFeaturizer:
 
         assert molgraph.E.shape == (len(bonds) * 2, bond_fdim)
 
-        expect_edge_index = []
+        expect_edge_index = [[], []]
         expect_rev_edge_index = []
+
         for i, bond in enumerate(bonds):
-            expect_edge_index.extend([bond, bond[::-1]])
+            bond = list(bond)
+            expect_edge_index[0].extend(bond)
+            expect_edge_index[1].extend(bond[::-1])
             expect_rev_edge_index.extend([i * 2 + 1, i * 2])
+
         assert np.array_equal(molgraph.edge_index, expect_edge_index)
         assert np.array_equal(molgraph.rev_edge_index, expect_rev_edge_index)

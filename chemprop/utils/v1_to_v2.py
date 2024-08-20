@@ -28,9 +28,11 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     for i in range(args_v1.ffn_num_layers):
         suffix = 0 if i == 0 else 2
         state_dict_v2[f"predictor.ffn.{i}.{suffix}.weight"] = state_dict_v1[
-            f"readout.{i*3+1}.weight"
+            f"readout.{i * 3 + 1}.weight"
         ]
-        state_dict_v2[f"predictor.ffn.{i}.{suffix}.bias"] = state_dict_v1[f"readout.{i*3+1}.bias"]
+        state_dict_v2[f"predictor.ffn.{i}.{suffix}.bias"] = state_dict_v1[
+            f"readout.{i * 3 + 1}.bias"
+        ]
 
     if args_v1.dataset_type == "regression":
         state_dict_v2["predictor.output_transform.mean"] = torch.tensor(

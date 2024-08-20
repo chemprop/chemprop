@@ -147,7 +147,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         return self.output_dim // self.n_targets
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.output_transform(self.ffn(Z))
+        return self.ffn(Z)
 
     def encode(self, Z: Tensor, i: int) -> Tensor:
         return self.ffn[:i](Z)
@@ -159,8 +159,10 @@ class RegressionFFN(_FFNPredictorBase):
     _T_default_criterion = MSELoss
     _T_default_metric = MSEMetric
 
-    def train_step(self, Z: Tensor) -> Tensor:
-        return super().forward(Z)
+    def forward(self, Z: Tensor) -> Tensor:
+        return self.output_transform(self.ffn(Z))
+
+    train_step = forward
 
 
 @PredictorRegistry.register("regression-mve")
@@ -169,20 +171,16 @@ class MveFFN(RegressionFFN):
     _T_default_criterion = MVELoss
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        mean, var = torch.chunk(Y, self.n_targets, 1)
-
-        mean = self.scale * mean + self.loc
-        var = var * self.scale**2
-
-        return torch.cat((mean, var), 1)
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = self.ffn(Z)
         mean, var = torch.chunk(Y, self.n_targets, 1)
         var = F.softplus(var)
 
+        mean = self.output_transform(mean)
+        var = self.output_transform.transform_variance(var)
+
         return torch.cat((mean, var), 1)
+
+    train_step = forward
 
 
 @PredictorRegistry.register("regression-evidential")
@@ -191,23 +189,18 @@ class EvidentialFFN(RegressionFFN):
     _T_default_criterion = EvidentialLoss
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = self.ffn(Z)
         mean, v, alpha, beta = torch.chunk(Y, self.n_targets, 1)
-
-        mean = self.scale * mean + self.loc
-        v = v * self.scale**2
-
-        return torch.cat((mean, v, alpha, beta), 1)
-
-    def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        mean, v, alpha, beta = torch.chunk(Y, self.n_targets, 1)
-
         v = F.softplus(v)
         alpha = F.softplus(alpha) + 1
         beta = F.softplus(beta)
 
+        mean = self.output_transform(mean)
+        beta = self.output_transform.transform_variance(beta)
+
         return torch.cat((mean, v, alpha, beta), 1)
+
+    train_step = forward
 
 
 class BinaryClassificationFFNBase(_FFNPredictorBase):
@@ -244,7 +237,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
 
-        F.softplus(Y) + 1
+        return F.softplus(Y) + 1
 
 
 @PredictorRegistry.register("multiclass")

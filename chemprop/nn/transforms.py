@@ -41,6 +41,11 @@ class UnscaleTransform(_ScaleTransformMixin):
 
         return X * self.scale + self.mean
 
+    def transform_variance(self, var: Tensor) -> Tensor:
+        if self.training:
+            return var
+        return var * (self.scale**2)
+
 
 class GraphTransform(nn.Module):
     def __init__(self, V_transform: ScaleTransform, E_transform: ScaleTransform):
