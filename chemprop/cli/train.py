@@ -572,16 +572,16 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
             column_labels = deepcopy(args.smiles_columns)
             column_labels.extend(args.reaction_columns)
 
-    train_smis = train_dset.smiles
+    train_smis = train_dset.names
     df_train = pd.DataFrame(train_smis, columns=column_labels)
     df_train.to_csv(output_dir / "train_smiles.csv", index=False)
 
-    val_smis = val_dset.smiles
+    val_smis = val_dset.names
     df_val = pd.DataFrame(val_smis, columns=column_labels)
     df_val.to_csv(output_dir / "val_smiles.csv", index=False)
 
     if test_dset is not None:
-        test_smis = test_dset.smiles
+        test_smis = test_dset.names
         df_test = pd.DataFrame(test_smis, columns=column_labels)
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
