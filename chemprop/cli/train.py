@@ -1,4 +1,5 @@
 from copy import deepcopy
+from io import StringIO
 import json
 import logging
 from pathlib import Path
@@ -646,7 +647,6 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         else:
             y = dataset.Y
         y_mean = np.nanmean(y, axis=0)
-        print("YMEAN", y_mean)
         y_std = np.nanstd(y, axis=0)
         y_median = np.nanmedian(y, axis=0)
         mean_dev_abs = np.abs(y - y_mean)
@@ -673,23 +673,34 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             y = dataset.datasets[0].Y
         else:
             y = dataset.Y
-
+        print("lt_mask", dataset.lt_mask)
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
 
         class_counts = np.stack([(classes[:, None] == y[:, i]).sum(1) for i in range(y.shape[1])])
         class_fracs = class_counts / y.shape[0]
         nan_count = np.nansum(mask, axis=0)
-        nan_frac = nan_count / len(y)
+        nan_frac = nan_count / y.shape[0]
 
-        column_headers = ["Class"] + [f"Count/Percent {i}" for i in range(y.shape[1])]
+        columns = get_column_names(
+            args.data_path,
+            args.smiles_columns,
+            args.reaction_columns,
+            args.target_columns,
+            args.ignore_columns,
+            args.splits_column,
+            args.weight_column,
+            args.no_header_row,
+        )
 
-        table_rows = []
-        for i, k in enumerate(classes):
-            class_row = [f"{k}"] + [
-                f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])
-            ]
-            table_rows.append(class_row)
+        input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+        target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+        column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
+
+        table_rows = [
+            [f"{k}"] + [f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])]
+            for i, k in enumerate(classes)
+        ]
 
         nan_row = ["NAN"] + [f"{nan_count[i]}/{nan_frac[i]:0.0%}" for i in range(y.shape[1])]
         table_rows.append(nan_row)
@@ -709,7 +720,6 @@ def build_table(column_headers: list[str], table_rows: list[str], title: str | N
     table = Table(*right_justified_columns, title=title)
     for row in table_rows:
         table.add_row(*row)
-    from io import StringIO
 
     console = Console(record=True, file=StringIO())
     console.print(table)
