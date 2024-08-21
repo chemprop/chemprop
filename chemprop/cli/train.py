@@ -567,17 +567,26 @@ def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
 
 
 def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_dset):
-    train_smis = train_dset.smiles
-    df_train = pd.DataFrame(train_smis, columns=args.smiles_columns)
+    match (args.smiles_columns, args.reaction_columns):
+        case [_, None]:
+            column_labels = deepcopy(args.smiles_columns)
+        case [None, _]:
+            column_labels = deepcopy(args.reaction_columns)
+        case _:
+            column_labels = deepcopy(args.smiles_columns)
+            column_labels.extend(args.reaction_columns)
+
+    train_smis = train_dset.names
+    df_train = pd.DataFrame(train_smis, columns=column_labels)
     df_train.to_csv(output_dir / "train_smiles.csv", index=False)
 
-    val_smis = val_dset.smiles
-    df_val = pd.DataFrame(val_smis, columns=args.smiles_columns)
+    val_smis = val_dset.names
+    df_val = pd.DataFrame(val_smis, columns=column_labels)
     df_val.to_csv(output_dir / "val_smiles.csv", index=False)
 
     if test_dset is not None:
-        test_smis = test_dset.smiles
-        df_test = pd.DataFrame(test_smis, columns=args.smiles_columns)
+        test_smis = test_dset.names
+        df_test = pd.DataFrame(test_smis, columns=column_labels)
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
