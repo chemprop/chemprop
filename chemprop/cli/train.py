@@ -641,6 +641,19 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
 
 def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
+    columns = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+
+    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
     if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
@@ -650,12 +663,14 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         y_std = np.nanstd(y, axis=0)
         y_median = np.nanmedian(y, axis=0)
         mean_dev_abs = np.abs(y - y_mean)
-        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / len(y)
-        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / len(y)
+        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / np.count_nonzero(~np.isnan(y))
+        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / np.count_nonzero(~np.isnan(y))
 
-        column_headers = ["Statistic"] + [f"Value {i}" for i in range(y.shape[1])]
+        column_headers = ["Statistic"] + [f"Value ({target_cols[i]})" for i in range(y.shape[1])]
         table_rows = [
-            ["Num. datapoints"] + [f"{len(y)}" for i in range(y.shape[1])],
+            ["Num. smiles"] + [f"{len(y)}" for i in range(y.shape[1])],
+            ["Num. targets"] + [f"{np.count_nonzero(~np.isnan(y))}" for i in range(y.shape[1])],
+            ["Num. NAN"] + [f"{np.count_nonzero(np.isnan(y))}" for i in range(y.shape[1])],
             ["Mean"] + [f"{mean:0.2f}" for mean in y_mean],
             ["Std. dev."] + [f"{std:0.2f}" for std in y_std],
             ["Median"] + [f"{median:0.2f}" for median in y_median],
@@ -673,7 +688,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             y = dataset.datasets[0].Y
         else:
             y = dataset.Y
-        print("lt_mask", dataset.lt_mask)
+
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
 
@@ -682,19 +697,6 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         nan_count = np.nansum(mask, axis=0)
         nan_frac = nan_count / y.shape[0]
 
-        columns = get_column_names(
-            args.data_path,
-            args.smiles_columns,
-            args.reaction_columns,
-            args.target_columns,
-            args.ignore_columns,
-            args.splits_column,
-            args.weight_column,
-            args.no_header_row,
-        )
-
-        input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-        target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
         column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
 
         table_rows = [
@@ -721,7 +723,7 @@ def build_table(column_headers: list[str], table_rows: list[str], title: str | N
     for row in table_rows:
         table.add_row(*row)
 
-    console = Console(record=True, file=StringIO())
+    console = Console(record=True, file=StringIO(), width=200)
     console.print(table)
     return console.export_text()
 
