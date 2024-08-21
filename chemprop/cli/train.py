@@ -766,7 +766,7 @@ def build_datasets(args, train_data, val_data, test_data):
         ):
             column_headers, table_rows = summarize(args, dataset)
             output = build_table(column_headers, table_rows, f"Summary of {label} Data")
-            logger.info(output)
+            logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
 
