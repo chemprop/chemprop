@@ -77,40 +77,34 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
         return features
 
 
-if not NO_DESCRIPTASTORUS:
-
-    class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
-        def __len__(self) -> int:
-            return 200
-
-        def __call__(self, mol: Mol) -> np.ndarray:
-            smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
-            features = self.generator.process(smiles)[1:]
-
-            return np.array(features)
-
-    @MoleculeFeaturizerRegistry("v1_rdkit_2d")
-    class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
-        def __init__(self):
-            self.generator = rdDescriptors.RDKit2D()
-
-    @MoleculeFeaturizerRegistry("v1_rdkit_2d_normalized")
-    class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
-        def __init__(self):
-            self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
-
-else:
-
-    @MoleculeFeaturizerRegistry("v1_rdkit_2d")
-    class V1RDKit2DFeaturizer:
-        """Mock implementation raising an ImportError if descriptastorus cannot be imported."""
-
-        def __init__(self):
+class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
+    def __init__(self):
+        if NO_DESCRIPTASTORUS:
             raise ImportError(
                 "Failed to import descriptastorus. Please install descriptastorus "
-                "(https://github.com/bp-kelley/descriptastorus) to use RDKit 2D features."
+                "(https://github.com/bp-kelley/descriptastorus) to use the RDKit 2D featurizer "
+                "from version 1."
             )
 
-    @MoleculeFeaturizerRegistry("v1_rdkit_2d_normalized")
-    class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizer):
-        pass
+    def __len__(self) -> int:
+        return 200
+
+    def __call__(self, mol: Mol) -> np.ndarray:
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
+        features = self.generator.process(smiles)[1:]
+
+        return np.array(features)
+
+
+@MoleculeFeaturizerRegistry("v1_rdkit_2d")
+class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
+    def __init__(self):
+        super().__init__()
+        self.generator = rdDescriptors.RDKit2D()
+
+
+@MoleculeFeaturizerRegistry("v1_rdkit_2d_normalized")
+class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
+    def __init__(self):
+        super().__init__()
+        self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
