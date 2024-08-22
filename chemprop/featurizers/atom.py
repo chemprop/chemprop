@@ -55,6 +55,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         chiral_tags: Sequence[int],
         num_Hs: Sequence[int],
         hybridizations: Sequence[int],
+        aromaticity: bool=True
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {i: i for i in degrees}
@@ -62,6 +63,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         self.chiral_tags = {i: i for i in chiral_tags}
         self.num_Hs = {i: i for i in num_Hs}
         self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
+        self.aromaticity = aromaticity
 
         self._subfeats: list[dict] = [
             self.atomic_nums,
@@ -78,7 +80,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             1 + len(self.chiral_tags),
             1 + len(self.num_Hs),
             1 + len(self.hybridizations),
-            1,
+            int(aromaticity),
             1,
         ]
         self.__size = sum(subfeat_sizes)
@@ -105,8 +107,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             j = choices.get(feat, len(choices))
             x[i + j] = 1
             i += len(choices) + 1
-        x[i] = int(a.GetIsAromatic())
-        x[i + 1] = 0.01 * a.GetMass()
+        if self.aromaticity:
+            x[i] = int(a.GetIsAromatic())
+            x[i + 1] = 0.01 * a.GetMass()
+        else:
+            x[i] = 0.01 * a.GetMass()
 
         return x
 
@@ -199,6 +204,20 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
                 HybridizationType.SP3,
             ],
         )
+        
+    @classmethod
+    def rigr(cls):
+        """RIGR []."""
+
+        return cls(
+            atomic_nums=list(range(1, 37)) + [53],
+            degrees=list(range(6)),
+            formal_charges=[],
+            chiral_tags=[],
+            num_Hs=list(range(5)),
+            hybridizations=[],
+            aromaticity = False
+        )
 
 
 class AtomFeatureMode(EnumMapping):
@@ -207,6 +226,7 @@ class AtomFeatureMode(EnumMapping):
     V1 = auto()
     V2 = auto()
     ORGANIC = auto()
+    RIGR = auto()
 
 
 def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
@@ -218,5 +238,7 @@ def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFe
             return MultiHotAtomFeaturizer.v2()
         case AtomFeatureMode.ORGANIC:
             return MultiHotAtomFeaturizer.organic()
+        case AtomFeatureMode.RIGR:
+            return MultiHotAtomFeaturizer.rigr()
         case _:
             raise RuntimeError("unreachable code reached!")

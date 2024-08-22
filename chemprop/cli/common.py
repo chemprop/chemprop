@@ -138,6 +138,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="append",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path [...] --bond-features-path [...]``).",
     )
+    
+    featurization_args.add_argument(
+        "--rigr",
+        action="store_true",
+        help="RIGR []",
+    )
+    
     # TODO: Add in v2.2
     # parser.add_argument(
     #     "--constraints-path",
