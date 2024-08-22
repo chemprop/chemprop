@@ -33,14 +33,14 @@ def construct_parser():
         "--log",
         nargs="?",
         const="default",
-        help=f"The path to which the log file should be written. Specifying just the flag (i.e., '--log/--logfile') will automatically log to a file '{LOG_DIR}/MODE/TIMESTAMP.log', where 'MODE' is the CLI mode chosen. An example 'TIMESTAMP' is {NOW}.",
+        help=f"Path to which the log file should be written (specifying just the flag alone will automatically log to a file ``{LOG_DIR}/MODE/TIMESTAMP.log`` , where 'MODE' is the CLI mode chosen, e.g., ``{LOG_DIR}/MODE/{NOW}.log``)",
     )
     parent.add_argument(
         "-v",
         "--verbose",
         action="count",
         default=0,
-        help="The verbosity level, specify the flag multiple times to increase verbosity.",
+        help="Verbosity level (specify the flag multiple times to increase verbosity)",
     )
 
     parents = [parent]
