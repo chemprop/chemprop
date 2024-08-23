@@ -12,10 +12,6 @@ class UncertaintyEvaluator(ABC):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         """Evaluate the performance of uncertainty predictions against the model target values.
 
-        .. note::
-            The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
-            the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
-
         Parameters
         ----------
         preds: Tensor
@@ -27,6 +23,9 @@ class UncertaintyEvaluator(ABC):
             * regression/binary classification: ``n x t``
 
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
+            .. note::
+                The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
+                the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
