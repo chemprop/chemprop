@@ -222,7 +222,7 @@ class MPNN(pl.LightningModule):
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
             warnings.warn(
-                "For infinite training, the number of cooldown epochs in learninig rate scheduler is set to 100 times the number of warmup epochs."
+                "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
         else:
