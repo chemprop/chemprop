@@ -33,7 +33,7 @@ For example, to see the arguments for the ``train`` command, run:
     $ chemprop train --help
 
 To enable logging, specify ``--log <path/to/logfile>`` or ``--logfile <path/to/logfile>``, where ``<path/to/logfile>`` is the desired path to which the logfile should be written; if unspecified, the log will be written to ``chemprop_logs``.
-If more detailed debugging information is required, specify ``-v``, ``-vv``, or ``-vvv`` (in increasing order of detail).
+The default logging level is INFO. If more detailed debugging information is required, specify ``-v`` for DEBUG level. To decrease verbosity below the default INFO level, use ``-q`` for WARNING or ``-qq`` for ERROR.
 
 Chemprop is built on top of Lightning, which has support for training and predicting on GPUs.
 Relevant CLI flags include `--accelerator` and `--devices`.
