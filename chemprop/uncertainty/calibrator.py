@@ -81,11 +81,14 @@ class PlattCalibrator(UncertaintyCalibrator):
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class ConformalMultilabelCalibrator(UncertaintyCalibrator):
     r"""Creates conformal in-set and conformal out-set such that for :math:`1-\alpha` proportion of datapoints,
-    the set of labels is bounded by the in-set and out-set. That is said, the conformal in-set is contained
-    in the set of actual labels and the set of actual labels is contained in the conformal out-set. [1]_
-
+    the set of labels is bounded by the in- and out-sets [1]_:
     .. math::
-        \mathbb{P}\left(\hat{C}_{\text{in}}(X) \subseteq Y \subseteq \hat{C}_{\text{out}}(X)\right) \geq 1 - \alpha
+        \mathbb{P}\left(
+            \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
+        \right) \geq 1 - \alpha,
+        
+    where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:` \mathcal Y` and
+    :math:` \mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
 
     Parameters
     ----------
