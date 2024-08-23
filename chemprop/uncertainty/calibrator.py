@@ -86,7 +86,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
         \mathbb{P}\left(
             \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
         \right) \geq 1 - \alpha,
-        
+
     where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:` \mathcal Y` and
     :math:` \mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
 
