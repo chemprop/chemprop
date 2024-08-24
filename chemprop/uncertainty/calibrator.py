@@ -226,11 +226,10 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
         where :math:`\pi_k(x)` is the permutation of :math:`\{1,...,K\}` that sorts :math:`\hat{f}(X_{test})` from most likely to least likely.
         """
 
-        sort_inds = torch.argsort(-preds, dim=2)
-        sorted_preds = torch.gather(preds, 2, sort_inds)
+        sort_index = torch.argsort(-preds, dim=2)
+        sorted_preds = torch.gather(preds, 2, sort_index)
         sorted_scores = sorted_preds.cumsum(dim=2)
-        unsort_inds = torch.argsort(sort_inds, dim=2)
-        unsorted_scores = torch.gather(sorted_scores, 2, unsort_inds)
+        unsorted_scores = torch.zeros_like(sorted_scores).scatter_(2, sort_index, sorted_scores)
 
         return unsorted_scores
 
