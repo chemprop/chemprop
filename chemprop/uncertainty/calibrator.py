@@ -104,6 +104,10 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
     def __init__(self, alpha: float):
         super().__init__()
         self.alpha = torch.tensor(alpha)
+        if 0 <= self.alpha <= 1:
+            raise ValueError(
+                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
+            )
 
     @staticmethod
     def nonconformity_scores(preds: Tensor):
@@ -181,6 +185,10 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
         super().__init__()
         self.alpha = torch.tensor(alpha)
         self.qhats = torch.tensor([])
+        if 0 <= self.alpha <= 1:
+            raise ValueError(
+                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
+            )
 
     @staticmethod
     def nonconformity_scores(preds: Tensor):
@@ -273,6 +281,10 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
         self.alpha = torch.tensor(alpha)
         self.qhats = torch.tensor([])
         self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
+        if 0 <= self.alpha <= 1:
+            raise ValueError(
+                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
+            )
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         for j in range(preds.shape[1]):
