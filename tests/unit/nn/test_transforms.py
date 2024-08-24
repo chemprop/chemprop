@@ -14,12 +14,12 @@ class MockBatchMolGraph:
 
 @pytest.fixture
 def mean():
-    return np.array([0.0, 1.0])
+    return np.array([0.0, 1.0], dtype=np.float32)
 
 
 @pytest.fixture
 def scale():
-    return np.array([2.0, 3.0])
+    return np.array([2.0, 3.0], dtype=np.float32)
 
 
 @pytest.fixture
@@ -136,7 +136,7 @@ def test_unscale_transform_variance_eval(scale, unscale_transform, variance):
     unscale_transform.eval()
     output_variance = unscale_transform.transform_variance(variance)
     expected_variance = variance * scale**2
-    torch.testing.assert_close(output_variance, expected_variance)
+    assert torch.equal(output_variance, expected_variance)
 
 
 def test_graph_transform_forward_train(graph_transform, bmg):
