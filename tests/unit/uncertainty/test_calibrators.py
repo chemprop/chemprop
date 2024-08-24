@@ -3,10 +3,10 @@ import torch
 
 # TODO: adding IsotonicCalibrator, IsotonicMulticlassCalibrator, MVEWeightingCalibrator, PlattCalibrator, TScalingCalibrator, ZelikmanCalibrator, ZScalingCalibrator,
 from chemprop.uncertainty.calibrator import (
-    ConformalAdaptiveMulticlassCalibrator,
-    ConformalMulticlassCalibrator,
-    ConformalMultilabelCalibrator,
-    ConformalRegressionCalibrator,
+    AdaptiveMulticlassConformalCalibrator,
+    MulticlassConformalCalibrator,
+    MultilabelConformalCalibrator,
+    RegressionConformalCalibrator,
 )
 
 
@@ -38,13 +38,13 @@ from chemprop.uncertainty.calibrator import (
         )
     ],
 )
-def test_ConformalAdaptiveMulticlassCalibrator(
+def test_AdaptiveMulticlassConformalCalibrator(
     cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
 ):
     """
-    Testing the ConformalAdaptiveMulticlassCalibrator
+    Testing the AdaptiveMulticlassConformalCalibrator
     """
-    calibrator = ConformalAdaptiveMulticlassCalibrator(alpha=0.5)
+    calibrator = AdaptiveMulticlassConformalCalibrator(alpha=0.5)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     preds, uncs = calibrator.apply(test_preds, test_uncs)
 
@@ -80,13 +80,13 @@ def test_ConformalAdaptiveMulticlassCalibrator(
         )
     ],
 )
-def test_ConformalMulticlassCalibrator(
+def test_MulticlassConformalCalibrator(
     cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
 ):
     """
-    Testing the ConformalMulticlassCalibrator
+    Testing the MulticlassConformalCalibrator
     """
-    calibrator = ConformalMulticlassCalibrator(alpha=0.5)
+    calibrator = MulticlassConformalCalibrator(alpha=0.5)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     preds, uncs = calibrator.apply(test_preds, test_uncs)
 
@@ -110,13 +110,13 @@ def test_ConformalMulticlassCalibrator(
         )
     ],
 )
-def test_ConformalMultilabelCalibrator(
+def test_MultilabelConformalCalibrator(
     cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
 ):
     """
-    Testing the ConformalMultilabelCalibrator
+    Testing the MultilabelConformalCalibrator
     """
-    calibrator = ConformalMultilabelCalibrator(alpha=0.1)
+    calibrator = MultilabelConformalCalibrator(alpha=0.1)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     preds, uncs = calibrator.apply(test_preds, test_uncs)
 
@@ -147,13 +147,13 @@ def test_ConformalMultilabelCalibrator(
         ),
     ],
 )
-def test_ConformalRegressionCalibrator(
+def test_RegressionConformalCalibrator(
     cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
 ):
     """
-    Testing the ConformalRegressionCalibrator
+    Testing the RegressionConformalCalibrator
     """
-    calibrator = ConformalRegressionCalibrator(alpha=0.1)
+    calibrator = RegressionConformalCalibrator(alpha=0.1)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     preds, uncs = calibrator.apply(test_preds, test_uncs)
 

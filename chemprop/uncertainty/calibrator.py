@@ -79,7 +79,7 @@ class PlattCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
-class ConformalMultilabelCalibrator(UncertaintyCalibrator):
+class MultilabelConformalCalibrator(UncertaintyCalibrator):
     r"""Creates conformal in-set and conformal out-set such that for :math:`1-\alpha` proportion of datapoints,
     the set of labels is bounded by the in- and out-sets [1]_:
     .. math::
@@ -157,7 +157,7 @@ class ConformalMultilabelCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multiclass")
-class ConformalMulticlassCalibrator(UncertaintyCalibrator):
+class MulticlassConformalCalibrator(UncertaintyCalibrator):
     r"""Create a prediction sets of possible labels :math:`C(X_{\text{test}}) \subset \{1, \ldots, K\}` that follows:
 
     .. math::
@@ -215,7 +215,7 @@ class ConformalMulticlassCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-adaptive")
-class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
+class AdaptiveMulticlassConformalCalibrator(MulticlassConformalCalibrator):
     @staticmethod
     def nonconformity_scores(preds):
         r"""Compute nonconformity score by greedily including classes in the classification set until it reach the true label.
@@ -235,7 +235,7 @@ class ConformalAdaptiveMulticlassCalibrator(ConformalMulticlassCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
-class ConformalRegressionCalibrator(UncertaintyCalibrator):
+class RegressionConformalCalibrator(UncertaintyCalibrator):
     r"""Conformalize quantiles to make the interval :math:`[\hat{t}_{\alpha/2}(x),\hat{t}_{1-\alpha/2}(x)]` to have
     approximately 1 - :math:`\alpha` coverage. [1]_
 
