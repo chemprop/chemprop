@@ -126,20 +126,20 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
             )
 
         has_zeros = torch.any(targets == 0, dim=1)
-        inds_zeros = targets[has_zeros] == 0
+        index_zeros = targets[has_zeros] == 0
         scores_in = self.nonconformity_scores(uncs[has_zeros])
-        masked_scores_in = scores_in * inds_zeros.float() + torch.where(
-            inds_zeros, torch.zeros_like(scores_in), torch.tensor(float("inf"))
+        masked_scores_in = scores_in * index_zeros.float() + torch.where(
+            index_zeros, torch.zeros_like(scores_in), torch.tensor(float("inf"))
         )
         calibration_scores_in = torch.min(
             masked_scores_in.masked_fill(~mask, float("inf")), dim=1
         ).values
 
         has_ones = torch.any(targets == 1, dim=1)
-        inds_ones = targets[has_ones] == 1
+        index_ones = targets[has_ones] == 1
         scores_out = self.nonconformity_scores(uncs[has_ones])
-        masked_scores_out = scores_out * inds_ones.float() + torch.where(
-            inds_ones, torch.zeros_like(scores_out), torch.tensor(float("-inf"))
+        masked_scores_out = scores_out * index_ones.float() + torch.where(
+            index_ones, torch.zeros_like(scores_out), torch.tensor(float("-inf"))
         )
         calibration_scores_out = torch.max(
             masked_scores_out.masked_fill(~mask, float("-inf")), dim=1
