@@ -66,9 +66,8 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
         features = np.array(
             [
-                func(mol)
-                for _, func in filter(
-                    lambda i: i[0] != "SPS" or mol.GetNumHeavyAtoms() > 0, Descriptors.descList
+            0.0 if name == "SPS" and mol.GetNumHeavyAtoms() == 0 else func(mol)
+            for name, func in Descriptors.descList
                 )
             ],
             dtype=float,
