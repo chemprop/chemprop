@@ -55,7 +55,7 @@ def test_output_transform(data):
     predss = trainer.predict(mpnn, test_loader)
     preds = torch.cat(predss)
     std, mean = torch.std_mean(preds, dim=0)
-    y_std, y_mean = torch.std_mean(torch.from_numpy(test_dset.Y), dim=0)
+    y_std, y_mean = torch.std_mean(torch.from_numpy(test_dset.Y).float(), dim=0)
 
     assert torch.allclose(std, y_std, atol=0.1)
     assert torch.allclose(mean, y_mean, atol=0.1)
