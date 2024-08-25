@@ -44,7 +44,7 @@ def test_train_quick(monkeypatch, data_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--show-individual-scores",
@@ -62,7 +62,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
         "--config-path",
         config_path,
         "--epochs",
-        "2",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -83,7 +83,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
         if key not in ["config_path", "output_dir", "epochs"]:
             assert getattr(new_args, key) == value
 
-    assert new_args.epochs == 2
+    assert new_args.epochs == 3
 
 
 def test_train_quick_features(monkeypatch, data_path):
@@ -101,7 +101,7 @@ def test_train_quick_features(monkeypatch, data_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--descriptors-path",
@@ -155,7 +155,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -182,7 +182,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -225,7 +225,7 @@ def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
         "--splits-column",
         "split",
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -254,7 +254,7 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -324,7 +324,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -349,7 +349,7 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
