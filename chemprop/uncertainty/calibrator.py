@@ -1,4 +1,6 @@
 from abc import abstractmethod
+import logging
+from typing import Self
 
 import numpy as np
 from scipy.optimize import fmin
@@ -8,6 +10,7 @@ from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
+logger = logging.getLogger(__name__)
 
 class UncertaintyCalibrator:
     @abstractmethod
@@ -88,7 +91,7 @@ class PlattCalibrator(UncertaintyCalibrator):
         targets: Tensor,
         mask: Tensor,
         training_targets: Tensor | None = None,
-    ) -> None:
+    ) -> Self:
         if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
             raise ValueError(
                 "Platt scaling is only implemented for binary classification tasks! Input tensor "
@@ -96,6 +99,10 @@ class PlattCalibrator(UncertaintyCalibrator):
             )
 
         if training_targets is not None:
+            logger.info("Training targets were provided. Platt scaling for calibration uses a "
+                        "Bayesian correction to avoid training set overfitting. Now replacing "
+                        "calibration targets [0, 1] with adjusted values.")
+            
             n_negative_examples = (training_targets == 0).sum(dim=0)
             n_positive_examples = (training_targets == 1).sum(dim=0)
 
@@ -107,6 +114,8 @@ class PlattCalibrator(UncertaintyCalibrator):
             targets = targets.float()
             targets[targets == 0] = negative_target_bayes_MAP[targets == 0]
             targets[targets == 1] = positive_target_bayes_MAP[targets == 1]
+        else:
+            logger.info("No training targets were provided. No Bayesian correction is applied.")
 
         xs = []
         for j in range(preds.shape[1]):
@@ -128,6 +137,8 @@ class PlattCalibrator(UncertaintyCalibrator):
 
         xs = np.vstack(xs)
         self.a, self.b = torch.tensor(xs).T.unbind(dim=0)
+
+        return self
 
     def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
         return torch.sigmoid(self.a * torch.logit(preds) + self.b), None
