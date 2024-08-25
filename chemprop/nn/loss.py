@@ -111,8 +111,8 @@ class MVELoss(LossFunction):
     References
     ----------
     .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
-    probability distribution." Proceedings of 1994 IEEE International Conference on Neural Networks,
-    1994 https://doi.org/10.1109/icnn.1994.374138
+        probability distribution." Proceedings of 1994 IEEE International Conference on Neural
+        Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
     """
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
@@ -131,11 +131,11 @@ class EvidentialLoss(LossFunction):
     References
     ----------
     .. [amini2020] Amini, A; Schwarting, W.; Soleimany, A.; Rus, D.;
-    "Deep Evidential Regression" Advances in Neural Information Processing Systems; 2020; Vol.33.
-    https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
+        "Deep Evidential Regression" Advances in Neural Information Processing Systems; 2020; Vol.33.
+        https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
     .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
-    "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
-    Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
+        "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
+        Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
     def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2, eps: float = 1e-8):
@@ -254,7 +254,7 @@ class DirichletMixin:
     References
     ----------
     .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
-    classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
     .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
