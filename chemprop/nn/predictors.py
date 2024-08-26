@@ -260,6 +260,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         threshold: float | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         super().__init__(
             n_tasks * n_classes,
             input_dim,
@@ -274,11 +275,6 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         )
 
         self.n_classes = n_classes
-
-        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
-        self.criterion = criterion or Factory.build(
-            self._T_default_criterion, task_weights=task_weights, threshold=threshold
-        )
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
