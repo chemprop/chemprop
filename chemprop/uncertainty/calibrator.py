@@ -84,6 +84,7 @@ class PlattCalibrator(UncertaintyCalibrator):
 class MultilabelConformalCalibrator(UncertaintyCalibrator):
     r"""Creates conformal in-set and conformal out-set such that for :math:`1-\alpha` proportion of datapoints,
     the set of labels is bounded by the in- and out-sets [1]_:
+
     .. math::
         \mathbb{P}\left(
             \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
