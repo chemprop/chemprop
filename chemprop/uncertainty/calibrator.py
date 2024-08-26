@@ -82,7 +82,7 @@ class PlattCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class MultilabelConformalCalibrator(UncertaintyCalibrator):
-    r"""Creates conformal in-set and conformal out-set such that for :math:`1-\alpha` proportion of datapoints,
+    r"""Creates conformal in-set and conformal out-set such that, for :math:`1-\alpha` proportion of datapoints,
     the set of labels is bounded by the in- and out-sets [1]_:
 
     .. math::
@@ -109,7 +109,7 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
         self.alpha = alpha
         if not 0 <= self.alpha <= 1:
             raise ValueError(
-                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
+                f"arg `alpha` must be between 0 and 1. got: {alpha}."
             )
 
     @staticmethod
@@ -170,7 +170,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
     .. math::
         1 - \alpha \leq \mathbb{P}(Y_{\text{test}} \in C(X_{\text{test}})) \leq 1 - \alpha + \frac{1}{n + 1}
 
-    In other words, the probability that the prediction set contains the correct label is almost exactly 1 - :math:`\alpha`.
+    In other words, the probability that the prediction set contains the correct label is almost exactly :math:`1-\alpha`.
     More detailes can be found in [1]_.
 
     Parameters
@@ -216,7 +216,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
             else:
                 q_level = 1
                 warnings.warn(
-                    "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                    "`alpha` is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(scores_j, q_level, interpolation="higher")
             self.qhats.append(qhat)
@@ -242,7 +242,7 @@ class AdaptiveMulticlassConformalCalibrator(MulticlassConformalCalibrator):
         .. math::
             s(x, y) = \sum_{j=1}^{k} \hat{f}(x)_{\pi_j(x)}, \text{ where } y = \pi_k(x)
 
-        where :math:`\pi_k(x)` is the permutation of :math:`\{1,...,K\}` that sorts :math:`\hat{f}(X_{test})` from most likely to least likely.
+        where :math:`\pi_k(x)` is the permutation of :math:`\{1 \mathrel{.\,.} K\}` that sorts :math:`\hat{f}(X_{test})` from most likely to least likely.
         """
 
         sort_index = torch.argsort(-preds, dim=2)
@@ -256,7 +256,7 @@ class AdaptiveMulticlassConformalCalibrator(MulticlassConformalCalibrator):
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class RegressionConformalCalibrator(UncertaintyCalibrator):
     r"""Conformalize quantiles to make the interval :math:`[\hat{t}_{\alpha/2}(x),\hat{t}_{1-\alpha/2}(x)]` to have
-    approximately 1 - :math:`\alpha` coverage. [1]_
+    approximately :math:`1-\alpha` coverage. [1]_
 
     .. math::
         s(x, y) &= \max \left\{ \hat{t}_{\alpha/2}(x) - y, y - \hat{t}_{1-\alpha/2}(x) \right\}
