@@ -971,7 +971,15 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         namess = [names]
     if "multiclass" in args.task_type:
-        df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+        columns = columns + [f"{col}_prob" for col in target_cols]
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, preds
+        )
+        predicted_class_labels = preds.argmax(axis=-1)
+        df_preds = pd.DataFrame(
+            list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
+            columns=columns,
+        )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
