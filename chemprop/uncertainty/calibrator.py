@@ -1,4 +1,6 @@
 from abc import abstractmethod
+import math
+import warnings
 
 import torch
 from torch import Tensor
@@ -208,7 +210,13 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
 
             scores_j = torch.gather(scores_j, 1, targets_j.unsqueeze(1)).squeeze(1)
             num_data = targets_j.shape[0]
-            q_level = (torch.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+            if self.alpha >= 1 / (num_data + 1):
+                q_level = (math.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+            else:
+                q_level = 1
+                warnings.warn(
+                    "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                )
             qhat = torch.quantile(scores_j, q_level, interpolation="higher")
             self.qhats = torch.cat((self.qhats, torch.tensor([qhat])))
 
@@ -299,7 +307,13 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
             calibration_scores = torch.max(pred_bounds[0] - targets_j, targets_j - pred_bounds[1])
 
             num_data = targets_j.shape[0]
-            q_level = (torch.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+            if self.alpha >= 1 / (num_data + 1):
+                q_level = (math.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+            else:
+                q_level = 1
+                warnings.warn(
+                    "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                )
             qhat = torch.quantile(calibration_scores, q_level, interpolation="higher")
 
             self.qhats = torch.cat((self.qhats, torch.tensor([qhat])))
