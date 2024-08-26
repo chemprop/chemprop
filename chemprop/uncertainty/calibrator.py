@@ -186,7 +186,6 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
     def __init__(self, alpha: float):
         super().__init__()
         self.alpha = alpha
-        self.qhats = torch.tensor([])
         if 0 <= self.alpha <= 1:
             raise ValueError(
                 f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
@@ -202,6 +201,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
         return -preds
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+        self.qhats = []
         scores = self.nonconformity_scores(uncs)
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
@@ -218,7 +218,9 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
                     "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(scores_j, q_level, interpolation="higher")
-            self.qhats = torch.cat((self.qhats, torch.tensor([qhat])))
+            self.qhats.append(qhat)
+
+        self.qhats = torch.tensor(self.qhats)
 
     def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
         calibrated_preds = torch.zeros_like(uncs, dtype=torch.int)
@@ -287,7 +289,6 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
     def __init__(self, alpha: float):
         super().__init__()
         self.alpha = alpha
-        self.qhats = torch.tensor([])
         self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
         if 0 <= self.alpha <= 1:
             raise ValueError(
@@ -295,6 +296,7 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
             )
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
+        self.qhats = []
         for j in range(preds.shape[1]):
             mask_j = mask[:, j]
             targets_j = targets[:, j][mask_j]
@@ -315,8 +317,9 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
                     "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(calibration_scores, q_level, interpolation="higher")
+            self.qhats.append(qhat)
 
-            self.qhats = torch.cat((self.qhats, torch.tensor([qhat])))
+        self.qhats = torch.tensor(self.qhats)
 
     def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
         cal_intervals = uncs + 2 * self.qhats
