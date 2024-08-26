@@ -34,7 +34,7 @@ class MetricEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("nll-regression")
 class NLLRegressionEvaluator(UncertaintyEvaluator):
-    """
+    r"""
     Evaluate uncertainty values for regression datasets using the mean negative-log-likelihood
     of the targets given the probability distributions estimated by the model:
 
@@ -70,12 +70,12 @@ class NLLClassEvaluator(UncertaintyEvaluator):
     Evaluate uncertainty values for binary classification datasets using the mean negative-log-likelihood
     of the targets given the assigned probabilities from the model:
 
-        .. math::
+    .. math::
 
-            \text{NLL} = -\log(\sigma \cdot y + (1 - \sigma) \cdot (1 - y))
+        \mathrm{NLL} = -\log(\sigma \cdot y + (1 - \sigma) \cdot (1 - y))
 
-        where :math:`y` is the true binary label (0 or 1), and
-        :math:`\sigma` is the predicted probability associated with the class label `1`.
+    where :math:`y` is the true binary label (0 or 1), and
+    :math:`\sigma` is the predicted probability associated with the class label `1`.
 
     The function returns a tensor containing the mean NLL for each task.
     """
@@ -100,20 +100,19 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
     Evaluate uncertainty values for multiclass classification datasets using the mean negative-log-likelihood
     of the targets given the assigned probabilities from the model:
 
-        .. math::
+    .. math::
 
-            \text{NLL} = -\log(p_{y_i})
+        \mathrm{NLL} = -\log(p_{y_i})
 
-        where :math:`p_{y_i}` is the predicted probability for the true class :math:`y_i`,
-          calculated as:
+    where :math:`p_{y_i}` is the predicted probability for the true class :math:`y_i`, calculated as:
 
-          .. math::
+    .. math::
 
-              p_{y_i} = \sum_{k=1}^{K} \mathbb{1}(y_i = k) \cdot p_k
+        p_{y_i} = \sum_{k=1}^{K} \mathbb{1}(y_i = k) \cdot p_k
 
-          Here: math:`K` is the total number of classes,
-          :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
-          and :math:`p_k` is the predicted probability for class :math:`k`.
+    Here: :math:`K` is the total number of classes,
+    :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
+    and :math:`p_k` is the predicted probability for class :math:`k`.
 
     The function returns a tensor containing the mean NLL for each prediction.
     """
@@ -154,11 +153,6 @@ class SpearmanEvaluator(UncertaintyEvaluator):
 
     The correlation coefficient returns a value in the [-1, 1] range, with better scores closer to 1
     observed when the uncertainty values are predictive of the rank ordering of the errors in the model prediction.
-
-    References
-    ----------
-    .. [spearman1904] Spearman, C. "The Proof and Measurement of Association between Two Things."
-    Am. J. Psychology. 1904, 15 (1), 72-101.
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
