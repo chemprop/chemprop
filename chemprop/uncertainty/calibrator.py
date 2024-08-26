@@ -108,9 +108,7 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
         super().__init__()
         self.alpha = alpha
         if not 0 <= self.alpha <= 1:
-            raise ValueError(
-                f"arg `alpha` must be between 0 and 1. got: {alpha}."
-            )
+            raise ValueError(f"arg `alpha` must be between 0 and 1. got: {alpha}.")
 
     @staticmethod
     def nonconformity_scores(preds: Tensor):
@@ -212,7 +210,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
             scores_j = torch.gather(scores_j, 1, targets_j.unsqueeze(1)).squeeze(1)
             num_data = targets_j.shape[0]
             if self.alpha >= 1 / (num_data + 1):
-                q_level = (math.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+                q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
                 warnings.warn(
@@ -311,7 +309,7 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
 
             num_data = targets_j.shape[0]
             if self.alpha >= 1 / (num_data + 1):
-                q_level = (math.ceil((num_data + 1) * (1 - self.alpha)) / num_data).item()
+                q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
                 warnings.warn(
