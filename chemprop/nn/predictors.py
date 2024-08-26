@@ -276,6 +276,10 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
         self.n_classes = n_classes
 
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // (self.n_targets * self.n_classes)
+
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
         Y = Y.reshape(Y.shape[0], -1, self.n_classes)
