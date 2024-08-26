@@ -292,7 +292,9 @@ def make_prediction_for_models(
             f"pred_{i}" for i in range(preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test = pd.read_csv(args.test_path)
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
     df_test[target_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
@@ -307,7 +309,9 @@ def make_prediction_for_models(
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
 
-        df_test = pd.read_csv(args.test_path)
+        df_test = pd.read_csv(
+            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+        )
         df_test[target_columns] = individual_preds
 
         output_path = output_path.parent / Path(
