@@ -103,7 +103,7 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
 
     def __init__(self, alpha: float):
         super().__init__()
-        self.alpha = torch.tensor(alpha)
+        self.alpha = alpha
         if 0 <= self.alpha <= 1:
             raise ValueError(
                 f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
@@ -183,7 +183,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
 
     def __init__(self, alpha: float):
         super().__init__()
-        self.alpha = torch.tensor(alpha)
+        self.alpha = alpha
         self.qhats = torch.tensor([])
         if 0 <= self.alpha <= 1:
             raise ValueError(
@@ -278,7 +278,7 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
 
     def __init__(self, alpha: float):
         super().__init__()
-        self.alpha = torch.tensor(alpha)
+        self.alpha = alpha
         self.qhats = torch.tensor([])
         self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
         if 0 <= self.alpha <= 1:
