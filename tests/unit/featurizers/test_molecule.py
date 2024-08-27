@@ -10,7 +10,6 @@ from chemprop.featurizers import (
     V1RDKit2DFeaturizer,
     V1RDKit2DNormalizedFeaturizer,
 )
-from chemprop.featurizers.molecule import NO_DESCRIPTASTORUS
 
 
 @pytest.fixture
@@ -212,7 +211,6 @@ def test_rdkit_2d(mol, rdkit_2d_values):
     np.testing.assert_array_almost_equal(features, rdkit_2d_values, decimal=2)
 
 
-@pytest.mark.skipif(NO_DESCRIPTASTORUS, reason="Descriptastorus not installed")
 def test_v1_rdkit_2d(mol, v1_rdkit_2d_values):
     featurizer = V1RDKit2DFeaturizer()
     features = featurizer(mol)
@@ -220,7 +218,6 @@ def test_v1_rdkit_2d(mol, v1_rdkit_2d_values):
     np.testing.assert_array_almost_equal(features, v1_rdkit_2d_values, decimal=2)
 
 
-@pytest.mark.skipif(NO_DESCRIPTASTORUS, reason="Descriptastorus not installed")
 def test_v1_rdkit_2d_normalized(mol, v1_rdkit_2d_normalized_values):
     featurizer = V1RDKit2DNormalizedFeaturizer()
     features = featurizer(mol)
