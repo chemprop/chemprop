@@ -1,5 +1,6 @@
 import warnings
 
+from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Mol
@@ -7,12 +8,6 @@ from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.utils import ClassRegistry
-
-NO_DESCRIPTASTORUS = False
-try:
-    from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
-except ImportError:
-    NO_DESCRIPTASTORUS = True
 
 MoleculeFeaturizerRegistry = ClassRegistry[VectorFeaturizer[Mol]]()
 
@@ -76,14 +71,6 @@ class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
 
 
 class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
-    def __init__(self):
-        if NO_DESCRIPTASTORUS:
-            raise ImportError(
-                "Failed to import descriptastorus. Please install descriptastorus "
-                "(https://github.com/bp-kelley/descriptastorus) to use the RDKit 2D featurizer "
-                "from version 1."
-            )
-
     def __len__(self) -> int:
         return 200
 
@@ -97,12 +84,10 @@ class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
 @MoleculeFeaturizerRegistry("v1_rdkit_2d")
 class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
     def __init__(self):
-        super().__init__()
         self.generator = rdDescriptors.RDKit2D()
 
 
 @MoleculeFeaturizerRegistry("v1_rdkit_2d_normalized")
 class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
     def __init__(self):
-        super().__init__()
         self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
