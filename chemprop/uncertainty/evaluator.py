@@ -73,21 +73,21 @@ class SpearmanEvaluator(UncertaintyEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
-class ConformalRegressionEvaluator(UncertaintyEvaluator):
+class RegressionConformalEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
-class ConformalMulticlassEvaluator(UncertaintyEvaluator):
+class MulticlassConformalEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
-class ConformalMultilabelEvaluator(UncertaintyEvaluator):
+class MultilabelConformalEvaluator(UncertaintyEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         ...
         return
