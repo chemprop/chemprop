@@ -163,7 +163,7 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
 
 @UncertaintyCalibratorRegistry.register("conformal-multiclass")
 class MulticlassConformalCalibrator(UncertaintyCalibrator):
-    r"""Create a prediction sets of possible labels :math:`C(X_{\text{test}}) \subset \{1, \ldots, K\}` that follows:
+    r"""Create a prediction sets of possible labels :math:`C(X_{\text{test}}) \subset \{1 \mathrel{.\,.} K\}` that follows:
 
     .. math::
         1 - \alpha \leq \mathbb{P}(Y_{\text{test}} \in C(X_{\text{test}})) \leq 1 - \alpha + \frac{1}{n + 1}
@@ -186,9 +186,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
         super().__init__()
         self.alpha = alpha
         if not 0 <= self.alpha <= 1:
-            raise ValueError(
-                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
-            )
+            raise ValueError(f"arg `alpha` must be between 0 and 1. got: {alpha}.")
 
     @staticmethod
     def nonconformity_scores(preds: Tensor):
@@ -290,9 +288,7 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
         self.alpha = alpha
         self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
         if not 0 <= self.alpha <= 1:
-            raise ValueError(
-                f"The error rate (i.e., alpha) should be between 0 and 1. Got {self.alpha}."
-            )
+            raise ValueError(f"arg `alpha` must be between 0 and 1. got: {alpha}.")
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
         self.qhats = []
