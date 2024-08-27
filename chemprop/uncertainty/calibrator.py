@@ -86,12 +86,12 @@ class MultilabelConformalCalibrator(UncertaintyCalibrator):
     the set of labels is bounded by the in- and out-sets [1]_:
 
     .. math::
-        \mathbb{P}\left(
+        \Pr \left(
             \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
         \right) \geq 1 - \alpha,
 
-    where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:` \mathcal Y` and
-    :math:` \mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
+    where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:`\mathcal Y` and
+    :math:`\mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
 
     Parameters
     ----------
@@ -166,7 +166,7 @@ class MulticlassConformalCalibrator(UncertaintyCalibrator):
     r"""Create a prediction sets of possible labels :math:`C(X_{\text{test}}) \subset \{1 \mathrel{.\,.} K\}` that follows:
 
     .. math::
-        1 - \alpha \leq \mathbb{P}(Y_{\text{test}} \in C(X_{\text{test}})) \leq 1 - \alpha + \frac{1}{n + 1}
+        1 - \alpha \leq \Pr (Y_{\text{test}} \in C(X_{\text{test}})) \leq 1 - \alpha + \frac{1}{n + 1}
 
     In other words, the probability that the prediction set contains the correct label is almost exactly :math:`1-\alpha`.
     More detailes can be found in [1]_.
@@ -257,7 +257,7 @@ class RegressionConformalCalibrator(UncertaintyCalibrator):
     .. math::
         s(x, y) &= \max \left\{ \hat{t}_{\alpha/2}(x) - y, y - \hat{t}_{1-\alpha/2}(x) \right\}
 
-        \hat{q} &= \text{Quantile}(s_1, \ldots, s_n; \left\lceil \frac{(n+1)(1-\alpha)}{n} \right\rceil)
+        \hat{q} &= Q(s_1, \ldots, s_n; \left\lceil \frac{(n+1)(1-\alpha)}{n} \right\rceil)
 
         C(x) &= \left[ \hat{t}_{\alpha/2}(x) - \hat{q}, \hat{t}_{1-\alpha/2}(x) + \hat{q} \right]
 
