@@ -4,8 +4,8 @@ from typing import Generic, Iterable
 
 import numpy as np
 
-from chemprop.featurizers.base import S, Featurizer
 from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.base import Featurizer, S
 
 
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
@@ -14,7 +14,7 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
     :class:`~chemprop.data.molgraph.MolGraph`\s.
 
     .. note::
-        This class only provides a facade for a cached dataset, but it _does not guarantee_
+        This class only provides a facade for a cached dataset, but it *does not guarantee*
         whether the underlying data is truly cached.
 
 

@@ -1,4 +1,5 @@
 from os import PathLike
+
 import torch
 
 from chemprop.models.model import MPNN
@@ -11,8 +12,8 @@ def save_model(path: PathLike, model: MPNN) -> None:
 
 def load_model(path: PathLike, multicomponent: bool) -> MPNN:
     if multicomponent:
-        model = MulticomponentMPNN.load_from_file(path)
+        model = MulticomponentMPNN.load_from_file(path, map_location=torch.device("cpu"))
     else:
-        model = MPNN.load_from_file(path)
+        model = MPNN.load_from_file(path, map_location=torch.device("cpu"))
 
     return model

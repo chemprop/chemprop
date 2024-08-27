@@ -30,11 +30,12 @@ def test_train_quick(monkeypatch, data_path):
         "--reaction-columns",
         "smiles",
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--descriptors-path",
         descriptors_path,
+        "--show-individual-scores",
     ]
 
     with monkeypatch.context() as m:

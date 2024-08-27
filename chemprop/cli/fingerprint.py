@@ -2,22 +2,24 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import torch
 
 from chemprop import data
-from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.models import load_model
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.predict import find_models
+from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.models import load_model
+from chemprop.nn.loss import LossFunctionRegistry
 
 logger = logging.getLogger(__name__)
 
 
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
-    HELP = "use a pretrained chemprop model for to calculate learned representations"
+    HELP = "Use a pretrained chemprop model to calculate learned representations."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -27,20 +29,22 @@ class FingerprintSubcommand(Subcommand):
             "--test-path",
             required=True,
             type=Path,
-            help="Path to an input CSV file containing SMILES.",
+            help="Path to an input CSV file containing SMILES",
         )
         parser.add_argument(
             "-o",
             "--output",
             "--preds-path",
             type=Path,
-            help="Path to which predictions will be saved. If the file extension is .npz, they will be saved as a npz file, respectively. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_fps' appended, i.e., 'PATH/TO/TEST_PATH_fps_0.csv'.",
+            help="Specify the path where predictions will be saved. If the file extension is .npz, they will be saved as a npz file. Otherwise, the predictions will be saved as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as ``--test-path`` with '_fps' appended (e.g., 'PATH/TO/TEST_PATH_fps_0.csv').",
         )
         parser.add_argument(
+            "--model-paths",
             "--model-path",
             required=True,
             type=Path,
-            help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+            nargs="+",
+            help="Specify location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, chemprop will recursively search and predict on all found (.pt) models.",
         )
         parser.add_argument(
             "--ffn-block-index",
@@ -74,13 +78,6 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
     return args
 
 
-def find_models(model_path: Path):
-    if model_path.suffix in [".ckpt", ".pt"]:
-        return [model_path]
-    elif model_path.is_dir():
-        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
-
-
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
@@ -97,14 +94,15 @@ def make_fingerprint_for_model(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=None,
+        target_cols=[],
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
+
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(
@@ -169,8 +167,8 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_path)):
-        logger.info(f"Fingerprints with model at '{model_path}'")
+    for i, model_path in enumerate(find_models(args.model_paths)):
+        logger.info(f"Fingerprints with model {i} at '{model_path}'")
         output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
         make_fingerprint_for_model(args, model_path, multicomponent, output_path)
 

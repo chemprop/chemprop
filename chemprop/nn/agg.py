@@ -1,10 +1,10 @@
 from abc import abstractmethod
+
 import torch
 from torch import Tensor, nn
 
-from chemprop.utils import ClassRegistry
 from chemprop.nn.hparams import HasHParams
-
+from chemprop.utils import ClassRegistry
 
 __all__ = [
     "Aggregation",

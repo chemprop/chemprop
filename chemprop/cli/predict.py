@@ -2,19 +2,19 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
-import pandas as pd
+from typing import Iterator
 
 from lightning import pytorch as pl
+import numpy as np
+import pandas as pd
 import torch
 
 from chemprop import data
+from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.predictors import MulticlassClassificationFFN
-from chemprop.models import load_model
-
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,30 +42,32 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES.",
+        help="Path to an input CSV file containing SMILES",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. The index of the model will be appended to the filename's stem. By default, predictions will be saved to the same location as '--test-path' with '_preds' appended, i.e., 'PATH/TO/TEST_PATH_preds_0.csv'.",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns",
     )
     parser.add_argument(
+        "--model-paths",
         "--model-path",
         required=True,
         type=Path,
-        help="Path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt) or to a directory that contains these files. If a directory, will recursively search and predict on all found models.",
+        nargs="+",
+        help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
     )
     parser.add_argument(
         "--target-columns",
         nargs="+",
-        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+        help="Column names to save the predictions to (by default, the predictions will be saved to columns named ``pred_0``, ``pred_1``, etc.)",
     )
 
     # TODO: add uncertainty and calibration in v2.1
@@ -168,36 +170,44 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def find_models(model_path: Path):
-    if model_path.suffix in [".ckpt", ".pt"]:
-        return [model_path]
-    elif model_path.is_dir():
-        return list(model_path.rglob("*.ckpt")) + list(model_path.rglob("*.pt"))
+def find_models(model_paths: list[Path]):
+    collected_model_paths = []
+
+    for model_path in model_paths:
+        if model_path.suffix in [".ckpt", ".pt"]:
+            collected_model_paths.append(model_path)
+        elif model_path.is_dir():
+            collected_model_paths.extend(list(model_path.rglob("*.pt")))
+        else:
+            raise ArgumentError(
+                argument=None,
+                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
+            )
+
+    return collected_model_paths
 
 
-def make_prediction_for_model(
-    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
+def make_prediction_for_models(
+    args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent)
-
+    model = load_model(model_paths[0], multicomponent)
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
         if "bounded" in loss_function
     )
-
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=None,
+        target_cols=[],
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
     featurization_kwargs = dict(
-        features_generators=args.features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     test_data = build_data_from_files(
@@ -243,27 +253,33 @@ def make_prediction_for_model(
     # else:
     #     cal_loader = None
 
-    logger.info(model)
+    individual_preds = []
+    for model_path in model_paths:
+        logger.info(f"Predicting with model at '{model_path}'")
 
-    trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
-    )
+        model = load_model(model_path, multicomponent)
 
-    predss = trainer.predict(model, test_loader)
+        logger.info(model)
 
-    # TODO: add uncertainty and calibration
-    # if cal_dset is not None:
-    #     if args.task_type == "regression":
-    #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-    #     predss_cal = trainer.predict(model, cal_loader)[0]
+        trainer = pl.Trainer(
+            logger=False,
+            enable_progress_bar=True,
+            accelerator=args.accelerator,
+            devices=args.devices,
+        )
 
-    # TODO: might want to write a shared function for this as train.py might also want to do this.
-    df_test = pd.read_csv(args.test_path)
-    preds = torch.concat(predss, 0)
+        predss = trainer.predict(model, test_loader)
 
-    if isinstance(model.predictor, MulticlassClassificationFFN):
-        preds = torch.argmax(preds, dim=-1)
+        # TODO: add uncertainty and calibration
+        # if cal_dset is not None:
+        #     if args.task_type == "regression":
+        #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
+        #     predss_cal = trainer.predict(model, cal_loader)[0]
 
+        # TODO: might want to write a shared function for this as train.py might also want to do this.
+        individual_preds.append(torch.concat(predss, 0))
+
+    average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -271,16 +287,63 @@ def make_prediction_for_model(
         target_columns = args.target_columns
     else:
         target_columns = [
-            f"pred_{i}" for i in range(preds.shape[1])
+            f"pred_{i}" for i in range(average_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test[target_columns] = preds
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        target_columns = target_columns + [f"{col}_prob" for col in target_columns]
+        predicted_class_labels = average_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, average_preds
+        )
+        average_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
+        )
+
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
+    df_test[target_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
     else:
         df_test.to_csv(output_path, index=False)
     logger.info(f"Predictions saved to '{output_path}'")
+
+    if len(model_paths) > 1:
+        individual_preds = torch.concat(individual_preds, 1)
+        target_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
+        ]
+
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            predicted_class_labels = individual_preds.argmax(axis=-1)
+            formatted_probability_strings = np.apply_along_axis(
+                lambda x: ",".join(map(str, x)), 2, individual_preds
+            )
+            individual_preds = np.concatenate(
+                (predicted_class_labels, formatted_probability_strings), axis=-1
+            )
+
+        df_test = pd.read_csv(
+            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+        )
+        df_test[target_columns] = individual_preds
+
+        output_path = output_path.parent / Path(
+            str(args.output.stem) + "_individual" + str(output_path.suffix)
+        )
+        if output_path.suffix == ".pkl":
+            df_test = df_test.reset_index(drop=True)
+            df_test.to_pickle(output_path)
+        else:
+            df_test.to_csv(output_path, index=False)
+        logger.info(f"Individual predictions saved to '{output_path}'")
+        for i, model_path in enumerate(model_paths):
+            logger.info(
+                f"Results from model path {model_path} are saved under the column name ending with 'model_{i}'"
+            )
 
 
 def main(args):
@@ -296,14 +359,9 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    model_paths = find_models(args.model_path)
+    model_paths = find_models(args.model_paths)
 
-    for i, model_path in enumerate(model_paths):
-        logger.info(f"Predicting with model at '{model_path}'")
-        output_path = args.output.parent / Path(
-            str(args.output.stem) + f"_{i}" + str(args.output.suffix)
-        )
-        make_prediction_for_model(args, model_path, multicomponent, output_path)
+    make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 
 
 if __name__ == "__main__":
