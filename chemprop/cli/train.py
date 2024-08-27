@@ -450,8 +450,15 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
+
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
+
+    if args.epochs != -1 and args.epochs <= args.warmup_epochs:
+        raise ArgumentError(
+            argument=None,
+            message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
+        )
 
     return args
 
@@ -848,8 +855,12 @@ def train_model(
             save_last=True,
         )
 
-        patience = args.patience if args.patience is not None else args.epochs
-        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+        if args.epochs != -1:
+            patience = args.patience if args.patience is not None else args.epochs
+            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+            callbacks = [checkpointing, early_stopping]
+        else:
+            callbacks = [checkpointing]
 
         trainer = pl.Trainer(
             logger=trainer_logger,
@@ -857,7 +868,7 @@ def train_model(
             accelerator=args.accelerator,
             devices=args.devices,
             max_epochs=args.epochs,
-            callbacks=[checkpointing, early_stopping],
+            callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
         )
@@ -960,7 +971,15 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         namess = [names]
     if "multiclass" in args.task_type:
-        df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+        columns = columns + [f"{col}_prob" for col in target_cols]
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, preds
+        )
+        predicted_class_labels = preds.argmax(axis=-1)
+        df_preds = pd.DataFrame(
+            list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
+            columns=columns,
+        )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)

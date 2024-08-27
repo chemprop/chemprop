@@ -5,6 +5,7 @@ import sys
 from typing import Iterator
 
 from lightning import pytorch as pl
+import numpy as np
 import pandas as pd
 import torch
 
@@ -276,10 +277,7 @@ def make_prediction_for_models(
         #     predss_cal = trainer.predict(model, cal_loader)[0]
 
         # TODO: might want to write a shared function for this as train.py might also want to do this.
-        preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=-1)
-        individual_preds.append(preds)
+        individual_preds.append(torch.concat(predss, 0))
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
     if args.target_columns is not None:
@@ -289,8 +287,18 @@ def make_prediction_for_models(
         target_columns = args.target_columns
     else:
         target_columns = [
-            f"pred_{i}" for i in range(preds.shape[1])
+            f"pred_{i}" for i in range(average_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        target_columns = target_columns + [f"{col}_prob" for col in target_columns]
+        predicted_class_labels = average_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, average_preds
+        )
+        average_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
+        )
 
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
@@ -308,6 +316,15 @@ def make_prediction_for_models(
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
+
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            predicted_class_labels = individual_preds.argmax(axis=-1)
+            formatted_probability_strings = np.apply_along_axis(
+                lambda x: ",".join(map(str, x)), 2, individual_preds
+            )
+            individual_preds = np.concatenate(
+                (predicted_class_labels, formatted_probability_strings), axis=-1
+            )
 
         df_test = pd.read_csv(
             args.test_path, header=None if args.no_header_row else "infer", index_col=False
