@@ -38,8 +38,7 @@ class UncertaintyPredictor(ABC):
 
             * regression/binary classification: ``n x t x m``
 
-            * multiclass classification: ``n x t x c x m``
-            where ``n`` is the number of inputs, ``t`` is the number of tasks, ``c`` is the number of classes, and ``m`` is the number of models.
+            * multiclass classification: ``n x t x c x m``, where ``n`` is the number of inputs, ``t`` is the number of tasks, ``c`` is the number of classes, and ``m`` is the number of models.
         uncs : Tensor
             the predicted uncertainties, with shapes of ``n x t`` for regression
             or binary classification, and ``n x t x c`` for multiclass classification.
