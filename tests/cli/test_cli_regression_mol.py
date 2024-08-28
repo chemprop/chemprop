@@ -377,6 +377,33 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     )
 
 
+def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--checkpoint",
+        model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
+
+    model = MPNN.load_from_checkpoint(checkpoint_path)
+    assert model is not None
+
+
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
 def test_optuna_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
