@@ -1,5 +1,6 @@
 from abc import abstractmethod
 
+import torch
 from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
@@ -74,20 +75,76 @@ class SpearmanEvaluator(UncertaintyEvaluator):
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
 class RegressionConformalEvaluator(UncertaintyEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for regression dataset.
+
+    .. math::
+        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+
+    where the :math:`C(X_{\text{test}}))` is the predicted interval.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
+        coverages = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
+            interval_j = uncs[:, j][mask_j]
+            bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
+            interval_bounds = bounds * interval_j.unsqueeze(0)
+            pred_bounds = preds_j.unsqueeze(0) + interval_bounds
+            task_results = torch.logical_and(
+                pred_bounds[0, :] <= targets_j, targets_j <= pred_bounds[1, :]
+            )
+            coverages.append(task_results.sum() / task_results.shape[0])
+        return torch.stack(coverages)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
 class MulticlassConformalEvaluator(UncertaintyEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for multiclass classification dataset.
+
+    .. math::
+        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+
+    where the :math:`C(X_{\text{test}})) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
+        coverages = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            task_results = torch.gather(uncs_j, 1, targets_j.unsqueeze(1)).squeeze(1)
+            coverages.append(task_results.sum() / len(task_results))
+        return torch.stack(coverages)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
 class MultilabelConformalEvaluator(UncertaintyEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for binary classification dataset with multiple labels.
+
+    .. math::
+        \Pr \left(
+            \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
+        \right)
+
+    where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:`\mathcal Y` and
+    :math:`\mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
+        coverages = []
+        num_tasks = targets.shape[1]
+        for j in range(num_tasks):
+            mask_j = mask[:, j]
+            targets_j = targets[:, j][mask_j]
+            uncs_in_j = uncs[:, j][mask_j]
+            uncs_out_j = uncs[:, j + num_tasks][mask_j]
+            task_results = torch.logical_and(uncs_in_j <= targets_j, targets_j <= uncs_out_j)
+            coverages.append(task_results.sum() / task_results.shape[0])
+        return torch.stack(coverages)
