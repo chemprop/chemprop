@@ -85,20 +85,12 @@ class RegressionConformalEvaluator(UncertaintyEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        coverages = []
-        for j in range(uncs.shape[1]):
-            mask_j = mask[:, j]
-            preds_j = preds[:, j][mask_j]
-            targets_j = targets[:, j][mask_j]
-            interval_j = uncs[:, j][mask_j]
-            bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
-            interval_bounds = bounds * interval_j.unsqueeze(0)
-            pred_bounds = preds_j.unsqueeze(0) + interval_bounds
-            task_results = torch.logical_and(
-                pred_bounds[0, :] <= targets_j, targets_j <= pred_bounds[1, :]
-            )
-            coverages.append(task_results.sum() / task_results.shape[0])
-        return torch.stack(coverages)
+         bounds = torch.tensor([-1 / 2, 1 / 2], device=mask.device)
+         interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
+         lower, upper = preds.unsqueeze(0) + interval
+         covered_mask = torch.logical_and(lower <= targets, targets <= upper)
+         
+         return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
