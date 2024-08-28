@@ -52,14 +52,11 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
         nlls = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j]
-            targets_j = targets[:, j]
-            uncs_j = uncs[:, j]
-            masked_preds = preds_j[mask_j]
-            masked_targets = targets_j[mask_j]
-            masked_uncs = uncs_j[mask_j]
-            errors = masked_preds - masked_targets
-            nll = (2 * torch.pi * masked_uncs).log() / 2 + errors**2 / (2 * masked_uncs)
+            preds_j = preds[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            errors = preds_j - targets_j
+            nll = (2 * torch.pi * uncs_j).log() / 2 + errors**2 / (2 * uncs_j)
             nlls.append(nll.mean(dim=0))
         return torch.stack(nlls)
 
@@ -72,10 +69,10 @@ class NLLClassEvaluator(UncertaintyEvaluator):
 
     .. math::
 
-        \mathrm{NLL} = -\log(\sigma \cdot y + (1 - \sigma) \cdot (1 - y))
+        \mathrm{NLL} = -\log(\hat{y} \cdot y + (1 - \hat{y}) \cdot (1 - y))
 
     where :math:`y` is the true binary label (0 or 1), and
-    :math:`\sigma` is the predicted probability associated with the class label `1`.
+    :math:`\hat{y}` is the predicted probability associated with the class label `1`.
 
     The function returns a tensor containing the mean NLL for each task.
     """
@@ -84,11 +81,9 @@ class NLLClassEvaluator(UncertaintyEvaluator):
         nlls = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            targets_j = targets[:, j]
-            uncs_j = uncs[:, j]
-            masked_targets = targets_j[mask_j]
-            masked_uncs = uncs_j[mask_j]
-            likelihood = masked_uncs * masked_targets + (1 - masked_uncs) * (1 - masked_targets)
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            likelihood = uncs_j * targets_j + (1 - uncs_j) * (1 - targets_j)
             nll = -1 * likelihood.log()
             nlls.append(nll.mean(dim=0))
         return torch.stack(nlls)
@@ -114,19 +109,17 @@ class NLLMultiEvaluator(UncertaintyEvaluator):
     :math:`\mathbb{1}(y_i = k)` is the indicator function that is 1 when the true class :math:`y_i` equals class :math:`k`, and 0 otherwise,
     and :math:`p_k` is the predicted probability for class :math:`k`.
 
-    The function returns a tensor containing the mean NLL for each prediction.
+    The function returns a tensor containing the mean NLL for each task.
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         nlls = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            targets_j = targets[:, j]
-            uncs_j = uncs[:, j]
-            masked_targets = targets_j[mask_j]
-            masked_uncs = uncs_j[mask_j]
-            targets_one_hot = torch.eye(masked_uncs.shape[-1])[masked_targets.long()]
-            likelihood = (targets_one_hot * masked_uncs).sum(dim=-1)
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            targets_one_hot = torch.eye(uncs_j.shape[-1])[targets_j.long()]
+            likelihood = (targets_one_hot * uncs_j).sum(dim=-1)
             nll = -1 * likelihood.log()
             nlls.append(nll.mean(dim=0))
         return torch.stack(nlls)
@@ -159,15 +152,12 @@ class SpearmanEvaluator(UncertaintyEvaluator):
         spearman_coeffs = []
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j]
-            targets_j = targets[:, j]
-            uncs_j = uncs[:, j]
-            masked_preds = preds_j[mask_j]
-            masked_targets = targets_j[mask_j]
-            masked_uncs = uncs_j[mask_j]
-            masked_errs = (masked_preds - masked_targets).abs()
+            preds_j = preds[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            errs_j = (preds_j - targets_j).abs()
             spearman = SpearmanCorrCoef()
-            spearman_coeff = spearman(masked_uncs, masked_errs)
+            spearman_coeff = spearman(uncs_j, errs_j)
             spearman_coeffs.append(spearman_coeff)
         return torch.stack(spearman_coeffs)
 

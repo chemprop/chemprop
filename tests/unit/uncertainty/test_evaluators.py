@@ -13,14 +13,14 @@ from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; Confo
     "preds,uncs,targets,mask,likelihood",
     [
         (
-            torch.tensor([[0.8]]),
+            None,
             torch.tensor([[0.8]]),
             torch.ones([1, 1]),
             torch.ones([1, 1], dtype=bool),
             torch.tensor([0.8]),
         ),
         (
-            torch.tensor([[0.8]]),
+            None,
             torch.tensor([[0.8]]),
             torch.zeros([1, 1]),
             torch.ones([1, 1], dtype=bool),
@@ -42,15 +42,7 @@ def test_NLLClassEvaluator(preds, uncs, targets, mask, likelihood):
     "preds,uncs,targets,mask,likelihood",
     [
         (
-            torch.tensor(
-                [
-                    [[0.29, 0.22, 0.49]],
-                    [[0.35, 0.19, 0.46]],
-                    [[0.55, 0.38, 0.07]],
-                    [[0.15, 0.29, 0.56]],
-                    [[0.08, 0.68, 0.24]],
-                ]
-            ),
+            None,
             torch.tensor(
                 [
                     [[0.29, 0.22, 0.49]],
@@ -65,14 +57,7 @@ def test_NLLClassEvaluator(preds, uncs, targets, mask, likelihood):
             torch.tensor([0.24875443]),
         ),
         (
-            torch.tensor(
-                [
-                    [[8.7385e-01, 8.3770e-04, 3.3212e-02, 9.2103e-02]],
-                    [[7.2274e-03, 1.0541e-01, 8.8703e-01, 3.2886e-04]],
-                    [[1.7376e-03, 9.9478e-01, 1.4227e-03, 2.0596e-03]],
-                    [[2.6487e-04, 1.3251e-03, 2.4325e-02, 9.7409e-01]],
-                ]
-            ),
+            None,
             torch.tensor(
                 [
                     [[8.7385e-01, 8.3770e-04, 3.3212e-02, 9.2103e-02]],
