@@ -10,7 +10,12 @@ import pandas as pd
 import torch
 
 from chemprop import data
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.common import (
+    add_common_args,
+    find_models,
+    process_common_args,
+    validate_common_args,
+)
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
@@ -168,23 +173,6 @@ def process_predict_args(args: Namespace) -> Namespace:
             argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}"
         )
     return args
-
-
-def find_models(model_paths: list[Path]):
-    collected_model_paths = []
-
-    for model_path in model_paths:
-        if model_path.suffix in [".ckpt", ".pt"]:
-            collected_model_paths.append(model_path)
-        elif model_path.is_dir():
-            collected_model_paths.extend(list(model_path.rglob("*.pt")))
-        else:
-            raise ArgumentError(
-                argument=None,
-                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
-            )
-
-    return collected_model_paths
 
 
 def make_prediction_for_models(
