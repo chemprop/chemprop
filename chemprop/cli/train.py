@@ -14,7 +14,12 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.common import (
+    add_common_args,
+    find_models,
+    process_common_args,
+    validate_common_args,
+)
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import (
     LookupAction,
@@ -105,6 +110,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     # )
 
     transfer_args = parser.add_argument_group("transfer learning args")
+    transfer_args.add_argument(
+        "--checkpoint",
+        type=Path,
+        nargs="+",
+        help="Location of checkpoint(s) or model file(s) to be loaded for overwriting weights. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
+    )
     transfer_args.add_argument(
         "--model-frzn",
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights. By default, all MPNN weights are frozen with this option.",
@@ -460,6 +471,12 @@ def process_train_args(args: Namespace) -> Namespace:
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
         )
 
+    if args.checkpoint is not None and args.model_frzn is not None:
+        raise ArgumentError(
+            argument=None,
+            message="`--checkpoint` and `--model-frzn` cannot be used at the same time.",
+        )
+
     return args
 
 
@@ -790,19 +807,6 @@ def build_model(
             f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
 
-    if args.model_frzn is not None:
-        model = mpnn_cls.load_from_file(args.model_frzn)
-        model.message_passing.apply(lambda module: module.requires_grad_(False))
-        model.message_passing.apply(
-            lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
-        )
-        model.bn.apply(lambda module: module.requires_grad_(False))
-        for idx in range(args.frzn_ffn_layers):
-            model.predictor.ffn[idx].requires_grad_(False)
-            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
-
-        return model
-
     return mpnn_cls(
         mp_block,
         agg,
@@ -820,6 +824,14 @@ def build_model(
 def train_model(
     args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
 ):
+    if args.checkpoint is not None:
+        model_paths = find_models(args.checkpoint)
+        if args.ensemble_size != len(model_paths):
+            logger.warning(
+                f"The number of models in ensemble for each splitting of data is set to {len(model_paths)}."
+            )
+            args.ensemble_size = len(model_paths)
+
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -833,7 +845,32 @@ def train_model(
 
         torch.manual_seed(seed)
 
-        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+        if args.checkpoint or args.model_frzn is not None:
+            mpnn_cls = (
+                MulticomponentMPNN
+                if isinstance(train_loader.dataset, MulticomponentDataset)
+                else MPNN
+            )
+            model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
+            model = mpnn_cls.load_from_file(model_path)
+
+            if args.checkpoint:
+                model.message_passing.apply(
+                    lambda m: setattr(m, "p", args.dropout)
+                    if isinstance(m, torch.nn.Dropout)
+                    else None
+                )
+            else:
+                model.message_passing.apply(lambda module: module.requires_grad_(False))
+                model.message_passing.apply(
+                    lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
+                )
+                model.bn.apply(lambda module: module.requires_grad_(False))
+                for idx in range(args.frzn_ffn_layers):
+                    model.predictor.ffn[idx].requires_grad_(False)
+                    setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+        else:
+            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
