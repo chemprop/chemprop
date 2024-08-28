@@ -85,12 +85,12 @@ class RegressionConformalEvaluator(UncertaintyEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-         bounds = torch.tensor([-1 / 2, 1 / 2], device=mask.device)
-         interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
-         lower, upper = preds.unsqueeze(0) + interval
-         covered_mask = torch.logical_and(lower <= targets, targets <= upper)
-         
-         return (covered_mask & mask).sum(0) / mask.sum(0)
+        bounds = torch.tensor([-1 / 2, 1 / 2], device=mask.device)
+        interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
+        lower, upper = preds.unsqueeze(0) + interval
+        covered_mask = torch.logical_and(lower <= targets, targets <= upper)
+
+        return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
@@ -105,14 +105,9 @@ class MulticlassConformalEvaluator(UncertaintyEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        coverages = []
-        for j in range(uncs.shape[1]):
-            mask_j = mask[:, j]
-            targets_j = targets[:, j][mask_j]
-            uncs_j = uncs[:, j][mask_j]
-            task_results = torch.gather(uncs_j, 1, targets_j.unsqueeze(1)).squeeze(1)
-            coverages.append(task_results.sum() / len(task_results))
-        return torch.stack(coverages)
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=uncs.shape[2])
+        covered_mask = torch.max(uncs * targets_one_hot, dim=-1)[0] > 0
+        return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
@@ -130,13 +125,6 @@ class MultilabelConformalEvaluator(UncertaintyEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        coverages = []
-        num_tasks = targets.shape[1]
-        for j in range(num_tasks):
-            mask_j = mask[:, j]
-            targets_j = targets[:, j][mask_j]
-            uncs_in_j = uncs[:, j][mask_j]
-            uncs_out_j = uncs[:, j + num_tasks][mask_j]
-            task_results = torch.logical_and(uncs_in_j <= targets_j, targets_j <= uncs_out_j)
-            coverages.append(task_results.sum() / task_results.shape[0])
-        return torch.stack(coverages)
+        in_set, out_set = torch.chunk(uncs, 2, 1)
+        covered_mask = torch.logical_and(in_set <= targets, targets <= out_set)
+        return (covered_mask & mask).sum(0) / mask.sum(0)
