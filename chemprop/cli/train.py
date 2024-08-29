@@ -865,7 +865,7 @@ def train_model(
             model = mpnn_cls.load_from_file(model_path)
 
             if args.checkpoint:
-                model.message_passing.apply(
+                model.apply(
                     lambda m: setattr(m, "p", args.dropout)
                     if isinstance(m, torch.nn.Dropout)
                     else None
