@@ -165,13 +165,11 @@ Advanced Training Methods
 Pretraining and Transfer Learning
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
+An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using :code:`--checkpoint <path>`. :code:`<model_path>`` is the location of checkpoint(s) or model file(s). It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s).
 
-..  * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
-..  * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
-.. when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
+When training the new model, its architecture resemble that of the old model. Depending on the quality of the old model, the new model might only require a few epochs to train.
 
-It is possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--model-frzn <path>`, where :code:`<path>` points to the checkpoint file location. After loading the model, the MPNN weights are automatically frozen. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
+It is also possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--checkpoint <path>`. After loading the model, the MPNN weights can be frozen via :code:`--freeze-encoder`. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
 .. _train-on-reactions:
 
