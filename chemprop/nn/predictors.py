@@ -281,7 +281,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         return self.output_dim // (self.n_targets * self.n_classes)
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.train_step(Z).softmax(-2)
+        return self.train_step(Z).softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
