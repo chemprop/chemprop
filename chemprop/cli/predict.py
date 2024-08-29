@@ -280,9 +280,7 @@ def make_prediction_for_models(
         individual_preds.append(torch.concat(predss, 0))
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
-    if isinstance(model.predictor, MulticlassClassificationFFN):
-        average_preds = torch.argmax(average_preds, dim=2)
-    elif isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
         average_preds = average_preds[..., 0]
     if args.target_columns is not None:
         assert (
@@ -317,8 +315,7 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            individual_preds = torch.argmax(individual_preds, dim=2)
+
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
