@@ -230,7 +230,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
-        alpha, beta = torch.chunk(Y, 2, 1)
+        alpha, beta = torch.unbind(Y, dim=-1)
 
         return beta / (alpha + beta)
 
