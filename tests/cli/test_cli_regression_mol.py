@@ -354,9 +354,9 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
-        "--model-frzn",
+        "--checkpoint",
         model_path,
-        "--frzn-ffn-layers",
+        "--freeze-encoder" "--frzn-ffn-layers",
         "1",
     ]
 

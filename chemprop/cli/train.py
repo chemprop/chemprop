@@ -117,6 +117,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Location of checkpoint(s) or model file(s) to be loaded for overwriting weights. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
     )
     transfer_args.add_argument(
+        "--freeze-encoder", action="store_true", help="Whether to freeze the MPNN weights."
+    )
+    transfer_args.add_argument(
         "--model-frzn",
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights. By default, all MPNN weights are frozen with this option.",
     )
@@ -124,7 +127,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``model-frzn``).",
+        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``checkpoint`` with `freeze-encoder`).",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -471,10 +474,17 @@ def process_train_args(args: Namespace) -> Namespace:
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
         )
 
+    # TODO: model_frzn is deprecated and then remove in v2.2
     if args.checkpoint is not None and args.model_frzn is not None:
         raise ArgumentError(
             argument=None,
             message="`--checkpoint` and `--model-frzn` cannot be used at the same time.",
+        )
+
+    if "--model-frzn" in sys.argv:
+        logger.warning(
+            "`--model-frzn` is deprecated and will be removed in v2.2. "
+            "Please use `--checkpoint` with `--freeze-encoder` instead."
         )
 
     return args
@@ -860,7 +870,9 @@ def train_model(
                     if isinstance(m, torch.nn.Dropout)
                     else None
                 )
-            else:
+
+            # TODO: model_frzn is deprecated and then remove in v2.2
+            if args.model_frzn or args.freeze_encoder:
                 model.message_passing.apply(lambda module: module.requires_grad_(False))
                 model.message_passing.apply(
                     lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
