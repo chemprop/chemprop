@@ -170,10 +170,6 @@ class MveFFN(RegressionFFN):
     n_targets = 2
     _T_default_criterion = MVELoss
 
-    def __init__(self):
-        super().__init__()
-        self.ffn.append(nn.Unflatten(-1, (self.n_tasks, self.n_targets)))
-
     def forward(self, Z: Tensor) -> Tensor:
         Y = self.ffn(Z)
         mean, var = torch.chunk(Y, self.n_targets, 1)
@@ -191,10 +187,6 @@ class MveFFN(RegressionFFN):
 class EvidentialFFN(RegressionFFN):
     n_targets = 4
     _T_default_criterion = EvidentialLoss
-
-    def __init__(self):
-        super().__init__()
-        self.ffn.append(nn.Unflatten(-1, (self.n_tasks, self.n_targets)))
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = self.ffn(Z)
