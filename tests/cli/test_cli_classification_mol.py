@@ -199,3 +199,25 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
+
+
+def test_class_balance(monkeypatch, data_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--task-type",
+        "classification",
+        "--class-balance",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()

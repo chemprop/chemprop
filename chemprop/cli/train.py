@@ -375,12 +375,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=float,
         help="Passed directly to the lightning trainer which controls grad clipping (see the ``Trainer()`` docstring for details)",
     )
-    # TODO: Add in v2.1
-    # train_args.add_argument(
-    #     "--class-balance",
-    #     action="store_true",
-    #     help="Trains with an equal number of positives and negatives in each batch.",
-    # )
+    train_args.add_argument(
+        "--class-balance",
+        action="store_true",
+        help="Trains with an equal number of positives and negatives in each batch.",
+    )
 
     split_args = parser.add_argument_group("split args")
     split_args.add_argument(
@@ -458,6 +457,12 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None,
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
+        )
+
+    if args.class_balance and args.task_type != "classification":
+        raise ArgumentError(
+            argument=None,
+            message="Class balance can only be applied if the dataset type is classification.",
         )
 
     return args
@@ -1031,8 +1036,16 @@ def main(args):
             val_dset.cache = True
 
         train_loader = build_dataloader(
-            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+            train_dset,
+            args.batch_size,
+            args.num_workers,
+            class_balance=args.class_balance,
+            seed=args.data_seed,
         )
+        if args.class_balance:
+            logger.debug(
+                f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
+            )
         val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = build_dataloader(
