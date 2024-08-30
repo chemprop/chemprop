@@ -8,7 +8,6 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
-from chemprop.nn.predictors import MulticlassClassificationFFN
 from chemprop.utils.registry import ClassRegistry
 
 logger = logging.getLogger(__name__)
@@ -41,8 +40,6 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             logger.info(model)
             predss = trainer.predict(model, dataloader)
             preds = torch.concat(predss, 0)
-            if isinstance(model.predictor, MulticlassClassificationFFN):
-                preds = torch.argmax(preds, dim=-1)
             individual_preds.append(preds)
         individual_preds = torch.stack(individual_preds, dim=0).float()
 

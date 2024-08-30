@@ -326,8 +326,6 @@ def make_prediction_for_models(
     logger.info(f"Predictions saved to '{output_path}'")
 
     if len(model_paths) > 1:
-        m, n, t = test_individual_preds.shape
-        test_individual_preds = test_individual_preds.permute(1, 0, 2).reshape(n, m * t)
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
@@ -335,12 +333,14 @@ def make_prediction_for_models(
         if isinstance(model.predictor, MulticlassClassificationFFN):
             predicted_class_labels = test_individual_preds.argmax(axis=-1)
             formatted_probability_strings = np.apply_along_axis(
-                lambda x: ",".join(map(str, x)), 2, test_individual_preds
+                lambda x: ",".join(map(str, x)), 3, test_individual_preds
             )
             test_individual_preds = np.concatenate(
                 (predicted_class_labels, formatted_probability_strings), axis=-1
             )
 
+        m, n, t = test_individual_preds.shape
+        test_individual_preds = test_individual_preds.transpose(1, 0, 2).reshape(n, m * t)
         df_test = pd.read_csv(
             args.test_path, header=None if args.no_header_row else "infer", index_col=False
         )
