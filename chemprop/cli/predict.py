@@ -340,7 +340,7 @@ def make_prediction_for_models(
             )
 
         m, n, t = test_individual_preds.shape
-        test_individual_preds = test_individual_preds.transpose(1, 0, 2).reshape(n, m * t)
+        test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
         df_test = pd.read_csv(
             args.test_path, header=None if args.no_header_row else "infer", index_col=False
         )
