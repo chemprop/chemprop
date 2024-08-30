@@ -1,12 +1,17 @@
 from abc import abstractmethod
+import logging
 from typing import Iterable
 
 from lightning import pytorch as pl
+import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
+from chemprop.nn.predictors import MulticlassClassificationFFN
 from chemprop.utils.registry import ClassRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class UncertaintyPredictor:
@@ -26,13 +31,22 @@ class UncertaintyPredictor:
 UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
 
 
-@UncertaintyPredictorRegistry.register(None)
+@UncertaintyPredictorRegistry.register("none")
 class NoUncertaintyPredictor(UncertaintyPredictor):
     def _calc_prediction_uncertainty(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        ...
-        return
+        individual_preds = []
+        for model in models:
+            logger.info(model)
+            predss = trainer.predict(model, dataloader)
+            preds = torch.concat(predss, 0)
+            if isinstance(model.predictor, MulticlassClassificationFFN):
+                preds = torch.argmax(preds, dim=-1)
+            individual_preds.append(preds)
+        individual_preds = torch.stack(individual_preds, dim=0).float()
+
+        return individual_preds, None
 
 
 @UncertaintyPredictorRegistry.register("mve")
