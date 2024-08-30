@@ -5,15 +5,22 @@ import sys
 from typing import Iterator
 
 from lightning import pytorch as pl
+import numpy as np
 import pandas as pd
 import torch
 
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import RegressionFFN
+from chemprop.uncertainty import (
+    UncertaintyCalibratorRegistry,
+    UncertaintyEvaluatorRegistry,
+    UncertaintyPredictorRegistry,
+)
+from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -69,88 +76,83 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
     )
 
-    # TODO: add uncertainty and calibration in v2.1
-    # unc_args = parser.add_argument_group("Uncertainty and calibration args")
-    # unc_args.add_argument("--cal-path")
-    # unc_args.add_argument("--cal-features-path")
-    # unc_args.add_argument("--cal-atom-features-path")
-    # unc_args.add_argument("--cal-bond-features-path")
-    # unc_args.add_argument("--cal-atom-descriptors-path")
+    unc_args = parser.add_argument_group("Uncertainty and calibration args")
+    unc_args.add_argument(
+        "--cal-path", type=Path, help="Path to data file to be used for uncertainty calibration."
+    )
+    unc_args.add_argument(
+        "--uncertainty-method",
+        default="none",
+        action=LookupAction(UncertaintyPredictorRegistry),
+        help="The method of calculating uncertainty.",
+    )
+    unc_args.add_argument(
+        "--calibration-method",
+        action=LookupAction(UncertaintyCalibratorRegistry),
+        help="The method used for calibrating the uncertainty calculated with uncertainty method.",
+    )
+    unc_args.add_argument(
+        "--evaluation-methods",
+        "--evaluation-method",
+        nargs="+",
+        action=LookupAction(UncertaintyEvaluatorRegistry),
+        help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
+    )
     # unc_args.add_argument(
-    #     "--ensemble-variance",
-    #     type=None,
-    #     help="Deprecated. Whether to calculate the variance of ensembles as a measure of epistemic uncertainty. If True, the variance is saved as an additional column for each target in the preds_path.",
+    #     "--evaluation-scores-path", help="Location to save the results of uncertainty evaluations."
     # )
-    # unc_args.add_argument(
-    #     "--individual-ensemble-predictions",
-    #     type=bool,
-    #     action="store_true",
-    #     help="Whether to return the predictions made by each of the individual models rather than the average of the ensemble.",
-    # )
-    # unc_args.add_argument(
-    #     "--uncertainty-method",
-    #     #action=RegistryAction(TODO: make register for uncertainty methods)
-    #     help="The method of calculating uncertainty.",
-    # )
-    # unc_args.add_argument(
-    #     "--calibration-method",
-    #     #action=RegistryAction(TODO: make register for calibration methods)
-    #     help="Methods used for calibrating the uncertainty calculated with uncertainty method.",
-    # )
-    # unc_args.add_argument(
-    #     "--evaluation-method",
-    #     #action=RegistryAction(TODO: make register for evaluation methods)
-    #     type=list[str],
-    #     help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
-    # )
-    # unc_args.add_argument(
-    #     "--evaluation-scores-path",
-    #     help="Location to save the results of uncertainty evaluations.",
-    # )
-    # unc_args.add_argument(
-    #     "--uncertainty-dropout-p",
-    #     type=float,
-    #     default=0.1,
-    #     help="The probability to use for Monte Carlo dropout uncertainty estimation.",
-    # )
-    # unc_args.add_argument(
-    #     "--dropout-sampling-size",
-    #     type=int,
-    #     default=10,
-    #     help="The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training.",
-    # )
-    # unc_args.add_argument(
-    #     "--calibration-interval-percentile",
-    #     type=float,
-    #     default=95,
-    #     help="Sets the percentile used in the calibration methods. Must be in the range (1,100).",
-    # )
-    # unc_args.add_argument(
-    #     "--regression-calibrator-metric",
-    #     choices=['stdev', 'interval'],
-    #     help="Regression calibrators can output either a stdev or an inverval.",
-    # )
-    # unc_args.add_argument(
-    #     "--calibrationipath",
-    #     help="Path to data file to be used for uncertainty calibration.",
-    # )
-    # unc_args.add_argument(
-    #     "--calibration-features-path",
-    #     type=list[str],
-    #     help="Path to features data to be used with the uncertainty calibration dataset.",
-    # )
+    unc_args.add_argument(
+        "--uncertainty-dropout-p",
+        type=float,
+        default=0.1,
+        help="The probability to use for Monte Carlo dropout uncertainty estimation.",
+    )
+    unc_args.add_argument(
+        "--dropout-sampling-size",
+        type=int,
+        default=10,
+        help="The number of samples to use for Monte Carlo dropout uncertainty estimation. Distinct from the dropout used during training.",
+    )
+    unc_args.add_argument(
+        "--calibration-interval-percentile",
+        type=float,
+        default=95,
+        help="Sets the percentile used in the calibration methods. Must be in the range (1, 100).",
+    )
+    unc_args.add_argument(
+        "--regression-calibrator-metric",
+        choices=["stdev", "interval"],
+        help="Regression calibrators can output either a stdev or an inverval.",
+    )
+    unc_args.add_argument(
+        "--cal-descriptors-path",
+        nargs="+",
+        action="append",
+        help="Path to extra descriptors to concatenate to learned representation in calibration dataset.",
+    )
+    # TODO: Add in v2.1
     # unc_args.add_argument(
     #     "--calibration-phase-features-path",
     #     help=" ",
     # )
-    # unc_args.add_argument(
-    #     "--calibration-atom-descriptors-path",
-    #     help="Path to the extra atom descriptors.",
-    # )
-    # unc_args.add_argument(
-    #     "--calibration-bond-descriptors-path",
-    #     help="Path to the extra bond descriptors that will be used as bond features to featurize a given molecule.",
-    # )
+    unc_args.add_argument(
+        "--cal-atom-features-path",
+        nargs="+",
+        action="append",
+        help="Path to the extra atom features in calibration dataset.",
+    )
+    unc_args.add_argument(
+        "--cal-atom-descriptors-path",
+        nargs="+",
+        action="append",
+        help="Path to the extra atom descriptors in calibration dataset.",
+    )
+    unc_args.add_argument(
+        "--cal-bond-features-path",
+        nargs="+",
+        action="append",
+        help="Path to the extra bond descriptors in calibration dataset.",
+    )
 
     return parser
 
@@ -228,60 +230,68 @@ def make_prediction_for_models(
     else:
         test_dset = test_dsets[0]
 
-    # TODO: add uncertainty and calibration
-    # if args.cal_path is not None:
-    #     cal_data = build_data_from_files(
-    #         args.cal_path,
-    #         **format_kwargs,
-    #         target_columns=args.target_columns,
-    #         p_features=args.cal_features_path,
-    #         p_atom_feats=args.cal_atom_features_path,
-    #         p_bond_feats=args.cal_bond_features_path,
-    #         p_atom_descs=args.cal_atom_descriptors_path,
-    #         **featurization_kwargs,
-    #     )
-    #     logger.info(f"calibration size: {len(cal_data)}")
-    # else:
-    #     cal_data = None
-
     test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
-    # TODO: add uncertainty and calibration
-    # if cal_data is not None:
-    #     cal_dset = make_dataset(cal_data, bond_messages, args.rxn_mode)
-    #     cal_loader = data.build_dataloader(cal_dset, args.batch_size, args.num_workers, shuffle=False)
-    # else:
-    #     cal_loader = None
 
-    individual_preds = []
-    for model_path in model_paths:
-        logger.info(f"Predicting with model at '{model_path}'")
-
-        model = load_model(model_path, multicomponent)
-
-        logger.info(model)
-
-        trainer = pl.Trainer(
-            logger=False,
-            enable_progress_bar=True,
-            accelerator=args.accelerator,
-            devices=args.devices,
+    if args.cal_path is not None:
+        cal_data = build_data_from_files(
+            args.cal_path,
+            **format_kwargs,
+            p_descriptors=args.cal_descriptors_path,
+            p_atom_feats=args.cal_atom_features_path,
+            p_bond_feats=args.cal_bond_features_path,
+            p_atom_descs=args.cal_atom_descriptors_path,
+            **featurization_kwargs,
         )
+        logger.info(f"calibration size: {len(cal_data)}")
+        cal_dsets = [
+            make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in cal_data
+        ]
+        if multicomponent:
+            cal_dset = data.MulticomponentDataset(cal_dsets)
+        else:
+            cal_dset = test_dsets[0]
+        cal_loader = data.build_dataloader(
+            cal_dset, args.batch_size, args.num_workers, shuffle=False
+        )
+    else:
+        cal_loader = None
 
-        predss = trainer.predict(model, test_loader)
+    uncertinaty_predictor = Factory.build(UncertaintyPredictorRegistry[args.uncertainty_method])
 
-        # TODO: add uncertainty and calibration
-        # if cal_dset is not None:
-        #     if args.task_type == "regression":
-        #         model.loc, model.scale = float(scaler.mean_), float(scaler.scale_)
-        #     predss_cal = trainer.predict(model, cal_loader)[0]
+    models = [load_model(model_path, multicomponent) for model_path in model_paths]
 
-        # TODO: might want to write a shared function for this as train.py might also want to do this.
-        preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=-1)
-        individual_preds.append(preds)
+    trainer = pl.Trainer(
+        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+    )
 
-    average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+    test_individual_preds, test_uncs = uncertinaty_predictor(test_loader, models, trainer)
+    test_preds = torch.mean(test_individual_preds, dim=0)
+
+    if args.calibration_method is not None:
+        uncertinaty_calibrator = Factory.build(
+            UncertaintyCalibratorRegistry[args.calibration_method]
+        )
+        cal_targets = torch.from_numpy(cal_dset.Y)
+        cal_mask = torch.from_numpy(np.isfinite(cal_targets))
+        cal_individual_preds, cal_uncs = uncertinaty_predictor(cal_loader, models, trainer)
+        cal_preds = torch.mean(cal_individual_preds, dim=0)
+        if isinstance(model, RegressionFFN):
+            uncertinaty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+        else:
+            uncertinaty_calibrator.fit(None, cal_preds, cal_targets, cal_mask)
+        test_uncs = uncertinaty_calibrator.apply(test_uncs)
+
+    if args.evaluation_methods is not None:
+        uncertinaty_evaluators = [
+            Factory.build(UncertaintyEvaluatorRegistry[method])
+            for method in args.evaluation_methods
+        ]
+        for evaluator in uncertinaty_evaluators:
+            test_targets = torch.from_numpy(test_dset.Y)
+            test_mask = torch.from_numpy(np.isfinite(test_targets))
+            metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
+            logger.info(f"Uncertainty evaluation metric: '{evaluator.alias}', metric value: {metric_value}")
+
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -289,11 +299,11 @@ def make_prediction_for_models(
         target_columns = args.target_columns
     else:
         target_columns = [
-            f"pred_{i}" for i in range(preds.shape[1])
+            f"pred_{i}" for i in range(test_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     df_test = pd.read_csv(args.test_path)
-    df_test[target_columns] = average_preds
+    df_test[target_columns] = test_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -302,13 +312,14 @@ def make_prediction_for_models(
     logger.info(f"Predictions saved to '{output_path}'")
 
     if len(model_paths) > 1:
-        individual_preds = torch.concat(individual_preds, 1)
+        m, n, t = test_individual_preds.shape
+        test_individual_preds = test_individual_preds.permute(1, 0, 2).reshape(n, m * t)
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
 
         df_test = pd.read_csv(args.test_path)
-        df_test[target_columns] = individual_preds
+        df_test[target_columns] = test_individual_preds
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)
