@@ -14,7 +14,7 @@ from chemprop.cli.common import add_common_args, process_common_args, validate_c
 from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import RegressionFFN
+from chemprop.nn.predictors import MulticlassClassificationFFN, RegressionFFN
 from chemprop.uncertainty import (
     UncertaintyCalibratorRegistry,
     UncertaintyEvaluatorRegistry,
@@ -48,19 +48,19 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES.",
+        help="Path to an input CSV file containing SMILES",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns",
     )
     parser.add_argument(
         "--model-paths",
@@ -73,7 +73,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--target-columns",
         nargs="+",
-        help="Column names to save the predictions to. If not provided, the predictions will be saved to columns named 'pred_0', 'pred_1', etc.",
+        help="Column names to save the predictions to (by default, the predictions will be saved to columns named ``pred_0``, ``pred_1``, etc.)",
     )
 
     unc_args = parser.add_argument_group("Uncertainty and calibration args")
@@ -290,7 +290,9 @@ def make_prediction_for_models(
             test_targets = torch.from_numpy(test_dset.Y)
             test_mask = torch.from_numpy(np.isfinite(test_targets))
             metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
-            logger.info(f"Uncertainty evaluation metric: '{evaluator.alias}', metric value: {metric_value}")
+            logger.info(
+                f"Uncertainty evaluation metric: '{evaluator.alias}', metric value: {metric_value}"
+            )
 
     if args.target_columns is not None:
         assert (
@@ -302,7 +304,19 @@ def make_prediction_for_models(
             f"pred_{i}" for i in range(test_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test = pd.read_csv(args.test_path)
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        target_columns = target_columns + [f"{col}_prob" for col in target_columns]
+        predicted_class_labels = test_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, test_preds
+        )
+        test_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
+        )
+
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
     df_test[target_columns] = test_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
@@ -318,7 +332,18 @@ def make_prediction_for_models(
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
 
-        df_test = pd.read_csv(args.test_path)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            predicted_class_labels = test_individual_preds.argmax(axis=-1)
+            formatted_probability_strings = np.apply_along_axis(
+                lambda x: ",".join(map(str, x)), 2, test_individual_preds
+            )
+            test_individual_preds = np.concatenate(
+                (predicted_class_labels, formatted_probability_strings), axis=-1
+            )
+
+        df_test = pd.read_csv(
+            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+        )
         df_test[target_columns] = test_individual_preds
 
         output_path = output_path.parent / Path(
