@@ -5,17 +5,17 @@ import pytest
 import torch
 
 from chemprop.nn.loss import (
-    BCELoss,
+    BCE,
+    SID,
     BinaryDirichletLoss,
     BinaryMCCLoss,
-    BoundedMSELoss,
-    CrossEntropyLoss,
+    BoundedMSE,
+    CrossEntropy,
     EvidentialLoss,
     MulticlassDirichletLoss,
     MulticlassMCCLoss,
     MVELoss,
-    SIDLoss,
-    WassersteinLoss,
+    Wasserstein,
 )
 
 
@@ -58,7 +58,7 @@ def test_BoundedMSE(preds, targets, mask, weights, task_weights, lt_mask, gt_mas
     """
     Testing the bounded_mse loss function
     """
-    bmse_loss = BoundedMSELoss(task_weights)
+    bmse_loss = BoundedMSE(task_weights)
     loss = bmse_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, mse)
 
@@ -287,7 +287,7 @@ def test_BCE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expe
     """
     Test on the BCE loss function for classification.
     """
-    bce_loss = BCELoss(task_weights)
+    bce_loss = BCE(task_weights)
     loss = bce_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -323,7 +323,7 @@ def test_CrossEntropy(preds, targets, mask, weights, task_weights, lt_mask, gt_m
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    cross_entropy_loss = CrossEntropyLoss(task_weights)
+    cross_entropy_loss = CrossEntropy(task_weights)
     loss = cross_entropy_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -447,7 +447,7 @@ def test_SID(
     Test on the SID loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    sid_loss = SIDLoss(task_weights=task_weights, threshold=threshold)
+    sid_loss = SID(task_weights=task_weights, threshold=threshold)
     loss = sid_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -497,6 +497,6 @@ def test_Wasserstein(
     Test on the Wasserstein loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    wasserstein_loss = WassersteinLoss(task_weights=task_weights, threshold=threshold)
+    wasserstein_loss = Wasserstein(task_weights=task_weights, threshold=threshold)
     loss = wasserstein_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)

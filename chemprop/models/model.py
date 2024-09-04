@@ -5,11 +5,10 @@ from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
-from torch import Tensor, distributed, nn, optim
+from torch import Tensor, nn, optim
 
 from chemprop.data import BatchMolGraph, TrainingBatch
-from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import NoamLR
 
@@ -62,7 +61,7 @@ class MPNN(pl.LightningModule):
         agg: Aggregation,
         predictor: Predictor,
         batch_norm: bool = True,
-        metrics: Iterable[Metric] | None = None,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -90,9 +89,9 @@ class MPNN(pl.LightningModule):
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
-            nn.ModuleList([*metrics, self.criterion])
+            nn.ModuleList([*metrics, self.criterion.clone()])
             if metrics
-            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion])
+            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion.clone()])
         )
 
         self.warmup_epochs = warmup_epochs
@@ -113,7 +112,7 @@ class MPNN(pl.LightningModule):
         return self.predictor.n_targets
 
     @property
-    def criterion(self) -> LossFunction:
+    def criterion(self) -> ChempropMetric:
         return self.predictor.criterion
 
     def fingerprint(
@@ -148,7 +147,7 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train_loss", l, prog_bar=True)
+        self.log("train_loss", self.criterion, prog_bar=True, on_epoch=True)
 
         return l
 
@@ -157,23 +156,15 @@ class MPNN(pl.LightningModule):
         self.predictor.output_transform.train()
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
-        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        self._evaluate_batch(batch)
 
-        self.log_dict(metric2loss, batch_size=len(batch[0]))
-        self.log(
-            "val_loss",
-            losses[-1],
-            batch_size=len(batch[0]),
-            prog_bar=True,
-            sync_dist=distributed.is_initialized(),
-        )
+        [self.log(f"val/{m.alias}", m, batch_size=len(batch[0])) for m in self.metrics[:-1]]
+        self.log("val_loss", self.metrics[-1], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
-        metric2loss = {f"batch_averaged_test/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        self._evaluate_batch(batch)
 
-        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        [self.log(f"test/{m.alias}", m, batch_size=len(batch[0])) for m in self.metrics[:-1]]
 
     def _evaluate_batch(self, batch) -> list[Tensor]:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
@@ -183,7 +174,7 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets[:, 0])
 
-        return [metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics]
+        [m.update(preds, targets, mask, weights, lt_mask, gt_mask) for m in self.metrics]
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch

@@ -839,7 +839,7 @@ def train_model(
             tracking_metric_class = MetricRegistry[args.tracking_metric]
             args.tracking_metric = "val/" + args.tracking_metric
 
-        monitor_mode = "min" if tracking_metric_class.minimize else "max"
+        monitor_mode = "max" if tracking_metric_class.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
 
         checkpointing = ModelCheckpoint(

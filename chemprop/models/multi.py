@@ -6,7 +6,7 @@ from torch import Tensor
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.nn.loss import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
 
 
@@ -17,7 +17,7 @@ class MulticomponentMPNN(MPNN):
         agg: Aggregation,
         predictor: Predictor,
         batch_norm: bool = True,
-        metrics: Iterable[Metric] | None = None,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
