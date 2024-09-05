@@ -52,9 +52,9 @@ class LossFunction(nn.Module):
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x t x s` (regression), `b x t` (binary classification), or
+            a tensor of shape `b x t x u` (regression), `b x t` (binary classification), or
             `b x t x c` (multiclass classification) containing the predictions, where `b` is the
-            batch size, `t` is the number of tasks to predict, `s` is the number of
+            batch size, `t` is the number of tasks to predict, `u` is the number of
             targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
             a float tensor of shape `b x t` containing the target values
