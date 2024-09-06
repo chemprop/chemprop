@@ -2,8 +2,8 @@ from copy import deepcopy
 import json
 import logging
 from pathlib import Path
-import shutil
 import sys
+from tempfile import TemporaryDirectory
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -97,7 +97,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
     )
     parser.add_argument(
-        "--no-checkpoint",
+        "--remove-checkpoints",
         action="store_true",
         help="Whether to remove checkpoint files and keep only the best model .pt file",
     )
@@ -853,8 +853,14 @@ def train_model(
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
+        if args.remove_checkpoints:
+            temp_dir = TemporaryDirectory()
+            checkpoint_dir = Path(temp_dir.name)
+        else:
+            checkpoint_dir = model_output_dir
+
         checkpointing = ModelCheckpoint(
-            model_output_dir / "checkpoints",
+            checkpoint_dir / "checkpoints",
             "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -912,9 +918,8 @@ def train_model(
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
 
-        if args.no_checkpoint:
-            logger.debug(f"Remove '{checkpointing.dirpath}' folder")
-            shutil.rmtree(checkpointing.dirpath)
+        if args.remove_checkpoints:
+            temp_dir.cleanup()
 
 
 def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
