@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from typing import Iterable
+import warnings
 
 from lightning import pytorch as pl
 import torch
@@ -11,7 +12,7 @@ import chemprop.customunpickle
 from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
-from chemprop.schedulers import NoamLR
+from chemprop.schedulers import build_NoamLike_LRSched
 
 
 class MPNN(pl.LightningModule):
@@ -211,20 +212,26 @@ class MPNN(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
+        if self.trainer.train_dataloader is None:
+            # Loading `train_dataloader` to estimate number of training batches.
+            # Using this line of code can pypass the issue of using `num_training_batches` as described [here](https://github.com/Lightning-AI/pytorch-lightning/issues/16060).
+            self.trainer.estimated_stepping_batches
+        steps_per_epoch = self.trainer.num_training_batches
+        warmup_steps = self.warmup_epochs * steps_per_epoch
+        if self.trainer.max_epochs == -1:
+            warnings.warn(
+                "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
+            )
+            cooldown_steps = 100 * warmup_steps
+        else:
+            cooldown_epochs = self.trainer.max_epochs - self.warmup_epochs
+            cooldown_steps = cooldown_epochs * steps_per_epoch
 
-        lr_sched = NoamLR(
-            opt,
-            self.warmup_epochs,
-            self.trainer.max_epochs,
-            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
-            self.init_lr,
-            self.max_lr,
-            self.final_lr,
+        lr_sched = build_NoamLike_LRSched(
+            opt, warmup_steps, cooldown_steps, self.init_lr, self.max_lr, self.final_lr
         )
-        lr_sched_config = {
-            "scheduler": lr_sched,
-            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
-        }
+
+        lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
