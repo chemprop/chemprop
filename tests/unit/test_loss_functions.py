@@ -5,12 +5,12 @@ import pytest
 import torch
 
 from chemprop.nn.loss import (
-    BCE,
     SID,
+    BCELoss,
     BinaryDirichletLoss,
     BinaryMCCLoss,
     BoundedMSE,
-    CrossEntropy,
+    CrossEntropyLoss,
     EvidentialLoss,
     MulticlassDirichletLoss,
     MulticlassMCCLoss,
@@ -283,11 +283,11 @@ def test_Evidential_wrong_dimensions(preds, targets, mask, weights, task_weights
         ),
     ],
 )
-def test_BCE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
+def test_BCELoss(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
     """
     Test on the BCE loss function for classification.
     """
-    bce_loss = BCE(task_weights)
+    bce_loss = BCELoss(task_weights)
     loss = bce_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -317,13 +317,15 @@ def test_BCE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expe
         ),
     ],
 )
-def test_CrossEntropy(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss):
+def test_CrossEntropyLoss(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, expected_loss
+):
     """
     Test on the CE loss function for classification.
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    cross_entropy_loss = CrossEntropy(task_weights)
+    cross_entropy_loss = CrossEntropyLoss(task_weights)
     loss = cross_entropy_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -436,7 +438,7 @@ def test_MulticlassMCC(
             torch.ones([2], dtype=torch.bool),
             torch.ones([2], dtype=torch.bool),
             0.5,
-            torch.tensor(0.033673, dtype=torch.float),
+            torch.tensor(0.021015, dtype=torch.float),
         ),
     ],
 )
@@ -486,7 +488,7 @@ def test_SID(
             torch.zeros([2, 4], dtype=torch.bool),
             torch.zeros([2, 4], dtype=torch.bool),
             0.3,
-            torch.tensor(0.501984, dtype=torch.float),
+            torch.tensor(0.611706, dtype=torch.float),
         ),
     ],
 )

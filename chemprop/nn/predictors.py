@@ -9,15 +9,16 @@ from chemprop.conf import DEFAULT_HIDDEN_DIM
 from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import (
-    BCE,
     MSE,
     SID,
+    BCELoss,
     BinaryAUROC,
     BinaryDirichletLoss,
     ChempropMetric,
-    CrossEntropy,
+    CrossEntropyLoss,
     EvidentialLoss,
     MulticlassDirichletLoss,
+    MulticlassMCCMetric,
     MVELoss,
 )
 from chemprop.nn.transforms import UnscaleTransform
@@ -210,7 +211,7 @@ class BinaryClassificationFFNBase(_FFNPredictorBase):
 @PredictorRegistry.register("classification")
 class BinaryClassificationFFN(BinaryClassificationFFNBase):
     n_targets = 1
-    _T_default_criterion = BCE
+    _T_default_criterion = BCELoss
     _T_default_metric = BinaryAUROC
 
     def forward(self, Z: Tensor) -> Tensor:
@@ -232,7 +233,7 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
         Y = super().forward(Z)
         alpha, beta = torch.chunk(Y, 2, 1)
 
-        return beta / (alpha + beta)
+        return (beta / (alpha + beta)).sigmoid()
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -243,8 +244,8 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("multiclass")
 class MulticlassClassificationFFN(_FFNPredictorBase):
     n_targets = 1
-    _T_default_criterion = CrossEntropy
-    _T_default_metric = CrossEntropy
+    _T_default_criterion = CrossEntropyLoss
+    _T_default_metric = MulticlassMCCMetric
 
     def __init__(
         self,
@@ -288,7 +289,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _T_default_criterion = MulticlassDirichletLoss
-    _T_default_metric = CrossEntropy
+    _T_default_metric = MulticlassMCCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
@@ -299,7 +300,7 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
         alpha = Y
         Y = Y / Y.sum(-1, keepdim=True)
 
-        return torch.cat((Y, alpha), 1)
+        return torch.stack((Y, alpha), 2)
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
