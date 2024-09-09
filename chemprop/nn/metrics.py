@@ -84,12 +84,12 @@ class ChempropMetric(torchmetrics.Metric):
         weights : Tensor
             a tensor of shape `b` or `b x 1` containing the per-sample weight
         lt_mask: Tensor
+            a boolean tensor of shape `b x t` indicating whether the prediction should be clamped
+            to the target value when the prediction is less than the target
         gt_mask: Tensor
+            a boolean tensor of shape `b x t` indicating whether the prediction should be clamped
+            to the target value when the prediction is greater than the target
 
-        Returns
-        -------
-        Tensor
-            a scalar containing the fully reduced loss
         """
         if mask is None:
             mask = torch.ones_like(targets, dtype=torch.bool)
