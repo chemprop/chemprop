@@ -3,6 +3,8 @@ import pickle
 
 class Unpickler(pickle.Unpickler):
     def find_class(self, module, name):
+        if module == "chemprop.nn.loss":
+            module = "chemprop.nn.metrics"
         if name == "MSELoss":
             name = "MSE"
         elif name == "BoundedMSELoss":
