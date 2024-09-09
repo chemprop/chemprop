@@ -6,6 +6,12 @@ from .agg import (
     NormAggregation,
     SumAggregation,
 )
+from .message_passing import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MessagePassing,
+    MulticomponentMessagePassing,
+)
 from .metrics import (
     MAE,
     MSE,
@@ -33,12 +39,6 @@ from .metrics import (
     MVELoss,
     R2Score,
     Wasserstein,
-)
-from .message_passing import (
-    AtomMessagePassing,
-    BondMessagePassing,
-    MessagePassing,
-    MulticomponentMessagePassing,
 )
 from .predictors import (
     BinaryClassificationFFN,
