@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from chemprop.nn.loss import (
+from chemprop.nn.metrics import (
     SID,
     BCELoss,
     BinaryDirichletLoss,

@@ -6,7 +6,7 @@ from .agg import (
     NormAggregation,
     SumAggregation,
 )
-from .loss import (
+from .metrics import (
     MAE,
     MSE,
     RMSE,

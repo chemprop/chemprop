@@ -5,7 +5,7 @@ from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
 from chemprop.nn.agg import AggregationRegistry
-from chemprop.nn.loss import LossFunctionRegistry, MetricRegistry
+from chemprop.nn.metrics import LossFunctionRegistry, MetricRegistry
 from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.transforms import UnscaleTransform

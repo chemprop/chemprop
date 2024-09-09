@@ -8,7 +8,7 @@ from torch.nn import functional as F
 from chemprop.conf import DEFAULT_HIDDEN_DIM
 from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
-from chemprop.nn.loss import (
+from chemprop.nn.metrics import (
     MSE,
     SID,
     BCELoss,

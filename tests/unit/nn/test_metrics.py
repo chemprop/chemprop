@@ -8,7 +8,7 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from chemprop.nn.loss import (
+from chemprop.nn.metrics import (
     MAE,
     MSE,
     RMSE,
