@@ -59,10 +59,10 @@ class ChempropMetric(torchmetrics.Metric):
         self,
         preds: Tensor,
         targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
     ):
         """Calculate the mean loss function value given predicted and target values
 
@@ -88,6 +88,15 @@ class ChempropMetric(torchmetrics.Metric):
         Tensor
             a scalar containing the fully reduced loss
         """
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
+        if weights is None:
+            weights = torch.ones_like(targets, dtype=torch.float)
+        if lt_mask is None:
+            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        if gt_mask is None:
+            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
+
         L = self._calc_unreduced_loss(preds, targets, mask, weights, lt_mask, gt_mask)
         L = L * weights.view(-1, 1) * self.task_weights * mask
 
@@ -158,7 +167,9 @@ class BoundedRMSE(BoundedMixin, RMSE):
 
 @MetricRegistry.register("r2")
 class R2Score(torchmetrics.R2Score):
-    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         super().update(preds[mask], targets[mask])
 
 
@@ -323,7 +334,10 @@ class LikeChempropMetric:
         """
         super().__init__()
 
-    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
+
         super().update(preds[mask], targets[mask].long())
 
 
