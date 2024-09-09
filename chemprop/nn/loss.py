@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import warnings
 
 from numpy.typing import ArrayLike
 import torch
@@ -419,6 +420,10 @@ class LikeChempropMetric:
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
         super().__init__()
+        self.task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        if (self.task_weights != 1.0).any():
+            warnings.warn("task_weights were provided but are ignored by metric "
+                          f"{self.__class__.__name__}. Got {task_weights}")
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
         if mask is None:
