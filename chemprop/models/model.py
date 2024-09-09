@@ -174,12 +174,12 @@ class MPNN(pl.LightningModule):
         self._evaluate_batch(batch, "test")
 
     def _evaluate_batch(self, batch: TrainingBatch, val_test: str) -> None:
-        bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
-        weights = torch.ones_like(targets)
+        weights = torch.ones_like(weights)
 
         for m in self.metrics[:-1]:
             m.update(preds, targets, mask, weights, lt_mask, gt_mask)
