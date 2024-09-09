@@ -883,7 +883,9 @@ def train_model(
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
+            early_stopping = EarlyStopping(
+                args.tracking_metric, patience=patience, mode=monitor_mode
+            )
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
