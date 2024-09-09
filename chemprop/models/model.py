@@ -156,25 +156,32 @@ class MPNN(pl.LightningModule):
         self.predictor.output_transform.train()
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        self._evaluate_batch(batch)
+        self._evaluate_batch(batch, "val")
 
-        [self.log(f"val/{m.alias}", m, batch_size=len(batch[0])) for m in self.metrics[:-1]]
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
+        Z = self.fingerprint(bmg, V_d, X_d)
+        preds = self.predictor.train_step(Z)
+        self.metrics[-1].update(preds, targets, mask, weights, lt_mask, gt_mask)
         self.log("val_loss", self.metrics[-1], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        self._evaluate_batch(batch)
+        self._evaluate_batch(batch, "test")
 
-        [self.log(f"test/{m.alias}", m, batch_size=len(batch[0])) for m in self.metrics[:-1]]
-
-    def _evaluate_batch(self, batch) -> list[Tensor]:
+    def _evaluate_batch(self, batch: TrainingBatch, val_test: str) -> None:
         bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
-        weights = torch.ones_like(targets[:, 0])
+        weights = torch.ones_like(targets)
 
-        [m.update(preds, targets, mask, weights, lt_mask, gt_mask) for m in self.metrics]
+        for m in self.metrics[:-1]:
+            m.update(preds, targets, mask, weights, lt_mask, gt_mask)
+            self.log(f"{val_test}/{m.alias}", m, batch_size=len(batch[0]))
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
