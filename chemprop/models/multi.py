@@ -3,6 +3,7 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
+import chemprop.customunpickle
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
@@ -53,7 +54,7 @@ class MulticomponentMPNN(MPNN):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location)
+        d = torch.load(path, map_location, pickle_module=chemprop.customunpickle)
 
         try:
             hparams = d["hyper_parameters"]
@@ -70,4 +71,10 @@ class MulticomponentMPNN(MPNN):
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
+
+        if not hasattr(submodules["predictor"].criterion, "_defaults"):
+            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
+                task_weights=submodules["predictor"].criterion.task_weights
+            )
+
         return submodules, state_dict, hparams
