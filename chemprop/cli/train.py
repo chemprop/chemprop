@@ -648,14 +648,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     return train_data, val_data, test_data
 
-
-def format_number(num):
-    if 0.01 < np.abs(num) < 100:
-        return f"{num:.2f}"
-    else:
-        return f"{num:.2e}"
-
-
 def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
     columns = get_column_names(
         args.data_path,
@@ -688,9 +680,9 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             ["Num. smiles"] + [f"{len(y)}" for i in range(y.shape[1])],
             ["Num. targets"] + [f"{num_targets[i]}" for i in range(y.shape[1])],
             ["Num. NaN"] + [f"{len(y) - num_targets[i]}" for i in range(y.shape[1])],
-            ["Mean"] + [format_number(mean) for mean in y_mean],
-            ["Std. dev."] + [format_number(std) for std in y_std],
-            ["Median"] + [format_number(median) for median in y_median],
+            ["Mean"] + [f"{mean:0.3g}" for mean in y_mean],
+            ["Std. dev."] + [f"{std:0.3g}" for std in y_std],
+            ["Median"] + [f"{median:0.3g}" for median in y_median],
             ["% within 1 s.d."] + [f"{sigma:0.0%}" for sigma in frac_1_sigma],
             ["% within 2 s.d."] + [f"{sigma:0.0%}" for sigma in frac_2_sigma],
         ]
