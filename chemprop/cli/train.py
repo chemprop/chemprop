@@ -99,7 +99,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--remove-checkpoints",
         action="store_true",
-        help="Whether to remove intermediate checkpoint files after training.",
+        help="Remove intermediate checkpoint files after training is complete.",
     )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
