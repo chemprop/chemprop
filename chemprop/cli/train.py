@@ -648,6 +648,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     return train_data, val_data, test_data
 
+
 def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
     columns = get_column_names(
         args.data_path,
