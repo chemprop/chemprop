@@ -114,7 +114,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--checkpoint",
         type=Path,
         nargs="+",
-        help="Location of checkpoint(s) or model file(s) to be loaded for overwriting weights. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
+        help="Path to checkpoint(s) or model file(s) for loading and overwriting weights. Accepts a single pre-trained model checkpoint (.ckpt), a single model file (.pt), a directory containing such files, or a list of paths and directories. If a directory is provided, it will recursively search for and use all (.pt) files found for prediction.",
     )
     transfer_args.add_argument(
         "--freeze-encoder", action="store_true", help="Whether to freeze the MPNN weights."

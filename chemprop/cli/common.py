@@ -204,7 +204,7 @@ def find_models(model_paths: list[Path]):
         else:
             raise ArgumentError(
                 argument=None,
-                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
+                message=f"Expected a .ckpt or .pt file, or a directory. Got {model_path}",
             )
 
     return collected_model_paths
