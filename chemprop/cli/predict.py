@@ -19,7 +19,7 @@ from chemprop.cli.common import (
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +268,8 @@ def make_prediction_for_models(
         individual_preds.append(torch.concat(predss, 0))
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+        average_preds = average_preds[..., 0]
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -301,6 +303,7 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
+
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
@@ -313,6 +316,8 @@ def make_prediction_for_models(
             individual_preds = np.concatenate(
                 (predicted_class_labels, formatted_probability_strings), axis=-1
             )
+        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+            individual_preds = individual_preds[..., 0]
 
         df_test = pd.read_csv(
             args.test_path, header=None if args.no_header_row else "infer", index_col=False
