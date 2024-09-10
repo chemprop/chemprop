@@ -42,7 +42,6 @@ from chemprop.nn.message_passing import (
     BondMessagePassing,
     MulticomponentMessagePassing,
 )
-from chemprop.nn.predictors import EvidentialFFN, MveFFN
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
@@ -890,11 +889,10 @@ def train_model(
             else:
                 predss = trainer.predict(dataloaders=test_loader)
 
-            preds = torch.concat(predss, 0).numpy()
-            if isinstance(model.predictor, MveFFN):
-                preds = np.split(preds, 2, axis=1)[0]
-            elif isinstance(model.predictor, EvidentialFFN):
-                preds = np.split(preds, 4, axis=1)[0]
+            preds = torch.concat(predss, 0)
+            if model.predictor.n_targets > 1:
+                preds = preds[..., 0]
+            preds = preds.numpy()
 
             evaluate_and_save_predictions(
                 preds, test_loader, model.metrics[:-1], model_output_dir, args
