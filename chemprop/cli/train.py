@@ -721,7 +721,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             for i, k in enumerate(classes)
         ]
 
-        nan_row = ["NAN"] + [f"{nan_count[i]}/{nan_frac[i]:0.0%}" for i in range(y.shape[1])]
+        nan_row = ["NaN"] + [f"{nan_count[i]}/{nan_frac[i]:0.0%}" for i in range(y.shape[1])]
         table_rows.append(nan_row)
 
         total_row = ["Total"] + [f"{y.shape[0]}/{100.00}%" for i in range(y.shape[1])]
