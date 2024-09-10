@@ -20,7 +20,7 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = [
+    base_args = [
         "chemprop",
         "train",
         "-i",
@@ -39,9 +39,17 @@ def test_train_quick(monkeypatch, data_path):
         "--show-individual-scores",
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["classification", "classification-dirichlet"]
+
+    for task_type in task_types:
+        print(f"Testing task type: {task_type}")
+        args = base_args.copy()
+
+        args += ["--task-type", task_type]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
