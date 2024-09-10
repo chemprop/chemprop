@@ -11,7 +11,7 @@ from chemprop.utils.registry import ClassRegistry
 
 class UncertaintyPredictor(ABC):
     """
-    A class for making model predictions and associated predictions of uncertainty.
+    A class for making model predictions and associated uncertainty predictions.
     """
 
     def __call__(self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer):

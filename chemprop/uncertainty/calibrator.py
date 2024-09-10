@@ -17,8 +17,12 @@ class UncertaintyCalibrator(ABC):
         Fit calibration method for the calibration data.
 
         .. note::
-            The `preds` is only needed for regression tasks. The `uncs` would be the predicted variance for regression tasks,
-            the predicted probability of class 1 for binary classification and the probabilities for each class for multiclass classification.
+            The `preds` variable is required only for regression tasks.
+
+            The `uncs` variable holds different values depending on the task:
+            * For regression tasks, `uncs` represents the predicted variance.
+            * For binary classification, `uncs` is the predicted probability of class 1.
+            * For multiclass classification, `uncs` contains the predicted probabilities for each class.
 
         Parameters
         ----------
