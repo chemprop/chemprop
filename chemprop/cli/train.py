@@ -679,14 +679,15 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         y_std = np.nanstd(y, axis=0)
         y_median = np.nanmedian(y, axis=0)
         mean_dev_abs = np.abs(y - y_mean)
-        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / np.count_nonzero(~np.isnan(y))
-        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / np.count_nonzero(~np.isnan(y))
+        num_targets = np.sum(~np.isnan(y), axis=0)
+        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / num_targets
+        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / num_targets
 
         column_headers = ["Statistic"] + [f"Value ({target_cols[i]})" for i in range(y.shape[1])]
         table_rows = [
             ["Num. smiles"] + [f"{len(y)}" for i in range(y.shape[1])],
-            ["Num. targets"] + [f"{np.count_nonzero(~np.isnan(y))}" for i in range(y.shape[1])],
-            ["Num. NAN"] + [f"{np.count_nonzero(np.isnan(y))}" for i in range(y.shape[1])],
+            ["Num. targets"] + [f"{num_targets[i]}" for i in range(y.shape[1])],
+            ["Num. NaN"] + [f"{len(y) - num_targets[i]}" for i in range(y.shape[1])],
             ["Mean"] + [format_number(mean) for mean in y_mean],
             ["Std. dev."] + [format_number(std) for std in y_std],
             ["Median"] + [format_number(median) for median in y_median],
