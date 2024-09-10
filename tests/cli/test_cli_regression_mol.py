@@ -31,6 +31,16 @@ def model_path(data_dir):
 
 
 @pytest.fixture
+def mve_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mve_mol.pt")
+
+
+@pytest.fixture
+def evidential_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_evidential_mol.pt")
+
+
+@pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
 
@@ -95,7 +105,7 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ) = data_path
 
-    args = [
+    base_args = [
         "chemprop",
         "train",
         "-i",
@@ -114,14 +124,43 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["", "regression-mve", "regression-evidential"]
+
+    for task_type in task_types:
+        args = base_args.copy()
+
+        if task_type:
+            args += ["--task-type", task_type]
+
+        if task_type == "regression-evidential":
+            args += ["--evidential-regularization", "0.2"]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", evidential_model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
