@@ -378,7 +378,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--class-balance",
         action="store_true",
-        help="Trains with an equal number of positives and negatives in each batch.",
+        help="Ensures each training batch contains an equal number of positive and negative samples.",
     )
 
     split_args = parser.add_argument_group("split args")
@@ -461,8 +461,7 @@ def process_train_args(args: Namespace) -> Namespace:
 
     if args.class_balance and args.task_type != "classification":
         raise ArgumentError(
-            argument=None,
-            message="Class balance can only be applied if the dataset type is classification.",
+            argument=None, message="Class balance is only applicable for classification tasks."
         )
 
     return args
