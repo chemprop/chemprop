@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ConvertSubcommand(Subcommand):
     COMMAND = "convert"
-    HELP = "convert a v1 model checkpoint (.pt) to a v2 model checkpoint (.ckpt)"
+    HELP = "Convert a v1 model checkpoint (.pt) to a v2 model checkpoint (.ckpt)."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -20,13 +20,13 @@ class ConvertSubcommand(Subcommand):
             "--input-path",
             required=True,
             type=Path,
-            help="The path to a v1 model .pt checkpoint file.",
+            help="Path to a v1 model .pt checkpoint file",
         )
         parser.add_argument(
             "-o",
             "--output-path",
             type=Path,
-            help="The path to which the converted model will be saved. Defaults to 'CURRENT_DIRECTORY/STEM_OF_INPUT_v2.ckpt'",
+            help="Path to which the converted model will be saved (``CURRENT_DIRECTORY/STEM_OF_INPUT_v2.ckpt`` by default)",
         )
         return parser
 
