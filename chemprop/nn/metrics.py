@@ -380,8 +380,6 @@ class MulticlassMCCLoss(ChempropMetric):
         c = (bin_preds * bin_targets * masked_data_weights).sum()
         s = (preds * masked_data_weights).sum()
 
-        # print(p, t, c, s)
-
         return p, t, c, s
 
     def compute(self):
@@ -397,7 +395,6 @@ class MulticlassMCCLoss(ChempropMetric):
         cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t).sum()
 
         x = cov_ypyp * cov_ytyt
-        # print(cov_ytyp, cov_ypyp, cov_ytyt, x, s2)
         MCC = torch.tensor(0.0, device=x.device) if x == 0 else cov_ytyp / x.sqrt()
         MCC = MCC * self.task_weights
 
