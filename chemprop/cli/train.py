@@ -3,6 +3,7 @@ import json
 import logging
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -93,6 +94,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--save-dir",
         type=Path,
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
+    )
+    parser.add_argument(
+        "--remove-checkpoints",
+        action="store_true",
+        help="Remove intermediate checkpoint files after training is complete.",
     )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
@@ -850,8 +856,14 @@ def train_model(
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
+        if args.remove_checkpoints:
+            temp_dir = TemporaryDirectory()
+            checkpoint_dir = Path(temp_dir.name)
+        else:
+            checkpoint_dir = model_output_dir
+
         checkpointing = ModelCheckpoint(
-            model_output_dir / "checkpoints",
+            checkpoint_dir / "checkpoints",
             "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -907,6 +919,9 @@ def train_model(
         p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
+
+        if args.remove_checkpoints:
+            temp_dir.cleanup()
 
 
 def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
