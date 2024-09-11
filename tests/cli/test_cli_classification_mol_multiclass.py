@@ -30,8 +30,6 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--show-individual-scores",
-        "--accelerator",
-        "cpu",
     ]
 
     task_types = ["multiclass", "multiclass-dirichlet"]
