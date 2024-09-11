@@ -167,7 +167,7 @@ Pretraining and Transfer Learning
 
 An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using :code:`--checkpoint <path>`. :code:`<model_path>`` is the location of checkpoint(s) or model file(s). It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s).
 
-When training the new model, its architecture resemble that of the old model. Depending on the quality of the old model, the new model might only require a few epochs to train.
+When training the new model, its architecture **must** resemble that of the old model. Depending on the similarity of the tasks and datasets, as well as the quality of the old model, the new model might require fewer epochs to achieve optimal performance compared to training from scratch.
 
 It is also possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--checkpoint <path>`. After loading the model, the MPNN weights can be frozen via :code:`--freeze-encoder`. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
