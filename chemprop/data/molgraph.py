@@ -1,9 +1,10 @@
-from typing import NamedTuple, Optional
 from collections import deque
-import numpy as np
-
-import torch
 from dataclasses import dataclass, field
+from typing import NamedTuple, Optional
+
+import numpy as np
+import torch
+
 
 class MolGraph(NamedTuple):
     """A :class:`MolGraph` represents the graph featurization of a molecule."""
@@ -21,6 +22,7 @@ class MolGraph(NamedTuple):
 @dataclass
 class MolGraphPretrain:
     """for this object the main methods such as mask and bond deletion will modify the attribute irrevisble so recommend one modification for one object"""
+
     V: np.ndarray
     """An array of shape ``V x d_v`` containing the atom features of the molecule"""
 
@@ -65,10 +67,10 @@ class MolGraphPretrain:
     """The final masked bond index used for subgraph deletion pretraining"""
 
     def mask_atom_features(self, v: np.ndarray) -> np.ndarray:
-        '''
+        """
         :param v: The original feature of atoms
         :return: a ndarray of 0, which replaces all the original feature of atoms
-        '''
+        """
         atom_features_len = len(v)
         masked_atom_features = np.zeros(atom_features_len)
         return masked_atom_features
@@ -86,46 +88,56 @@ class MolGraphPretrain:
             self.edge_index[0, i] = new_index_map[self.edge_index[0, i]]
             self.edge_index[1, i] = new_index_map[self.edge_index[1, i]]
 
-    def masked_atom_pretraining(self,mask_atom_pre_percent: float):
-        '''
+    def masked_atom_pretraining(self, mask_atom_pre_percent: float):
+        """
         The atom feature is masked by replacing original feature with 0
         The bond feature's atom part will be replaced with 0 if the atom the bond originates from is masked (now this is done automatically as the concate
         is done in message passing
         :return: No return. Will just modify MolGraphPretrain object into masked atom version.
         :Note: The MolGraphPretrain(object) will be modified, and for different pretraining operation should init a new object then use the operation function
-        '''
+        """
         self.mask_atom_pre_percent = mask_atom_pre_percent
 
         masked_atom_index = torch.randperm(len(self.V))[
-                                 :int(len(self.V) * self.mask_atom_pre_percent)].numpy()
+            : int(len(self.V) * self.mask_atom_pre_percent)
+        ].numpy()
         masked_atom_index = np.sort(masked_atom_index)
         self.masked_atom_index = masked_atom_index
 
-        self.V = np.array([self.V[idx] if idx not in self.masked_atom_index else self.mask_atom_features(self.V[idx]) for
-            idx in range(len(self.V))])
+        self.V = np.array(
+            [
+                self.V[idx]
+                if idx not in self.masked_atom_index
+                else self.mask_atom_features(self.V[idx])
+                for idx in range(len(self.V))
+            ]
+        )
 
-        self.masked_atom_label_list = np.array([
-            self.atom_num_label[idx] for idx in self.masked_atom_index])
-
+        self.masked_atom_label_list = np.array(
+            [self.atom_num_label[idx] for idx in self.masked_atom_index]
+        )
 
     def bond_deletion_complete(self, mask_bond_pre_percent: float):
-        '''
+        """
         This operation is to delete certain percentage of the bond completely (i.e., we have directional bond, this will
         delete both the direction).
 
         :return:
-        '''
+        """
         # Get random bond deletion index from number of complete bond
         self.mask_bond_pre_percent = mask_bond_pre_percent
-        number_of_undirectional_bonds = len(self.E)//2
+        number_of_undirectional_bonds = len(self.E) // 2
         masked_complete_bond_index = torch.randperm(number_of_undirectional_bonds)[
-                                          :int(number_of_undirectional_bonds * self.mask_bond_pre_percent)]
+            : int(number_of_undirectional_bonds * self.mask_bond_pre_percent)
+        ]
         self.masked_complete_bond_index = masked_complete_bond_index.tolist()
         self.masked_complete_bond_index = sorted(self.masked_complete_bond_index)
         even_bond_indices = torch.arange(0, len(self.E), step=2)
         masked_even_indices = even_bond_indices[self.masked_complete_bond_index]
         masked_odd_indices = masked_even_indices + 1
-        self.final_bond_masked_indices = torch.cat([masked_even_indices, masked_odd_indices]).tolist()
+        self.final_bond_masked_indices = torch.cat(
+            [masked_even_indices, masked_odd_indices]
+        ).tolist()
         # in v2 the connectivity is stored in edge index, as a result we can simply delete the connectivity by deleted both the list with the connections
         # Delete corresponding rows from edge_index and E
         # edge_index contains index of node delete edge won't change node order
@@ -134,17 +146,19 @@ class MolGraphPretrain:
         self.rev_edge_index = np.arange(len(self.E)).reshape(-1, 2)[:, ::-1].ravel()
 
     def subgraph_deletion(self, center: int, mask_subgraph_pre_percent: float):
-        '''
+        """
         Remove a subgraph meaning mask the atom to be removed and remove all the bonds connected to it.
 
         :param center: The start atom to remove
         :param mask_subgraph_pre_percent: percent
 
         :return: it is just an operation on this object
-        '''
+        """
         self.mask_subgraph_pre_percent = mask_subgraph_pre_percent
         # Step 1: BFS to identify all atoms in the subgraph
-        num_of_atoms_of_removed_subgraph = int(np.floor(len(self.V) * self.mask_subgraph_pre_percent))
+        num_of_atoms_of_removed_subgraph = int(
+            np.floor(len(self.V) * self.mask_subgraph_pre_percent)
+        )
         atom_idx_to_remove = set()
         queue = deque([center])
 
@@ -155,15 +169,23 @@ class MolGraphPretrain:
 
                 # Add all neighboring atoms to the queue
                 for i in range(self.edge_index.shape[1]):
-                    if self.edge_index[0, i] == current_atom and self.edge_index[1, i] not in atom_idx_to_remove:
+                    if (
+                        self.edge_index[0, i] == current_atom
+                        and self.edge_index[1, i] not in atom_idx_to_remove
+                    ):
                         queue.append(self.edge_index[1, i])
-                    elif self.edge_index[1, i] == current_atom and self.edge_index[0, i] not in atom_idx_to_remove:
+                    elif (
+                        self.edge_index[1, i] == current_atom
+                        and self.edge_index[0, i] not in atom_idx_to_remove
+                    ):
                         queue.append(self.edge_index[0, i])
 
         # Step 2: Identify bonds connected to the atoms to be removed
         self.subgraph_masked_bond_indices = [
-            i for i in range(self.edge_index.shape[1])
-            if self.edge_index[0, i] in atom_idx_to_remove or self.edge_index[1, i] in atom_idx_to_remove
+            i
+            for i in range(self.edge_index.shape[1])
+            if self.edge_index[0, i] in atom_idx_to_remove
+            or self.edge_index[1, i] in atom_idx_to_remove
         ]
 
         # Step 3: Remove bonds from edge_index and delete bond features in E

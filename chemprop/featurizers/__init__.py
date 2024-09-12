@@ -18,9 +18,9 @@ from .molgraph import (
     MolGraphCache,
     MolGraphCacheFacade,
     MolGraphCacheOnTheFly,
+    PretrainMoleculeMolGraphFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
-    PretrainMoleculeMolGraphFeaturizer,
 )
 
 __all__ = [

@@ -121,8 +121,10 @@ def collate_multicomponent(batches: Iterable[Iterable[Datum]]) -> Multicomponent
 
 
 """
-To be conservative, the pretrain batch collate will be independent to non-pretrain version 
+To be conservative, the pretrain batch collate will be independent to non-pretrain version
 """
+
+
 @dataclass(repr=False, eq=False, slots=True)
 class PreBatchMolGraph:
     """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraphPretrain`\s.
@@ -180,8 +182,12 @@ class PreBatchMolGraph:
         self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
         self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
         if len(batch_masked_atom_index) > 0 and len(batch_masked_atom_label_list) > 0:
-            self.batch_masked_atom_index = torch.from_numpy(np.concatenate(batch_masked_atom_index)).long()
-            self.batch_masked_atom_label_list = torch.from_numpy(np.concatenate(batch_masked_atom_label_list)).long()
+            self.batch_masked_atom_index = torch.from_numpy(
+                np.concatenate(batch_masked_atom_index)
+            ).long()
+            self.batch_masked_atom_label_list = torch.from_numpy(
+                np.concatenate(batch_masked_atom_label_list)
+            ).long()
 
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
 
@@ -194,7 +200,6 @@ class PreBatchMolGraph:
 
         return self.prepare_batch()
 
-
     def apply_bond_deletion(self, mask_bond_pre_percent: float):
         """Applies bond deletion using `MolGraphPretrain` methods."""
         for mg in self.mgs:
@@ -202,14 +207,12 @@ class PreBatchMolGraph:
 
         return self.prepare_batch()
 
-
     def apply_subgraph_deletion(self, center: int, mask_subgraph_pre_percent: float):
         """Applies subgraph deletion using `MolGraphPretrain` methods."""
         for mg in self.mgs:
             mg.subgraph_deletion(center, mask_subgraph_pre_percent)
 
         return self.prepare_batch()
-
 
     def __len__(self) -> int:
         """the number of individual :class:`MolGraph`\s in this batch"""
@@ -223,6 +226,7 @@ class PreBatchMolGraph:
         self.batch_masked_atom_index = self.batch_masked_atom_index.to(device)
         self.batch_masked_atom_label_list = self.batch_masked_atom_label_list.to(device)
         self.batch = self.batch.to(device)
+
 
 class PreTrainingBatch(NamedTuple):
     bmg: PreBatchMolGraph

@@ -1,5 +1,4 @@
-from dataclasses import InitVar, dataclass, field
-from typing import Optional
+from dataclasses import InitVar, dataclass
 
 import numpy as np
 from rdkit import Chem
@@ -158,4 +157,10 @@ class PretrainMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
 
-        return MolGraphPretrain(V=V, E=E, edge_index=edge_index, rev_edge_index=rev_edge_index, atom_num_label=atom_num_label)
+        return MolGraphPretrain(
+            V=V,
+            E=E,
+            edge_index=edge_index,
+            rev_edge_index=rev_edge_index,
+            atom_num_label=atom_num_label,
+        )
