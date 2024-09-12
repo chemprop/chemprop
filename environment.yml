@@ -15,3 +15,4 @@ dependencies:
   - scikit-learn
   - scipy
   - rich
+  - descriptastorus

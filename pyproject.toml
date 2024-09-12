@@ -37,6 +37,7 @@ dependencies = [
     "astartes[molecules]",
     "ConfigArgParse",
     "rich",
+    "descriptastorus",
 ]
 
 [project.optional-dependencies]
