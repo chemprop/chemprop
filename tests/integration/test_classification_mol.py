@@ -29,6 +29,7 @@ def dataloader(data):
 @pytest.mark.parametrize(
     "classification_mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
 )
+@pytest.mark.integration
 def test_quick(classification_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -47,6 +48,7 @@ def test_quick(classification_mpnn, dataloader):
     [nn.BondMessagePassing(), nn.AtomMessagePassing()],
     indirect=True,
 )
+@pytest.mark.integration
 def test_dirichlet_quick(classification_mpnn_dirichlet, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -63,6 +65,7 @@ def test_dirichlet_quick(classification_mpnn_dirichlet, dataloader):
 @pytest.mark.parametrize(
     "classification_mpnn", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
 )
+@pytest.mark.integration
 def test_overfit(classification_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -99,6 +102,7 @@ def test_overfit(classification_mpnn, dataloader):
     [nn.BondMessagePassing(), nn.AtomMessagePassing()],
     indirect=True,
 )
+@pytest.mark.integration
 def test_dirichlet_overfit(classification_mpnn_dirichlet, dataloader):
     trainer = pl.Trainer(
         logger=False,
