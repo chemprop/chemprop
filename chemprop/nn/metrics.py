@@ -62,8 +62,7 @@ class ChempropMetric(torchmetrics.Metric):
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        self.task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
 
         self.add_state("total_loss", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("num_samples", default=torch.tensor(0), dist_reduce_fx="sum")
@@ -271,8 +270,7 @@ class BinaryMCCLoss(ChempropMetric):
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        self.task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
 
         self.add_state("TP", default=[], dist_reduce_fx="cat")
         self.add_state("FP", default=[], dist_reduce_fx="cat")
@@ -345,8 +343,7 @@ class MulticlassMCCLoss(ChempropMetric):
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        self.task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
 
         self.add_state("p", default=[], dist_reduce_fx="cat")
         self.add_state("t", default=[], dist_reduce_fx="cat")
@@ -424,8 +421,7 @@ class ChempropClassificationMixin:
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
         super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        self.task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         super().update(preds[mask], targets[mask].long())

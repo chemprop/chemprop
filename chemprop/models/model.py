@@ -262,16 +262,12 @@ class MPNN(pl.LightningModule):
         return submodules, state_dict, hparams
 
     @classmethod
-    def _add_metric_task_weights_to_state_dict(cls, state_dict, hparams):
-        if "metrics.0.task_weights" not in state_dict:
-            metrics = hparams["metrics"]
-            n_metrics = len(metrics) if metrics is not None else 1
-            for i_metric in range(n_metrics):
-                state_dict[f"metrics.{i_metric}.task_weights"] = torch.tensor([[1.0]])
-            state_dict[f"metrics.{i_metric + 1}.task_weights"] = state_dict[
-                "predictor.criterion.task_weights"
-            ]
-        return state_dict
+    def _remove_metric_task_weights_from_state_dict(cls, state_dict):
+        new_state_dict = state_dict.copy()
+        for k in state_dict.keys():
+            if "task_weights" in k:
+                del new_state_dict[k]
+        return new_state_dict
 
     @classmethod
     def load_from_checkpoint(
@@ -283,7 +279,7 @@ class MPNN(pl.LightningModule):
         submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
         kwargs.update(submodules)
 
-        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        state_dict = cls._remove_metric_task_weights_from_state_dict(state_dict)
         d = torch.load(checkpoint_path, map_location, pickle_module=chemprop.customunpickle)
         d["state_dict"] = state_dict
         buffer = io.BytesIO()
@@ -297,7 +293,7 @@ class MPNN(pl.LightningModule):
         submodules, state_dict, hparams = cls._load(model_path, map_location, **submodules)
         hparams.update(submodules)
 
-        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        state_dict = cls._remove_metric_task_weights_from_state_dict(state_dict)
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
