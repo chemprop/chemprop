@@ -8,18 +8,19 @@ from torch.nn import functional as F
 from chemprop.conf import DEFAULT_HIDDEN_DIM
 from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
-from chemprop.nn.loss import (
+from chemprop.nn.metrics import (
     MSE,
     SID,
     BCELoss,
+    BinaryAUROC,
     BinaryDirichletLoss,
     ChempropMetric,
     CrossEntropyLoss,
     EvidentialLoss,
     MulticlassDirichletLoss,
+    MulticlassMCCMetric,
     MVELoss,
 )
-from chemprop.nn.metrics import BinaryAUROC, MulticlassMCCMetric
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.utils import ClassRegistry, Factory
 

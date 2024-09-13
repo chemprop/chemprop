@@ -1,6 +1,6 @@
 from typing import Any, Type
 
-from chemprop.nn import loss, predictors
+from chemprop.nn import metrics, predictors
 
 __all__ = ["pop_attr"]
 
@@ -34,41 +34,45 @@ def _pop_attr_d(o: object, attr: str, default: Any | None = None) -> Any | None:
 
 
 def validate_loss_function(
-    predictor_ffn: Type[predictors._FFNPredictorBase], criterion: Type[loss.ChempropMetric]
+    predictor_ffn: Type[predictors._FFNPredictorBase], criterion: Type[metrics.ChempropMetric]
 ):
     match predictor_ffn:
         case predictors.RegressionFFN:
-            if criterion not in (loss.MSE):
-                raise ValueError(f"Expected a regression loss function! got: {criterion.__name__}")
-        case predictors.MveFFN:
-            if criterion is not loss.MVELoss:
-                raise ValueError(f"Expected a MVE loss function! got: {criterion.__name__}")
-        case predictors.EvidentialFFN:
-            if criterion is not loss.EvidentialLoss:
-                raise ValueError(f"Expected an evidential loss function! got: {criterion.__name__}")
-        case predictors.BinaryClassificationFFN:
-            if criterion not in (loss.BCELoss, loss.BinaryMCCLoss):
+            if criterion not in (metrics.MSE):
                 raise ValueError(
-                    f"Expected a binary classification loss function! got: {criterion.__name__}"
+                    f"Expected a regression metrics function! got: {criterion.__name__}"
+                )
+        case predictors.MveFFN:
+            if criterion is not metrics.MVELoss:
+                raise ValueError(f"Expected a MVE metrics function! got: {criterion.__name__}")
+        case predictors.EvidentialFFN:
+            if criterion is not metrics.EvidentialLoss:
+                raise ValueError(
+                    f"Expected an evidential metrics function! got: {criterion.__name__}"
+                )
+        case predictors.BinaryClassificationFFN:
+            if criterion not in (metrics.BCELoss, metrics.BinaryMCCLoss):
+                raise ValueError(
+                    f"Expected a binary classification metrics function! got: {criterion.__name__}"
                 )
         case predictors.BinaryDirichletFFN:
-            if loss is not loss.BinaryDirichletLoss:
+            if metrics is not metrics.BinaryDirichletLoss:
                 raise ValueError(
-                    f"Expected a binary Dirichlet loss function! got: {criterion.__name__}"
+                    f"Expected a binary Dirichlet metrics function! got: {criterion.__name__}"
                 )
         case predictors.MulticlassClassificationFFN:
-            if loss not in (loss.CrossEntropyLoss, loss.MulticlassMCCLoss):
+            if metrics not in (metrics.CrossEntropyLoss, metrics.MulticlassMCCLoss):
                 raise ValueError(
-                    f"Expected a multiclass classification loss function! got: {criterion.__name__}"
+                    f"Expected a multiclass classification metrics function! got: {criterion.__name__}"
                 )
         case predictors.MulticlassDirichletFFN:
-            if loss is not loss.MulticlassDirichletLoss:
+            if metrics is not metrics.MulticlassDirichletLoss:
                 raise ValueError(
-                    f"Expected a multiclass Dirichlet loss function! got: {criterion.__name__}"
+                    f"Expected a multiclass Dirichlet metrics function! got: {criterion.__name__}"
                 )
         case predictors.SpectralFFN:
-            if loss not in (loss.SID, loss.Wasserstein):
-                raise ValueError(f"Expected a spectral loss function! got: {criterion.__name__}")
+            if metrics not in (metrics.SID, metrics.Wasserstein):
+                raise ValueError(f"Expected a spectral metrics function! got: {criterion.__name__}")
         case _:
             raise ValueError(
                 f"Unknown predictor function! got: {predictor_ffn}. "

@@ -7,7 +7,7 @@ import chemprop.customunpickle
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
-from chemprop.nn.loss import ChempropMetric
+from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
 
 
