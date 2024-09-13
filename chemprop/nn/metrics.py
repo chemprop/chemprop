@@ -58,11 +58,19 @@ class Metric(LossFunction):
         self,
         preds: Tensor,
         targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
     ):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
+        if weights is None:
+            weights = torch.ones_like(targets, dtype=torch.float)
+        if lt_mask is None:
+            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        if gt_mask is None:
+            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
         return self._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean()
 
     @abstractmethod
@@ -73,7 +81,7 @@ class Metric(LossFunction):
 MetricRegistry = ClassRegistry[Metric]()
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ThresholdedMixin:
     threshold: float | None = 0.5
 
@@ -98,11 +106,19 @@ class RMSEMetric(MSEMetric):
         self,
         preds: Tensor,
         targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
     ):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
+        if weights is None:
+            weights = torch.ones_like(targets, dtype=torch.float)
+        if lt_mask is None:
+            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        if gt_mask is None:
+            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
         squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
 
         return squared_errors[mask].mean().sqrt()
@@ -135,7 +151,9 @@ class BoundedRMSEMetric(RMSEMetric, BoundedMixin):
 class R2Metric(Metric):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         return F.r2_score(preds[mask], targets[mask])
 
 
@@ -143,7 +161,9 @@ class R2Metric(Metric):
 class BinaryAUROCMetric(Metric):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
@@ -154,7 +174,9 @@ class BinaryAUROCMetric(Metric):
 class BinaryAUPRCMetric(Metric):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
         return auc(r, p)
 
@@ -163,7 +185,9 @@ class BinaryAUPRCMetric(Metric):
 class BinaryAccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         return F.accuracy(
             preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
@@ -173,7 +197,9 @@ class BinaryAccuracyMetric(Metric, ThresholdedMixin):
 class BinaryF1Metric(Metric, ThresholdedMixin):
     minimize = False
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
+        if mask is None:
+            mask = torch.ones_like(targets, dtype=torch.bool)
         return F.f1_score(
             preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
