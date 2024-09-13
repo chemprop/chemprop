@@ -1,235 +1,121 @@
-from abc import abstractmethod
-from dataclasses import dataclass
-
+from numpy.typing import ArrayLike
 import torch
 from torch import Tensor
-from torchmetrics import functional as F
+import torchmetrics
 from torchmetrics.utilities.compute import auc
 
-from chemprop.nn.loss import (
-    BCELoss,
-    BinaryMCCLoss,
-    CrossEntropyLoss,
-    LossFunction,
-    MSELoss,
-    MulticlassMCCLoss,
-    SIDLoss,
-    WassersteinLoss,
-)
+from chemprop.nn.loss import MSE, BinaryMCCLoss, ChempropMetric, MulticlassMCCLoss
 from chemprop.utils.registry import ClassRegistry
 
 __all__ = [
-    "Metric",
-    "MetricRegistry",
-    "ThresholdedMixin",
-    "MAEMetric",
-    "MSEMetric",
-    "RMSEMetric",
-    "BoundedMixin",
-    "BoundedMAEMetric",
-    "BoundedMSEMetric",
-    "BoundedRMSEMetric",
-    "R2Metric",
-    "BinaryAUROCMetric",
-    "BinaryAUPRCMetric",
-    "BinaryAccuracyMetric",
-    "BinaryF1Metric",
-    "BCEMetric",
-    "CrossEntropyMetric",
+    "MAE",
+    "RMSE",
+    "BinaryAccuracy",
+    "BinaryAUPRC",
+    "BinaryAUROC",
+    "BinaryF1Score",
     "BinaryMCCMetric",
+    "BoundedMAE",
+    "BoundedMSE",
+    "BoundedRMSE",
+    "MetricRegistry",
     "MulticlassMCCMetric",
-    "SIDMetric",
-    "WassersteinMetric",
+    "R2Score",
 ]
 
 
-class Metric(LossFunction):
-    """
-    Parameters
-    ----------
-    task_weights :  ArrayLike = 1.0
-        .. important::
-            Ignored. Maintained for compatibility with :class:`~chemprop.nn.loss.LossFunction`
-    """
-
-    minimize: bool = True
-
-    def forward(
-        self,
-        preds: Tensor,
-        targets: Tensor,
-        mask: Tensor | None = None,
-        weights: Tensor | None = None,
-        lt_mask: Tensor | None = None,
-        gt_mask: Tensor | None = None,
-    ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
-        if lt_mask is None:
-            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        if gt_mask is None:
-            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        return self._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean()
-
-    @abstractmethod
-    def _calc_unreduced_loss(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
-        pass
-
-
-MetricRegistry = ClassRegistry[Metric]()
-
-
-@dataclass(eq=True, frozen=True)
-class ThresholdedMixin:
-    threshold: float | None = 0.5
-
-    def extra_repr(self) -> str:
-        return f"threshold={self.threshold}"
+MetricRegistry = ClassRegistry[ChempropMetric]()
 
 
 @MetricRegistry.register("mae")
-class MAEMetric(Metric):
+class MAE(ChempropMetric):
     def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
         return (preds - targets).abs()
 
 
-@MetricRegistry.register("mse")
-class MSEMetric(MSELoss, Metric):
-    pass
-
-
 @MetricRegistry.register("rmse")
-class RMSEMetric(MSEMetric):
-    def forward(
-        self,
-        preds: Tensor,
-        targets: Tensor,
-        mask: Tensor | None = None,
-        weights: Tensor | None = None,
-        lt_mask: Tensor | None = None,
-        gt_mask: Tensor | None = None,
-    ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
-        if lt_mask is None:
-            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        if gt_mask is None:
-            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
-
-        return squared_errors[mask].mean().sqrt()
+class RMSE(MSE):
+    def compute(self):
+        return (self.total_loss / self.num_samples).sqrt()
 
 
 class BoundedMixin:
-    def _calc_unreduced_loss(self, preds, targets, mask, lt_mask, gt_mask) -> Tensor:
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, lt_mask, gt_mask) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
 
-        return super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
+        return super()._calc_unreduced_loss(preds, targets, mask, weights)
 
 
 @MetricRegistry.register("bounded-mae")
-class BoundedMAEMetric(MAEMetric, BoundedMixin):
+class BoundedMAE(BoundedMixin, MAE):
     pass
 
 
 @MetricRegistry.register("bounded-mse")
-class BoundedMSEMetric(MSEMetric, BoundedMixin):
+class BoundedMSE(BoundedMixin, MSE):
     pass
 
 
 @MetricRegistry.register("bounded-rmse")
-class BoundedRMSEMetric(RMSEMetric, BoundedMixin):
+class BoundedRMSE(BoundedMixin, RMSE):
     pass
 
 
 @MetricRegistry.register("r2")
-class R2Metric(Metric):
-    minimize = False
+class R2Score(torchmetrics.R2Score):
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        super().update(preds[mask], targets[mask])
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        return F.r2_score(preds[mask], targets[mask])
+
+class ChempropClassificationMixin:
+    def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
+        """
+        Parameters
+        ----------
+        task_weights :  ArrayLike = 1.0
+            .. important::
+                Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        """
+        super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        super().update(preds[mask], targets[mask].long())
 
 
 @MetricRegistry.register("roc")
-class BinaryAUROCMetric(Metric):
-    minimize = False
-
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        return self._calc_unreduced_loss(preds, targets, mask)
-
-    def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
-        return F.auroc(preds[mask], targets[mask].long(), task="binary")
+class BinaryAUROC(ChempropClassificationMixin, torchmetrics.classification.BinaryAUROC):
+    pass
 
 
 @MetricRegistry.register("prc")
-class BinaryAUPRCMetric(Metric):
-    minimize = False
-
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
+class BinaryAUPRC(
+    ChempropClassificationMixin, torchmetrics.classification.BinaryPrecisionRecallCurve
+):
+    def compute(self) -> Tensor:
+        p, r, _ = super().compute()
         return auc(r, p)
 
 
 @MetricRegistry.register("accuracy")
-class BinaryAccuracyMetric(Metric, ThresholdedMixin):
-    minimize = False
-
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        return F.accuracy(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
-        )
-
-
-@MetricRegistry.register("f1")
-class BinaryF1Metric(Metric, ThresholdedMixin):
-    minimize = False
-
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        return F.f1_score(
-            preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
-        )
-
-
-@MetricRegistry.register("bce")
-class BCEMetric(BCELoss, Metric):
+class BinaryAccuracy(ChempropClassificationMixin, torchmetrics.classification.BinaryAccuracy):
     pass
 
 
-@MetricRegistry.register("ce")
-class CrossEntropyMetric(CrossEntropyLoss, Metric):
+@MetricRegistry.register("f1")
+class BinaryF1Score(ChempropClassificationMixin, torchmetrics.classification.BinaryF1Score):
     pass
 
 
 @MetricRegistry.register("binary-mcc")
-class BinaryMCCMetric(BinaryMCCLoss, Metric):
-    pass
+class BinaryMCCMetric(BinaryMCCLoss):
+    def compute(self):
+        return 1 - super().compute()
 
 
 @MetricRegistry.register("multiclass-mcc")
-class MulticlassMCCMetric(MulticlassMCCLoss, Metric):
-    pass
-
-
-@MetricRegistry.register("sid")
-class SIDMetric(SIDLoss, Metric):
-    pass
-
-
-@MetricRegistry.register("wasserstein")
-class WassersteinMetric(WassersteinLoss, Metric):
-    pass
+class MulticlassMCCMetric(MulticlassMCCLoss):
+    def compute(self):
+        return 1 - super().compute()

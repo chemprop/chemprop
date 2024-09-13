@@ -321,7 +321,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         tracking_metric_class = MetricRegistry[args.tracking_metric]
         args.tracking_metric = "val/" + args.tracking_metric
 
-    monitor_mode = "min" if tracking_metric_class.minimize else "max"
+    monitor_mode = "max" if tracking_metric_class.higher_is_better else "min"
     logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
 
     patience = args.patience if args.patience is not None else args.epochs
@@ -491,7 +491,7 @@ def main(args: Namespace):
     )
 
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
+    monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms

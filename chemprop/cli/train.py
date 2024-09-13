@@ -875,7 +875,7 @@ def train_model(
             tracking_metric_class = MetricRegistry[args.tracking_metric]
             args.tracking_metric = "val/" + args.tracking_metric
 
-        monitor_mode = "min" if tracking_metric_class.minimize else "max"
+        monitor_mode = "min" if tracking_metric_class.higher_is_better else "max"
         logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
 
         if args.remove_checkpoints:
@@ -998,18 +998,16 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
             )
             individual_scores[metric.alias].append(preds_loss)
 
-    logger.info("Entire Test Set results:")
+    logger.info("Test Set results:")
     for metric in metrics[:-1]:
         avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
-        logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+        logger.info(f"test/{metric.alias}: {avg_loss}")
 
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
         for metric in metrics[:-1]:
             for i, col in enumerate(target_cols):
-                logger.info(
-                    f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
-                )
+                logger.info(f"test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}")
 
     names = test_loader.dataset.names
     if isinstance(test_loader.dataset, MulticomponentDataset):

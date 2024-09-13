@@ -34,11 +34,11 @@ def _pop_attr_d(o: object, attr: str, default: Any | None = None) -> Any | None:
 
 
 def validate_loss_function(
-    predictor_ffn: Type[predictors._FFNPredictorBase], criterion: Type[loss.LossFunction]
+    predictor_ffn: Type[predictors._FFNPredictorBase], criterion: Type[loss.ChempropMetric]
 ):
     match predictor_ffn:
         case predictors.RegressionFFN:
-            if criterion not in (loss.MSELoss, loss.BoundedMSELoss):
+            if criterion not in (loss.MSE):
                 raise ValueError(f"Expected a regression loss function! got: {criterion.__name__}")
         case predictors.MveFFN:
             if criterion is not loss.MVELoss:
@@ -67,7 +67,7 @@ def validate_loss_function(
                     f"Expected a multiclass Dirichlet loss function! got: {criterion.__name__}"
                 )
         case predictors.SpectralFFN:
-            if loss not in (loss.SIDLoss, loss.WassersteinLoss):
+            if loss not in (loss.SID, loss.Wasserstein):
                 raise ValueError(f"Expected a spectral loss function! got: {criterion.__name__}")
         case _:
             raise ValueError(
