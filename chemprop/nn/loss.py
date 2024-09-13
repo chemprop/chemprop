@@ -311,7 +311,7 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 
 @LossFunctionRegistry.register("sid")
 class SIDLoss(LossFunction):
-    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = 1e-8):
         super().__init__(task_weights)
 
         self.threshold = threshold
@@ -319,6 +319,7 @@ class SIDLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
+            targets = targets.clamp(min=self.threshold)
 
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
@@ -333,7 +334,7 @@ class SIDLoss(LossFunction):
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
-    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = 1e-8):
         super().__init__(task_weights)
 
         self.threshold = threshold
@@ -341,6 +342,7 @@ class WassersteinLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         if self.threshold is not None:
             preds = preds.clamp(min=self.threshold)
+            targets = targets.clamp(min=self.threshold)
 
         preds_norm = preds / (preds * mask).sum(1, keepdim=True)
 
