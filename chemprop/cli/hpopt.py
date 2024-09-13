@@ -24,7 +24,7 @@ from chemprop.cli.train import (
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
-from chemprop.nn import AggregationRegistry
+from chemprop.nn import AggregationRegistry, MetricRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
 
@@ -315,11 +315,17 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
-    logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+    if args.tracking_metric == "val_loss":
+        tracking_metric_class = model.criterion
+    else:
+        tracking_metric_class = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
+
+    monitor_mode = "min" if tracking_metric_class.minimize else "max"
+    logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
 
     patience = args.patience if args.patience is not None else args.epochs
-    early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+    early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
 
     trainer = pl.Trainer(
         accelerator=args.accelerator,
@@ -372,7 +378,7 @@ def tune_model(
 
     checkpoint_config = CheckpointConfig(
         num_to_keep=args.raytune_num_checkpoints_to_keep,
-        checkpoint_score_attribute="val_loss",
+        checkpoint_score_attribute=args.tracking_metric,
         checkpoint_score_order=monitor_mode,
     )
 
@@ -411,7 +417,7 @@ def tune_model(
             search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
-        metric="val_loss",
+        metric=args.tracking_metric,
         mode=monitor_mode,
         num_samples=args.raytune_num_samples,
         scheduler=scheduler,
