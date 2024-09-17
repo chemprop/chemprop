@@ -489,6 +489,7 @@ def process_train_args(args: Namespace) -> Namespace:
         logger.warning(
             "`--model-frzn` is deprecated and will be removed in v2.2. "
             "Please use `--checkpoint` with `--freeze-encoder` instead."
+        )
 
     if args.class_balance and args.task_type != "classification":
         raise ArgumentError(
