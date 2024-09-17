@@ -3,6 +3,7 @@ import json
 import logging
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -98,6 +99,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--save-dir",
         type=Path,
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
+    )
+    parser.add_argument(
+        "--remove-checkpoints",
+        action="store_true",
+        help="Remove intermediate checkpoint files after training is complete.",
     )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
@@ -388,12 +394,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=float,
         help="Passed directly to the lightning trainer which controls grad clipping (see the ``Trainer()`` docstring for details)",
     )
-    # TODO: Add in v2.1
-    # train_args.add_argument(
-    #     "--class-balance",
-    #     action="store_true",
-    #     help="Trains with an equal number of positives and negatives in each batch.",
-    # )
+    train_args.add_argument(
+        "--class-balance",
+        action="store_true",
+        help="Ensures each training batch contains an equal number of positive and negative samples.",
+    )
 
     split_args = parser.add_argument_group("split args")
     split_args.add_argument(
@@ -484,6 +489,10 @@ def process_train_args(args: Namespace) -> Namespace:
         logger.warning(
             "`--model-frzn` is deprecated and will be removed in v2.2. "
             "Please use `--checkpoint` with `--freeze-encoder` instead."
+
+    if args.class_balance and args.task_type != "classification":
+        raise ArgumentError(
+            argument=None, message="Class balance is only applicable for classification tasks."
         )
 
     return args
@@ -895,8 +904,14 @@ def train_model(
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
+        if args.remove_checkpoints:
+            temp_dir = TemporaryDirectory()
+            checkpoint_dir = Path(temp_dir.name)
+        else:
+            checkpoint_dir = model_output_dir
+
         checkpointing = ModelCheckpoint(
-            model_output_dir / "checkpoints",
+            checkpoint_dir / "checkpoints",
             "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
@@ -952,6 +967,9 @@ def train_model(
         p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
+
+        if args.remove_checkpoints:
+            temp_dir.cleanup()
 
 
 def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
@@ -1078,8 +1096,16 @@ def main(args):
             val_dset.cache = True
 
         train_loader = build_dataloader(
-            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+            train_dset,
+            args.batch_size,
+            args.num_workers,
+            class_balance=args.class_balance,
+            seed=args.data_seed,
         )
+        if args.class_balance:
+            logger.debug(
+                f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
+            )
         val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = build_dataloader(
