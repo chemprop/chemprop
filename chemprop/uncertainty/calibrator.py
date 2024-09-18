@@ -6,46 +6,17 @@ from torch import Tensor
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyCalibrator(ABC):
+class CalibratorBase(ABC):
     """
-    A class for calibrating the predicted uncertainties.
+    A base class for calibrating the predicted uncertainties.
     """
 
     @abstractmethod
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+    def fit(self, *args, **kwargs) -> Self:
         """
         Fit calibration method for the calibration data.
-
-        .. note::
-            The `preds` variable is required only for regression tasks.
-
-            The `uncs` variable holds different values depending on the task:
-
-            - Regression tasks: `uncs` represents the predicted variance.
-            - Binary classification: `uncs` is the predicted probability of class 1.
-            - Multiclass classification: `uncs` contains the predicted probabilities for each class.
-
-        Parameters
-        ----------
-        preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
-        uncs: Tensor
-            the predicted uncertainties of varying shape depending on the task type:
-
-            * regression/binary classification: ``n x t``
-
-            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
-        targets: Tensor
-            a tensor of the shape ``n x t``
-        mask: Tensor
-            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
-
-        Returns
-        -------
-        self : UncertaintyCalibrator
-            the fitted calibrator
         """
+        pass
 
     @abstractmethod
     def apply(self, uncs: Tensor) -> Tensor:
@@ -62,13 +33,44 @@ class UncertaintyCalibrator(ABC):
         Tensor
             the calibrated uncertainties
         """
+        pass
 
 
-UncertaintyCalibratorRegistry = ClassRegistry[UncertaintyCalibrator]()
+UncertaintyCalibratorRegistry = ClassRegistry[CalibratorBase]()
+
+
+class RegressionCalibrator(CalibratorBase):
+    """
+    A class for calibrating the predicted uncertainties in regressions tasks.
+    """
+
+    @abstractmethod
+    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        """
+        Fit calibration method for the calibration data.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties (variance) of the shape of ``n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : RegressionCalibrator
+            the fitted calibrator
+        """
+        pass
 
 
 @UncertaintyCalibratorRegistry.register("zscaling")
-class ZScalingCalibrator(UncertaintyCalibrator):
+class ZScalingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
@@ -79,7 +81,7 @@ class ZScalingCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("tscaling")
-class TScalingCalibrator(UncertaintyCalibrator):
+class TScalingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
@@ -90,7 +92,7 @@ class TScalingCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
-class ZelikmanCalibrator(UncertaintyCalibrator):
+class ZelikmanCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
@@ -101,51 +103,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
-class MVEWeightingCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
-        return self
-
-    def apply(self, uncs: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyCalibratorRegistry.register("platt")
-class PlattCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
-        return self
-
-    def apply(self, uncs: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyCalibratorRegistry.register("conformal-multilabel")
-class ConformalMultilabelCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
-        return self
-
-    def apply(self, uncs: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyCalibratorRegistry.register("conformal-multiclass")
-class ConformalMulticlassCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
-        return self
-
-    def apply(self, uncs: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyCalibratorRegistry.register("conformal-adaptive")
-class ConformalAdaptiveMulticlassCalibrator(UncertaintyCalibrator):
+class MVEWeightingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
@@ -156,7 +114,7 @@ class ConformalAdaptiveMulticlassCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
-class ConformalRegressionCalibrator(UncertaintyCalibrator):
+class ConformalRegressionCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
@@ -167,8 +125,47 @@ class ConformalRegressionCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("conformal-quantile-regression")
-class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
+class ConformalQuantileRegressionCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        ...
+        return self
+
+    def apply(self, uncs: Tensor) -> Tensor:
+        ...
+        return
+
+
+class BinaryClassificationCalibrator(CalibratorBase):
+    """
+    A class for calibrating the predicted uncertainties in binary classification tasks.
+    """
+
+    @abstractmethod
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        """
+        Fit calibration method for the calibration data.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probability of class 1) of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : BinaryClassificationCalibrator
+            the fitted calibrator
+        """
+        pass
+
+
+@UncertaintyCalibratorRegistry.register("platt")
+class PlattCalibrator(BinaryClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
 
@@ -178,8 +175,69 @@ class ConformalQuantileRegressionCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("isotonic")
-class IsotonicCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+class IsotonicCalibrator(BinaryClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        ...
+        return self
+
+    def apply(self, uncs: Tensor) -> Tensor:
+        ...
+        return
+
+
+@UncertaintyCalibratorRegistry.register("conformal-multilabel")
+class ConformalMultilabelCalibrator(BinaryClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        ...
+        return self
+
+    def apply(self, uncs: Tensor) -> Tensor:
+        ...
+        return
+
+
+class MulticlassClassificationCalibrator(CalibratorBase):
+    """
+    A class for calibrating the predicted uncertainties in multiclass classification tasks.
+    """
+
+    @abstractmethod
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        """
+        Fit calibration method for the calibration data.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probabilities for each class) of the shape of ``n x t x c``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and ``c`` is the number of classes.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : MulticlassClassificationCalibrator
+            the fitted calibrator
+        """
+        pass
+
+
+@UncertaintyCalibratorRegistry.register("conformal-multiclass")
+class ConformalMulticlassCalibrator(MulticlassClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        ...
+        return self
+
+    def apply(self, uncs: Tensor) -> Tensor:
+        ...
+        return
+
+
+@UncertaintyCalibratorRegistry.register("conformal-adaptive")
+class ConformalAdaptiveMulticlassCalibrator(MulticlassClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
 
@@ -189,8 +247,8 @@ class IsotonicCalibrator(UncertaintyCalibrator):
 
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
-class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         ...
         return self
 
