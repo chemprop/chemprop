@@ -138,8 +138,8 @@ class PlattCalibrator(UncertaintyCalibrator):
 
         return self
 
-    def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
-        return torch.sigmoid(self.a * torch.logit(uncs) + self.b), None
+    def apply(self, uncs: Tensor) -> Tensor:
+        return torch.sigmoid(self.a * torch.logit(uncs) + self.b)
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
