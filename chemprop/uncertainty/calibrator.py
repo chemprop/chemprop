@@ -86,7 +86,6 @@ class PlattCalibrator(UncertaintyCalibrator):
 
     def fit(
         self,
-        preds: Tensor,
         uncs: Tensor,
         targets: Tensor,
         mask: Tensor,
@@ -118,18 +117,18 @@ class PlattCalibrator(UncertaintyCalibrator):
             logger.info("No training targets were provided. No Bayesian correction is applied.")
 
         xs = []
-        for j in range(preds.shape[1]):
+        for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
-            preds_j = preds[:, j][mask_j].numpy()
+            uncs_j = uncs[:, j][mask_j].numpy()
             targets_j = targets[:, j][mask_j].numpy()
 
             # if is_atom_bond_targets: # Not yet implemented
 
             def objective(parameters):
                 a, b = parameters
-                scaled_preds = expit(a * logit(preds_j) + b)
+                scaled_uncs = expit(a * logit(uncs_j) + b)
                 nll = -1 * np.sum(
-                    targets_j * np.log(scaled_preds) + (1 - targets_j) * np.log(1 - scaled_preds)
+                    targets_j * np.log(scaled_uncs) + (1 - targets_j) * np.log(1 - scaled_uncs)
                 )
                 return nll
 
@@ -140,8 +139,8 @@ class PlattCalibrator(UncertaintyCalibrator):
 
         return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
-        return torch.sigmoid(self.a * torch.logit(preds) + self.b), None
+    def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor | None]:
+        return torch.sigmoid(self.a * torch.logit(uncs) + self.b), None
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
