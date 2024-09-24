@@ -7,7 +7,7 @@ from chemprop.utils.registry import ClassRegistry
 UncertaintyEvaluatorRegistry = ClassRegistry()
 
 
-class RegressionEvaluator:
+class RegressionEvaluator(ABC):
     """Evaluates the quality of uncertainty estimates in regression tasks."""
 
     @abstractmethod
@@ -63,7 +63,7 @@ class ConformalRegressionEvaluator(RegressionEvaluator):
         return
 
 
-class BinaryClassificationEvaluator:
+class BinaryClassificationEvaluator(ABC):
     """Evaluates the quality of uncertainty estimates in binary classification tasks."""
 
     @abstractmethod
@@ -99,7 +99,7 @@ class ConformalMultilabelEvaluator(BinaryClassificationEvaluator):
         return
 
 
-class MulticlassClassificationEvaluator:
+class MulticlassClassificationEvaluator(ABC):
     """Evaluates the quality of uncertainty estimates in multiclass classification tasks."""
 
     @abstractmethod
