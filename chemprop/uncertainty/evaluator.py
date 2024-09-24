@@ -4,21 +4,10 @@ from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
-
-class EvaluatorBase(ABC):
-    """A base class to evaluate the quality of uncertainty estimates using a specified metric."""
-
-    @abstractmethod
-    def evalute(self, *args, **kwargs) -> Tensor:
-        """
-        Evaluate the performance of uncertainty predictions against the model target values.
-        """
+UncertaintyEvaluatorRegistry = ClassRegistry()
 
 
-UncertaintyEvaluatorRegistry = ClassRegistry[EvaluatorBase]()
-
-
-class RegressionEvaluator(EvaluatorBase):
+class RegressionEvaluator:
     """Evaluates the quality of uncertainty estimates in regression tasks."""
 
     @abstractmethod
@@ -74,7 +63,7 @@ class ConformalRegressionEvaluator(RegressionEvaluator):
         return
 
 
-class BinaryClassificationEvaluator(EvaluatorBase):
+class BinaryClassificationEvaluator:
     """Evaluates the quality of uncertainty estimates in binary classification tasks."""
 
     @abstractmethod
@@ -110,7 +99,7 @@ class ConformalMultilabelEvaluator(BinaryClassificationEvaluator):
         return
 
 
-class MulticlassClassificationEvaluator(EvaluatorBase):
+class MulticlassClassificationEvaluator:
     """Evaluates the quality of uncertainty estimates in multiclass classification tasks."""
 
     @abstractmethod
