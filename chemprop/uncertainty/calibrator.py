@@ -12,6 +12,7 @@ from chemprop.utils.registry import ClassRegistry
 
 logger = logging.getLogger(__name__)
 
+
 class UncertaintyCalibrator:
     @abstractmethod
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> None:
@@ -85,11 +86,7 @@ class PlattCalibrator(UncertaintyCalibrator):
     """
 
     def fit(
-        self,
-        uncs: Tensor,
-        targets: Tensor,
-        mask: Tensor,
-        training_targets: Tensor | None = None,
+        self, uncs: Tensor, targets: Tensor, mask: Tensor, training_targets: Tensor | None = None
     ) -> Self:
         if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
             raise ValueError(
@@ -98,10 +95,12 @@ class PlattCalibrator(UncertaintyCalibrator):
             )
 
         if training_targets is not None:
-            logger.info("Training targets were provided. Platt scaling for calibration uses a "
-                        "Bayesian correction to avoid training set overfitting. Now replacing "
-                        "calibration targets [0, 1] with adjusted values.")
-            
+            logger.info(
+                "Training targets were provided. Platt scaling for calibration uses a Bayesian "
+                "correction to avoid training set overfitting. Now replacing calibration targets "
+                "[0, 1] with adjusted values."
+            )
+
             n_negative_examples = (training_targets == 0).sum(dim=0)
             n_positive_examples = (training_targets == 1).sum(dim=0)
 
