@@ -13,7 +13,6 @@ class EvaluatorBase(ABC):
         """
         Evaluate the performance of uncertainty predictions against the model target values.
         """
-        pass
 
 
 UncertaintyEvaluatorRegistry = ClassRegistry[EvaluatorBase]()
@@ -48,35 +47,30 @@ class RegressionEvaluator(EvaluatorBase):
 @UncertaintyEvaluatorRegistry.register("nll-regression")
 class NLLRegressionEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("miscalibration_area")
 class CalibrationAreaEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("ence")
 class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("spearman")
 class SpearmanEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
 class ConformalRegressionEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
@@ -107,14 +101,12 @@ class BinaryClassificationEvaluator(EvaluatorBase):
 @UncertaintyEvaluatorRegistry.register("nll-classification")
 class NLLClassEvaluator(BinaryClassificationEvaluator):
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
 class ConformalMultilabelEvaluator(BinaryClassificationEvaluator):
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
@@ -145,12 +137,10 @@ class MulticlassClassificationEvaluator(EvaluatorBase):
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
 class NLLMultiEvaluator(MulticlassClassificationEvaluator):
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
 class ConformalMulticlassEvaluator(MulticlassClassificationEvaluator):
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return

@@ -16,7 +16,6 @@ class CalibratorBase(ABC):
         """
         Fit calibration method for the calibration data.
         """
-        pass
 
     @abstractmethod
     def apply(self, uncs: Tensor) -> Tensor:
@@ -33,7 +32,6 @@ class CalibratorBase(ABC):
         Tensor
             the calibrated uncertainties
         """
-        pass
 
 
 UncertaintyCalibratorRegistry = ClassRegistry[CalibratorBase]()
@@ -66,72 +64,59 @@ class RegressionCalibrator(CalibratorBase):
         self : RegressionCalibrator
             the fitted calibrator
         """
-        pass
 
 
 @UncertaintyCalibratorRegistry.register("zscaling")
 class ZScalingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("tscaling")
 class TScalingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class ConformalRegressionCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-quantile-regression")
 class ConformalQuantileRegressionCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
@@ -160,39 +145,32 @@ class BinaryClassificationCalibrator(CalibratorBase):
         self : BinaryClassificationCalibrator
             the fitted calibrator
         """
-        pass
 
 
 @UncertaintyCalibratorRegistry.register("platt")
 class PlattCalibrator(BinaryClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("isotonic")
 class IsotonicCalibrator(BinaryClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class ConformalMultilabelCalibrator(BinaryClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
@@ -221,37 +199,30 @@ class MulticlassClassificationCalibrator(CalibratorBase):
         self : MulticlassClassificationCalibrator
             the fitted calibrator
         """
-        pass
 
 
 @UncertaintyCalibratorRegistry.register("conformal-multiclass")
 class ConformalMulticlassCalibrator(MulticlassClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("conformal-adaptive")
 class ConformalAdaptiveMulticlassCalibrator(MulticlassClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
 class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        ...
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        ...
         return
