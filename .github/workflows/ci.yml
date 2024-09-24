@@ -12,7 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, v2/uncertainty]
   # run this in the morning on weekdays to catch dependency issues
   schedule:
     - cron: "0 8 * * 1-5"
@@ -79,7 +79,7 @@ jobs:
             python=${{ matrix.python-version }}
       - name: Change Torch Version on Windows
         if: matrix.os == 'windows-latest'
-        run: pip install 'torch!=2.4.0'
+        run: pip install 'torch!=2.4.0,!=2.4.1'
       - name: Install dependencies
         shell: bash -l {0}
         run: |
