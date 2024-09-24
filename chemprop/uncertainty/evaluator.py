@@ -36,7 +36,7 @@ class RegressionEvaluator(EvaluatorBase):
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
-            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
 
         Returns
         -------
@@ -95,7 +95,7 @@ class BinaryClassificationEvaluator(EvaluatorBase):
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
-            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
 
         Returns
         -------
@@ -133,7 +133,7 @@ class MulticlassClassificationEvaluator(EvaluatorBase):
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
-            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
 
         Returns
         -------
