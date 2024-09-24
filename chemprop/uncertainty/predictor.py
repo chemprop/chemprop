@@ -14,11 +14,8 @@ class UncertaintyPredictor(ABC):
     A class for making model predictions and associated uncertainty predictions.
     """
 
-    def __call__(self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer):
-        return self._calc_prediction_uncertainty(dataloader, models, trainer)
-
     @abstractmethod
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         """
@@ -50,7 +47,7 @@ UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
 
 @UncertaintyPredictorRegistry.register(None)
 class NoUncertaintyPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -58,7 +55,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("mve")
 class MVEPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -66,7 +63,7 @@ class MVEPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("ensemble")
 class EnsemblePredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -74,7 +71,7 @@ class EnsemblePredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("classification")
 class ClassPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -82,7 +79,7 @@ class ClassPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-total")
 class EvidentialTotalPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -90,7 +87,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-epistemic")
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -98,7 +95,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-aleatoric")
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -106,7 +103,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("dropout")
 class DropoutPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -114,7 +111,7 @@ class DropoutPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("spectra-roundrobin")
 class RoundRobinSpectraPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -122,7 +119,7 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("dirichlet")
 class DirichletPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -130,7 +127,7 @@ class DirichletPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("conformal-quantile-regression")
 class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
@@ -138,7 +135,7 @@ class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("conformal-regression")
 class ConformalRegressionPredictor(UncertaintyPredictor):
-    def _calc_prediction_uncertainty(
+    def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         return
