@@ -6,10 +6,10 @@ from chemprop.utils.registry import ClassRegistry
 
 
 class EvaluatorBase(ABC):
-    """A :class:`EvaluatorBase` is a base class to evaluates the quality of uncertainty estimates using a specified metric."""
+    """A base class to evaluate the quality of uncertainty estimates using a specified metric."""
 
     @abstractmethod
-    def fit(self, *args, **kwargs) -> Tensor:
+    def evalute(self, *args, **kwargs) -> Tensor:
         """
         Evaluate the performance of uncertainty predictions against the model target values.
         """
