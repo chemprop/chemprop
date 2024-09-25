@@ -444,7 +444,7 @@ def process_train_args(args: Namespace) -> Namespace:
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
-    if args.num_folds > 1:  # i.e. user-specified
+    if args.num_folds is not None:  # i.e. user-specified
         raise ArgumentError(argument=None, message=_CV_DEP_WARNING)
 
     if args.data_path.suffix not in [".csv"]:
