@@ -50,6 +50,9 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
+_CV_DEP_WARNING = "The -k/--num-folds argument is deprecated and will be completely removed in v2.2.0 - use --num-replicates instead."
+
+
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "Train a chemprop model."
@@ -408,9 +411,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., ``scaffold_balanced`` or ``random_with_repeated_smiles``). Note that this index begins with zero for the first molecule.",
     )
-    split_args.add_argument(
-        "-k", "--num-replicates", type=int, default=1, help="Number of replicates."
-    )
+    split_args.add_argument("--num-replicates", type=int, default=1, help="Number of replicates.")
+    split_args.add_argument("-k", "--num-folds", help=_CV_DEP_WARNING)
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
@@ -441,6 +443,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 def process_train_args(args: Namespace) -> Namespace:
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
+    if args.num_folds > 1:  # i.e. user-specified
+        raise ArgumentError(argument=None, message=_CV_DEP_WARNING)
 
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
