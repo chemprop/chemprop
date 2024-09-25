@@ -134,7 +134,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``--checkpoint``). The message passing layer should also be frozen with ``--freeze-encoder``).",
+        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``--checkpoint``). The message passing layer should also be frozen with ``--freeze-encoder``.",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -492,6 +492,24 @@ def process_train_args(args: Namespace) -> Namespace:
             "`--model-frzn` is deprecated and will be removed in v2.2. "
             "Please use `--checkpoint` with `--freeze-encoder` instead."
         )
+
+    if args.freeze_encoder and args.checkpoint is None:
+        raise ArgumentError(
+            argument=None,
+            message="`--freeze-encoder` can only be used when `--checkpoint` is used.",
+        )
+
+    if args.frzn_ffn_layers > 0:
+        if args.checkpoint is None and args.model_frzn is None:
+            raise ArgumentError(
+                argument=None,
+                message="`--frzn-ffn-layers` can only be used when `--checkpoint` or `--model-frzn` (depreciated in v2.1) is used.",
+            )
+        if args.checkpoint is not None and not args.freeze_encoder:
+            raise ArgumentError(
+                argument=None,
+                message="To freeze the first `n` layers of the FFN via `--frzn-ffn-layers`. The message passing layer should also be frozen with `--freeze-encoder`.",
+            )
 
     if args.class_balance and args.task_type != "classification":
         raise ArgumentError(
