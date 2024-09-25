@@ -31,7 +31,7 @@ def make_split_indices(
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_replicates: int = 1,
-) -> tuple[list[list[int]]]:
+) -> tuple[list[list[int]], ...]:
     """Splits data into training, validation, and test splits.
 
     Parameters
@@ -50,8 +50,8 @@ def make_split_indices(
 
     Returns
     -------
-    tuple[list[list[int], ...], ...]
-        num_replicates-length tuple with 2- or 3-member lists containing lists of training, validation, and testing indexes.
+    tuple[list[list[int]], ...]
+        2- or 3-member tuple containing num_replicates length lists of training, validation, and testing indexes.
 
         .. important::
             Validation may or may not be present
