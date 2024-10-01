@@ -219,7 +219,7 @@ class QuantileFFN(RegressionFFN):
         mean = (lower_bound + upper_bound) / 2
         interval = upper_bound - lower_bound
 
-        return torch.cat((mean, interval), 1)
+        return torch.stack((mean, interval), dim=2)
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = self.forward(Z)

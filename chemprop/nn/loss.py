@@ -357,13 +357,13 @@ class QuantileLoss(LossFunction):
         super().__init__(task_weights)
         self.alpha = alpha
 
-        bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1, 1)
+        bounds = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
         tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
             2, 2, 1, 1
         )
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
-        mean, interval = torch.chunk(preds, 2, 1)
+        mean, interval = torch.unbind(preds, dim=-1)
 
         interval_bounds = self.bounds * interval.unsqueeze(0)
         pred_bounds = mean.unsqueeze(0) + interval_bounds
