@@ -357,8 +357,8 @@ class QuantileLoss(LossFunction):
         super().__init__(task_weights)
         self.alpha = alpha
 
-        bounds = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
-        tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
+        self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
+        self.tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
             2, 2, 1, 1
         )
 
