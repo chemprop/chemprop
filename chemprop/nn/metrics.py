@@ -41,7 +41,7 @@ __all__ = [
     "MulticlassMCCMetric",
     "SIDMetric",
     "WassersteinMetric",
-    "QuantileMetric"
+    "QuantileMetric",
 ]
 
 
