@@ -416,6 +416,7 @@ def tune_model(
         num_samples=args.raytune_num_samples,
         scheduler=scheduler,
         search_alg=search_alg,
+        trial_dirname_creator=lambda trial: str(trial.trial_id),
     )
 
     tuner = tune.Tuner(
