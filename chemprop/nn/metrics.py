@@ -209,8 +209,3 @@ class SIDMetric(SIDLoss, Metric):
 @MetricRegistry.register("wasserstein")
 class WassersteinMetric(WassersteinLoss, Metric):
     pass
-
-
-@MetricRegistry.register("quantile")
-class QuantileMetric(QuantileLoss, Metric):
-    pass
