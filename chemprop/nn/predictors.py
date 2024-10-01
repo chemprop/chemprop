@@ -222,7 +222,6 @@ class QuantileFFN(RegressionFFN):
         return torch.stack((mean, interval), dim=2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = self.forward(Z)
         return self.forward(Z)
 
 
