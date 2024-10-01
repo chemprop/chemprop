@@ -362,9 +362,6 @@ class QuantileLoss(LossFunction):
             2, 2, 1, 1
         )
 
-        self.register_buffer("bounds", bounds)
-        self.register_buffer("tau", tau)
-
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         mean, interval = torch.chunk(preds, 2, 1)
 

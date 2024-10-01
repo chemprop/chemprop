@@ -182,8 +182,6 @@ class MPNN(pl.LightningModule):
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets)
-        # TODO: fix the issue #944
-        preds = preds[:, 0].unsqueeze(1)
 
         if self.predictor.n_targets > 1:
             preds = preds[..., 0]
