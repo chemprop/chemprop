@@ -13,7 +13,6 @@ from chemprop.nn.loss import (
     LossFunction,
     MSELoss,
     MulticlassMCCLoss,
-    QuantileLoss,
     SIDLoss,
     WassersteinLoss,
 )
@@ -41,7 +40,6 @@ __all__ = [
     "MulticlassMCCMetric",
     "SIDMetric",
     "WassersteinMetric",
-    "QuantileMetric",
 ]
 
 
