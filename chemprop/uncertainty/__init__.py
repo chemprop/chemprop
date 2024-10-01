@@ -76,7 +76,7 @@ __all__ = [
     "MulticlassClassificationEvaluator",
     "MetricEvaluator",
     "NLLClassEvaluator",
-    "NLLMultiEvaluator",
+    "NLLMulticlassEvaluator",
     "NLLRegressionEvaluator",
     "RegressionEvaluator",
     "SpearmanEvaluator",
