@@ -124,7 +124,7 @@ class MulticlassClassificationEvaluator(ABC):
 
 
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
-class NLLMultiEvaluator(MulticlassClassificationEvaluator):
+class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         return
 

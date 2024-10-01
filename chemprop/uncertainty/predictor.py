@@ -10,9 +10,7 @@ from chemprop.utils.registry import ClassRegistry
 
 
 class UncertaintyPredictor(ABC):
-    """
-    A class for making model predictions and associated uncertainty predictions.
-    """
+    """A helper class for making model predictions and associated uncertainty predictions."""
 
     @abstractmethod
     def __call__(
