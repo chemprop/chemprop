@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable
+import warnings
 
 from lightning import pytorch as pl
 import torch
@@ -10,7 +11,7 @@ from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
 from chemprop.nn.metrics import Metric
 from chemprop.nn.transforms import ScaleTransform
-from chemprop.schedulers import NoamLR
+from chemprop.schedulers import build_NoamLike_LRSched
 
 
 class MPNN(pl.LightningModule):
@@ -182,6 +183,9 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets)
 
+        if self.predictor.n_targets > 1:
+            preds = preds[..., 0]
+
         return [
             metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
@@ -213,26 +217,32 @@ class MPNN(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
+        if self.trainer.train_dataloader is None:
+            # Loading `train_dataloader` to estimate number of training batches.
+            # Using this line of code can pypass the issue of using `num_training_batches` as described [here](https://github.com/Lightning-AI/pytorch-lightning/issues/16060).
+            self.trainer.estimated_stepping_batches
+        steps_per_epoch = self.trainer.num_training_batches
+        warmup_steps = self.warmup_epochs * steps_per_epoch
+        if self.trainer.max_epochs == -1:
+            warnings.warn(
+                "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
+            )
+            cooldown_steps = 100 * warmup_steps
+        else:
+            cooldown_epochs = self.trainer.max_epochs - self.warmup_epochs
+            cooldown_steps = cooldown_epochs * steps_per_epoch
 
-        lr_sched = NoamLR(
-            opt,
-            self.warmup_epochs,
-            self.trainer.max_epochs,
-            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
-            self.init_lr,
-            self.max_lr,
-            self.final_lr,
+        lr_sched = build_NoamLike_LRSched(
+            opt, warmup_steps, cooldown_steps, self.init_lr, self.max_lr, self.final_lr
         )
-        lr_sched_config = {
-            "scheduler": lr_sched,
-            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
-        }
+
+        lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, **kwargs):
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
+    def load_submodules(cls, checkpoint_path, map_location=None, **kwargs):
+        hparams = torch.load(checkpoint_path, map_location=map_location)["hyper_parameters"]
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
@@ -245,7 +255,7 @@ class MPNN(pl.LightningModule):
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
-        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
+        kwargs = cls.load_submodules(checkpoint_path, map_location, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )
