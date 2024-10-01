@@ -365,9 +365,9 @@ class QuantileLoss(LossFunction):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
         mean, interval = torch.unbind(preds, dim=-1)
 
-        interval_bounds = self.bounds * interval.unsqueeze(0)
-        pred_bounds = mean.unsqueeze(0) + interval_bounds
-        error_bounds = targets.unqueeze(0) - pred_bounds
+        interval_bounds = self.bounds * interval
+        pred_bounds = mean + interval_bounds
+        error_bounds = targets - pred_bounds
         loss_bounds = (self.tau * error_bounds).amax(0)
 
         return loss_bounds.sum(0)
