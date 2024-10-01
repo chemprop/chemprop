@@ -223,9 +223,7 @@ class QuantileFFN(RegressionFFN):
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = self.forward(Z)
-        mean, interval = torch.chunk(Y, self.n_targets, 1)
-
-        return torch.cat((mean, interval), 1)
+        return self.forward(Z)
 
 
 class BinaryClassificationFFNBase(_FFNPredictorBase):
