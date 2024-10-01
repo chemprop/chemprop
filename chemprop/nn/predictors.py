@@ -179,7 +179,7 @@ class MveFFN(RegressionFFN):
         mean = self.output_transform(mean)
         var = self.output_transform.transform_variance(var)
 
-        return torch.cat((mean, var), 1)
+        return torch.stack((mean, var), dim=2)
 
     train_step = forward
 
@@ -199,7 +199,7 @@ class EvidentialFFN(RegressionFFN):
         mean = self.output_transform(mean)
         beta = self.output_transform.transform_variance(beta)
 
-        return torch.cat((mean, v, alpha, beta), 1)
+        return torch.stack((mean, v, alpha, beta), dim=2)
 
     train_step = forward
 
@@ -255,9 +255,10 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
 
     def forward(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
-        alpha, beta = torch.chunk(Y, 2, 1)
+        alpha, beta = torch.chunk(Y, self.n_targets, 1)
+        Y = beta / (alpha + beta)
 
-        return beta / (alpha + beta)
+        return Y.reshape(Y.shape[0], -1, 1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         Y = super().forward(Z)
@@ -285,6 +286,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         threshold: float | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         super().__init__(
             n_tasks * n_classes,
             input_dim,
@@ -300,11 +302,12 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
         self.n_classes = n_classes
 
-    def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        Y = Y.reshape(Y.shape[0], -1, self.n_classes)
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // (self.n_targets * self.n_classes)
 
-        return Y.softmax(-1)
+    def forward(self, Z: Tensor) -> Tensor:
+        return self.train_step(Z).softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
