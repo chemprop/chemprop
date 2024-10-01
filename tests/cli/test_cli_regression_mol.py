@@ -124,7 +124,7 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ]
 
-    task_types = ["", "regression-mve", "regression-evidential"]
+    task_types = ["", "regression-mve", "regression-evidential", "regression-quantile"]
 
     for task_type in task_types:
         args = base_args.copy()
