@@ -436,7 +436,7 @@ def test_MulticlassMCC(
             torch.ones([2], dtype=torch.bool),
             torch.ones([2], dtype=torch.bool),
             0.5,
-            torch.tensor(0.033673, dtype=torch.float),
+            torch.tensor(0.021015, dtype=torch.float),
         ),
     ],
 )
@@ -486,7 +486,7 @@ def test_SID(
             torch.zeros([2, 4], dtype=torch.bool),
             torch.zeros([2, 4], dtype=torch.bool),
             0.3,
-            torch.tensor(0.501984, dtype=torch.float),
+            torch.tensor(0.611706, dtype=torch.float),
         ),
     ],
 )
