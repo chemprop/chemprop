@@ -36,6 +36,8 @@ dependencies = [
     "torch >= 2.1",
     "astartes[molecules]",
     "ConfigArgParse",
+    "rich",
+    "descriptastorus",
 ]
 
 [project.optional-dependencies]

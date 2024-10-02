@@ -5,6 +5,7 @@ import sys
 from typing import Iterator
 
 from lightning import pytorch as pl
+import numpy as np
 import pandas as pd
 import torch
 
@@ -13,7 +14,7 @@ from chemprop.cli.common import add_common_args, process_common_args, validate_c
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.models import load_model
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 
 logger = logging.getLogger(__name__)
 
@@ -276,12 +277,11 @@ def make_prediction_for_models(
         #     predss_cal = trainer.predict(model, cal_loader)[0]
 
         # TODO: might want to write a shared function for this as train.py might also want to do this.
-        preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=-1)
-        individual_preds.append(preds)
+        individual_preds.append(torch.concat(predss, 0))
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+        average_preds = average_preds[..., 0]
     if args.target_columns is not None:
         assert (
             len(args.target_columns) == model.n_tasks
@@ -289,10 +289,22 @@ def make_prediction_for_models(
         target_columns = args.target_columns
     else:
         target_columns = [
-            f"pred_{i}" for i in range(preds.shape[1])
+            f"pred_{i}" for i in range(average_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test = pd.read_csv(args.test_path)
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        target_columns = target_columns + [f"{col}_prob" for col in target_columns]
+        predicted_class_labels = average_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, average_preds
+        )
+        average_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
+        )
+
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
     df_test[target_columns] = average_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
@@ -303,11 +315,25 @@ def make_prediction_for_models(
 
     if len(model_paths) > 1:
         individual_preds = torch.concat(individual_preds, 1)
+
         target_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
         ]
 
-        df_test = pd.read_csv(args.test_path)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            predicted_class_labels = individual_preds.argmax(axis=-1)
+            formatted_probability_strings = np.apply_along_axis(
+                lambda x: ",".join(map(str, x)), 2, individual_preds
+            )
+            individual_preds = np.concatenate(
+                (predicted_class_labels, formatted_probability_strings), axis=-1
+            )
+        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+            individual_preds = individual_preds[..., 0]
+
+        df_test = pd.read_csv(
+            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+        )
         df_test[target_columns] = individual_preds
 
         output_path = output_path.parent / Path(

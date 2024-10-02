@@ -1,8 +1,10 @@
 from copy import deepcopy
+from io import StringIO
 import json
 import logging
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -11,6 +13,8 @@ from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 from lightning.pytorch.strategies import DDPStrategy
 import numpy as np
 import pandas as pd
+from rich.console import Console
+from rich.table import Column, Table
 import torch
 import torch.nn as nn
 
@@ -35,6 +39,7 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
+from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
@@ -42,7 +47,6 @@ from chemprop.nn.message_passing import (
     BondMessagePassing,
     MulticomponentMessagePassing,
 )
-from chemprop.nn.predictors import EvidentialFFN, MveFFN
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
@@ -94,6 +98,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--save-dir",
         type=Path,
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
+    )
+    parser.add_argument(
+        "--remove-checkpoints",
+        action="store_true",
+        help="Remove intermediate checkpoint files after training is complete.",
     )
 
     # TODO: Add in v2.1; see if we can tell lightning how often to log training loss
@@ -375,12 +384,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=float,
         help="Passed directly to the lightning trainer which controls grad clipping (see the ``Trainer()`` docstring for details)",
     )
-    # TODO: Add in v2.1
-    # train_args.add_argument(
-    #     "--class-balance",
-    #     action="store_true",
-    #     help="Trains with an equal number of positives and negatives in each batch.",
-    # )
+    train_args.add_argument(
+        "--class-balance",
+        action="store_true",
+        help="Ensures each training batch contains an equal number of positive and negative samples.",
+    )
 
     split_args = parser.add_argument_group("split args")
     split_args.add_argument(
@@ -450,8 +458,20 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
+
     if args.output_dir is None:
         args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
+
+    if args.epochs != -1 and args.epochs <= args.warmup_epochs:
+        raise ArgumentError(
+            argument=None,
+            message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
+        )
+
+    if args.class_balance and args.task_type != "classification":
+        raise ArgumentError(
+            argument=None, message="Class balance is only applicable for classification tasks."
+        )
 
     return args
 
@@ -645,6 +665,95 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     return train_data, val_data, test_data
 
 
+def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
+    columns = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+
+    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
+    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
+    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
+        y_mean = np.nanmean(y, axis=0)
+        y_std = np.nanstd(y, axis=0)
+        y_median = np.nanmedian(y, axis=0)
+        mean_dev_abs = np.abs(y - y_mean)
+        num_targets = np.sum(~np.isnan(y), axis=0)
+        frac_1_sigma = np.sum((mean_dev_abs < y_std), axis=0) / num_targets
+        frac_2_sigma = np.sum((mean_dev_abs < 2 * y_std), axis=0) / num_targets
+
+        column_headers = ["Statistic"] + [f"Value ({target_cols[i]})" for i in range(y.shape[1])]
+        table_rows = [
+            ["Num. smiles"] + [f"{len(y)}" for i in range(y.shape[1])],
+            ["Num. targets"] + [f"{num_targets[i]}" for i in range(y.shape[1])],
+            ["Num. NaN"] + [f"{len(y) - num_targets[i]}" for i in range(y.shape[1])],
+            ["Mean"] + [f"{mean:0.3g}" for mean in y_mean],
+            ["Std. dev."] + [f"{std:0.3g}" for std in y_std],
+            ["Median"] + [f"{median:0.3g}" for median in y_median],
+            ["% within 1 s.d."] + [f"{sigma:0.0%}" for sigma in frac_1_sigma],
+            ["% within 2 s.d."] + [f"{sigma:0.0%}" for sigma in frac_2_sigma],
+        ]
+        return (column_headers, table_rows)
+    elif args.task_type in [
+        "classification",
+        "classification-dirichlet",
+        "multiclass",
+        "multiclass-dirichlet",
+    ]:
+        if isinstance(dataset, MulticomponentDataset):
+            y = dataset.datasets[0].Y
+        else:
+            y = dataset.Y
+
+        mask = np.isnan(y)
+        classes = np.sort(np.unique(y[~mask]))
+
+        class_counts = np.stack([(classes[:, None] == y[:, i]).sum(1) for i in range(y.shape[1])])
+        class_fracs = class_counts / y.shape[0]
+        nan_count = np.nansum(mask, axis=0)
+        nan_frac = nan_count / y.shape[0]
+
+        column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
+
+        table_rows = [
+            [f"{k}"] + [f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])]
+            for i, k in enumerate(classes)
+        ]
+
+        nan_row = ["NaN"] + [f"{nan_count[i]}/{nan_frac[i]:0.0%}" for i in range(y.shape[1])]
+        table_rows.append(nan_row)
+
+        total_row = ["Total"] + [f"{y.shape[0]}/{100.00}%" for i in range(y.shape[1])]
+        table_rows.append(total_row)
+
+        return (column_headers, table_rows)
+    else:
+        raise ValueError(f"unsupported task type! Task type '{args.task_type}' was not recognized.")
+
+
+def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
+    right_justified_columns = [
+        Column(header=column_header, justify="right") for column_header in column_headers
+    ]
+    table = Table(*right_justified_columns, title=title)
+    for row in table_rows:
+        table.add_row(*row)
+
+    console = Console(record=True, file=StringIO(), width=200)
+    console.print(table)
+    return console.export_text()
+
+
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
     multicomponent = len(train_data) > 1
@@ -678,6 +787,13 @@ def build_datasets(args, train_data, val_data, test_data):
             test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
         else:
             test_dset = None
+    if args.task_type != "spectral":
+        for dataset, label in zip(
+            [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+        ):
+            column_headers, table_rows = summarize(args, dataset)
+            output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+            logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
 
@@ -691,7 +807,6 @@ def build_model(
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
-
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
             mp_cls(
@@ -840,16 +955,26 @@ def train_model(
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
+        if args.remove_checkpoints:
+            temp_dir = TemporaryDirectory()
+            checkpoint_dir = Path(temp_dir.name)
+        else:
+            checkpoint_dir = model_output_dir
+
         checkpointing = ModelCheckpoint(
-            model_output_dir / "checkpoints",
+            checkpoint_dir / "checkpoints",
             "best-{epoch}-{val_loss:.2f}",
             "val_loss",
             mode=monitor_mode,
             save_last=True,
         )
 
-        patience = args.patience if args.patience is not None else args.epochs
-        early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+        if args.epochs != -1:
+            patience = args.patience if args.patience is not None else args.epochs
+            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+            callbacks = [checkpointing, early_stopping]
+        else:
+            callbacks = [checkpointing]
 
         trainer = pl.Trainer(
             logger=trainer_logger,
@@ -857,7 +982,7 @@ def train_model(
             accelerator=args.accelerator,
             devices=args.devices,
             max_epochs=args.epochs,
-            callbacks=[checkpointing, early_stopping],
+            callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
         )
@@ -879,11 +1004,10 @@ def train_model(
             else:
                 predss = trainer.predict(dataloaders=test_loader)
 
-            preds = torch.concat(predss, 0).numpy()
-            if isinstance(model.predictor, MveFFN):
-                preds = np.split(preds, 2, axis=1)[0]
-            elif isinstance(model.predictor, EvidentialFFN):
-                preds = np.split(preds, 4, axis=1)[0]
+            preds = torch.concat(predss, 0)
+            if model.predictor.n_targets > 1:
+                preds = preds[..., 0]
+            preds = preds.numpy()
 
             evaluate_and_save_predictions(
                 preds, test_loader, model.metrics[:-1], model_output_dir, args
@@ -894,6 +1018,9 @@ def train_model(
         p_model = model_output_dir / "best.pt"
         save_model(p_model, model)
         logger.info(f"Best model saved to '{p_model}'")
+
+        if args.remove_checkpoints:
+            temp_dir.cleanup()
 
 
 def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
@@ -960,7 +1087,15 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         namess = [names]
     if "multiclass" in args.task_type:
-        df_preds = pd.DataFrame(list(zip(*namess, preds)), columns=columns)
+        columns = columns + [f"{col}_prob" for col in target_cols]
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, preds
+        )
+        predicted_class_labels = preds.argmax(axis=-1)
+        df_preds = pd.DataFrame(
+            list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
+            columns=columns,
+        )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
@@ -1012,8 +1147,16 @@ def main(args):
             val_dset.cache = True
 
         train_loader = build_dataloader(
-            train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+            train_dset,
+            args.batch_size,
+            args.num_workers,
+            class_balance=args.class_balance,
+            seed=args.data_seed,
         )
+        if args.class_balance:
+            logger.debug(
+                f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
+            )
         val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
         if test_dset is not None:
             test_loader = build_dataloader(
