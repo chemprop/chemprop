@@ -192,10 +192,6 @@ def process_common_args(args: Namespace) -> Namespace:
             ind_path_dict[int(ind)] = Path(path)
 
         setattr(args, key, ind_path_dict)
-        
-        if args.rigr:
-            args.multi_hot_atom_featurizer_mode = 'rigr'
-            args.multi_hot_bond_feasturizer_mode = 'rigr'
 
     return args
 

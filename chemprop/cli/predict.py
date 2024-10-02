@@ -220,7 +220,7 @@ def make_prediction_for_models(
     )
     logger.info(f"test size: {len(test_data[0])}")
     test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr) for d in test_data
     ]
 
     if multicomponent:

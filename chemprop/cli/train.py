@@ -650,18 +650,18 @@ def build_datasets(args, train_data, val_data, test_data):
     multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
             for data in train_data
         ]
         val_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
             for data in val_data
         ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
             test_dsets = [
-                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
                 for data in test_data
             ]
             test_dset = MulticomponentDataset(test_dsets)
@@ -672,10 +672,10 @@ def build_datasets(args, train_data, val_data, test_data):
         val_data = val_data[0]
         test_data = test_data[0]
 
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
+        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
         else:
             test_dset = None
 

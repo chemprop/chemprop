@@ -47,7 +47,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     """
 
     def __init__(
-        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
+        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None, rigr: bool = False
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -56,6 +56,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             BondType.AROMATIC,
         ]
         self.stereo = stereos or range(6)
+        self.rigr = rigr
 
     def __len__(self):
         return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
@@ -67,19 +68,24 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             x[0] = 1
             return x
 
-        i = 1
-        bond_type = b.GetBondType()
-        bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
-        if bt_bit != size:
-            x[i + bt_bit] = 1
-        i += size - 1
+        if self.rigr:
+            i = 1
+            x[i] = int(b.IsInRing())
 
-        x[i] = int(b.GetIsConjugated())
-        x[i + 1] = int(b.IsInRing())
-        i += 2
+        else:
+            i = 1
+            bond_type = b.GetBondType()
+            bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
+            if bt_bit != size:
+                x[i + bt_bit] = 1
+            i += size - 1
 
-        stereo_bit, _ = self.one_hot_index(int(b.GetStereo()), self.stereo)
-        x[i + stereo_bit] = 1
+            x[i] = int(b.GetIsConjugated())
+            x[i + 1] = int(b.IsInRing())
+            i += 2
+
+            stereo_bit, _ = self.one_hot_index(int(b.GetStereo()), self.stereo)
+            x[i + stereo_bit] = 1
 
         return x
 
