@@ -12,7 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, v2/uncertainty]
+    branches: [main, v2-1/dev, v2/uncertainty]
   # run this in the morning on weekdays to catch dependency issues
   schedule:
     - cron: "0 8 * * 1-5"
