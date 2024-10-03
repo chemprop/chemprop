@@ -96,9 +96,8 @@ Our code supports several methods of splitting data into train, validation, and 
 
     chemprop train --splits-file splits.csv -i data.csv -t regression
 
-splits.csv
-
 .. code-block:: JSON
+    :caption: splits.csv
 
     [
         {"train": [1, 2], "val": "3-5", "test": "6,7"},
