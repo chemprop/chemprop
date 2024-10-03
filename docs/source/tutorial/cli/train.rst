@@ -63,6 +63,7 @@ Our code supports several methods of splitting data into train, validation, and 
 * **User Specified Splits** Custom splits can be specified in two ways, :code:`--splits-column` and :code:`--splits-file`, examples of which are shown below.
 
 .. code-block::
+
     chemprop train --splits-column split -i data.csv -t regression
 
 .. list-table:: data.csv
@@ -92,6 +93,7 @@ Our code supports several methods of splitting data into train, validation, and 
       - test
 
 .. code-block::
+
     chemprop train --splits-file splits.csv -i data.csv -t regression
 
 splits.csv
