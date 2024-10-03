@@ -91,3 +91,17 @@ class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
 class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
     def __init__(self):
         self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
+        
+@MoleculeFeaturizerRegistry("charge")
+class ChargeFeaurizer(VectorFeaturizer[Mol]):
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        return np.array([Chem.GetFormalCharge(mol)])
+    def __len__(self) -> int:
+        return 1
+
+@MoleculeFeaturizerRegistry("multiplicity")
+class ChargeFeaurizer(VectorFeaturizer[Mol]):
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        return np.array([Chem.GetFormalCharge(mol)])
+    def __len__(self) -> int:
+        return 1
