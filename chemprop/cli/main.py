@@ -33,6 +33,7 @@ def construct_parser():
         "--log",
         nargs="?",
         const="default",
+        default=None,
         help=f"Path to which the log file should be written (specifying just the flag alone will automatically log to a file ``{LOG_DIR}/MODE/TIMESTAMP.log`` , where 'MODE' is the CLI mode chosen, e.g., ``{LOG_DIR}/MODE/{NOW}.log``)",
     )
     parent.add_argument("-v", action="store_true", help="Increase verbosity level to DEBUG")
