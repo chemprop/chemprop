@@ -167,10 +167,11 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_paths)):
-        logger.info(f"Fingerprints with model {i} at '{model_path}'")
-        output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
-        make_fingerprint_for_model(args, model_path, multicomponent, output_path)
+    if not args.dry_run:
+        for i, model_path in enumerate(find_models(args.model_paths)):
+            logger.info(f"Fingerprints with model {i} at '{model_path}'")
+            output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
+            make_fingerprint_for_model(args, model_path, multicomponent, output_path)
 
 
 if __name__ == "__main__":

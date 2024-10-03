@@ -366,6 +366,10 @@ def main(args):
 
     model_paths = find_models(args.model_paths)
 
+    if args.dry_run:
+        temp_output = TemporaryDirectory()
+        args.output = Path(temp_output.name)
+
     make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 
 
