@@ -1,80 +1,65 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import torch
 from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
+UncertaintyEvaluatorRegistry = ClassRegistry()
 
-class UncertaintyEvaluator:
-    """
-    A class for evaluating the effectiveness of uncertainty estimates with metrics.
-    """
+
+class RegressionEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in regression tasks."""
 
     @abstractmethod
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties (variance) of the shape of ``n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
         """
-        Evaluate the performance of uncertainty predictions against the model target values.
-        """
-
-
-UncertaintyEvaluatorRegistry = ClassRegistry[UncertaintyEvaluator]()
-
-
-class MetricEvaluator(UncertaintyEvaluator):
-    """
-    A class for evaluating confidence estimates of classification and multiclass datasets using builtin evaluation metrics.
-    """
-
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
 
 
 @UncertaintyEvaluatorRegistry.register("nll-regression")
-class NLLRegressionEvaluator(UncertaintyEvaluator):
+class NLLRegressionEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyEvaluatorRegistry.register("nll-classification")
-class NLLClassEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyEvaluatorRegistry.register("nll-multiclass")
-class NLLMultiEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("miscalibration_area")
-class CalibrationAreaEvaluator(UncertaintyEvaluator):
+class CalibrationAreaEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("ence")
-class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
+class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("spearman")
-class SpearmanEvaluator(UncertaintyEvaluator):
+class SpearmanEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
-class RegressionConformalEvaluator(UncertaintyEvaluator):
+class RegressionConformalEvaluator(RegressionEvaluator):
     r"""
     Evaluate the coverage of conformal prediction for regression dataset.
 
@@ -93,25 +78,38 @@ class RegressionConformalEvaluator(UncertaintyEvaluator):
         return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
-@UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
-class MulticlassConformalEvaluator(UncertaintyEvaluator):
-    r"""
-    Evaluate the coverage of conformal prediction for multiclass classification dataset.
+class BinaryClassificationEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in binary classification tasks."""
 
-    .. math::
-        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+    @abstractmethod
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
 
-    where the :math:`C(X_{\text{test}})) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
-    """
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probability of class 1) of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
 
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=uncs.shape[2])
-        covered_mask = torch.max(uncs * targets_one_hot, dim=-1)[0] > 0
-        return (covered_mask & mask).sum(0) / mask.sum(0)
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
+
+
+@UncertaintyEvaluatorRegistry.register("nll-classification")
+class NLLClassEvaluator(BinaryClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
-class MultilabelConformalEvaluator(UncertaintyEvaluator):
+class MultilabelConformalEvaluator(BinaryClassificationEvaluator):
     r"""
     Evaluate the coverage of conformal prediction for binary classification dataset with multiple labels.
 
@@ -124,7 +122,54 @@ class MultilabelConformalEvaluator(UncertaintyEvaluator):
     :math:`\mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
     """
 
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         in_set, out_set = torch.chunk(uncs, 2, 1)
         covered_mask = torch.logical_and(in_set <= targets, targets <= out_set)
+        return (covered_mask & mask).sum(0) / mask.sum(0)
+
+
+class MulticlassClassificationEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in multiclass classification tasks."""
+
+    @abstractmethod
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probabilities for each class) of the shape of ``n x t x c``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and ``c`` is the number of classes.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
+
+
+@UncertaintyEvaluatorRegistry.register("nll-multiclass")
+class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        return
+
+
+@UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
+class MulticlassConformalEvaluator(MulticlassClassificationEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for multiclass classification dataset.
+
+    .. math::
+        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+
+    where the :math:`C(X_{\text{test}})) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
+    """
+
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=uncs.shape[2])
+        covered_mask = torch.max(uncs * targets_one_hot, dim=-1)[0] > 0
         return (covered_mask & mask).sum(0) / mask.sum(0)
