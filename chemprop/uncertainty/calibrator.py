@@ -267,7 +267,7 @@ class MultilabelConformalCalibrator(BinaryClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         if targets.shape[1] < 2:
             raise ValueError(
-                f"The number of tasks should be laerger than 1. Got {targets.shape[1]}."
+                f"the number of tasks should be larger than 1! got: {targets.shape[1]}."
             )
 
         has_zeros = torch.any(targets == 0, dim=1)
@@ -406,7 +406,7 @@ class MulticlassConformalCalibrator(MulticlassClassificationCalibrator):
 class AdaptiveMulticlassConformalCalibrator(MulticlassConformalCalibrator):
     @staticmethod
     def nonconformity_scores(preds):
-        r"""Compute nonconformity score by greedily including classes in the classification set until it reach the true label.
+        r"""Compute nonconformity score by greedily including classes in the classification set until it reaches the true label.
 
         .. math::
             s(x, y) = \sum_{j=1}^{k} \hat{f}(x)_{\pi_j(x)}, \text{ where } y = \pi_k(x)
