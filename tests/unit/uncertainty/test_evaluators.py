@@ -9,10 +9,9 @@ from chemprop.uncertainty.evaluator import (
 
 
 @pytest.mark.parametrize(
-    "preds,uncs,targets,mask,coverage",
+    "uncs,targets,mask,coverage",
     [
         (
-            None,
             torch.tensor([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[1, 0], [1, 0]]]),
             torch.tensor([[0, 0], [1, 0], [1, 1]]),
             torch.ones([3, 2], dtype=torch.bool),
@@ -20,21 +19,20 @@ from chemprop.uncertainty.evaluator import (
         )
     ],
 )
-def test_MulticlassConformalEvaluator(preds, uncs, targets, mask, coverage):
+def test_MulticlassConformalEvaluator(uncs, targets, mask, coverage):
     """
     Testing the MulticlassConformalEvaluator
     """
     evaluator = MulticlassConformalEvaluator()
-    coverage_cal = evaluator.evaluate(preds, uncs, targets, mask)
+    coverage_cal = evaluator.evaluate(uncs, targets, mask)
 
     torch.testing.assert_close(coverage_cal, coverage)
 
 
 @pytest.mark.parametrize(
-    "preds,uncs,targets,mask,coverage",
+    "uncs,targets,mask,coverage",
     [
         (
-            None,
             torch.tensor([[0, 0, 0, 0], [0, 1, 1, 1], [0, 0, 0, 0]]),
             torch.tensor([[0, 0], [1, 0], [1, 1]]),
             torch.ones([3, 2], dtype=torch.bool),
@@ -42,12 +40,12 @@ def test_MulticlassConformalEvaluator(preds, uncs, targets, mask, coverage):
         )
     ],
 )
-def test_MultilabelConformalEvaluator(preds, uncs, targets, mask, coverage):
+def test_MultilabelConformalEvaluator(uncs, targets, mask, coverage):
     """
     Testing the MultilabelConformalEvaluator
     """
     evaluator = MultilabelConformalEvaluator()
-    coverage_cal = evaluator.evaluate(preds, uncs, targets, mask)
+    coverage_cal = evaluator.evaluate(uncs, targets, mask)
 
     torch.testing.assert_close(coverage_cal, coverage)
 
