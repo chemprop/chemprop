@@ -60,9 +60,52 @@ Our code supports several methods of splitting data into train, validation, and 
 
 * **Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding :code:`--split-type scaffold_balanced`.
 
-* **User Specified Splits** The ability to specify your own split indices will be added soon.
+* **User Specified Splits** Custom splits can be specified in two ways, :code:`--splits-column` and :code:`--splits-file`, examples of which are shown below.
 
-*Note*: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
+.. code-block::
+
+    chemprop train --splits-column split -i data.csv -t regression
+
+.. list-table:: data.csv
+    :widths: 10 10 10
+    :header-rows: 1
+    
+    * - smiles
+      - property
+      - split
+    * - C
+      - 1.0
+      - train
+    * - CC
+      - 2.0
+      - train
+    * - CCC
+      - 3.0
+      - test
+    * - CCCC
+      - 4.0
+      - val
+    * - CCCCC
+      - 5.0
+      - val
+    * - CCCCCC
+      - 6.0
+      - test
+
+.. code-block::
+
+    chemprop train --splits-file splits.csv -i data.csv -t regression
+
+.. code-block:: JSON
+    :caption: splits.csv
+
+    [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+.. note::
+    By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
 
 Other supported splitting methods include :code:`cv`, :code:`cv_no_val`, :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
 

@@ -443,7 +443,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--splits-file",
         type=Path,
-        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or strings formatted (e.g., '0-2,4')",
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or formatted strings (e.g. [0, 1, 2, 4] or '0-2,4')",
     )
     train_data_args.add_argument(
         "--splits-column",
