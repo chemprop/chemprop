@@ -11,10 +11,9 @@ from chemprop.uncertainty.calibrator import (
 
 
 @pytest.mark.parametrize(
-    "cal_preds,cal_uncs,cal_targets,cal_mask,test_preds,test_uncs,cal_test_uncs",
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
     [
         (
-            None,
             torch.tensor(
                 [
                     [[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]],
@@ -24,7 +23,6 @@ from chemprop.uncertainty.calibrator import (
             ),
             torch.tensor([[2, 1], [1, 0], [0, 2]]).long(),
             torch.ones([3, 2], dtype=torch.bool),
-            None,
             torch.tensor(
                 [
                     [[0.3, 0.4, 0.3], [0.5, 0.2, 0.3]],
@@ -39,24 +37,22 @@ from chemprop.uncertainty.calibrator import (
     ],
 )
 def test_AdaptiveMulticlassConformalCalibrator(
-    cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
+    cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
 ):
     """
     Testing the AdaptiveMulticlassConformalCalibrator
     """
     calibrator = AdaptiveMulticlassConformalCalibrator(alpha=0.5)
-    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-    preds, uncs = calibrator.apply(test_preds, test_uncs)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
 
-    torch.testing.assert_close(preds, test_preds)
     torch.testing.assert_close(uncs, cal_test_uncs)
 
 
 @pytest.mark.parametrize(
-    "cal_preds,cal_uncs,cal_targets,cal_mask,test_preds,test_uncs,cal_test_uncs",
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
     [
         (
-            None,
             torch.tensor(
                 [
                     [[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]],
@@ -66,7 +62,6 @@ def test_AdaptiveMulticlassConformalCalibrator(
             ),
             torch.tensor([[2, 2], [1, 0], [0, 2]]).long(),
             torch.ones([3, 2], dtype=torch.bool),
-            None,
             torch.tensor(
                 [
                     [[0.3, 0.4, 0.3], [0.5, 0.2, 0.3]],
@@ -80,29 +75,24 @@ def test_AdaptiveMulticlassConformalCalibrator(
         )
     ],
 )
-def test_MulticlassConformalCalibrator(
-    cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
-):
+def test_MulticlassConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
     """
     Testing the MulticlassConformalCalibrator
     """
     calibrator = MulticlassConformalCalibrator(alpha=0.5)
-    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-    preds, uncs = calibrator.apply(test_preds, test_uncs)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
 
-    torch.testing.assert_close(preds, test_preds)
     torch.testing.assert_close(uncs, cal_test_uncs)
 
 
 @pytest.mark.parametrize(
-    "cal_preds,cal_uncs,cal_targets,cal_mask,test_preds,test_uncs,cal_test_uncs",
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
     [
         (
-            None,
             torch.tensor([[0, 1, 0], [1, 0, 0], [0, 0, 1]]),
             torch.tensor([[0, 1, 0], [1, 0, 0], [0, 0, 1]]),
             torch.ones([3, 3], dtype=torch.bool),
-            None,
             torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             torch.tensor(
                 [[1, 1, 1, 1, 0, 0], [1, 1, 1, 0, 1, 0], [1, 1, 1, 0, 0, 1]], dtype=torch.int
@@ -110,17 +100,14 @@ def test_MulticlassConformalCalibrator(
         )
     ],
 )
-def test_MultilabelConformalCalibrator(
-    cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
-):
+def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
     """
     Testing the MultilabelConformalCalibrator
     """
     calibrator = MultilabelConformalCalibrator(alpha=0.1)
-    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-    preds, uncs = calibrator.apply(test_preds, test_uncs)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
 
-    torch.testing.assert_close(preds, test_preds)
     torch.testing.assert_close(uncs, cal_test_uncs)
 
 
