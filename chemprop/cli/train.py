@@ -18,7 +18,12 @@ from rich.table import Column, Table
 import torch
 import torch.nn as nn
 
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.common import (
+    add_common_args,
+    find_models,
+    process_common_args,
+    validate_common_args,
+)
 from chemprop.cli.conf import NOW
 from chemprop.cli.utils import (
     LookupAction,
@@ -115,6 +120,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     transfer_args = parser.add_argument_group("transfer learning args")
     transfer_args.add_argument(
+        "--checkpoint",
+        type=Path,
+        nargs="+",
+        help="Path to checkpoint(s) or model file(s) for loading and overwriting weights. Accepts a single pre-trained model checkpoint (.ckpt), a single model file (.pt), a directory containing such files, or a list of paths and directories. If a directory is provided, it will recursively search for and use all (.pt) files found for prediction.",
+    )
+    transfer_args.add_argument(
+        "--freeze-encoder",
+        action="store_true",
+        help="Freeze the message passing layer from the checkpoint model (specified by ``--checkpoint``).",
+    )
+    transfer_args.add_argument(
         "--model-frzn",
         help="Path to model checkpoint file to be loaded for overwriting and freezing weights. By default, all MPNN weights are frozen with this option.",
     )
@@ -122,7 +138,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--frzn-ffn-layers",
         type=int,
         default=0,
-        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``model-frzn``).",
+        help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``--checkpoint``). The message passing layer should also be frozen with ``--freeze-encoder``.",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -427,7 +443,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--splits-file",
         type=Path,
-        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or strings formatted (e.g., '0-2,4')",
+        help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or formatted strings (e.g. [0, 1, 2, 4] or '0-2,4')",
     )
     train_data_args.add_argument(
         "--splits-column",
@@ -467,6 +483,37 @@ def process_train_args(args: Namespace) -> Namespace:
             argument=None,
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
         )
+
+    # TODO: model_frzn is deprecated and then remove in v2.2
+    if args.checkpoint is not None and args.model_frzn is not None:
+        raise ArgumentError(
+            argument=None,
+            message="`--checkpoint` and `--model-frzn` cannot be used at the same time.",
+        )
+
+    if "--model-frzn" in sys.argv:
+        logger.warning(
+            "`--model-frzn` is deprecated and will be removed in v2.2. "
+            "Please use `--checkpoint` with `--freeze-encoder` instead."
+        )
+
+    if args.freeze_encoder and args.checkpoint is None:
+        raise ArgumentError(
+            argument=None,
+            message="`--freeze-encoder` can only be used when `--checkpoint` is used.",
+        )
+
+    if args.frzn_ffn_layers > 0:
+        if args.checkpoint is None and args.model_frzn is None:
+            raise ArgumentError(
+                argument=None,
+                message="`--frzn-ffn-layers` can only be used when `--checkpoint` or `--model-frzn` (depreciated in v2.1) is used.",
+            )
+        if args.checkpoint is not None and not args.freeze_encoder:
+            raise ArgumentError(
+                argument=None,
+                message="To freeze the first `n` layers of the FFN via `--frzn-ffn-layers`. The message passing layer should also be frozen with `--freeze-encoder`.",
+            )
 
     if args.class_balance and args.task_type != "classification":
         raise ArgumentError(
@@ -897,19 +944,6 @@ def build_model(
             f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
         )
 
-    if args.model_frzn is not None:
-        model = mpnn_cls.load_from_file(args.model_frzn)
-        model.message_passing.apply(lambda module: module.requires_grad_(False))
-        model.message_passing.apply(
-            lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
-        )
-        model.bn.apply(lambda module: module.requires_grad_(False))
-        for idx in range(args.frzn_ffn_layers):
-            model.predictor.ffn[idx].requires_grad_(False)
-            setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
-
-        return model
-
     return mpnn_cls(
         mp_block,
         agg,
@@ -927,6 +961,14 @@ def build_model(
 def train_model(
     args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
 ):
+    if args.checkpoint is not None:
+        model_paths = find_models(args.checkpoint)
+        if args.ensemble_size != len(model_paths):
+            logger.warning(
+                f"The number of models in ensemble for each splitting of data is set to {len(model_paths)}."
+            )
+            args.ensemble_size = len(model_paths)
+
     for model_idx in range(args.ensemble_size):
         model_output_dir = output_dir / f"model_{model_idx}"
         model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -940,7 +982,34 @@ def train_model(
 
         torch.manual_seed(seed)
 
-        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+        if args.checkpoint or args.model_frzn is not None:
+            mpnn_cls = (
+                MulticomponentMPNN
+                if isinstance(train_loader.dataset, MulticomponentDataset)
+                else MPNN
+            )
+            model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
+            model = mpnn_cls.load_from_file(model_path)
+
+            if args.checkpoint:
+                model.apply(
+                    lambda m: setattr(m, "p", args.dropout)
+                    if isinstance(m, torch.nn.Dropout)
+                    else None
+                )
+
+            # TODO: model_frzn is deprecated and then remove in v2.2
+            if args.model_frzn or args.freeze_encoder:
+                model.message_passing.apply(lambda module: module.requires_grad_(False))
+                model.message_passing.apply(
+                    lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
+                )
+                model.bn.apply(lambda module: module.requires_grad_(False))
+                for idx in range(args.frzn_ffn_layers):
+                    model.predictor.ffn[idx].requires_grad_(False)
+                    setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+        else:
+            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         monitor_mode = "min" if model.metrics[0].minimize else "max"
