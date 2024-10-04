@@ -123,14 +123,6 @@ class DirichletPredictor(UncertaintyPredictor):
         return
 
 
-@UncertaintyPredictorRegistry.register("conformal-quantile-regression")
-class ConformalQuantileRegressionPredictor(UncertaintyPredictor):
-    def __call__(
-        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
-    ) -> tuple[Tensor, Tensor]:
-        return
-
-
 @UncertaintyPredictorRegistry.register("conformal-regression")
 class ConformalRegressionPredictor(UncertaintyPredictor):
     def __call__(

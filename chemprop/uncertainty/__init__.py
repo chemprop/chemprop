@@ -34,7 +34,6 @@ from .evaluator import (
 )
 from .predictor import (
     ClassPredictor,
-    ConformalQuantileRegressionPredictor,
     ConformalRegressionPredictor,
     DirichletPredictor,
     DropoutPredictor,
@@ -83,7 +82,6 @@ __all__ = [
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
     "ClassPredictor",
-    "ConformalQuantileRegressionPredictor",
     "ConformalRegressionPredictor",
     "DirichletPredictor",
     "DropoutPredictor",
