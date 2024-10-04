@@ -183,6 +183,9 @@ class MPNN(pl.LightningModule):
         preds = self(bmg, V_d, X_d)
         weights = torch.ones_like(targets)
 
+        if self.predictor.n_targets > 1:
+            preds = preds[..., 0]
+
         return [
             metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
@@ -238,8 +241,8 @@ class MPNN(pl.LightningModule):
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, **kwargs):
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
+    def load_submodules(cls, checkpoint_path, map_location=None, **kwargs):
+        hparams = torch.load(checkpoint_path, map_location=map_location)["hyper_parameters"]
 
         kwargs |= {
             key: hparams[key].pop("cls")(**hparams[key])
@@ -252,7 +255,7 @@ class MPNN(pl.LightningModule):
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
-        kwargs = cls.load_submodules(checkpoint_path, **kwargs)
+        kwargs = cls.load_submodules(checkpoint_path, map_location, **kwargs)
         return super().load_from_checkpoint(
             checkpoint_path, map_location, hparams_file, strict, **kwargs
         )

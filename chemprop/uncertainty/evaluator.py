@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 from scipy.special import erfinv
@@ -7,55 +7,43 @@ from torch import Tensor
 
 from chemprop.utils.registry import ClassRegistry
 
+UncertaintyEvaluatorRegistry = ClassRegistry()
 
-class UncertaintyEvaluator:
-    """
-    A class for evaluating the effectiveness of uncertainty estimates with metrics.
-    """
+
+class RegressionEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in regression tasks."""
 
     @abstractmethod
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties (variance) of the shape of ``n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
         """
-        Evaluate the performance of uncertainty predictions against the model target values.
-        """
-
-
-UncertaintyEvaluatorRegistry = ClassRegistry[UncertaintyEvaluator]()
-
-
-class MetricEvaluator(UncertaintyEvaluator):
-    """
-    A class for evaluating confidence estimates of classification and multiclass datasets using builtin evaluation metrics.
-    """
-
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
 
 
 @UncertaintyEvaluatorRegistry.register("nll-regression")
-class NLLRegressionEvaluator(UncertaintyEvaluator):
+class NLLRegressionEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyEvaluatorRegistry.register("nll-classification")
-class NLLClassEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
-        return
-
-
-@UncertaintyEvaluatorRegistry.register("nll-multiclass")
-class NLLMultiEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("miscalibration_area")
-class CalibrationAreaEvaluator(UncertaintyEvaluator):
+class CalibrationAreaEvaluator(RegressionEvaluator):
     """
     A class for evaluating regression uncertainty values based on how they deviate from perfect
     calibration on an observed-probability versus expected-probability plot.
@@ -78,7 +66,7 @@ class CalibrationAreaEvaluator(UncertaintyEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("ence")
-class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
+class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     r"""
     A class that evaluates uncertainty performance by binning together clusters of predictions
     and comparing the average predicted variance of the clusters against the RMSE of the cluster. [1]_
@@ -121,28 +109,84 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("spearman")
-class SpearmanEvaluator(UncertaintyEvaluator):
+class SpearmanEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
-class ConformalRegressionEvaluator(UncertaintyEvaluator):
+class ConformalRegressionEvaluator(RegressionEvaluator):
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
         return
 
 
-@UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
-class ConformalMulticlassEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
+class BinaryClassificationEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in binary classification tasks."""
+
+    @abstractmethod
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probability of class 1) of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
+
+
+@UncertaintyEvaluatorRegistry.register("nll-classification")
+class NLLClassEvaluator(BinaryClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         return
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
-class ConformalMultilabelEvaluator(UncertaintyEvaluator):
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        ...
+class ConformalMultilabelEvaluator(BinaryClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        return
+
+
+class MulticlassClassificationEvaluator(ABC):
+    """Evaluates the quality of uncertainty estimates in multiclass classification tasks."""
+
+    @abstractmethod
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            the predicted uncertainties (i.e., the predicted probabilities for each class) of the shape of ``n x t x c``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and ``c`` is the number of classes.
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
+
+
+@UncertaintyEvaluatorRegistry.register("nll-multiclass")
+class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        return
+
+
+@UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
+class ConformalMulticlassEvaluator(MulticlassClassificationEvaluator):
+    def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
         return
