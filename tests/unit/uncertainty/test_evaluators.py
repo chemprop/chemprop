@@ -10,17 +10,15 @@ from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; Confo
 
 
 @pytest.mark.parametrize(
-    "preds,uncs,targets,mask,likelihood",
+    "uncs,targets,mask,likelihood",
     [
         (
-            None,
             torch.tensor([[0.8]]),
             torch.ones([1, 1]),
             torch.ones([1, 1], dtype=bool),
             torch.tensor([0.8]),
         ),
         (
-            None,
             torch.tensor([[0.8]]),
             torch.zeros([1, 1]),
             torch.ones([1, 1], dtype=bool),
@@ -28,21 +26,20 @@ from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; Confo
         ),
     ],
 )
-def test_NLLClassEvaluator(preds, uncs, targets, mask, likelihood):
+def test_NLLClassEvaluator(uncs, targets, mask, likelihood):
     """
     Testing the NLLClassEvaluator
     """
     evaluator = NLLClassEvaluator()
-    nll_calc = evaluator.evaluate(preds, uncs, targets, mask)
+    nll_calc = evaluator.evaluate(uncs, targets, mask)
     likelihood_calc = torch.exp(-1 * nll_calc)
     torch.testing.assert_close(likelihood_calc, likelihood)
 
 
 @pytest.mark.parametrize(
-    "preds,uncs,targets,mask,likelihood",
+    "uncs,targets,mask,likelihood",
     [
         (
-            None,
             torch.tensor(
                 [
                     [[0.29, 0.22, 0.49]],
@@ -57,7 +54,6 @@ def test_NLLClassEvaluator(preds, uncs, targets, mask, likelihood):
             torch.tensor([0.24875443]),
         ),
         (
-            None,
             torch.tensor(
                 [
                     [[8.7385e-01, 8.3770e-04, 3.3212e-02, 9.2103e-02]],
@@ -72,12 +68,12 @@ def test_NLLClassEvaluator(preds, uncs, targets, mask, likelihood):
         ),
     ],
 )
-def test_NLLMultiEvaluator(preds, uncs, targets, mask, likelihood):
+def test_NLLMultiEvaluator(uncs, targets, mask, likelihood):
     """
     Testing the NLLMultiEvaluator
     """
     evaluator = NLLMultiEvaluator()
-    nll_calc = evaluator.evaluate(preds, uncs, targets, mask)
+    nll_calc = evaluator.evaluate(uncs, targets, mask)
     likelihood_calc = torch.exp(-1 * nll_calc)
     torch.testing.assert_close(likelihood_calc, likelihood)
 
