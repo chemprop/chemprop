@@ -3,7 +3,7 @@ import torch
 
 from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; ConformalMulticlassEvaluator,; ConformalMultilabelEvaluator,; ConformalRegressionEvaluator,; ExpectedNormalizedErrorEvaluator,; MetricEvaluator,
     NLLClassEvaluator,
-    NLLMultiEvaluator,
+    NLLMulticlassEvaluator,
     NLLRegressionEvaluator,
     SpearmanEvaluator,
 )
@@ -68,11 +68,11 @@ def test_NLLClassEvaluator(uncs, targets, mask, likelihood):
         ),
     ],
 )
-def test_NLLMultiEvaluator(uncs, targets, mask, likelihood):
+def test_NLLMulticlassEvaluator(uncs, targets, mask, likelihood):
     """
-    Testing the NLLMultiEvaluator
+    Testing the NLLMulticlassEvaluator
     """
-    evaluator = NLLMultiEvaluator()
+    evaluator = NLLMulticlassEvaluator()
     nll_calc = evaluator.evaluate(uncs, targets, mask)
     likelihood_calc = torch.exp(-1 * nll_calc)
     torch.testing.assert_close(likelihood_calc, likelihood)

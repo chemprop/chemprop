@@ -188,7 +188,7 @@ class MulticlassClassificationEvaluator(ABC):
 
 
 @UncertaintyEvaluatorRegistry.register("nll-multiclass")
-class NLLMultiEvaluator(MulticlassClassificationEvaluator):
+class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
     """
     Evaluate uncertainty values for multiclass classification datasets using the mean negative-log-likelihood
     of the targets given the assigned probabilities from the model:
