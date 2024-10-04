@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 
 from lightning import pytorch as pl
+import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
@@ -123,9 +124,16 @@ class DirichletPredictor(UncertaintyPredictor):
         return
 
 
-@UncertaintyPredictorRegistry.register("conformal-regression")
-class ConformalRegressionPredictor(UncertaintyPredictor):
+@UncertaintyPredictorRegistry.register("quantile-regression")
+class QuantileRegressionPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        individual_preds = []
+        for model in models:
+            predss = trainer.predict(model, dataloader)
+            individual_preds.append(torch.concat(predss, 0))
+        stacked_preds = torch.stack(individual_preds).float()
+        mean = stacked_preds[..., 0]
+        interval = torch.mean(stacked_preds[..., 1], dim=0)
+        return mean, interval
