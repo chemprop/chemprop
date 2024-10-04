@@ -112,14 +112,13 @@ def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_unc
 
 
 @pytest.mark.parametrize(
-    "cal_preds,cal_uncs,cal_targets,cal_mask,test_preds,test_uncs,cal_test_uncs",
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
     [
         (
             torch.arange(100).unsqueeze(1),
             torch.arange(100).unsqueeze(1) / 10,
             torch.arange(10, 110).unsqueeze(1),
             torch.ones([100, 1], dtype=torch.bool),
-            torch.arange(100, 200).unsqueeze(1),
             torch.arange(100, 200).unsqueeze(1) / 10,
             torch.arange(29.2, 39.1, 0.1).unsqueeze(1),
         ),
@@ -128,21 +127,19 @@ def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_unc
             torch.zeros(100, 1),
             torch.arange(10, 110).unsqueeze(1),
             torch.ones([100, 1], dtype=torch.bool),
-            torch.arange(100, 200).unsqueeze(1),
             torch.zeros(100, 1),
             torch.ones(100, 1) * 20,
         ),
     ],
 )
 def test_RegressionConformalCalibrator(
-    cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_uncs
+    cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
 ):
     """
     Testing the RegressionConformalCalibrator
     """
     calibrator = RegressionConformalCalibrator(alpha=0.1)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-    preds, uncs = calibrator.apply(test_preds, test_uncs)
+    uncs = calibrator.apply(test_uncs)
 
-    torch.testing.assert_close(preds, test_preds)
     torch.testing.assert_close(uncs, cal_test_uncs)

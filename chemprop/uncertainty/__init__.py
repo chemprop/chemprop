@@ -25,7 +25,7 @@ from .evaluator import (
     ExpectedNormalizedErrorEvaluator,
     MulticlassClassificationEvaluator,
     NLLClassEvaluator,
-    NLLMultiEvaluator,
+    NLLMulticlassEvaluator,
     NLLRegressionEvaluator,
     RegressionEvaluator,
     SpearmanEvaluator,

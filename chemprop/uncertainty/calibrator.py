@@ -173,10 +173,10 @@ class RegressionConformalCalibrator(RegressionCalibrator):
         self.qhats = torch.tensor(self.qhats)
         return self
 
-    def apply(self, preds: Tensor, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor]:
         cal_intervals = uncs + 2 * self.qhats
 
-        return preds, cal_intervals
+        return cal_intervals
 
 
 class BinaryClassificationCalibrator(CalibratorBase):
