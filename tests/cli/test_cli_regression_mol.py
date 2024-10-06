@@ -213,7 +213,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "test_predictions.csv").exists()
 
 
-def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
+def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     args = [
         "chemprop",
@@ -228,8 +228,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         str(tmp_path),
         "--save-smiles-splits",
         "--split-type",
-        "cv",
-        "--num-folds",
+        "random",
+        "--num-replicates",
         "3",
         "--ensemble-size",
         "2",
@@ -244,10 +244,10 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "fold_2" / "model_1" / "best.pt").exists()
-    assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
-    assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "best.pt").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "trainer_logs" / "version_0").exists()
+    assert (tmp_path / "replicate_2" / "train_smiles.csv").exists()
 
 
 def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
