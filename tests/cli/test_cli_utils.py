@@ -1,7 +1,7 @@
 import pytest
 
 from chemprop.cli.common import find_models
-from chemprop.cli.utils.parsing import parse_indices, get_column_names
+from chemprop.cli.utils.parsing import get_column_names, parse_indices
 
 
 def test_parse_indices():
@@ -60,17 +60,7 @@ def test_find_models(data_dir):
             False,
             ["smiles", "lipo"],
         ),
-        (
-            "regression/mol/mol.csv",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            False,
-            ["smiles", "lipo"],
-        ),
+        ("regression/mol/mol.csv", None, None, None, None, None, None, False, ["smiles", "lipo"]),
         (
             "regression/mol/mol.csv",
             None,
@@ -148,17 +138,7 @@ def test_find_models(data_dir):
             False,
             ["mol a smiles", "mol b Smiles", "synergy"],
         ),
-        (
-            "no_header.csv",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            True,
-            ["SMILES", "pred_0"],
-        ),
+        ("no_header.csv", None, None, None, None, None, None, True, ["SMILES", "pred_0"]),
     ],
 )
 def test_get_column_names(
