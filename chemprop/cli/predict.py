@@ -5,15 +5,21 @@ import sys
 from typing import Iterator
 
 from lightning import pytorch as pl
+import numpy as np
 import pandas as pd
 import torch
 
 from chemprop import data
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.common import (
+    add_common_args,
+    find_models,
+    process_common_args,
+    validate_common_args,
+)
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 
 logger = logging.getLogger(__name__)
 
@@ -41,19 +47,19 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES.",
+        help="Path to an input CSV file containing SMILES",
     )
     parser.add_argument(
         "-o",
         "--output",
         "--preds-path",
         type=Path,
-        help="Path to which predictions will be saved. If the file extension is .pkl, will be saved as a pickle file. Otherwise, will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
         action="store_true",
-        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns.",
+        help="Whether to drop all columns from the test data file besides the SMILES columns and the new prediction columns",
     )
     parser.add_argument(
         "--model-paths",
@@ -164,23 +170,6 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
-def find_models(model_paths: list[Path]):
-    collected_model_paths = []
-
-    for model_path in model_paths:
-        if model_path.suffix in [".ckpt", ".pt"]:
-            collected_model_paths.append(model_path)
-        elif model_path.is_dir():
-            collected_model_paths.extend(list(model_path.rglob("*.pt")))
-        else:
-            raise ArgumentError(
-                argument=None,
-                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
-            )
-
-    return collected_model_paths
-
-
 def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
@@ -271,21 +260,34 @@ def make_prediction_for_models(
         #     predss_cal = trainer.predict(model, cal_loader)[0]
 
         # TODO: might want to write a shared function for this as train.py might also want to do this.
-        preds = torch.concat(predss, 0)
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            preds = torch.argmax(preds, dim=-1)
-        individual_preds.append(preds)
+        individual_preds.append(torch.concat(predss, 0))
 
     average_preds = torch.mean(torch.stack(individual_preds).float(), dim=0)
+
+    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+        average_preds = average_preds[..., 0]
 
     output_columns = load_output_columns(model_paths[0])
     if output_columns is None:
         output_columns = [
-            f"pred_{i}" for i in range(preds.shape[1])
+            f"pred_{i}" for i in range(average_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    df_test = pd.read_csv(args.test_path)
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        output_columns = output_columns + [f"{col}_prob" for col in output_columns]
+        predicted_class_labels = average_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 2, average_preds
+        )
+        average_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
+        )
+
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
     df_test[output_columns] = average_preds
+
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -299,7 +301,20 @@ def make_prediction_for_models(
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
         ]
 
-        df_test = pd.read_csv(args.test_path)
+        if isinstance(model.predictor, MulticlassClassificationFFN):
+            predicted_class_labels = individual_preds.argmax(axis=-1)
+            formatted_probability_strings = np.apply_along_axis(
+                lambda x: ",".join(map(str, x)), 2, individual_preds
+            )
+            individual_preds = np.concatenate(
+                (predicted_class_labels, formatted_probability_strings), axis=-1
+            )
+        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+            individual_preds = individual_preds[..., 0]
+
+        df_test = pd.read_csv(
+            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+        )
         df_test[output_columns] = individual_preds
 
         output_path = output_path.parent / Path(
