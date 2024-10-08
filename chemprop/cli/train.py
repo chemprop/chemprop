@@ -520,6 +520,20 @@ def process_train_args(args: Namespace) -> Namespace:
             argument=None, message="Class balance is only applicable for classification tasks."
         )
 
+    input_cols, target_cols = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+
+    args.input_columns = input_cols
+    args.target_columns = target_cols
+
     return args
 
 
@@ -712,21 +726,10 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     return train_data, val_data, test_data
 
 
-def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
-    columns = get_column_names(
-        args.data_path,
-        args.smiles_columns,
-        args.reaction_columns,
-        args.target_columns,
-        args.ignore_columns,
-        args.splits_column,
-        args.weight_column,
-        args.no_header_row,
-    )
-
-    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+def summarize(
+    target_cols: list[str], task_type: str, dataset: _MolGraphDatasetMixin
+) -> tuple[list, list]:
+    if task_type in ["regression", "regression-mve", "regression-evidential"]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
@@ -751,7 +754,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             ["% within 2 s.d."] + [f"{sigma:0.0%}" for sigma in frac_2_sigma],
         ]
         return (column_headers, table_rows)
-    elif args.task_type in [
+    elif task_type in [
         "classification",
         "classification-dirichlet",
         "multiclass",
@@ -837,7 +840,7 @@ def build_datasets(args, train_data, val_data, test_data):
         for dataset, label in zip(
             [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
         ):
-            column_headers, table_rows = summarize(args, dataset)
+            column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
             output = build_table(column_headers, table_rows, f"Summary of {label} Data")
             logger.info("\n" + output)
 
@@ -1056,17 +1059,6 @@ def train_model(
         )
         trainer.fit(model, train_loader, val_loader)
 
-        columns = get_column_names(
-            args.data_path,
-            args.smiles_columns,
-            args.reaction_columns,
-            args.target_columns,
-            args.ignore_columns,
-            args.splits_column,
-            args.weight_column,
-            args.no_header_row,
-        )
-
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
                 torch.distributed.destroy_process_group()
@@ -1089,20 +1081,20 @@ def train_model(
             preds = preds.numpy()
 
             evaluate_and_save_predictions(
-                preds, test_loader, model.metrics[:-1], model_output_dir, args, columns
+                preds, test_loader, model.metrics[:-1], model_output_dir, args
             )
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model, args.target_cols)
+        save_model(p_model, model, args.target_columns)
         logger.info(f"Best model saved to '{p_model}'")
 
         if args.remove_checkpoints:
             temp_dir.cleanup()
 
 
-def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args, columns):
+def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
     if isinstance(test_loader.dataset, MulticomponentDataset):
         test_dset = test_loader.dataset.datasets[0]
     else:
@@ -1152,8 +1144,10 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         namess = list(zip(*names))
     else:
         namess = [names]
+
+    columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
-        columns = columns + [f"{col}_prob" for col in target_cols]
+        columns = columns + [f"{col}_prob" for col in args.target_columns]
         formatted_probability_strings = np.apply_along_axis(
             lambda x: ",".join(map(str, x)), 2, preds
         )
