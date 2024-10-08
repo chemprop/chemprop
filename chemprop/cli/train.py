@@ -1054,6 +1054,7 @@ def train_model(
             callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
+            fast_dev_run = args.dry_run,
         )
         trainer.fit(model, train_loader, val_loader)
 
