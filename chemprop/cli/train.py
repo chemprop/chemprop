@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 from rich.table import Column, Table
+from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 
@@ -1202,9 +1203,28 @@ def main(args):
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
         if "regression" in args.task_type:
-            output_scaler = train_dset.normalize_targets()
+            if args.checkpoint or args.model_frzn is not None:
+                model_paths = find_models(args.checkpoint)
+                mpnn_cls = (
+                    MulticomponentMPNN if isinstance(train_dset, MulticomponentDataset) else MPNN
+                )
+                # assume all models have the same output scaling, meaning they were trained on the same data
+                model_path = model_paths[0] if args.checkpoint else args.model_frzn
+                _model = mpnn_cls.load_from_file(model_path)
+                output_scaler = StandardScaler()
+                if not isinstance(_model.predictor.output_transform, nn.Identity):
+                    output_scaler.mean_ = _model.predictor.output_transform.mean.numpy()
+                    output_scaler.scale_ = _model.predictor.output_transform.scale.numpy()
+                    train_dset.normalize_targets(output_scaler)
+                else:
+                    output_scaler.mean_ = np.array([[0.0]])
+                    output_scaler.scale_ = np.array([[1.0]])
+            else:
+                output_scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(output_scaler)
-            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+            logger.info(
+                f"Data scaling parameters: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+            )
             output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
         else:
             output_transform = None
