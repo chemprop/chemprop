@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN
 
 
 class UncertaintyPredictor(ABC):
@@ -67,6 +66,7 @@ class EnsemblePredictor(UncertaintyPredictor):
     Class that predicts the uncertainty of predictions based on the variance in predictions among
     an ensemble's submodels.
     """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -143,9 +143,7 @@ class DropoutPredictor(UncertaintyPredictor):
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
         if len(models) != 1:
-            raise ValueError(
-                "Dropout method for uncertainty only takes exactly one model."
-            )
+            raise ValueError("Dropout method for uncertainty only takes exactly one model.")
         model = next(iter(models))
         self._setup_model(model)
         individual_preds = []
@@ -184,7 +182,7 @@ class DropoutPredictor(UncertaintyPredictor):
             module.train()
 
     def _change_dropout(self, module):
-        if isinstance(module, torch.nn.Dropout):        
+        if isinstance(module, torch.nn.Dropout):
             module._p = module.p
             if self.dropout:
                 module.p = self.dropout

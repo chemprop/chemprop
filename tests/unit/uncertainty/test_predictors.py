@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from lightning import pytorch as pl
-import numpy as np
 import pytest
 import torch
 from torch.utils.data import DataLoader
@@ -29,7 +26,7 @@ def trainer():
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        )
+    )
 
 
 def test_DropoutPredictor(data_dir, dataloader, trainer):
@@ -56,7 +53,9 @@ def test_EnsemblePredictor(data_dir, dataloader, trainer):
     predictor = EnsemblePredictor()
     preds, uncs = predictor(dataloader, [model1, model2], trainer)
 
-    torch.testing.assert_close(preds, torch.tensor([[[2.25354], [2.23501]],[[0.09652], [0.08291]]]))
+    torch.testing.assert_close(
+        preds, torch.tensor([[[2.25354], [2.23501]], [[0.09652], [0.08291]]])
+    )
     torch.testing.assert_close(uncs, torch.tensor([[1.16318], [1.15788]]))
 
 
