@@ -226,6 +226,15 @@ class PlattCalibrator(BinaryClassificationCalibrator):
         return torch.sigmoid(self.a * torch.logit(uncs) + self.b)
 
 
+@UncertaintyCalibratorRegistry.register("isotonic")
+class IsotonicCalibrator(BinaryClassificationCalibrator):
+    def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        return self
+
+    def apply(self, uncs: Tensor) -> Tensor:
+        return
+
+
 @UncertaintyCalibratorRegistry.register("conformal-multilabel")
 class ConformalMultilabelCalibrator(BinaryClassificationCalibrator):
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
