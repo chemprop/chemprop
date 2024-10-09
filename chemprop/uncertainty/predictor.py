@@ -64,7 +64,7 @@ class MVEPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("ensemble")
 class EnsemblePredictor(UncertaintyPredictor):
     """
-    Class that predicts uncertainty for predictions based on the variance in predictions among
+    Class that predicts the uncertainty of predictions based on the variance in predictions among
     an ensemble's submodels.
     """
     def __call__(
@@ -118,7 +118,8 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("dropout")
 class DropoutPredictor(UncertaintyPredictor):
     """
-    A :class:`DropoutPredictor` creates a virtual ensemble of via Monte Carlo dropout with the provided models [1]_.
+    A :class:`DropoutPredictor` creates a virtual ensemble of models via Monte Carlo dropout with
+    the provided model [1]_.
 
     References
     -----------
@@ -130,7 +131,8 @@ class DropoutPredictor(UncertaintyPredictor):
         The number of samples to draw for the ensemble.
     dropout: float | None
         The probability of dropping out units in the dropout layers. If unspecified,
-        dropout will be performed using training probability.
+        the training probability is used, which is prefered but not possible if the model was not
+        trained with dropout (i.e. p=0).
     """
 
     def __init__(self, ensemble_size: int, dropout : None | float = None):
