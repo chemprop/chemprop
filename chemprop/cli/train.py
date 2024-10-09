@@ -1001,13 +1001,12 @@ def train_model(
             # TODO: model_frzn is deprecated and then remove in v2.2
             if args.model_frzn or args.freeze_encoder:
                 model.message_passing.apply(lambda module: module.requires_grad_(False))
-                model.message_passing.apply(
-                    lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
-                )
+                model.message_passing.eval()
                 model.bn.apply(lambda module: module.requires_grad_(False))
+                model.bn.eval()
                 for idx in range(args.frzn_ffn_layers):
                     model.predictor.ffn[idx].requires_grad_(False)
-                    setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+                    model.predictor.ffn[idx + 1].eval()
         else:
             model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
