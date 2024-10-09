@@ -20,13 +20,13 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = [
+    base_args = [
         "chemprop",
         "train",
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--task-type",
@@ -39,9 +39,17 @@ def test_train_quick(monkeypatch, data_path):
         "--show-individual-scores",
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["classification", "classification-dirichlet"]
+
+    for task_type in task_types:
+        print(f"Testing task type: {task_type}")
+        args = base_args.copy()
+
+        args += ["--task-type", task_type]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
@@ -77,7 +85,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -104,7 +112,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -182,7 +190,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -199,3 +207,25 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
+
+
+def test_class_balance(monkeypatch, data_path, tmp_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--task-type",
+        "classification",
+        "--class-balance",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()

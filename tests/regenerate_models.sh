@@ -71,3 +71,19 @@ chemprop train -i $CHEMPROP_PATH/tests/data/regression/rxn/rxn.csv --accelerator
 cp -L test_cli_regression_rxn/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_rxn.pt
 
 cp -L test_cli_regression_rxn/model_0/checkpoints/best*.ckpt $CHEMPROP_PATH/tests/data/example_model_v2_regression_rxn.ckpt
+
+# test_cli_regression_mve_mol
+
+rm -rf test_cli_regression_mve_mol
+
+chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol/mol.csv --accelerator cpu --epochs 1 --num-workers 0 --save-dir test_cli_regression_mve_mol --task-type regression-mve
+
+cp -L test_cli_regression_mve_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mve_mol.pt
+
+# test_cli_regression_evidential_mol
+
+rm -rf test_cli_regression_evidential_mol
+
+chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol/mol.csv --accelerator cpu --epochs 1 --num-workers 0 --save-dir test_cli_regression_evidential_mol --task-type regression-evidential
+
+cp -L test_cli_regression_evidential_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_evidential_mol.pt

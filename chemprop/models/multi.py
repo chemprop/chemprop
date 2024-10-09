@@ -52,8 +52,8 @@ class MulticomponentMPNN(MPNN):
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, **kwargs):
-        hparams = torch.load(checkpoint_path)["hyper_parameters"]
+    def load_submodules(cls, checkpoint_path, map_location=None, **kwargs):
+        hparams = torch.load(checkpoint_path, map_location=map_location)["hyper_parameters"]
 
         hparams["message_passing"]["blocks"] = [
             block_hparams.pop("cls")(**block_hparams)
