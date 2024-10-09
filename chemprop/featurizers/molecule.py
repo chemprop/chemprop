@@ -1,6 +1,9 @@
+import warnings
+
+from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import Mol
+from rdkit.Chem import Descriptors, Mol
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.featurizers.base import VectorFeaturizer
@@ -41,3 +44,50 @@ class MorganBinaryFeaturizer(MorganFeaturizerMixin, BinaryFeaturizerMixin, Vecto
 @MoleculeFeaturizerRegistry("morgan_count")
 class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, VectorFeaturizer[Mol]):
     pass
+
+
+@MoleculeFeaturizerRegistry("rdkit_2d")
+class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
+    def __init__(self):
+        warnings.warn(
+            "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
+            "manually scaling them using an appropriate scaler before creating datapoints, rather "
+            "than using the scikit-learn `StandardScaler` (the default in Chemprop)."
+        )
+
+    def __len__(self) -> int:
+        return len(Descriptors.descList)
+
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        features = np.array(
+            [
+                0.0 if name == "SPS" and mol.GetNumHeavyAtoms() == 0 else func(mol)
+                for name, func in Descriptors.descList
+            ],
+            dtype=float,
+        )
+
+        return features
+
+
+class V1RDKit2DFeaturizerMixin(VectorFeaturizer[Mol]):
+    def __len__(self) -> int:
+        return 200
+
+    def __call__(self, mol: Mol) -> np.ndarray:
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
+        features = self.generator.process(smiles)[1:]
+
+        return np.array(features)
+
+
+@MoleculeFeaturizerRegistry("v1_rdkit_2d")
+class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
+    def __init__(self):
+        self.generator = rdDescriptors.RDKit2D()
+
+
+@MoleculeFeaturizerRegistry("v1_rdkit_2d_normalized")
+class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
+    def __init__(self):
+        self.generator = rdNormalizedDescriptors.RDKit2DNormalized()

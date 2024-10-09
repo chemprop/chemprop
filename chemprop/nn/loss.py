@@ -16,7 +16,6 @@ __all__ = [
     "EvidentialLoss",
     "BCELoss",
     "CrossEntropyLoss",
-    "MccMixin",
     "BinaryMCCLoss",
     "MulticlassMCCLoss",
     "DirichletMixin",
@@ -53,9 +52,9 @@ class LossFunction(nn.Module):
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x (t * s)` (regression), `b x t` (binary classification), or
+            a tensor of shape `b x t x u` (regression), `b x t` (binary classification), or
             `b x t x c` (multiclass classification) containing the predictions, where `b` is the
-            batch size, `t` is the number of tasks to predict, `s` is the number of
+            batch size, `t` is the number of tasks to predict, `u` is the number of
             targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
             a float tensor of shape `b x t` containing the target values
@@ -117,7 +116,7 @@ class MVELoss(LossFunction):
     """
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, var = torch.chunk(preds, 2, 1)
+        mean, var = torch.unbind(preds, dim=-1)
 
         L_sos = (mean - targets) ** 2 / (2 * var)
         L_kl = (2 * torch.pi * var).log() / 2
@@ -127,25 +126,25 @@ class MVELoss(LossFunction):
 
 @LossFunctionRegistry.register("evidential")
 class EvidentialLoss(LossFunction):
-    """Calculate the loss using Eqs. 8, 9, and 10 from [amini2020]_
+    """Calculate the loss using Eqs. 8, 9, and 10 from [amini2020]_. See also [soleimany2021]_.
 
     References
     ----------
     .. [amini2020] Amini, A; Schwarting, W.; Soleimany, A.; Rus, D.;
-        "Deep Evidential Regression" Advances in Neural Information Processing Systems;2020; Vol.33.
+        "Deep Evidential Regression" Advances in Neural Information Processing Systems; 2020; Vol.33.
         https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
     .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
         "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
 
-    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2, eps: float = 1e-8):
+    def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2, eps: float = 1e-8):
         super().__init__(task_weights)
         self.v_kl = v_kl
         self.eps = eps
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, v, alpha, beta = torch.chunk(preds, 4, 1)
+        mean, v, alpha, beta = torch.unbind(preds, dim=-1)
 
         residuals = targets - mean
         twoBlambda = 2 * beta * (1 + v)
@@ -182,7 +181,30 @@ class CrossEntropyLoss(LossFunction):
         return F.cross_entropy(preds, targets, reduction="none")
 
 
-class MccMixin:
+@LossFunctionRegistry.register("binary-mcc")
+class BinaryMCCLoss(LossFunction):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+        if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
+            preds = preds.sigmoid()
+
+        L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
+        L = L * self.task_weights.to(preds.device)
+
+        return L.mean()
+
+    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
+        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
+        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
+        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
+        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
+
+        MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN) + 1e-8).sqrt()
+
+        return 1 - MCC
+
+
+@LossFunctionRegistry.register("multiclass-mcc")
+class MulticlassMCCLoss(LossFunction):
     """Calculate a soft Matthews correlation coefficient ([mccWiki]_) loss for multiclass
     classification based on the implementataion of [mccSklearn]_
 
@@ -192,31 +214,15 @@ class MccMixin:
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def __call__(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
         L = self._calc_unreduced_loss(preds, targets.long(), mask, weights, *args)
-        L = L * self.task_weights
+        L = L * self.task_weights.to(preds.device)
 
         return L.mean()
 
-
-@LossFunctionRegistry.register("binary-mcc")
-class BinaryMCCLoss(LossFunction, MccMixin):
-    def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
-        TP = (targets * preds * weights * mask).sum(0, keepdim=True)
-        FP = ((1 - targets) * preds * weights * mask).sum(0, keepdim=True)
-        TN = ((1 - targets) * (1 - preds) * weights * mask).sum(0, keepdim=True)
-        FN = (targets * (1 - preds) * weights * mask).sum(0, keepdim=True)
-
-        MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)).sqrt()
-
-        return 1 - MCC
-
-
-@LossFunctionRegistry.register("multiclass-mcc")
-class MulticlassMCCLoss(LossFunction, MccMixin):
     def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
         device = preds.device
 
@@ -252,7 +258,7 @@ class DirichletMixin:
     .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
-    def __init__(self, task_weights: Tensor | None = None, v_kl: float = 0.2):
+    def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2):
         super().__init__(task_weights)
         self.v_kl = v_kl
 
@@ -305,7 +311,7 @@ class MulticlassDirichletLoss(DirichletMixin, LossFunction):
 
 @LossFunctionRegistry.register("sid")
 class SIDLoss(LossFunction):
-    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
         super().__init__(task_weights)
 
         self.threshold = threshold
@@ -327,7 +333,7 @@ class SIDLoss(LossFunction):
 
 @LossFunctionRegistry.register(["earthmovers", "wasserstein"])
 class WassersteinLoss(LossFunction):
-    def __init__(self, task_weights: Tensor | None = None, threshold: float | None = None):
+    def __init__(self, task_weights: ArrayLike = 1.0, threshold: float | None = None):
         super().__init__(task_weights)
 
         self.threshold = threshold

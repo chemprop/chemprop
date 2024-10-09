@@ -31,6 +31,16 @@ def model_path(data_dir):
 
 
 @pytest.fixture
+def mve_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mve_mol.pt")
+
+
+@pytest.fixture
+def evidential_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_evidential_mol.pt")
+
+
+@pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
 
@@ -38,7 +48,17 @@ def config_path(data_dir):
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
-    args = ["chemprop", "train", "-i", input_path, "--epochs", "1", "--num-workers", "0"]
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -52,7 +72,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
         "--config-path",
         config_path,
         "--epochs",
-        "2",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -73,7 +93,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
         if key not in ["config_path", "output_dir", "epochs"]:
             assert getattr(new_args, key) == value
 
-    assert new_args.epochs == 2
+    assert new_args.epochs == 3
 
 
 def test_train_quick_features(monkeypatch, data_path):
@@ -85,13 +105,13 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ) = data_path
 
-    args = [
+    base_args = [
         "chemprop",
         "train",
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--descriptors-path",
@@ -104,14 +124,43 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["", "regression-mve", "regression-evidential"]
+
+    for task_type in task_types:
+        args = base_args.copy()
+
+        if task_type:
+            args += ["--task-type", task_type]
+
+        if task_type == "regression-evidential":
+            args += ["--evidential-regularization", "0.2"]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
+    input_path, *_ = data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", evidential_model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -145,7 +194,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -172,7 +221,7 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -187,8 +236,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         "--metrics",
         "mse",
         "rmse",
-        "--features-generators",
-        "morgan_count",
+        "--molecule-featurizers",
+        "rdkit_2d",
     ]
 
     with monkeypatch.context() as m:
@@ -215,7 +264,7 @@ def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
         "--splits-column",
         "split",
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -244,7 +293,7 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -267,6 +316,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         input_path,
         "--model-path",
         model_path,
+        model_path,
         "--output",
         str(tmp_path / "preds.csv"),
     ]
@@ -275,7 +325,8 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "preds_0.csv").exists()
+    assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_individual.csv").exists()
 
 
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
@@ -312,7 +363,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -337,13 +388,14 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
         str(tmp_path),
-        "--model-frzn",
+        "--checkpoint",
         model_path,
+        "--freeze-encoder",
         "--frzn-ffn-layers",
         "1",
     ]
@@ -365,6 +417,33 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     )
 
 
+def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--checkpoint",
+        model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
+
+    model = MPNN.load_from_checkpoint(checkpoint_path)
+    assert model is not None
+
+
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
 def test_optuna_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
@@ -375,23 +454,42 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
         "2",
         "--raytune-search-algorithm",
         "optuna",
+        "--molecule-featurizers",
+        "morgan_count",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_config.toml").exists()
     assert (tmp_path / "best_checkpoint.ckpt").exists()
     assert (tmp_path / "all_progress.csv").exists()
     assert (tmp_path / "ray_results").exists()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "best_config.toml"),
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model_0" / "best.pt").exists()
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
@@ -404,22 +502,39 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "-i",
         input_path,
         "--epochs",
-        "1",
+        "6",
         "--hpopt-save-dir",
         str(tmp_path),
         "--raytune-num-samples",
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
-        "--features-generators",
-        "morgan_count",
+        "--molecule-featurizers",
+        "morgan_binary",
+        "--search-parameter-keywords",
+        "all",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "best_params.json").exists()
+    assert (tmp_path / "best_config.toml").exists()
     assert (tmp_path / "best_checkpoint.ckpt").exists()
     assert (tmp_path / "all_progress.csv").exists()
     assert (tmp_path / "ray_results").exists()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "best_config.toml"),
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "model_0" / "best.pt").exists()
