@@ -77,8 +77,6 @@ class EnsemblePredictor(UncertaintyPredictor):
         ensemble_preds = []
         for model in models:
             preds = torch.concat(trainer.predict(model, dataloader), 0)
-            if isinstance(model.predictor, MulticlassClassificationFFN):
-                preds = torch.argmax(preds, dim=-1)
             ensemble_preds.append(preds)
         stacked_preds = torch.stack(ensemble_preds).float()
         vars = torch.var(stacked_preds, dim=0, correction=0)
@@ -156,7 +154,7 @@ class DropoutPredictor(UncertaintyPredictor):
             individual_preds.append(preds)
 
         stacked_preds = torch.stack(individual_preds, dim=0).float()
-        means = torch.mean(stacked_preds, dim=0).unsqueeze(-1)
+        means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
         vars = torch.var(stacked_preds, dim=0, correction=0)
 
         self._restore_model(model)
