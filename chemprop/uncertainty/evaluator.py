@@ -50,8 +50,7 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        bin_scaling = torch.tensor([erfinv(i / 100) * np.sqrt(2) for i in range(1, 100)])
-        bin_scaling = bin_scaling.view(-1, 1, 1)
+        bin_scaling = torch.special.erfinv(torch.arange(1, 100) / 100).view(-1, 1, 1) * np.sqrt(2)
         errors = torch.abs(preds - targets)
         uncs = torch.sqrt(uncs).unsqueeze(0)
         bin_unc = uncs * bin_scaling
