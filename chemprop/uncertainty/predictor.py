@@ -135,7 +135,7 @@ class DropoutPredictor(UncertaintyPredictor):
         trained with dropout (i.e. p=0).
     """
 
-    def __init__(self, ensemble_size: int, dropout : None | float = None):
+    def __init__(self, ensemble_size: int, dropout: None | float = None):
         self.ensemble_size = ensemble_size
         self.dropout = dropout
 
@@ -147,7 +147,7 @@ class DropoutPredictor(UncertaintyPredictor):
                 "Dropout method for uncertainty only takes exactly one model."
             )
         model = next(iter(models))
-        self._setup_predict_wrapper(model)
+        self._setup_model(model)
         individual_preds = []
 
         for _ in range(self.ensemble_size):
@@ -162,9 +162,10 @@ class DropoutPredictor(UncertaintyPredictor):
         self._restore_model(model)
         return means, vars
 
-    def _setup_predict_wrapper(self, model):
+    def _setup_model(self, model):
         model._predict_step = model.predict_step
         model.predict_step = self._predict_step(model)
+        model.apply(self._change_dropout)
 
     def _restore_model(self, model):
         model.predict_step = model._predict_step
@@ -180,10 +181,13 @@ class DropoutPredictor(UncertaintyPredictor):
 
     def _activate_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
+            module.train()
+
+    def _change_dropout(self, module):
+        if isinstance(module, torch.nn.Dropout):        
             module._p = module.p
             if self.dropout:
                 module.p = self.dropout
-            module.train()
 
     def _restore_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
