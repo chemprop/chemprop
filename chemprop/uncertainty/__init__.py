@@ -34,8 +34,6 @@ from .evaluator import (
 )
 from .predictor import (
     ClassPredictor,
-    ConformalQuantileRegressionPredictor,
-    ConformalRegressionPredictor,
     DirichletPredictor,
     DropoutPredictor,
     EnsemblePredictor,
@@ -44,6 +42,7 @@ from .predictor import (
     EvidentialTotalPredictor,
     MVEPredictor,
     NoUncertaintyPredictor,
+    QuantileRegressionPredictor,
     RoundRobinSpectraPredictor,
     UncertaintyPredictor,
     UncertaintyPredictorRegistry,
@@ -83,8 +82,6 @@ __all__ = [
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
     "ClassPredictor",
-    "ConformalQuantileRegressionPredictor",
-    "ConformalRegressionPredictor",
     "DirichletPredictor",
     "DropoutPredictor",
     "EnsemblePredictor",
@@ -93,6 +90,7 @@ __all__ = [
     "EvidentialTotalPredictor",
     "MVEPredictor",
     "NoUncertaintyPredictor",
+    "QuantileRegressionPredictor",
     "RoundRobinSpectraPredictor",
     "UncertaintyPredictor",
     "UncertaintyPredictorRegistry",

@@ -24,6 +24,7 @@ The following modeling tasks are supported:
  * :code:`regression`
  * :code:`regression-mve`
  * :code:`regression-evidential`
+ * :code:`regression-quantile`
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`

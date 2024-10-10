@@ -59,7 +59,7 @@ def test_train_quick(monkeypatch, data_path):
         "--show-individual-scores",
     ]
 
-    task_types = ["", "regression-mve", "regression-evidential"]
+    task_types = ["", "regression-mve", "regression-evidential", "regression-quantile"]
 
     for task_type in task_types:
         args = base_args.copy()
