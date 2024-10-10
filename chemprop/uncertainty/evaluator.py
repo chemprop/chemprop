@@ -64,7 +64,7 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
             a tensor of the shape ``n x t``
         mask: Tensor
             a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
-        num_bins: int
+        num_bins: int, default=100
             the number of bins to discretize the ``[0, 1]`` interval
 
         Returns
@@ -85,7 +85,7 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
             [torch.zeros(1, num_tasks), observed_auc, torch.ones(1, num_tasks)]
         ).T
         ideal_auc = torch.arange(num_bins + 1) / num_bins
-        miscal_area = 0.01 * (observed_auc - ideal_auc).abs().sum(dim=1)
+        miscal_area = (1 / num_bins) * (observed_auc - ideal_auc).abs().sum(dim=1)
         return miscal_area
 
 
@@ -123,7 +123,7 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
             a tensor of the shape ``n x t``
         mask: Tensor
             a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
-        num_bins: int
+        num_bins: int, default=100
             the number of bins the data are divided into
 
         Returns
