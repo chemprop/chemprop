@@ -83,27 +83,22 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        root_mean_vars = torch.zeros([uncs.shape[1], 100])
-        rmses = torch.zeros_like(root_mean_vars)
+        masked_preds = preds * mask
+        masked_targets = targets * mask
+        masked_uncs = uncs * mask
+        errors = torch.abs(masked_preds - masked_targets)
 
-        for j in range(uncs.shape[1]):
-            mask_j = mask[:, j]
-            preds_j = preds[:, j][mask_j]
-            targets_j = targets[:, j][mask_j]
-            uncs_j = uncs[:, j][mask_j]
-            errors = torch.abs(preds_j - targets_j)
+        sort_idx = torch.argsort(masked_uncs, dim=0)
+        sorted_uncs = torch.gather(masked_uncs, 0, sort_idx)
+        sorted_errors = torch.gather(errors, 0, sort_idx)
 
-            sort_idx = torch.argsort(uncs_j)
-            uncs_j = uncs_j[sort_idx]
-            errors = errors[sort_idx]
+        split_unc = torch.chunk(sorted_uncs, 100, dim=0)
+        split_error = torch.chunk(sorted_errors, 100, dim=0)
 
-            split_unc = torch.chunk(uncs_j, 100)
-            split_error = torch.chunk(errors, 100)
+        root_mean_vars = torch.sqrt(torch.stack([chunk.mean(0) for chunk in split_unc]))
+        rmses = torch.sqrt(torch.stack([chunk.pow(2).mean(0) for chunk in split_error]))
 
-            root_mean_vars[j] = torch.tensor([torch.sqrt(torch.mean(chunk)) for chunk in split_unc])
-            rmses[j] = torch.tensor([torch.sqrt(torch.mean(chunk**2)) for chunk in split_error])
-
-        ence = torch.mean(torch.abs(root_mean_vars - rmses) / root_mean_vars, axis=1)
+        ence = torch.mean(torch.abs(root_mean_vars - rmses) / root_mean_vars, dim=0)
         return ence
 
 
