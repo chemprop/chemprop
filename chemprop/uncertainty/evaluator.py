@@ -46,30 +46,32 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
     """
     A class for evaluating regression uncertainty values based on how they deviate from perfect
     calibration on an observed-probability versus expected-probability plot.
-
-    Parameters
-    ----------
-    preds: Tensor
-        the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-        molecules/reactions, and ``t`` is the number of tasks.
-    uncs: Tensor
-        the predicted uncertainties (variance) of the shape of ``n x t``
-    targets: Tensor
-        a tensor of the shape ``n x t``
-    mask: Tensor
-        a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
-    num_bins: int
-        the number of bins to discretize the [0, 1] interval
-
-    Returns
-    -------
-    Tensor
-        a tensor of the shape ``t`` containing the evaluated metrics
     """
 
     def evaluate(
         self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, num_bins: int = 100
     ) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties (variance) of the shape of ``n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+        num_bins: int
+            the number of bins to discretize the ``[0, 1]`` interval
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
         bin_scaling = torch.special.erfinv(torch.arange(1, num_bins) / num_bins).view(
             -1, 1, 1
         ) * np.sqrt(2)
@@ -96,30 +98,11 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     and comparing the average predicted variance of the clusters against the RMSE of the cluster. [1]_
 
     .. math::
-        \text{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - RMSE_i|}{\mathrm{mVAR}_i}
+        \text{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - \mathrm{RMSE}_i|}{\mathrm{RMV}_i}
 
-    where :math:`N` is the number of bins, :math:`RMV_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`RMSE_i`
+    where :math:`N` is the number of bins, :math:`\mathrm{RMV}_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`\mathrm{RMSE}_i`
     is the root mean square error over the :math:`i`-th bin.This discrepancy is further normalized by the
-    uncertainty overthe bin, :math:`RMV_i`, because the error is expected to be naturally higher as the uncertainty increases.
-
-    Parameters
-    ----------
-    preds: Tensor
-        the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-        molecules/reactions, and ``t`` is the number of tasks.
-    uncs: Tensor
-        the predicted uncertainties (variance) of the shape of ``n x t``
-    targets: Tensor
-        a tensor of the shape ``n x t``
-    mask: Tensor
-        a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
-    num_bins: int
-        the number of bins the data are divided into
-
-    Returns
-    -------
-    Tensor
-        a tensor of the shape ``t`` containing the evaluated metrics
+    uncertainty overthe bin, :math:`\mathrm{RMV}_i`, because the error is expected to be naturally higher as the uncertainty increases.
 
     References
     ----------
@@ -129,6 +112,27 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     def evaluate(
         self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, num_bins: int = 100
     ) -> Tensor:
+        """Evaluate the performance of uncertainty predictions against the model target values.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties (variance) of the shape of ``n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+        num_bins: int
+            the number of bins the data are divided into
+
+        Returns
+        -------
+        Tensor
+            a tensor of the shape ``t`` containing the evaluated metrics
+        """
         masked_preds = preds * mask
         masked_targets = targets * mask
         masked_uncs = uncs * mask
