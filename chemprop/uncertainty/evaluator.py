@@ -71,15 +71,15 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     and comparing the average predicted variance of the clusters against the RMSE of the cluster. [1]_
 
     .. math::
-        ENCE = \frac{1}{K} \sum_{i=1}^{K} \frac{|\text{mVAR}(i) - RMSE(i)|}{\text{mVAR}(i)}
+        \text{ENCE} = \frac{1}{K} \sum_{i=1}^{K} \frac{|\mathrm{RMV}_i - RMSE_i|}{\mathrm{mVAR}_i}
 
-    where :math:`mVAR(i)` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`RMSE(i)`
+    where :math:`RMV_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`RMSE_i`
     is the root mean square error over the :math:`i`-th bin.This discrepancy is further normalized by the
-    uncertainty overthe bin, :math:`mVAR(i)`, because the error is expected to be naturally higher as the uncertainty increases.
+    uncertainty overthe bin, :math:`RMV_i`, because the error is expected to be naturally higher as the uncertainty increases.
 
     References
     ----------
-    .. [1] Scalia, G.; Grambow, C. A.; Pernici, B.; Li, Y. P.; Green, W. H. "Evaluating Scalable Uncertainty Estimation Methods for Deep Learning-Based Molecular Property Prediction." J. Chem. Inf. Model., 2020, 60(6), 2697-2717. https://pubs.acs.org/doi/10.1021/acs.jcim.9b00975.
+    .. [1] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540.
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
