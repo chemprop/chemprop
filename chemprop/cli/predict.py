@@ -2,6 +2,7 @@ from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 from typing import Iterator
 
 from lightning import pytorch as pl
@@ -346,6 +347,10 @@ def main(args):
     multicomponent = n_components > 1
 
     model_paths = find_models(args.model_paths)
+
+    if args.dry_run:
+        temp_output = TemporaryDirectory()
+        args.output = Path(temp_output.name)
 
     make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 

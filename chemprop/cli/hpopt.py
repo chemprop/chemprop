@@ -416,7 +416,6 @@ def tune_model(
         num_samples=args.raytune_num_samples,
         scheduler=scheduler,
         search_alg=search_alg,
-        trial_dirname_creator=lambda trial: str(trial.trial_id),
     )
 
     tuner = tune.Tuner(
@@ -494,30 +493,31 @@ def main(args: Namespace):
 
     best_result = results.get_best_result()
     best_config = best_result.config["train_loop_config"]
-    best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
-
-    best_config_save_path = args.hpopt_save_dir / "best_config.toml"
-    best_checkpoint_save_path = args.hpopt_save_dir / "best_checkpoint.ckpt"
-    all_progress_save_path = args.hpopt_save_dir / "all_progress.csv"
-
-    logger.info(f"Best hyperparameters saved to: '{best_config_save_path}'")
-
     args = update_args_with_config(args, best_config)
-
     args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
-    save_config(TrainSubcommand.parser, args, best_config_save_path)
 
-    logger.info(
-        f"Best hyperparameter configuration checkpoint saved to '{best_checkpoint_save_path}'"
-    )
+    if not args.dry_run:
+        best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
 
-    shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
+        best_config_save_path = args.hpopt_save_dir / "best_config.toml"
+        best_checkpoint_save_path = args.hpopt_save_dir / "best_checkpoint.ckpt"
+        all_progress_save_path = args.hpopt_save_dir / "all_progress.csv"
 
-    logger.info(f"Hyperparameter optimization results saved to '{all_progress_save_path}'")
+        logger.info(f"Best hyperparameters saved to: '{best_config_save_path}'")
 
-    result_df = results.get_dataframe()
+        save_config(TrainSubcommand.parser, args, best_config_save_path)
 
-    result_df.to_csv(all_progress_save_path, index=False)
+        logger.info(
+            f"Best hyperparameter configuration checkpoint saved to '{best_checkpoint_save_path}'"
+        )
+
+        shutil.copyfile(best_checkpoint_path, best_checkpoint_save_path)
+
+        logger.info(f"Hyperparameter optimization results saved to '{all_progress_save_path}'")
+
+        result_df = results.get_dataframe()
+
+        result_df.to_csv(all_progress_save_path, index=False)
 
     ray.shutdown()
 
