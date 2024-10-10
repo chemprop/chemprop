@@ -72,22 +72,20 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
         Tensor
             a tensor of the shape ``t`` containing the evaluated metrics
         """
-        bin_scaling = torch.special.erfinv(torch.arange(1, num_bins) / num_bins).view(
-            -1, 1, 1
-        ) * np.sqrt(2)
+        bins = torch.arange(1, num_bins)
+        bin_scaling = torch.special.erfinv(bins / num_bins).view(-1, 1, 1) * np.sqrt(2)
         errors = torch.abs(preds - targets)
         uncs = torch.sqrt(uncs).unsqueeze(0)
         bin_unc = uncs * bin_scaling
         bin_count = bin_unc >= errors.unsqueeze(0)
         mask = mask.unsqueeze(0)
-        bin_fractions = (bin_count & mask).sum(1) / mask.sum(1)
+        observed_auc = (bin_count & mask).sum(1) / mask.sum(1)
         num_tasks = uncs.shape[-1]
-        bin_fractions = torch.cat(
-            [torch.zeros(1, num_tasks), bin_fractions, torch.ones(1, num_tasks)]
+        observed_auc = torch.cat(
+            [torch.zeros(1, num_tasks), observed_auc, torch.ones(1, num_tasks)]
         ).T
-        miscal_area = torch.sum(
-            0.01 * torch.abs(bin_fractions - torch.arange(num_bins + 1) / num_bins), dim=1
-        )
+        ideal_auc = torch.arange(num_bins + 1) / num_bins
+        miscal_area = 0.01 * (observed_auc - ideal_auc).abs().sum(dim=1)
         return miscal_area
 
 
