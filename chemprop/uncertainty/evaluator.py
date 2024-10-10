@@ -46,10 +46,33 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
     """
     A class for evaluating regression uncertainty values based on how they deviate from perfect
     calibration on an observed-probability versus expected-probability plot.
+
+    Parameters
+    ----------
+    preds: Tensor
+        the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+        molecules/reactions, and ``t`` is the number of tasks.
+    uncs: Tensor
+        the predicted uncertainties (variance) of the shape of ``n x t``
+    targets: Tensor
+        a tensor of the shape ``n x t``
+    mask: Tensor
+        a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+    num_bins: int
+        the number of bins to discretize the [0, 1] interval
+
+    Returns
+    -------
+    Tensor
+        a tensor of the shape ``t`` containing the evaluated metrics
     """
 
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        bin_scaling = torch.special.erfinv(torch.arange(1, 100) / 100).view(-1, 1, 1) * np.sqrt(2)
+    def evaluate(
+        self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, num_bins: int = 100
+    ) -> Tensor:
+        bin_scaling = torch.special.erfinv(torch.arange(1, num_bins) / num_bins).view(
+            -1, 1, 1
+        ) * np.sqrt(2)
         errors = torch.abs(preds - targets)
         uncs = torch.sqrt(uncs).unsqueeze(0)
         bin_unc = uncs * bin_scaling
@@ -60,7 +83,9 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
         bin_fractions = torch.cat(
             [torch.zeros(1, num_tasks), bin_fractions, torch.ones(1, num_tasks)]
         ).T
-        miscal_area = torch.sum(0.01 * torch.abs(bin_fractions - torch.arange(101) / 100), dim=1)
+        miscal_area = torch.sum(
+            0.01 * torch.abs(bin_fractions - torch.arange(num_bins + 1) / num_bins), dim=1
+        )
         return miscal_area
 
 
@@ -71,18 +96,39 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     and comparing the average predicted variance of the clusters against the RMSE of the cluster. [1]_
 
     .. math::
-        \text{ENCE} = \frac{1}{K} \sum_{i=1}^{K} \frac{|\mathrm{RMV}_i - RMSE_i|}{\mathrm{mVAR}_i}
+        \text{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - RMSE_i|}{\mathrm{mVAR}_i}
 
-    where :math:`RMV_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`RMSE_i`
+    where :math:`N` is the number of bins, :math:`RMV_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`RMSE_i`
     is the root mean square error over the :math:`i`-th bin.This discrepancy is further normalized by the
     uncertainty overthe bin, :math:`RMV_i`, because the error is expected to be naturally higher as the uncertainty increases.
+
+    Parameters
+    ----------
+    preds: Tensor
+        the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+        molecules/reactions, and ``t`` is the number of tasks.
+    uncs: Tensor
+        the predicted uncertainties (variance) of the shape of ``n x t``
+    targets: Tensor
+        a tensor of the shape ``n x t``
+    mask: Tensor
+        a tensor of the shape ``n x t`` indicating whether the given values should be used in the evaluation
+    num_bins: int
+        the number of bins the data are divided into
+
+    Returns
+    -------
+    Tensor
+        a tensor of the shape ``t`` containing the evaluated metrics
 
     References
     ----------
     .. [1] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540.
     """
 
-    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+    def evaluate(
+        self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor, num_bins: int = 100
+    ) -> Tensor:
         masked_preds = preds * mask
         masked_targets = targets * mask
         masked_uncs = uncs * mask
@@ -92,8 +138,8 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
         sorted_uncs = torch.gather(masked_uncs, 0, sort_idx)
         sorted_errors = torch.gather(errors, 0, sort_idx)
 
-        split_unc = torch.chunk(sorted_uncs, 100, dim=0)
-        split_error = torch.chunk(sorted_errors, 100, dim=0)
+        split_unc = torch.chunk(sorted_uncs, num_bins, dim=0)
+        split_error = torch.chunk(sorted_errors, num_bins, dim=0)
 
         root_mean_vars = torch.sqrt(torch.stack([chunk.mean(0) for chunk in split_unc]))
         rmses = torch.sqrt(torch.stack([chunk.pow(2).mean(0) for chunk in split_error]))
