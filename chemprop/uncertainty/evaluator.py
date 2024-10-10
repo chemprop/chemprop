@@ -96,11 +96,11 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     and comparing the average predicted variance of the clusters against the RMSE of the cluster. [1]_
 
     .. math::
-        \text{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - \mathrm{RMSE}_i|}{\mathrm{RMV}_i}
+        \mathrm{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - \mathrm{RMSE}_i|}{\mathrm{RMV}_i}
 
     where :math:`N` is the number of bins, :math:`\mathrm{RMV}_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`\mathrm{RMSE}_i`
-    is the root mean square error over the :math:`i`-th bin.This discrepancy is further normalized by the
-    uncertainty overthe bin, :math:`\mathrm{RMV}_i`, because the error is expected to be naturally higher as the uncertainty increases.
+    is the root mean square error over the :math:`i`-th bin. This discrepancy is further normalized by the
+    uncertainty over the bin, :math:`\mathrm{RMV}_i`, because the error is expected to be naturally higher as the uncertainty increases.
 
     References
     ----------
