@@ -56,11 +56,12 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
         bin_unc = uncs * bin_scaling
         bin_count = bin_unc >= errors.unsqueeze(0)
         mask = mask.unsqueeze(0)
-        bin_fraction = (bin_count & mask).sum(1) / mask.sum(1)
-        fractions = torch.zeros((uncs.shape[-1], 101))
-        fractions[:, 100] = 1.0
-        fractions[:, 1:100] = bin_fraction.permute(1, 0)
-        miscal_area = torch.sum(0.01 * torch.abs(fractions - torch.arange(101) / 100), dim=1)
+        bin_fractions = (bin_count & mask).sum(1) / mask.sum(1)
+        num_tasks = uncs.shape[-1]
+        bin_fractions = torch.cat(
+            [torch.zeros(1, num_tasks), bin_fractions, torch.ones(1, num_tasks)]
+        ).T
+        miscal_area = torch.sum(0.01 * torch.abs(bin_fractions - torch.arange(101) / 100), dim=1)
         return miscal_area
 
 
