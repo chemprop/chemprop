@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from scipy.special import erfinv
 import torch
 from torch import Tensor
 
