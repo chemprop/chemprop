@@ -1250,7 +1250,12 @@ def main(args):
 
         if args.checkpoint or args.model_frzn is not None:
             model_paths = find_models(args.checkpoint)
-            # assume all models have the same output scaling, meaning they were trained on the same data
+            if len(model_paths) > 1:
+                logger.warning(
+                    "Multiple checkpoint files were loaded, but only the scalers from "
+                    f"{model_paths[0]} are used. It is assumed that all models provided have the "
+                    "same data scalings, meaning they were trained on the same data."
+                )
             model_path = model_paths[0] if args.checkpoint else args.model_frzn
             load_and_use_pretrained_model_scalers(model_path, train_dset, val_dset)
             input_transforms = (None, None, None)
