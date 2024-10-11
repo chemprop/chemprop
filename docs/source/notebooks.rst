@@ -18,3 +18,4 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     predicting_regression_reaction
     mpnn_fingerprints
     convert_v1_to_v2
+    transfer_learning
