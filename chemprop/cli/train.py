@@ -1197,10 +1197,10 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        input_transforms = normalize_inputs(train_dset, val_dset, args)
-
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
+
+        input_transforms = normalize_inputs(train_dset, val_dset, args)
 
         if "regression" in args.task_type:
             if args.checkpoint or args.model_frzn is not None:
