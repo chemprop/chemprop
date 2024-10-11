@@ -629,6 +629,55 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_transform, graph_transforms, V_d_transforms
 
 
+def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
+    if isinstance(train_dset, MulticomponentDataset):
+        _model = MulticomponentMPNN.load_from_file(model_path)
+        blocks = _model.message_passing.blocks
+        train_dsets = train_dset.datasets
+        val_dsets = val_dset.datasets
+    else:
+        _model = MPNN.load_from_file(model_path)
+        blocks = [_model.message_passing]
+        train_dsets = [train_dset]
+        val_dsets = [val_dset]
+
+    for i in range(len(blocks)):
+        if isinstance(_model.X_d_transform, ScaleTransform):
+            scaler = _model.X_d_transform.to_standard_scaler()
+            train_dsets[i].normalize_inputs("X_d", scaler)
+            val_dsets[i].normalize_inputs("X_d", scaler)
+
+        if isinstance(blocks[i].graph_transform, GraphTransform):
+            if isinstance(blocks[i].graph_transform.V_transform, ScaleTransform):
+                V_anti_pad = (
+                    train_dsets[i].featurizer.atom_fdim - train_dsets[i].featurizer.extra_atom_fdim
+                )
+                scaler = blocks[i].graph_transform.V_transform.to_standard_scaler(
+                    anti_pad=V_anti_pad
+                )
+                train_dsets[i].normalize_inputs("V_f", scaler)
+                val_dsets[i].normalize_inputs("V_f", scaler)
+            if isinstance(blocks[i].graph_transform.E_transform, ScaleTransform):
+                E_anti_pad = (
+                    train_dsets[i].featurizer.bond_fdim - train_dsets[i].featurizer.extra_bond_fdim
+                )
+                scaler = blocks[i].graph_transform.E_transform.to_standard_scaler(
+                    anti_pad=E_anti_pad
+                )
+                train_dsets[i].normalize_inputs("E_f", scaler)
+                val_dsets[i].normalize_inputs("E_f", scaler)
+
+        if isinstance(blocks[i].V_d_transform, ScaleTransform):
+            scaler = blocks[i].V_d_transform.to_standard_scaler()
+            train_dsets[i].normalize_inputs("V_d", scaler)
+            val_dsets[i].normalize_inputs("V_d", scaler)
+
+    if isinstance(_model.predictor.output_transform, UnscaleTransform):
+        scaler = _model.predictor.output_transform.to_standard_scaler()
+        train_dset.normalize_targets(scaler)
+        val_dset.normalize_targets(scaler)
+
+
 def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
     config_args = deepcopy(args)
     for key, value in vars(config_args).items():
@@ -1188,18 +1237,33 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        input_transforms = normalize_inputs(train_dset, val_dset, args)
-
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-        if "regression" in args.task_type:
-            output_scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(output_scaler)
-            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
-            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
-        else:
+        if args.checkpoint or args.model_frzn is not None:
+            model_paths = find_models(args.checkpoint)
+            if len(model_paths) > 1:
+                logger.warning(
+                    "Multiple checkpoint files were loaded, but only the scalers from "
+                    f"{model_paths[0]} are used. It is assumed that all models provided have the "
+                    "same data scalings, meaning they were trained on the same data."
+                )
+            model_path = model_paths[0] if args.checkpoint else args.model_frzn
+            load_and_use_pretrained_model_scalers(model_path, train_dset, val_dset)
+            input_transforms = (None, None, None)
             output_transform = None
+        else:
+            input_transforms = normalize_inputs(train_dset, val_dset, args)
+
+            if "regression" in args.task_type:
+                output_scaler = train_dset.normalize_targets()
+                val_dset.normalize_targets(output_scaler)
+                logger.info(
+                    f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+                )
+                output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
+            else:
+                output_transform = None
 
         if not args.no_cache:
             train_dset.cache = True
