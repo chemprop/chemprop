@@ -106,11 +106,11 @@ class BoundedMSELoss(MSELoss):
 
 @LossFunctionRegistry.register("mve")
 class MVELoss(LossFunction):
-    """Calculate the loss using Eq. 9 from [nix1994]_
+    """Calculate the loss using Eq. 9 from [1]_
 
     References
     ----------
-    .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
+    .. [1] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
         probability distribution." Proceedings of 1994 IEEE International Conference on Neural
         Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
     """
@@ -126,14 +126,14 @@ class MVELoss(LossFunction):
 
 @LossFunctionRegistry.register("evidential")
 class EvidentialLoss(LossFunction):
-    """Calculate the loss using Eqs. 8, 9, and 10 from [amini2020]_. See also [soleimany2021]_.
+    """Calculate the loss using Eqs. 8, 9, and 10 from [1]_. See also [2]_.
 
     References
     ----------
-    .. [amini2020] Amini, A; Schwarting, W.; Soleimany, A.; Rus, D.;
+    .. [1] Amini, A; Schwarting, W.; Soleimany, A.; Rus, D.;
         "Deep Evidential Regression" Advances in Neural Information Processing Systems; 2020; Vol.33.
         https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
-    .. [soleimany2021] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
+    .. [2] Soleimany, A.P.; Amini, A.; Goldman, S.; Rus, D.; Bhatia, S.N.; Coley, C.W.;
         "Evidential Deep Learning for Guided Molecular Property Prediction and Discovery." ACS
         Cent. Sci. 2021, 7, 8, 1356-1367. https://doi.org/10.1021/acscentsci.1c00546
     """
@@ -205,13 +205,13 @@ class BinaryMCCLoss(LossFunction):
 
 @LossFunctionRegistry.register("multiclass-mcc")
 class MulticlassMCCLoss(LossFunction):
-    """Calculate a soft Matthews correlation coefficient ([mccWiki]_) loss for multiclass
-    classification based on the implementataion of [mccSklearn]_
+    """Calculate a soft Matthews correlation coefficient ([1]_) loss for multiclass
+    classification based on the implementataion of [2]_
 
     References
     ----------
-    .. [mccWiki] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
-    .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
+    .. [1] https://en.wikipedia.org/wiki/Phi_coefficient#Multiclass_case
+    .. [2] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
@@ -249,13 +249,13 @@ class MulticlassMCCLoss(LossFunction):
 
 
 class DirichletMixin:
-    """Uses the loss function from [sensoy2018]_ based on the implementation at [sensoyGithub]_
+    """Uses the loss function from [1]_ based on the implementation at [2]_
 
     References
     ----------
-    .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+    .. [1] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
         classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
-    .. [sensoyGithub] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
+    .. [2] https://muratsensoy.github.io/uncertainty.html#Define-the-loss-function
     """
 
     def __init__(self, task_weights: ArrayLike = 1.0, v_kl: float = 0.2):
