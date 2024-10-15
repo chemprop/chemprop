@@ -78,9 +78,10 @@ class TrainSubcommand(Subcommand):
         args = process_train_args(args)
         validate_train_args(args)
 
-        args.output_dir.mkdir(exist_ok=True, parents=True)
-        config_path = args.output_dir / "config.toml"
-        save_config(cls.parser, args, config_path)
+        if not args.dry_run:
+            args.output_dir.mkdir(exist_ok=True, parents=True)
+            config_path = args.output_dir / "config.toml"
+            save_config(cls.parser, args, config_path)
         main(args)
 
 
@@ -103,6 +104,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--save-dir",
         type=Path,
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Turn on dry run test and runs the code for only a few epochs.",
     )
     parser.add_argument(
         "--remove-checkpoints",
@@ -468,6 +475,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.dry_run:
+        return args
+
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
