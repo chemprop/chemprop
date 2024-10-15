@@ -62,7 +62,7 @@ class RegressionCalibrator(CalibratorBase):
             the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
             molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
-            the predicted uncertainties (variance) of the shape of ``n x t``
+            the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
@@ -123,7 +123,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
 
         C(x) &= \left[ \hat{t}_{\alpha/2}(x) - \hat{q}, \hat{t}_{1-\alpha/2}(x) + \hat{q} \right]
 
-    where :math:`s` is the nonconformity score as the difference between y and its nearest quantile.
+    where :math:`s` is the nonconformity score as the difference between :math:`y` and its nearest quantile.
     :math:`\hat{t}_{\alpha/2}(x)` and :math:`\hat{t}_{1-\alpha/2}(x)` are the predicted quantiles from a quantile
     regression model.
 
@@ -138,6 +138,11 @@ class RegressionConformalCalibrator(RegressionCalibrator):
     ----------
     alpha: float
         The error rate, :math:`\alpha \in [0, 1]`
+
+    Returns
+    -------
+    Tensor
+        the calibrated intervals
 
     References
     ----------
