@@ -43,7 +43,7 @@ class NLLRegressionEvaluator(RegressionEvaluator):
 
     .. math::
 
-        \mathrm{NLL}(y, \hat y) = \frac{1}{2} \log(2 \pi \sigma^2) + \frac{(y - \hat{y})^2}{2 \sigma^2},
+        \mathrm{NLL}(y, \hat y) = \frac{1}{2} \log(2 \pi \sigma^2) + \frac{(y - \hat{y})^2}{2 \sigma^2}
 
     where :math:`\hat{y}` is the predicted value, :math:`y` is the true value, and
     :math:`\sigma^2` is the predicted uncertainty (variance).
@@ -140,7 +140,7 @@ class NLLClassEvaluator(BinaryClassificationEvaluator):
         \mathrm{NLL} = -\log(\hat{y} \cdot y + (1 - \hat{y}) \cdot (1 - y))
 
     where :math:`y` is the true binary label (0 or 1), and
-    :math:`\hat{y}` is the predicted probability associated with the class label `1`.
+    :math:`\hat{y}` is the predicted probability associated with the class label 1.
 
     The function returns a tensor containing the mean NLL for each task.
     """
