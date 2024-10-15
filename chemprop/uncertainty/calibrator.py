@@ -124,7 +124,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
         C(x) &= \left[ \hat{t}_{\alpha/2}(x) - \hat{q}, \hat{t}_{1-\alpha/2}(x) + \hat{q} \right]
 
     where :math:`s` is the nonconformity score as the difference between y and its nearest quantile.
-    :math:`\hat{t}_{\alpha/2}(x)` and :math:`\hat{t}_{1-\alpha/2}(x)` are the predicted quantiles from quantile
+    :math:`\hat{t}_{\alpha/2}(x)` and :math:`\hat{t}_{1-\alpha/2}(x)` are the predicted quantiles from a quantile
     regression model.
 
     .. note::
@@ -461,7 +461,7 @@ class MulticlassConformalCalibrator(MulticlassClassificationCalibrator):
         self.qhats = torch.tensor(self.qhats)
         return self
 
-    def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor]:
+    def apply(self, uncs: Tensor) -> Tensor:
         calibrated_preds = torch.zeros_like(uncs, dtype=torch.int)
         scores = self.nonconformity_scores(uncs)
 
