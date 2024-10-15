@@ -1,7 +1,11 @@
 import pytest
 import torch
 
-from chemprop.uncertainty.calibrator import PlattCalibrator
+from chemprop.uncertainty.calibrator import (
+    IsotonicCalibrator,
+    IsotonicMulticlassCalibrator,
+    PlattCalibrator,
+)
 
 # from chemprop.uncertainty.calibrator import (
 #     ConformalAdaptiveMulticlassCalibrator,
@@ -47,6 +51,40 @@ from chemprop.uncertainty.calibrator import PlattCalibrator
 
 #     torch.testing.assert_close(preds, cal_test_preds)
 #     torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.tensor(
+                [
+                    [0.1, 0.2, 0.3],
+                    [0.4, 0.5, 0.6],
+                    [0.7, 0.8, 0.9],
+                    [0.1, 0.2, 0.3],
+                    [0.4, 0.5, 0.6],
+                    [0.7, 0.8, 0.9],
+                ]
+            ),
+            torch.tensor([[0, 1, 0], [0, 0, 1], [0, 1, 1], [1, 1, 0], [1, 0, 0], [1, 1, 0]]),
+            torch.tensor(
+                [[1, 1, 1], [1, 0, 1], [1, 1, 1], [1, 1, 1], [0, 1, 1], [1, 1, 1]], dtype=torch.bool
+            ),
+            torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]),
+            torch.tensor([[1 / 3, 2 / 3, 0.0], [1 / 3, 2 / 3, 0.5]]),
+        )
+    ],
+)
+def test_IsotonicCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the IsotonicCalibrator
+    """
+    calibrator = IsotonicCalibrator()
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
 
 
 @pytest.mark.parametrize(
@@ -102,3 +140,50 @@ def test_PlattCalibrator(
 
     torch.testing.assert_close(uncs1, cal_test_uncs)
     torch.testing.assert_close(uncs2, cal_test_uncs_with_training_targets)
+
+
+@pytest.mark.parametrize(
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.tensor(
+                [
+                    [[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]],
+                    [[0.1, 0.6, 0.3], [0.4, 0.4, 0.2]],
+                    [[0.4, 0.4, 0.2], [0.2, 0.3, 0.5]],
+                    [[0.0, 0.6, 0.4], [0.8, 0.1, 0.1]],
+                    [[0.5, 0.2, 0.3], [0.4, 0.4, 0.2]],
+                    [[0.4, 0.3, 0.3], [0.7, 0.3, 0.0]],
+                ]
+            ),
+            torch.tensor([[2, 1], [1, 2], [0, 2], [1, 1], [0, 0], [2, 0]]).long(),
+            torch.ones([6, 2], dtype=torch.bool),
+            torch.tensor(
+                [
+                    [[0.0, 0.1, 0.9], [0.5, 0.2, 0.3]],
+                    [[0.3, 0.4, 0.3], [0.6, 0.3, 0.1]],
+                    [[0.9, 0.1, 0.0], [0.3, 0.4, 0.3]],
+                ]
+            ),
+            torch.tensor(
+                [
+                    [[0.000000, 0.000000, 1.000000], [0.483871, 0.193548, 0.322581]],
+                    [[0.500000, 0.000000, 0.500000], [0.714286, 0.285714, 0.000000]],
+                    [[1.000000, 0.000000, 0.000000], [0.319149, 0.255319, 0.425532]],
+                ]
+            ),
+        )
+    ],
+)
+def test_IsotonicMulticlassCalibratorCalibrator(
+    cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
+):
+    """
+    Testing the IsotonicMulticlassCalibratorCalibrator
+    """
+    calibrator = IsotonicMulticlassCalibrator()
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+    torch.set_printoptions(precision=10)
+    print(uncs)
+    torch.testing.assert_close(uncs, cal_test_uncs)
