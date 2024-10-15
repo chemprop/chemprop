@@ -136,4 +136,6 @@ class QuantileRegressionPredictor(UncertaintyPredictor):
         stacked_preds = torch.stack(individual_preds).float()
         mean = stacked_preds[..., 0]
         interval = torch.mean(stacked_preds[..., 1], dim=0)
-        return mean, interval
+        alpha = model.predictor.criterion.alpha
+        var = (interval / torch.special.erfinv(1 - alpha) * torch.sqrt(torch.tensor(2.0))) ** 2
+        return mean, var
