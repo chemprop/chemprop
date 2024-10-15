@@ -229,6 +229,14 @@ class PlattCalibrator(BinaryClassificationCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic")
 class IsotonicCalibrator(BinaryClassificationCalibrator):
+    """Calibrate classification datasets using isotonic regression as discussed in [guo2017]_.
+
+    References
+    ----------
+    .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
+    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+    """
+
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         if torch.any((targets[mask] != 0) & (targets[mask] != 1)):
             raise ValueError(
@@ -315,6 +323,14 @@ class ConformalAdaptiveMulticlassCalibrator(MulticlassClassificationCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
 class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
+    """Calibrate classification datasets using isotonic regression as discussed in [guo2017]_.
+
+    References
+    ----------
+    .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
+    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+    """
+
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         isotonic_models = []
         for j in range(uncs.shape[1]):
