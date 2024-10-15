@@ -438,6 +438,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
+        default=False,
         help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
@@ -1053,8 +1054,12 @@ def train_model(
             callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
+            fast_dev_run=args.dry_run,
         )
         trainer.fit(model, train_loader, val_loader)
+
+        if args.dry_run:
+            return
 
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
@@ -1166,7 +1171,9 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
-    df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+
+    if not args.dry_run:
+        df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
 def main(args):
@@ -1186,6 +1193,10 @@ def main(args):
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
+
+    if args.dry_run:
+        temp_output_dir = TemporaryDirectory()
+        args.output_dir = Path(temp_output_dir.name)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
         if args.num_folds == 1:
