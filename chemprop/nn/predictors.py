@@ -221,7 +221,7 @@ class QuantileFFN(RegressionFFN):
 
         return torch.stack((mean, interval), dim=2)
 
-    train_step = foward
+    train_step = forward
 
 
 class BinaryClassificationFFNBase(_FFNPredictorBase):
