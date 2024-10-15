@@ -130,7 +130,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
     .. note::
         The algorithm is specifically designed for quantile regression model. Intuitively, the set :math:`C(x)` just
         grows or shrinks the distance between the quantiles by :math:`\hat{q}` to achieve coverage. However, this
-        function can also be applied to regrssion model without quantiles be provided. In this case, both
+        function can also be applied to regression model without quantiles being provided. In this case, both
         :math:`\hat{t}_{\alpha/2}(x)` and :math:`\hat{t}_{1-\alpha/2}(x)` are the same as :math:`\hat{y}`. Then, the
         interval would be the same for every data point (i.e., :math:`\left[-\hat{q}, \hat{q} \right]`).
 
