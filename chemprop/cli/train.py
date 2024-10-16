@@ -679,7 +679,12 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
 
     input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
     target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+    if args.task_type in [
+        "regression",
+        "regression-mve",
+        "regression-evidential",
+        "regression-quantile",
+    ]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
