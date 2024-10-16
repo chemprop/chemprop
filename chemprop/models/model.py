@@ -179,7 +179,7 @@ class MPNN(pl.LightningModule):
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
         self._evaluate_batch(batch, "batch_averaged_test")
 
-    def _evaluate_batch(self, batch: TrainingBatch, val_or_test: str) -> None:
+    def _evaluate_batch(self, batch: TrainingBatch, label: str) -> None:
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -193,7 +193,7 @@ class MPNN(pl.LightningModule):
         losses = [
             metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
         ]
-        metric2loss = {f"{val_or_test}/{m.alias}": l for m, l in zip(self.metrics[:-1], losses)}
+        metric2loss = {f"{label}/{m.alias}": l for m, l in zip(self.metrics[:-1], losses)}
         self.log_dict(metric2loss, batch_size=len(batch[0]))
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
