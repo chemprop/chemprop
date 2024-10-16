@@ -364,4 +364,4 @@ class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
                 class_uncs_j = uncs[:, j, k].numpy()
                 class_cal_uncs = isotonic_model.predict(class_uncs_j)
                 cal_uncs[:, j, k] = torch.tensor(class_cal_uncs)
-        return unnormalized_cal_uncs / unnormalized_cal_uncs.sum(dim=-1, keepdim=True)
+        return cal_uncs / cal_uncs.sum(dim=-1, keepdim=True)

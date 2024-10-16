@@ -184,6 +184,4 @@ def test_IsotonicMulticlassCalibratorCalibrator(
     calibrator = IsotonicMulticlassCalibrator()
     calibrator.fit(cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
-    torch.set_printoptions(precision=10)
-    print(uncs)
     torch.testing.assert_close(uncs, cal_test_uncs)
