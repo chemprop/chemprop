@@ -20,6 +20,7 @@ from .loss import (
     MulticlassDirichletLoss,
     MulticlassMCCLoss,
     MVELoss,
+    QuantileLoss,
     SIDLoss,
     WassersteinLoss,
 )
@@ -62,6 +63,7 @@ from .predictors import (
     MveFFN,
     Predictor,
     PredictorRegistry,
+    QuantileFFN,
     RegressionFFN,
     SpectralFFN,
 )
@@ -88,6 +90,7 @@ __all__ = [
     "DirichletMixin",
     "BinaryDirichletLoss",
     "MulticlassDirichletLoss",
+    "QuantileLoss",
     "SIDLoss",
     "WassersteinLoss",
     "Metric",
@@ -117,6 +120,7 @@ __all__ = [
     "MulticomponentMessagePassing",
     "Predictor",
     "PredictorRegistry",
+    "QuantileFFN",
     "RegressionFFN",
     "MveFFN",
     "EvidentialFFN",
