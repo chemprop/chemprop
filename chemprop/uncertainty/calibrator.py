@@ -358,12 +358,10 @@ class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        cal_uncs = []
+        cal_uncs = torch.zeros_like(uncs)
         for j, class_isotonic_models in enumerate(self.isotonic_models):
-            class_cal_uncs = []
             for k, isotonic_model in enumerate(class_isotonic_models):
                 class_uncs_j = uncs[:, j, k].numpy()
-                class_cal_uncs.append(isotonic_model.predict(class_uncs_j))
-            cal_uncs.append(class_cal_uncs)
-        unnormalized_cal_uncs = torch.tensor(np.array(cal_uncs)).permute(2, 0, 1)
+                class_cal_uncs = isotonic_model.predict(class_uncs_j)
+                cal_uncs[:, j, k] = torch.tensor(class_cal_uncs)
         return unnormalized_cal_uncs / unnormalized_cal_uncs.sum(dim=-1, keepdim=True)
