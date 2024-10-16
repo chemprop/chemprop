@@ -1,7 +1,9 @@
 import pytest
 import torch
 
-from chemprop.uncertainty.evaluator import (  # CalibrationAreaEvaluator,; ConformalMulticlassEvaluator,; ConformalMultilabelEvaluator,; ConformalRegressionEvaluator,; ExpectedNormalizedErrorEvaluator,; MetricEvaluator,
+from chemprop.uncertainty.evaluator import (
+    CalibrationAreaEvaluator,
+    ExpectedNormalizedErrorEvaluator,
     NLLClassEvaluator,
     NLLMulticlassEvaluator,
     NLLRegressionEvaluator,
@@ -135,31 +137,60 @@ def test_SpearmanEvaluator(preds, uncs, targets, mask, spearman_exp):
     torch.testing.assert_close(area, spearman_exp)
 
 
-# # Example
-# @pytest.mark.parametrize(
-#     "targets,preds,uncs,mask,coverage_exp",
-#     [
-#         (
-#             torch.arange(100, 0, -1).view(100, 1),
-#             torch.full((100, 1), 70),
-#             torch.arange(1, 101).view(100, 1),
-#             torch.full((1, 100), True, dtype=torch.bool),
-#             torch.tensor([0.7]),
-#         ),
-#         (
-#             torch.tensor([[0, 0.3, 1]]),
-#             torch.tensor([[0.2, 0.3, 0.4]]),
-#             torch.tensor([[0.5, 0.5, 0.5]]),
-#             torch.full((3, 1), True, dtype=torch.bool),
-#             torch.tensor([0, 1, 0]),
-#         ),
-#     ],
-# )
-# def test_ConformalRegressionEvaluator(preds, uncs, targets, mask, coverage_exp):
-#     """
-#     Testing the ConformalRegressionEvaluator
-#     """
-#     evaluator = ConformalRegressionEvaluator()
-#     coverage = evaluator.evaluate(preds, uncs, targets, mask)
+@pytest.mark.parametrize(
+    "preds,uncs,targets,mask,miscal_area",
+    [
+        (
+            torch.zeros(100).unsqueeze(1),
+            torch.ones(100).unsqueeze(1),
+            torch.zeros(100).unsqueeze(1),
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.tensor([0.495]),
+        ),
+        (
+            torch.ones(100).unsqueeze(1),
+            torch.ones(100).unsqueeze(1),
+            torch.ones(100, 1) * 100,
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.tensor([0.495]),
+        ),
+    ],
+)
+def test_CalibrationAreaEvaluator(preds, uncs, targets, mask, miscal_area):
+    """
+    Testing the CalibrationAreaEvaluator
+    """
+    evaluator = CalibrationAreaEvaluator()
+    miscal_area_cal = evaluator.evaluate(preds, uncs, targets, mask)
 
-#     torch.testing.assert_close(coverage, coverage_exp, decimal=3)
+    torch.testing.assert_close(miscal_area_cal, miscal_area)
+
+
+@pytest.mark.parametrize(
+    "preds,uncs,targets,mask,ence",
+    [
+        (
+            torch.zeros(100, 1),
+            torch.ones(100, 1),
+            torch.zeros(100, 1),
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.tensor([1.0]),
+        ),
+        (
+            torch.linspace(1, 100, steps=100).unsqueeze(1),
+            torch.linspace(1, 10, steps=100).unsqueeze(1),
+            torch.linspace(1, 100, steps=100).unsqueeze(1)
+            + torch.tensor([-2, -1, 1, 2]).repeat(25).unsqueeze(1),
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.tensor([0.392]),
+        ),
+    ],
+)
+def test_ExpectedNormalizedErrorEvaluator(preds, uncs, targets, mask, ence):
+    """
+    Testing the ExpectedNormalizedErrorEvaluator
+    """
+    evaluator = ExpectedNormalizedErrorEvaluator()
+    ence_cal = evaluator.evaluate(preds, uncs, targets, mask)
+
+    torch.testing.assert_close(ence_cal, ence)
