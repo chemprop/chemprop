@@ -229,7 +229,9 @@ class PlattCalibrator(BinaryClassificationCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic")
 class IsotonicCalibrator(BinaryClassificationCalibrator):
-    """Calibrate classification datasets using isotonic regression as discussed in [guo2017]_.
+    """Calibrate binary classification datasets using isotonic regression as discussed in [guo2017]_.
+    In effect, the method transforms incoming uncalibrated confidences using a histogram-like
+    function where the range of each transforming bin and its magnitude is learned.
 
     References
     ----------
@@ -323,7 +325,9 @@ class ConformalAdaptiveMulticlassCalibrator(MulticlassClassificationCalibrator):
 
 @UncertaintyCalibratorRegistry.register("isotonic-multiclass")
 class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
-    """Calibrate classification datasets using isotonic regression as discussed in [guo2017]_.
+    """Calibrate multiclass classification datasets using isotonic regression as discussed in
+    [guo2017]_. It uses a one-vs-all aggregation scheme to extend isotonic regression from binary to
+    multiclass classifiers.
 
     References
     ----------
