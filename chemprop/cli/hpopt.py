@@ -316,7 +316,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     logger.info(model)
 
     if args.tracking_metric == "val_loss":
-        tracking_metric_class = model.criterion
+        tracking_metric_class = model.criterion.__class__
     else:
         tracking_metric_class = MetricRegistry[args.tracking_metric]
         args.tracking_metric = "val/" + args.tracking_metric

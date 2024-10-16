@@ -870,7 +870,7 @@ def train_model(
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         if args.tracking_metric == "val_loss":
-            tracking_metric_class = model.criterion
+            tracking_metric_class = model.criterion.__class__
         else:
             tracking_metric_class = MetricRegistry[args.tracking_metric]
             args.tracking_metric = "val/" + args.tracking_metric
