@@ -884,13 +884,13 @@ def train_model(
         else:
             checkpoint_dir = model_output_dir
 
+        checkpoint_filename = (
+            f"best-epoch={{epoch}}-{args.tracking_metric.replace('/', '_')}="
+            f"{{{args.tracking_metric}:.2f}}"
+        )
         checkpointing = ModelCheckpoint(
             checkpoint_dir / "checkpoints",
-            "best-epoch={epoch}-"
-            + args.tracking_metric.replace("/", "_")
-            + "={"
-            + args.tracking_metric
-            + ":.2f}",
+            checkpoint_filename,
             args.tracking_metric,
             mode=monitor_mode,
             save_last=True,
