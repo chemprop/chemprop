@@ -73,14 +73,10 @@ class LossFunction(nn.Module):
         Tensor
             a scalar containing the fully reduced loss
         """
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
-        if lt_mask is None:
-            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        if gt_mask is None:
-            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
+        gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
 
         L = self._calc_unreduced_loss(preds, targets, mask, weights, lt_mask, gt_mask)
         L = L * weights.view(-1, 1) * self.task_weights.view(1, -1) * mask
@@ -202,10 +198,8 @@ class BinaryMCCLoss(LossFunction):
         weights: Tensor | None = None,
         *args,
     ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
 
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
@@ -245,10 +239,8 @@ class MulticlassMCCLoss(LossFunction):
         weights: Tensor | None = None,
         *args,
     ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 

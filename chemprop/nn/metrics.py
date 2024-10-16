@@ -63,14 +63,10 @@ class Metric(LossFunction):
         lt_mask: Tensor | None = None,
         gt_mask: Tensor | None = None,
     ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
-        if lt_mask is None:
-            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        if gt_mask is None:
-            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
+        gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
         return self._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)[mask].mean()
 
     @abstractmethod
@@ -111,14 +107,10 @@ class RMSEMetric(MSEMetric):
         lt_mask: Tensor | None = None,
         gt_mask: Tensor | None = None,
     ):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
-        if weights is None:
-            weights = torch.ones_like(targets, dtype=torch.float)
-        if lt_mask is None:
-            lt_mask = torch.zeros_like(targets, dtype=torch.bool)
-        if gt_mask is None:
-            gt_mask = torch.zeros_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
+        gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
         squared_errors = super()._calc_unreduced_loss(preds, targets, mask, lt_mask, gt_mask)
 
         return squared_errors[mask].mean().sqrt()
@@ -152,8 +144,7 @@ class R2Metric(Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         return F.r2_score(preds[mask], targets[mask])
 
 
@@ -162,8 +153,7 @@ class BinaryAUROCMetric(Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         return self._calc_unreduced_loss(preds, targets, mask)
 
     def _calc_unreduced_loss(self, preds, targets, mask, *args) -> Tensor:
@@ -175,8 +165,7 @@ class BinaryAUPRCMetric(Metric):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         p, r, _ = F.precision_recall_curve(preds, targets.long(), task="binary")
         return auc(r, p)
 
@@ -186,8 +175,7 @@ class BinaryAccuracyMetric(Metric, ThresholdedMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         return F.accuracy(
             preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
@@ -198,8 +186,7 @@ class BinaryF1Metric(Metric, ThresholdedMixin):
     minimize = False
 
     def forward(self, preds: Tensor, targets: Tensor, mask: Tensor | None = None, *args, **kwargs):
-        if mask is None:
-            mask = torch.ones_like(targets, dtype=torch.bool)
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         return F.f1_score(
             preds[mask], targets[mask].long(), threshold=self.threshold, task="binary"
         )
