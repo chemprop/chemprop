@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.conf import NOW
+from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
@@ -453,7 +453,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_train_args(args: Namespace) -> Namespace:
     if args.output_dir is None:
-        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
+        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path.stem / NOW
 
     return args
 
