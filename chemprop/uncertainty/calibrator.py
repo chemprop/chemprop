@@ -379,11 +379,27 @@ class MultilabelConformalCalibrator(BinaryClassificationCalibrator):
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
+        """
+        Apply this calibrator to the input uncertainties.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            a tensor containinig uncalibrated uncertainties
+
+        Returns
+        -------
+        Tensor
+            the calibrated uncertainties of the shape of ``n x t x 2``, where ``n`` is the number of input
+            molecules/reactions, ``t`` is the number of tasks, and the first element in the last dimension
+            corresponds to the in-set :math:`\hat{\mathcal C}_\text{in}`, while the second corresponds to
+            the out-set :math:`\hat{\mathcal C}_\text{out}`.
+        """
         scores = self.nonconformity_scores(uncs)
 
         cal_preds_in = (scores <= self.tin).int()
         cal_preds_out = (scores <= self.tout).int()
-        cal_preds_in_out = torch.cat((cal_preds_in, cal_preds_out), dim=1)
+        cal_preds_in_out = torch.stack((cal_preds_in, cal_preds_out), dim=2)
 
         return cal_preds_in_out
 
