@@ -153,9 +153,6 @@ def test_MulticlassConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_unc
                 [[[1, 1], [1, 0], [1, 0]], [[1, 0], [1, 1], [1, 0]], [[1, 0], [1, 0], [1, 1]]],
                 dtype=torch.int,
             ),
-            # torch.tensor(
-            #     [[1, 1, 1, 1, 0, 0], [1, 1, 1, 0, 1, 0], [1, 1, 1, 0, 0, 1]], dtype=torch.int
-            # ),
         )
     ],
 )
