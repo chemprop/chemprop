@@ -139,11 +139,6 @@ class RegressionConformalCalibrator(RegressionCalibrator):
     alpha: float
         The error rate, :math:`\alpha \in [0, 1]`
 
-    Returns
-    -------
-    Tensor
-        the calibrated intervals
-
     References
     ----------
     .. [1] Angelopoulos, A.N.; Bates, S.; "A Gentle Introduction to Conformal Prediction and Distribution-Free
@@ -185,6 +180,19 @@ class RegressionConformalCalibrator(RegressionCalibrator):
         return self
 
     def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Apply this calibrator to the input uncertainties.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            a tensor containinig uncalibrated uncertainties
+
+        Returns
+        -------
+        Tensor
+            the calibrated intervals
+        """
         cal_intervals = uncs + 2 * self.qhats
 
         return cal_intervals
