@@ -979,7 +979,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
 
     individual_scores = dict()
-    for metric in metrics[:-1]:
+    for metric in metrics:
         individual_scores[metric.alias] = []
         for i, col in enumerate(target_cols):
             if "multiclass" in args.task_type:
@@ -999,13 +999,13 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
             individual_scores[metric.alias].append(preds_loss)
 
     logger.info("Entire Test Set results:")
-    for metric in metrics[:-1]:
+    for metric in metrics:
         avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
         logger.info(f"entire_test/{metric.alias}: {avg_loss}")
 
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
-        for metric in metrics[:-1]:
+        for metric in metrics:
             for i, col in enumerate(target_cols):
                 logger.info(
                     f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
