@@ -23,6 +23,7 @@ __all__ = [
     "MulticlassDirichletLoss",
     "SIDLoss",
     "WassersteinLoss",
+    "QuantileLoss",
 ]
 
 
@@ -348,3 +349,31 @@ class WassersteinLoss(LossFunction):
 
     def extra_repr(self) -> str:
         return f"threshold={self.threshold}"
+
+
+@LossFunctionRegistry.register(["quantile", "pinball"])
+class QuantileLoss(LossFunction):
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
+        super().__init__(task_weights)
+        self.alpha = alpha
+
+        bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1, 1)
+        tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
+            2, 2, 1, 1
+        )
+
+        self.register_buffer("bounds", bounds)
+        self.register_buffer("tau", tau)
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
+        mean, interval = torch.unbind(preds, dim=-1)
+
+        interval_bounds = self.bounds * interval
+        pred_bounds = mean + interval_bounds
+        error_bounds = targets - pred_bounds
+        loss_bounds = (self.tau * error_bounds).amax(0)
+
+        return loss_bounds.sum(0)
+
+    def extra_repr(self) -> str:
+        return f"alpha={self.alpha}"
