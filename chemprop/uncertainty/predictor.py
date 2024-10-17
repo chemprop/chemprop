@@ -94,6 +94,17 @@ class ClassPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-total")
 class EvidentialTotalPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the total evidential uncertainty based on hyperparameters of
+    the evidential distribution [amini2020]_.
+    
+    References
+    -----------
+    .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression". 
+    NeurIPS, 2020. https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
+
+    """
+    
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -109,6 +120,11 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-epistemic")
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the epistemic evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+    
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -124,6 +140,11 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-aleatoric")
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the aleatoric evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+    
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
