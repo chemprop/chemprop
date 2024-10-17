@@ -484,7 +484,9 @@ def validate_train_args(args):
     if args.tracking_metric not in valid_tracking_metrics:
         raise ArgumentError(
             argument=None,
-            message=f"Tracking metric must be either 'val_loss' or one of the metrics specified via `--metrics`. Got {args.tracking_metric}",
+            message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
+            f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
+            "the --metrics flag.",
         )
 
     return args
@@ -1092,7 +1094,7 @@ def main(args):
             )
         else:
             test_loader = None
-
+        return
         train_model(
             args,
             train_loader,
