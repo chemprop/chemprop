@@ -58,6 +58,7 @@ class MVEPredictor(UncertaintyPredictor):
     """
     Class that estimates prediction means and variances (MVE).
     """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
