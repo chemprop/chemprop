@@ -178,7 +178,7 @@ class MveFFN(RegressionFFN):
         mean = self.output_transform(mean)
         var = self.output_transform.transform_variance(var)
 
-        return torch.cat((mean, var), 1)
+        return torch.stack((mean, var), dim=2)
 
     train_step = forward
 
@@ -198,7 +198,7 @@ class EvidentialFFN(RegressionFFN):
         mean = self.output_transform(mean)
         beta = self.output_transform.transform_variance(beta)
 
-        return torch.cat((mean, v, alpha, beta), 1)
+        return torch.stack((mean, v, alpha, beta), dim=2)
 
     train_step = forward
 
@@ -229,13 +229,17 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
     _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        alpha, beta = torch.chunk(Y, 2, 1)
+        Y = super().forward(Z).reshape(len(Z), -1, 2)
 
-        return beta / (alpha + beta)
+        alpha = F.softplus(Y) + 1
+
+        u = 2 / alpha.sum(-1)
+        Y = alpha / alpha.sum(-1, keepdim=True)
+
+        return torch.stack((Y[..., 1], u), dim=2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = super().forward(Z).reshape(len(Z), -1, 2)
 
         return F.softplus(Y) + 1
 
@@ -260,6 +264,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         threshold: float | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         super().__init__(
             n_tasks * n_classes,
             input_dim,
@@ -275,11 +280,12 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
         self.n_classes = n_classes
 
-    def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        Y = Y.reshape(Y.shape[0], -1, self.n_classes)
+    @property
+    def n_tasks(self) -> int:
+        return self.output_dim // (self.n_targets * self.n_classes)
 
-        return Y.softmax(-1)
+    def forward(self, Z: Tensor) -> Tensor:
+        return self.train_step(Z).softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
@@ -291,18 +297,16 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _T_default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+        Y = super().train_step(Z)
 
-        Y = Y.softmax(-1)
-        Y = F.softplus(Y) + 1
+        alpha = F.softplus(Y) + 1
 
-        alpha = Y
-        Y = Y / Y.sum(-1, keepdim=True)
+        Y = alpha / alpha.sum(-1, keepdim=True)
 
-        return torch.cat((Y, alpha), 1)
+        return Y
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+        Y = super().train_step(Z)
 
         return F.softplus(Y) + 1
 

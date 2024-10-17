@@ -20,23 +20,28 @@ def model_path(data_dir):
 
 
 def test_train_quick(monkeypatch, data_path):
-    args = [
+    base_args = [
         "chemprop",
         "train",
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
-        "--task-type",
-        "multiclass",
         "--show-individual-scores",
     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+    task_types = ["multiclass", "multiclass-dirichlet"]
+
+    for task_type in task_types:
+        args = base_args.copy()
+
+        args += ["--task-type", task_type]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
@@ -72,7 +77,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -99,7 +104,7 @@ def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_p
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
@@ -177,7 +182,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--save-dir",
