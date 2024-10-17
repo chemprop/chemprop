@@ -28,6 +28,6 @@ final-lr = 0.0001
 split = RANDOM
 split-sizes = [0.8, 0.1, 0.1]
 split-key-molecule = 0
-num-folds = 1
+num-replicates = 1
 data-seed = 0
 pytorch-seed = 0
