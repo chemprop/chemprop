@@ -265,9 +265,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
     extra_mpnn_args.add_argument(
-        "--batch-norm",
-        action="store_true",
-        help="Turn on batch normalization after aggregation",
+        "--batch-norm", action="store_true", help="Turn on batch normalization after aggregation"
     )
     extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
