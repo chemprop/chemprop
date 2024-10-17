@@ -3,7 +3,6 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
-import chemprop.customunpickle
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
@@ -54,7 +53,7 @@ class MulticomponentMPNN(MPNN):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location, pickle_module=chemprop.customunpickle)
+        d = torch.load(path, map_location)
 
         try:
             hparams = d["hyper_parameters"]

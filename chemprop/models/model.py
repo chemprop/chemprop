@@ -8,7 +8,6 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-import chemprop.customunpickle
 from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
@@ -240,7 +239,7 @@ class MPNN(pl.LightningModule):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location, pickle_module=chemprop.customunpickle)
+        d = torch.load(path, map_location)
 
         try:
             hparams = d["hyper_parameters"]
@@ -284,7 +283,7 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        d = torch.load(checkpoint_path, map_location, pickle_module=chemprop.customunpickle)
+        d = torch.load(checkpoint_path, map_location)
         d["state_dict"] = state_dict
         buffer = io.BytesIO()
         torch.save(d, buffer)
