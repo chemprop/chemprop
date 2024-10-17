@@ -151,6 +151,16 @@ class ZelikmanCalibrator(RegressionCalibrator):
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(RegressionCalibrator):
+    """Calibrate regression datasets that have ensembles of individual models that make variance predictions.
+
+    This method minimizes the negative log likelihood for the predictions versus the targets by applying
+    a weighted average across the variance predictions of the ensemble. [wang2021]_
+
+    References
+    ----------
+    .. [wang2021] Wang, D.; Yu, J.; Chen, L.; Li, X.; Jiang, H.; Chen, K.; Zheng, M.; Luo, X. "A hybrid framework for improving uncertainty quantification in deep learning-based QSAR regression modeling." J. Cheminform., 2021, 13, 1-17. https://doi.org/10.1186/s13321-021-00551-x.
+    """
+
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
         """
         Fit calibration method for the calibration data.
