@@ -200,7 +200,7 @@ class SpearmanEvaluator(RegressionEvaluator):
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
 class RegressionConformalEvaluator(RegressionEvaluator):
     r"""
-    Evaluate the coverage of conformal prediction for regression dataset.
+    Evaluate the coverage of conformal prediction for regression datasets.
 
     .. math::
         \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
@@ -272,7 +272,7 @@ class NLLClassEvaluator(BinaryClassificationEvaluator):
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
 class MultilabelConformalEvaluator(BinaryClassificationEvaluator):
     r"""
-    Evaluate the coverage of conformal prediction for binary classification dataset with multiple labels.
+    Evaluate the coverage of conformal prediction for binary classification datasets with multiple labels.
 
     .. math::
         \Pr \left(
@@ -352,12 +352,12 @@ class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
 class MulticlassConformalEvaluator(MulticlassClassificationEvaluator):
     r"""
-    Evaluate the coverage of conformal prediction for multiclass classification dataset.
+    Evaluate the coverage of conformal prediction for multiclass classification datasets.
 
     .. math::
         \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
 
-    where the :math:`C(X_{\text{test}})) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
+    where the :math:`C(X_{\text{test}}) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
     """
 
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
