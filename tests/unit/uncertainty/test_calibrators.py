@@ -119,8 +119,5 @@ def test_ZelikmanCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_unc
     calibrator = ZelikmanCalibrator(p=0.9)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
-    print("test_uncs:", test_uncs)
-    print("uncs:", uncs)
-    print("scalings:", calibrator.scalings)
 
     torch.testing.assert_close(uncs, cal_test_uncs)
