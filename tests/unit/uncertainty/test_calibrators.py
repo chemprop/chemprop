@@ -1,52 +1,7 @@
 import pytest
 import torch
 
-from chemprop.uncertainty.calibrator import PlattCalibrator
-
-# from chemprop.uncertainty.calibrator import (
-#     ConformalAdaptiveMulticlassCalibrator,
-#     ConformalMulticlassCalibrator,
-#     ConformalMultilabelCalibrator,
-#     ConformalQuantileRegressionCalibrator,
-#     ConformalRegressionCalibrator,
-#     IsotonicCalibrator,
-#     IsotonicMulticlassCalibrator,
-#     MVEWeightingCalibrator,
-#     PlattCalibrator,
-#     TScalingCalibrator,
-#     ZelikmanCalibrator,
-#     ZScalingCalibrator,
-# )
-
-# # Example
-# @pytest.mark.parametrize(
-#     "cal_preds,cal_uncs,cal_targets,cal_mask,test_preds,test_uncs,cal_test_preds,cal_test_uncs",
-#     [
-#         (
-#             torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
-#             torch.tensor([[0.3, 0.2], [0.1, 0.1]], dtype=torch.float),
-#             torch.zeros([2, 2], dtype=torch.int),
-#             torch.ones([2, 2], dtype=torch.bool),
-#             torch.tensor([[4, 2], [5, -2]], dtype=torch.float),
-#             torch.tensor([[0.1, 0.2], [0.3, 0.4]], dtype=torch.float),
-#             torch.tensor([[4, 2], [5, -2]], dtype=torch.float),
-#             torch.tensor([[5.8, 4], [6, 4.2]], dtype=torch.float),
-#         ),
-#         ...,
-#     ],
-# )
-# def test_ConformalQuantileRegressionCalibrator(
-#     cal_preds, cal_uncs, cal_targets, cal_mask, test_preds, test_uncs, cal_test_preds, cal_test_uncs
-# ):
-#     """
-#     Testing the ConformalQuantileRegressionCalibrator
-#     """
-#     calibrator = ConformalQuantileRegressionCalibrator(conformal_alpha=0.1)
-#     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-#     preds, uncs = calibrator.apply(test_preds, test_uncs)
-
-#     torch.testing.assert_close(preds, cal_test_preds)
-#     torch.testing.assert_close(uncs, cal_test_uncs)
+from chemprop.uncertainty.calibrator import PlattCalibrator, ZelikmanCalibrator, ZScalingCalibrator
 
 
 @pytest.mark.parametrize(
@@ -102,3 +57,70 @@ def test_PlattCalibrator(
 
     torch.testing.assert_close(uncs1, cal_test_uncs)
     torch.testing.assert_close(uncs2, cal_test_uncs_with_training_targets)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        ),
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(2, 201, step=2, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1) / 4,
+        ),
+    ],
+)
+def test_ZScalingCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the ZScalingCalibrator
+    """
+    calibrator = ZScalingCalibrator()
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        ),
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1) * 8100,
+        ),
+    ],
+)
+def test_ZelikmanCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the ZelikmanCalibrator
+    """
+    calibrator = ZelikmanCalibrator(p=0.9)
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+    print("test_uncs:", test_uncs)
+    print("uncs:", uncs)
+    print("scalings:", calibrator.scalings)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
