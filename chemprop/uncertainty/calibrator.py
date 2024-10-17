@@ -60,7 +60,7 @@ class RegressionCalibrator(CalibratorBase):
             the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
             molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
-            the predicted uncertainties (variance) of the shape of ``n x t``
+            the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
