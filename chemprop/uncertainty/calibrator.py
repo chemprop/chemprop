@@ -111,7 +111,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(RegressionCalibrator):
-    """Calibrate regression datasets that does not depend on a particular probability function form.
+    """Calibrate regression datasets using a method that does not depend on a particular probability function form.
 
     This method is designed to be used with interval output. Uses the "CRUDE" method as described in [zelikman2020]_.
 
