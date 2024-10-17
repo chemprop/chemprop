@@ -205,7 +205,7 @@ class RegressionConformalEvaluator(RegressionEvaluator):
     .. math::
         \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
 
-    where the :math:`C(X_{\text{test}}))` is the predicted interval.
+    where the :math:`C(X_{\text{test}})` is the predicted interval.
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
