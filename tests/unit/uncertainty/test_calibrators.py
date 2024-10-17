@@ -4,6 +4,7 @@ import torch
 from chemprop.uncertainty.calibrator import (
     IsotonicCalibrator,
     IsotonicMulticlassCalibrator,
+    MVEWeightingCalibrator,
     PlattCalibrator,
     ZelikmanCalibrator,
     ZScalingCalibrator,
@@ -160,6 +161,34 @@ def test_ZelikmanCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_unc
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
 
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).repeat(5, 1, 1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).repeat(5, 1, 1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        )
+    ],
+)
+def test_MVEWeightingCalibrator(
+    cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
+):
+    """
+    Testing the MVEWeightingCalibrator
+    """
+    calibrator = MVEWeightingCalibrator()
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
 
 @pytest.mark.parametrize(
     "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
@@ -203,4 +232,5 @@ def test_IsotonicMulticlassCalibratorCalibrator(
     calibrator = IsotonicMulticlassCalibrator()
     calibrator.fit(cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
+
     torch.testing.assert_close(uncs, cal_test_uncs)

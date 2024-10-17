@@ -4,7 +4,7 @@ from typing import Self
 
 import numpy as np
 from scipy.optimize import fmin
-from scipy.special import expit, logit
+from scipy.special import expit, logit, softmax
 from sklearn.isotonic import IsotonicRegression
 import torch
 from torch import Tensor
@@ -152,10 +152,62 @@ class ZelikmanCalibrator(RegressionCalibrator):
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(RegressionCalibrator):
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        """
+        Fit calibration method for the calibration data.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
+            molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties of the shape of ``m x n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : MVEWeightingCalibrator
+            the fitted calibrator
+        """
+        scalings = []
+        for j in range(uncs.shape[2]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j].numpy()
+            uncs_j = uncs[:, mask_j, j].numpy()
+            targets_j = targets[:, j][mask_j].numpy()
+            errors = preds_j - targets_j
+
+            def objective(scaler_values: np.ndarray):
+                scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (m, 1)
+                scaled_vars = np.sum(uncs_j * scaler_values, axis=0, keepdims=False)
+                nll = np.log(2 * np.pi * scaled_vars) / 2 + errors**2 / (2 * scaled_vars)
+                return np.sum(nll)
+
+            initial_guess = np.ones(uncs_j.shape[0])
+            sol = fmin(objective, x0=initial_guess, disp=False)
+            scalings.append(torch.tensor(softmax(sol)))
+
+        self.scalings = torch.stack(scalings).t().unsqueeze(1)
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        return
+        """
+        Apply this calibrator to the input uncertainties.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            a tensor containinig uncalibrated uncertainties of the shape of ``m x n x t``
+
+        Returns
+        -------
+        Tensor
+            the calibrated uncertainties of the shape of ``n x t``
+        """
+        return (uncs * self.scalings).sum(0)
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
