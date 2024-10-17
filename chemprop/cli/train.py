@@ -792,7 +792,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 def summarize(
     target_cols: list[str], task_type: str, dataset: _MolGraphDatasetMixin
 ) -> tuple[list, list]:
-    if task_type in ["regression", "regression-mve", "regression-evidential"]:
+    if task_type in [
+        "regression",
+        "regression-mve",
+        "regression-evidential",
+        "regression-quantile",
+    ]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
@@ -851,7 +856,7 @@ def summarize(
 
         return (column_headers, table_rows)
     else:
-        raise ValueError(f"unsupported task type! Task type '{args.task_type}' was not recognized.")
+        raise ValueError(f"unsupported task type! Task type '{task_type}' was not recognized.")
 
 
 def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
