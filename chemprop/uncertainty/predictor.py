@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
+import torch._tensor
 
 
 class UncertaintyPredictor(ABC):
@@ -96,7 +97,14 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(3)
+        total_uncs = (1+1/v)*(beta/(alpha-1))
+        return mean, total_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-epistemic")
@@ -104,7 +112,14 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(3)
+        epistemic_uncs = (1/v)*(beta/(alpha-1))
+        return mean, epistemic_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-aleatoric")
@@ -112,7 +127,14 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, _, alpha, beta = uncs.unbind(3)
+        aleatoric_uncs = beta/(alpha-1)
+        return mean, aleatoric_uncs
 
 
 @UncertaintyPredictorRegistry.register("dropout")
