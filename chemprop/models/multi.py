@@ -16,7 +16,7 @@ class MulticomponentMPNN(MPNN):
         message_passing: MulticomponentMessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        batch_norm: bool = True,
+        batch_norm: bool = False,
         metrics: Iterable[Metric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,

@@ -265,9 +265,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
     extra_mpnn_args.add_argument(
-        "--no-batch-norm",
+        "--batch-norm",
         action="store_true",
-        help="Turn off batch normalization after aggregation",
+        help="Turn on batch normalization after aggregation",
     )
     extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
@@ -914,7 +914,7 @@ def build_model(
         mp_block,
         agg,
         predictor,
-        not args.no_batch_norm,
+        args.batch_norm,
         metrics,
         args.warmup_epochs,
         args.init_lr,
