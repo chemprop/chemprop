@@ -731,7 +731,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
         column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
 
         table_rows = [
-            [f"{k}"] + [f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])]
+            [f"{k}"] + [f"{class_counts[j, i]}/{class_fracs[j, i]:0.0%}" for j in range(y.shape[1])]
             for i, k in enumerate(classes)
         ]
 

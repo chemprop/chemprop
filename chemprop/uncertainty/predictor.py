@@ -4,11 +4,11 @@ from typing import Iterable
 from lightning import pytorch as pl
 import torch
 from torch import Tensor
+import torch._tensor
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
-import torch._tensor
 
 
 class UncertaintyPredictor(ABC):
@@ -97,14 +97,14 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
     """
     Class that predicts the total evidential uncertainty based on hyperparameters of
     the evidential distribution [amini2020]_.
-    
+
     References
     -----------
-    .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression". 
+    .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression".
     NeurIPS, 2020. https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
 
     """
-    
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -114,7 +114,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
             uncs.append(preds)
         uncs = torch.stack(uncs)
         mean, v, alpha, beta = uncs.unbind(3)
-        total_uncs = (1+1/v)*(beta/(alpha-1))
+        total_uncs = (1 + 1 / v) * (beta / (alpha - 1))
         return mean, total_uncs
 
 
@@ -124,7 +124,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
     Class that predicts the epistemic evidential uncertainty based on hyperparameters of
     the evidential distribution.
     """
-    
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -134,7 +134,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
             uncs.append(preds)
         uncs = torch.stack(uncs)
         mean, v, alpha, beta = uncs.unbind(3)
-        epistemic_uncs = (1/v)*(beta/(alpha-1))
+        epistemic_uncs = (1 / v) * (beta / (alpha - 1))
         return mean, epistemic_uncs
 
 
@@ -144,7 +144,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
     Class that predicts the aleatoric evidential uncertainty based on hyperparameters of
     the evidential distribution.
     """
-    
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -154,7 +154,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
             uncs.append(preds)
         uncs = torch.stack(uncs)
         mean, _, alpha, beta = uncs.unbind(3)
-        aleatoric_uncs = beta/(alpha-1)
+        aleatoric_uncs = beta / (alpha - 1)
         return mean, aleatoric_uncs
 
 
