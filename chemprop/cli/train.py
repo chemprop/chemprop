@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
-from chemprop.cli.conf import NOW
+from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
@@ -352,6 +352,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
+        "--tracking-metric",
+        default="val_loss",
+        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training.",
+    )
+    train_args.add_argument(
         "--show-individual-scores",
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
@@ -451,6 +456,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.output_dir is None:
+        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path.stem / NOW
+
+    return args
+
+
+def validate_train_args(args):
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
@@ -458,9 +470,6 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
-
-    if args.output_dir is None:
-        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
@@ -473,11 +482,16 @@ def process_train_args(args: Namespace) -> Namespace:
             argument=None, message="Class balance is only applicable for classification tasks."
         )
 
+    valid_tracking_metrics = (
+        args.metrics or [PredictorRegistry[args.task_type]._T_default_metric.alias]
+    ) + ["val_loss"]
+    if args.tracking_metric not in valid_tracking_metrics:
+        raise ArgumentError(
+            argument=None,
+            message=f"Tracking metric must be either 'val_loss' or one of the metrics specified via `--metrics`. Got {args.tracking_metric}",
+        )
+
     return args
-
-
-def validate_train_args(args):
-    pass
 
 
 def normalize_inputs(train_dset, val_dset, args):
@@ -943,16 +957,24 @@ def train_model(
         model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
-        monitor_mode = "min" if model.metrics[0].minimize else "max"
-        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
-
         try:
-            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
+            trainer_logger = TensorBoardLogger(
+                model_output_dir, "trainer_logs", default_hp_metric=False
+            )
         except ModuleNotFoundError as e:
             logger.warning(
                 f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
+
+        if args.tracking_metric == "val_loss":
+            T_tracking_metric = model.criterion.__class__
+        else:
+            T_tracking_metric = MetricRegistry[args.tracking_metric]
+            args.tracking_metric = "val/" + args.tracking_metric
+
+        monitor_mode = "min" if T_tracking_metric.minimize else "max"
+        logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
         if args.remove_checkpoints:
             temp_dir = TemporaryDirectory()
@@ -960,17 +982,24 @@ def train_model(
         else:
             checkpoint_dir = model_output_dir
 
+        checkpoint_filename = (
+            f"best-epoch={{epoch}}-{args.tracking_metric.replace('/', '_')}="
+            f"{{{args.tracking_metric}:.2f}}"
+        )
         checkpointing = ModelCheckpoint(
             checkpoint_dir / "checkpoints",
-            "best-{epoch}-{val_loss:.2f}",
-            "val_loss",
+            checkpoint_filename,
+            args.tracking_metric,
             mode=monitor_mode,
             save_last=True,
+            auto_insert_metric_name=False,
         )
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+            early_stopping = EarlyStopping(
+                args.tracking_metric, patience=patience, mode=monitor_mode
+            )
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
