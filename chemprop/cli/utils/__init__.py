@@ -8,7 +8,7 @@ from .parsing import (
     make_dataset,
     parse_indices,
 )
-from .utils import _pop_attr, _pop_attr_d, pop_attr, validate_loss_function
+from .utils import _pop_attr, _pop_attr_d, pop_attr
 
 __all__ = [
     "bounded",
@@ -27,5 +27,4 @@ __all__ = [
     "pop_attr",
     "_pop_attr",
     "_pop_attr_d",
-    "validate_loss_function",
 ]
