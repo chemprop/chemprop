@@ -55,7 +55,13 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 @UncertaintyPredictorRegistry.register("mve")
 class MVEPredictor(UncertaintyPredictor):
     """
-    Class that estimates prediction means and variances (MVE).
+    Class that estimates prediction means and variances (MVE). [nix1994]_
+    
+    References
+    ----------
+    .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
+        probability distribution." Proceedings of 1994 IEEE International Conference on Neural
+        Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
     """
 
     def __call__(
