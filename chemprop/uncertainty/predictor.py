@@ -55,10 +55,19 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("mve")
 class MVEPredictor(UncertaintyPredictor):
+    """
+    Class that estimates prediction means and variances (MVE).
+    """
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        mves = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            mves.append(preds)
+        mves = torch.stack(mves, dim=0)
+        mean, var = mves.unbind(dim=3)
+        return mean, var
 
 
 @UncertaintyPredictorRegistry.register("ensemble")
