@@ -250,14 +250,17 @@ class BinaryDirichletFFN(BinaryClassificationFFNBase):
     _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        alpha, beta = torch.chunk(Y, self.n_targets, 1)
-        Y = beta / (alpha + beta)
+        Y = super().forward(Z).reshape(len(Z), -1, 2)
 
-        return Y.reshape(Y.shape[0], -1, 1)
+        alpha = F.softplus(Y) + 1
+
+        u = 2 / alpha.sum(-1)
+        Y = alpha / alpha.sum(-1, keepdim=True)
+
+        return torch.stack((Y[..., 1], u), dim=2)
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
+        Y = super().forward(Z).reshape(len(Z), -1, 2)
 
         return F.softplus(Y) + 1
 
@@ -315,18 +318,16 @@ class MulticlassDirichletFFN(MulticlassClassificationFFN):
     _T_default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+        Y = super().train_step(Z)
 
-        Y = Y.softmax(-1)
-        Y = F.softplus(Y) + 1
+        alpha = F.softplus(Y) + 1
 
-        alpha = Y
-        Y = Y / Y.sum(-1, keepdim=True)
+        Y = alpha / alpha.sum(-1, keepdim=True)
 
-        return torch.cat((Y, alpha), 1)
+        return Y
 
     def train_step(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z).reshape(len(Z), -1, self.n_classes)
+        Y = super().train_step(Z)
 
         return F.softplus(Y) + 1
 
