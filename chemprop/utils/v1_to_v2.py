@@ -146,7 +146,7 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
 
 
 def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
-    """Converts a v1 model .pt file to a v2 model .ckpt file"""
+    """Converts a v1 model .pt file to a v2 model .pt file"""
 
     model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"))
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
