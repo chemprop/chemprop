@@ -352,6 +352,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
+        "--tracking-metric",
+        default="val_loss",
+        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training.",
+    )
+    train_args.add_argument(
         "--show-individual-scores",
         action="store_true",
         help="Show all scores for individual targets, not just average, at the end.",
@@ -451,6 +456,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    if args.output_dir is None:
+        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
+
+    return args
+
+
+def validate_train_args(args):
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
@@ -458,9 +470,6 @@ def process_train_args(args: Namespace) -> Namespace:
         raise ArgumentError(
             argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
         )
-
-    if args.output_dir is None:
-        args.output_dir = Path(f"chemprop_training/{args.data_path.stem}/{NOW}")
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
@@ -473,11 +482,18 @@ def process_train_args(args: Namespace) -> Namespace:
             argument=None, message="Class balance is only applicable for classification tasks."
         )
 
+    valid_tracking_metrics = (
+        args.metrics or [PredictorRegistry[args.task_type]._T_default_metric.alias]
+    ) + ["val_loss"]
+    if args.tracking_metric not in valid_tracking_metrics:
+        raise ArgumentError(
+            argument=None,
+            message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
+            f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
+            "the --metrics flag.",
+        )
+
     return args
-
-
-def validate_train_args(args):
-    pass
 
 
 def normalize_inputs(train_dset, val_dset, args):
@@ -943,16 +959,24 @@ def train_model(
         model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
-        monitor_mode = "min" if model.metrics[0].minimize else "max"
-        logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
-
         try:
-            trainer_logger = TensorBoardLogger(model_output_dir, "trainer_logs")
+            trainer_logger = TensorBoardLogger(
+                model_output_dir, "trainer_logs", default_hp_metric=False
+            )
         except ModuleNotFoundError as e:
             logger.warning(
                 f"Unable to import TensorBoardLogger, reverting to CSVLogger (original error: {e})."
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
+
+        if args.tracking_metric == "val_loss":
+            tracking_metric_class = model.criterion
+        else:
+            tracking_metric_class = MetricRegistry[args.tracking_metric]
+            args.tracking_metric = "val/" + args.tracking_metric
+
+        monitor_mode = "min" if tracking_metric_class.higher_is_better else "max"
+        logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
 
         if args.remove_checkpoints:
             temp_dir = TemporaryDirectory()
@@ -962,15 +986,22 @@ def train_model(
 
         checkpointing = ModelCheckpoint(
             checkpoint_dir / "checkpoints",
-            "best-{epoch}-{val_loss:.2f}",
-            "val_loss",
+            "best-epoch={epoch}-"
+            + args.tracking_metric.replace("/", "_")
+            + "={"
+            + args.tracking_metric
+            + ":.2f}",
+            args.tracking_metric,
             mode=monitor_mode,
             save_last=True,
+            auto_insert_metric_name=False,
         )
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+            early_stopping = EarlyStopping(
+                args.tracking_metric, patience=patience, mode=monitor_mode
+            )
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
@@ -1048,7 +1079,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
 
     individual_scores = dict()
-    for metric in metrics:
+    for metric in metrics[:-1]:
         individual_scores[metric.alias] = []
         for i, col in enumerate(target_cols):
             if "multiclass" in args.task_type:
@@ -1067,18 +1098,16 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
             )
             individual_scores[metric.alias].append(preds_loss)
 
-    logger.info("Entire Test Set results:")
-    for metric in metrics:
+    logger.info("Test Set results:")
+    for metric in metrics[:-1]:
         avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
-        logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+        logger.info(f"test/{metric.alias}: {avg_loss}")
 
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
-        for metric in metrics:
+        for metric in metrics[:-1]:
             for i, col in enumerate(target_cols):
-                logger.info(
-                    f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
-                )
+                logger.info(f"test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}")
 
     names = test_loader.dataset.names
     if isinstance(test_loader.dataset, MulticomponentDataset):
@@ -1163,7 +1192,7 @@ def main(args):
             )
         else:
             test_loader = None
-
+        return
         train_model(
             args,
             train_loader,
