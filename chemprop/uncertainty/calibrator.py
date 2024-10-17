@@ -80,8 +80,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [levi2022] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and calibrating
-    uncertainty prediction in regression tasks". Sensors, 2022, 22 (15), 5540.
+    .. [levi2022] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540.
     """
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
@@ -122,8 +121,7 @@ class ZelikmanCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [zelikman2020] Zelikman, E.; Healy, C.; Zhou, S.; Avati, A. "CRUDE: calibrating regression uncertainty
-    distributions empirically." arXiv preprint arXiv:2005.12496. https://doi.org/10.48550/arXiv.2005.12496
+    .. [zelikman2020] Zelikman, E.; Healy, C.; Zhou, S.; Avati, A. "CRUDE: calibrating regression uncertainty distributions empirically." arXiv preprint arXiv:2005.12496. https://doi.org/10.48550/arXiv.2005.12496.
     """
 
     def __init__(self, p: float):
