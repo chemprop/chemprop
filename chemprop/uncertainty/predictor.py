@@ -34,10 +34,17 @@ class UncertaintyPredictor(ABC):
 
             * regression/binary classification: ``m x n x t``
 
-            * multiclass classification: ``m x n x t x c``, where ``m`` is the number of models, ``n`` is the number of inputs, ``t`` is the number of tasks, and ``c`` is the number of classes.
+            * multiclass classification: ``m x n x t x c``, where ``m`` is the number of models,
+            ``n`` is the number of inputs, ``t`` is the number of tasks, and ``c`` is the number of classes.
         uncs : Tensor
-            the predicted uncertainties, with shapes of ``n x t`` for regression
-            or binary classification, and ``n x t x c`` for multiclass classification.
+            the predicted uncertainties, with shapes of ``m' x n x t`` for regression,
+            or binary classification, and ``m' n x t x c`` for multiclass classification.
+
+        .. note::
+            The ``m`` and ``m'`` are different by definition. The ``m`` is the number of models,
+            while the ``m'`` is the number of uncertainty estimations. For example, if two MVE
+            or evidential models are provided, both ``m`` and ``m'`` are two. However, for an
+            ensemble of two models, ``m'`` would be one (even though ``m = 2``).
         """
 
 
@@ -79,7 +86,7 @@ class EnsemblePredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             ensemble_preds.append(preds)
         stacked_preds = torch.stack(ensemble_preds).float()
-        vars = torch.var(stacked_preds, dim=0, correction=0)
+        vars = torch.var(stacked_preds, dim=0, correction=0).unsqueeze(0)
         return stacked_preds, vars
 
 
@@ -142,23 +149,23 @@ class DropoutPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        if len(models) != 1:
-            raise ValueError("Dropout method for uncertainty only takes exactly one model.")
-        model = next(iter(models))
-        self._setup_model(model)
-        individual_preds = []
+        meanss, varss = [], []
+        for model in models:
+            self._setup_model(model)
+            individual_preds = []
 
-        for _ in range(self.ensemble_size):
-            predss = trainer.predict(model, dataloader)
-            preds = torch.concat(predss, 0)
-            individual_preds.append(preds)
+            for _ in range(self.ensemble_size):
+                predss = trainer.predict(model, dataloader)
+                preds = torch.concat(predss, 0)
+                individual_preds.append(preds)
 
-        stacked_preds = torch.stack(individual_preds, dim=0).float()
-        means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
-        vars = torch.var(stacked_preds, dim=0, correction=0)
-
-        self._restore_model(model)
-        return means, vars
+            stacked_preds = torch.stack(individual_preds, dim=0).float()
+            means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
+            vars = torch.var(stacked_preds, dim=0, correction=0)
+            self._restore_model(model)
+            meanss.append(means)
+            varss.append(vars)
+        return torch.stack(means), torch.stack(vars)
 
     def _setup_model(self, model):
         model._predict_step = model.predict_step
@@ -219,6 +226,5 @@ class QuantileRegressionPredictor(UncertaintyPredictor):
             predss = trainer.predict(model, dataloader)
             individual_preds.append(torch.concat(predss, 0))
         stacked_preds = torch.stack(individual_preds).float()
-        mean = stacked_preds[..., 0]
-        interval = torch.mean(stacked_preds[..., 1], dim=0)
+        mean, interval = stacked_preds.unbind(2)
         return mean, interval
