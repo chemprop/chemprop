@@ -2,10 +2,14 @@ import pytest
 import torch
 
 from chemprop.uncertainty.calibrator import (
+    AdaptiveMulticlassConformalCalibrator,
     IsotonicCalibrator,
     IsotonicMulticlassCalibrator,
+    MulticlassConformalCalibrator,
+    MultilabelConformalCalibrator,
     MVEWeightingCalibrator,
     PlattCalibrator,
+    RegressionConformalCalibrator,
     ZelikmanCalibrator,
     ZScalingCalibrator,
 )
@@ -184,6 +188,142 @@ def test_MVEWeightingCalibrator(
     Testing the MVEWeightingCalibrator
     """
     calibrator = MVEWeightingCalibrator()
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.tensor(
+                [
+                    [[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]],
+                    [[0.1, 0.6, 0.3], [0.4, 0.4, 0.2]],
+                    [[0.4, 0.4, 0.2], [0.2, 0.3, 0.5]],
+                ]
+            ),
+            torch.tensor([[2, 1], [1, 0], [0, 2]]).long(),
+            torch.ones([3, 2], dtype=torch.bool),
+            torch.tensor(
+                [
+                    [[0.3, 0.4, 0.3], [0.5, 0.2, 0.3]],
+                    [[0.5, 0.2, 0.3], [0.6, 0.3, 0.1]],
+                    [[0.6, 0.3, 0.1], [0.3, 0.4, 0.3]],
+                ]
+            ),
+            torch.tensor(
+                [[[0, 1, 0], [1, 0, 0]], [[1, 0, 0], [1, 0, 0]], [[1, 0, 0], [0, 1, 0]]]
+            ).int(),
+        )
+    ],
+)
+def test_AdaptiveMulticlassConformalCalibrator(
+    cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
+):
+    """
+    Testing the AdaptiveMulticlassConformalCalibrator
+    """
+    calibrator = AdaptiveMulticlassConformalCalibrator(alpha=0.5)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.tensor(
+                [
+                    [[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]],
+                    [[0.1, 0.6, 0.3], [0.4, 0.4, 0.2]],
+                    [[0.4, 0.4, 0.2], [0.2, 0.3, 0.5]],
+                ]
+            ),
+            torch.tensor([[2, 2], [1, 0], [0, 2]]).long(),
+            torch.ones([3, 2], dtype=torch.bool),
+            torch.tensor(
+                [
+                    [[0.3, 0.4, 0.3], [0.5, 0.2, 0.3]],
+                    [[0.5, 0.2, 0.3], [0.6, 0.3, 0.1]],
+                    [[0.6, 0.3, 0.1], [0.3, 0.4, 0.3]],
+                ]
+            ),
+            torch.tensor(
+                [[[0, 1, 0], [1, 0, 1]], [[1, 0, 0], [1, 1, 0]], [[1, 0, 0], [1, 1, 1]]]
+            ).int(),
+        )
+    ],
+)
+def test_MulticlassConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the MulticlassConformalCalibrator
+    """
+    calibrator = MulticlassConformalCalibrator(alpha=0.5)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.tensor([[0, 1, 0], [1, 0, 0], [0, 0, 1]]),
+            torch.tensor([[0, 1, 0], [1, 0, 0], [0, 0, 1]]),
+            torch.ones([3, 3], dtype=torch.bool),
+            torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            torch.tensor(
+                [[[1, 1], [1, 0], [1, 0]], [[1, 0], [1, 1], [1, 0]], [[1, 0], [1, 0], [1, 1]]],
+                dtype=torch.int,
+            ),
+        )
+    ],
+)
+def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the MultilabelConformalCalibrator
+    """
+    calibrator = MultilabelConformalCalibrator(alpha=0.1)
+    calibrator.fit(cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.arange(100).unsqueeze(1),
+            torch.arange(100).unsqueeze(1) / 10,
+            torch.arange(10, 110).unsqueeze(1),
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.arange(100, 200).unsqueeze(1) / 10,
+            torch.arange(29.2, 39.1, 0.1).unsqueeze(1),
+        ),
+        (
+            torch.arange(100).unsqueeze(1),
+            torch.zeros(100, 1),
+            torch.arange(10, 110).unsqueeze(1),
+            torch.ones([100, 1], dtype=torch.bool),
+            torch.zeros(100, 1),
+            torch.ones(100, 1) * 20,
+        ),
+    ],
+)
+def test_RegressionConformalCalibrator(
+    cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
+):
+    """
+    Testing the RegressionConformalCalibrator
+    """
+    calibrator = RegressionConformalCalibrator(alpha=0.1)
     calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
 

@@ -23,7 +23,7 @@ class RegressionEvaluator(ABC):
             the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
             molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
-            the predicted uncertainties (variance) of the shape of ``n x t``
+            the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
             a tensor of the shape ``n x t``
         mask: Tensor
@@ -198,9 +198,23 @@ class SpearmanEvaluator(RegressionEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")
-class ConformalRegressionEvaluator(RegressionEvaluator):
+class RegressionConformalEvaluator(RegressionEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for regression datasets.
+
+    .. math::
+        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+
+    where the :math:`C(X_{\text{test}})` is the predicted interval.
+    """
+
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        return
+        bounds = torch.tensor([-1 / 2, 1 / 2], device=mask.device)
+        interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
+        lower, upper = preds.unsqueeze(0) + interval
+        covered_mask = torch.logical_and(lower <= targets, targets <= upper)
+
+        return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
 class BinaryClassificationEvaluator(ABC):
@@ -256,9 +270,23 @@ class NLLClassEvaluator(BinaryClassificationEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-classification")
-class ConformalMultilabelEvaluator(BinaryClassificationEvaluator):
+class MultilabelConformalEvaluator(BinaryClassificationEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for binary classification datasets with multiple labels.
+
+    .. math::
+        \Pr \left(
+            \hat{\mathcal C}_{\text{in}}(X) \subseteq \mathcal Y \subseteq \hat{\mathcal C}_{\text{out}}(X)
+        \right)
+
+    where the in-set :math:`\hat{\mathcal C}_\text{in}` is contained by the set of true labels :math:`\mathcal Y` and
+    :math:`\mathcal Y` is contained within the out-set :math:`\hat{\mathcal C}_\text{out}`.
+    """
+
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        return
+        in_set, out_set = torch.chunk(uncs, 2, 1)
+        covered_mask = torch.logical_and(in_set <= targets, targets <= out_set)
+        return (covered_mask & mask).sum(0) / mask.sum(0)
 
 
 class MulticlassClassificationEvaluator(ABC):
@@ -322,6 +350,17 @@ class NLLMulticlassEvaluator(MulticlassClassificationEvaluator):
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-multiclass")
-class ConformalMulticlassEvaluator(MulticlassClassificationEvaluator):
+class MulticlassConformalEvaluator(MulticlassClassificationEvaluator):
+    r"""
+    Evaluate the coverage of conformal prediction for multiclass classification datasets.
+
+    .. math::
+        \Pr (Y_{\text{test}} \in C(X_{\text{test}}))
+
+    where the :math:`C(X_{\text{test}}) \subset \{1 \mathrel{.\,.} K\}` is a prediction set of possible labels .
+    """
+
     def evaluate(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        return
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=uncs.shape[2])
+        covered_mask = torch.max(uncs * targets_one_hot, dim=-1)[0] > 0
+        return (covered_mask & mask).sum(0) / mask.sum(0)
