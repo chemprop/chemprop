@@ -4,7 +4,6 @@ from typing import Iterable
 from lightning import pytorch as pl
 import torch
 from torch import Tensor
-import torch._tensor
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
@@ -254,8 +253,16 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
         return
 
 
-@UncertaintyPredictorRegistry.register("dirichlet")
-class DirichletPredictor(UncertaintyPredictor):
+@UncertaintyPredictorRegistry.register("classification-dirichlet")
+class ClassificationDirichletPredictor(UncertaintyPredictor):
+    def __call__(
+        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+    ) -> tuple[Tensor, Tensor]:
+        return
+
+
+@UncertaintyPredictorRegistry.register("multiclass-dirichlet")
+class MulticlassDirichletPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
