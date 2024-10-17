@@ -113,7 +113,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 class ZelikmanCalibrator(RegressionCalibrator):
     """Calibrate regression datasets using a method that does not depend on a particular probability function form.
 
-    This method is designed to be used with interval output. Uses the "CRUDE" method as described in [zelikman2020]_.
+    It uses the "CRUDE" method as described in [zelikman2020]_. We implemented this method to be used with variance as the uncertainty.
 
     Parameters
     ----------
