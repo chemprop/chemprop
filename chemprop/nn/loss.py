@@ -27,6 +27,8 @@ __all__ = [
 
 
 class LossFunction(nn.Module):
+    minimize: bool = True
+
     def __init__(self, task_weights: ArrayLike = 1.0):
         """
         Parameters
@@ -42,10 +44,10 @@ class LossFunction(nn.Module):
         self,
         preds: Tensor,
         targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
     ):
         """Calculate the mean loss function value given predicted and target values
 
@@ -71,6 +73,11 @@ class LossFunction(nn.Module):
         Tensor
             a scalar containing the fully reduced loss
         """
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
+        gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
+
         L = self._calc_unreduced_loss(preds, targets, mask, weights, lt_mask, gt_mask)
         L = L * weights.view(-1, 1) * self.task_weights.view(1, -1) * mask
 
@@ -183,7 +190,17 @@ class CrossEntropyLoss(LossFunction):
 
 @LossFunctionRegistry.register("binary-mcc")
 class BinaryMCCLoss(LossFunction):
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        *args,
+    ):
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
 
@@ -214,7 +231,16 @@ class MulticlassMCCLoss(LossFunction):
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        *args,
+    ):
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
