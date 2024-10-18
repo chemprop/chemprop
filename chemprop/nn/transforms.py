@@ -25,6 +25,12 @@ class _ScaleTransformMixin(nn.Module):
     def from_standard_scaler(cls, scaler: StandardScaler, pad: int = 0):
         return cls(scaler.mean_, scaler.scale_, pad=pad)
 
+    def to_standard_scaler(self, anti_pad: int = 0) -> StandardScaler:
+        scaler = StandardScaler()
+        scaler.mean_ = self.mean[anti_pad:].numpy()
+        scaler.scale_ = self.scale[anti_pad:].numpy()
+        return scaler
+
 
 class ScaleTransform(_ScaleTransformMixin):
     def forward(self, X: Tensor) -> Tensor:
@@ -40,6 +46,11 @@ class UnscaleTransform(_ScaleTransformMixin):
             return X
 
         return X * self.scale + self.mean
+
+    def transform_variance(self, var: Tensor) -> Tensor:
+        if self.training:
+            return var
+        return var * (self.scale**2)
 
 
 class GraphTransform(nn.Module):

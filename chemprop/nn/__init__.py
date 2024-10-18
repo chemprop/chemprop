@@ -16,7 +16,6 @@ from .loss import (
     EvidentialLoss,
     LossFunction,
     LossFunctionRegistry,
-    MccMixin,
     MSELoss,
     MulticlassDirichletLoss,
     MulticlassMCCLoss,
@@ -66,7 +65,7 @@ from .predictors import (
     RegressionFFN,
     SpectralFFN,
 )
-from .transforms import UnscaleTransform
+from .transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from .utils import Activation
 
 __all__ = [
@@ -84,7 +83,6 @@ __all__ = [
     "EvidentialLoss",
     "BCELoss",
     "CrossEntropyLoss",
-    "MccMixin",
     "BinaryMCCLoss",
     "MulticlassMCCLoss",
     "DirichletMixin",
@@ -129,5 +127,7 @@ __all__ = [
     "MulticlassDirichletFFN",
     "SpectralFFN",
     "Activation",
+    "GraphTransform",
+    "ScaleTransform",
     "UnscaleTransform",
 ]
