@@ -535,7 +535,9 @@ def validate_train_args(args):
     if args.tracking_metric not in valid_tracking_metrics:
         raise ArgumentError(
             argument=None,
-            message=f"Tracking metric must be either 'val_loss' or one of the metrics specified via `--metrics`. Got {args.tracking_metric}",
+            message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
+            f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
+            "the --metrics flag.",
         )
 
     input_cols, target_cols = get_column_names(
@@ -1093,7 +1095,7 @@ def train_model(
             T_tracking_metric = MetricRegistry[args.tracking_metric]
             args.tracking_metric = "val/" + args.tracking_metric
 
-        monitor_mode = "min" if T_tracking_metric.minimize else "max"
+        monitor_mode = "min" if T_tracking_metric.higher_is_better else "max"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
         if args.remove_checkpoints:
@@ -1184,7 +1186,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
 
     individual_scores = dict()
-    for metric in metrics:
+    for metric in metrics[:-1]:
         individual_scores[metric.alias] = []
         for i, col in enumerate(args.target_columns):
             if "multiclass" in args.task_type:
@@ -1203,18 +1205,16 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
             )
             individual_scores[metric.alias].append(preds_loss)
 
-    logger.info("Entire Test Set results:")
-    for metric in metrics:
+    logger.info("Test Set results:")
+    for metric in metrics[:-1]:
         avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
-        logger.info(f"entire_test/{metric.alias}: {avg_loss}")
+        logger.info(f"test/{metric.alias}: {avg_loss}")
 
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
-        for metric in metrics:
+        for metric in metrics[:-1]:
             for i, col in enumerate(args.target_columns):
-                logger.info(
-                    f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
-                )
+                logger.info(f"test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}")
 
     names = test_loader.dataset.names
     if isinstance(test_loader.dataset, MulticomponentDataset):
