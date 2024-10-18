@@ -59,7 +59,9 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
-_CV_REMOVAL_ERROR = "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
+_CV_REMOVAL_ERROR = (
+    "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
+)
 
 
 class TrainSubcommand(Subcommand):
