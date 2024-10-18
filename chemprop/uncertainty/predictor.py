@@ -165,7 +165,7 @@ class DropoutPredictor(UncertaintyPredictor):
             self._restore_model(model)
             meanss.append(means)
             varss.append(vars)
-        return torch.stack(means), torch.stack(vars)
+        return torch.stack(meanss), torch.stack(varss)
 
     def _setup_model(self, model):
         model._predict_step = model.predict_step
