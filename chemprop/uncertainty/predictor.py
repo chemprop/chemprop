@@ -56,7 +56,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 class MVEPredictor(UncertaintyPredictor):
     """
     Class that estimates prediction means and variances (MVE). [nix1994]_
-    
+
     References
     ----------
     .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
