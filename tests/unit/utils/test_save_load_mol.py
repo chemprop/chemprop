@@ -11,9 +11,9 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
 from chemprop.models.utils import load_model, save_model
 from chemprop.nn import (
+    MSE,
     BondMessagePassing,
     GraphTransform,
-    MSE,
     NormAggregation,
     RegressionFFN,
     ScaleTransform,

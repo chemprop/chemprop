@@ -16,9 +16,9 @@ from chemprop.data import (
 from chemprop.models import MulticomponentMPNN
 from chemprop.models.utils import load_model, save_model
 from chemprop.nn import (
+    MSE,
     BondMessagePassing,
     GraphTransform,
-    MSE,
     MulticomponentMessagePassing,
     NormAggregation,
     RegressionFFN,
