@@ -316,13 +316,13 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     logger.info(model)
 
     if args.tracking_metric == "val_loss":
-        tracking_metric_class = model.criterion
+        T_tracking_metric = model.criterion.__class__
     else:
-        tracking_metric_class = MetricRegistry[args.tracking_metric]
+        T_tracking_metric = MetricRegistry[args.tracking_metric]
         args.tracking_metric = "val/" + args.tracking_metric
 
-    monitor_mode = "max" if tracking_metric_class.higher_is_better else "min"
-    logger.debug(f"Evaluation metric: '{tracking_metric_class.alias}', mode: '{monitor_mode}'")
+    monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
+    logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
     patience = args.patience if args.patience is not None else args.epochs
     early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
