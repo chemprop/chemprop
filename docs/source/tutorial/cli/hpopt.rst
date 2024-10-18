@@ -65,7 +65,7 @@ By default, Chemprop will split the data into train / validation / test data spl
 .. note::
     This default splitting behavior is different from Chemprop v1, wherein the hyperparameter optimization was performed on the entirety of the data provided to it.
 
-If ``--num-folds`` is greater than one, Chemprop will only use the first split to perform hyperparameter optimization. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run :code:`chemprop hpopt` separately on each split.
+If ``--num-replicates`` is greater than one, Chemprop will only use the first split to perform hyperparameter optimization. If you need to optimize hyperparameters separately for several different cross validation splits, you should e.g. set up a bash script to run :code:`chemprop hpopt` separately on each split.
 
 
 Applying Optimal Hyperparameters
