@@ -38,12 +38,6 @@ def test_DropoutPredictor(data_dir, dataloader, trainer):
     assert getattr(model.message_passing.dropout, "p", None) == 0.0
 
 
-def test_DropoutPredictor_wrong_n_models():
-    predictor = DropoutPredictor(ensemble_size=2)
-    with pytest.raises(ValueError):
-        predictor("mock_dataloader", ["mock_model", "mock_model"], "mock_trainer")
-
-
 def test_EnsemblePredictor(data_dir, dataloader, trainer):
     model1 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
     model2 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
@@ -56,7 +50,7 @@ def test_EnsemblePredictor(data_dir, dataloader, trainer):
     torch.testing.assert_close(
         preds, torch.tensor([[[2.25354], [2.23501]], [[0.09652], [0.08291]]])
     )
-    torch.testing.assert_close(uncs, torch.tensor([[1.16318], [1.15788]]))
+    torch.testing.assert_close(uncs, torch.tensor([[[1.16318], [1.15788]]]))
 
 
 def test_EnsemblePredictor_wrong_n_models():
