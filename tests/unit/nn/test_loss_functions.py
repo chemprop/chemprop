@@ -6,10 +6,10 @@ import torch
 
 from chemprop.nn.loss import (
     BCELoss,
-    DirichletLoss,
     BinaryMCCLoss,
     BoundedMSELoss,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
     MulticlassMCCLoss,
     MVELoss,

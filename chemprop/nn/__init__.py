@@ -8,10 +8,10 @@ from .agg import (
 )
 from .loss import (
     BCELoss,
-    DirichletLoss,
     BinaryMCCLoss,
     BoundedMSELoss,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
     LossFunction,
     LossFunctionRegistry,

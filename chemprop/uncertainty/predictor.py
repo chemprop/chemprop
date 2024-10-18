@@ -4,7 +4,6 @@ from typing import Iterable
 from lightning import pytorch as pl
 import torch
 from torch import Tensor
-from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
@@ -229,9 +228,9 @@ class MulticlassDirichletPredictor(UncertaintyPredictor):
             self._restore_model(model)
             preds.append(output[..., :-1])
             uncs.append(output[..., -1])
-        
+
         return torch.stack(preds, 0), torch.stack(uncs, 0)
-    
+
     def _setup_model(self, model):
         model.predictor._forward = model.predictor.forward
         model.predictor.forward = self._forward
@@ -247,7 +246,6 @@ class MulticlassDirichletPredictor(UncertaintyPredictor):
         Y = alpha / alpha.sum(-1, keepdim=True)
 
         return torch.concat([Y, u], -1)
-
 
 
 @UncertaintyPredictorRegistry.register("quantile-regression")

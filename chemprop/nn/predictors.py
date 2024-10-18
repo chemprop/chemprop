@@ -10,8 +10,8 @@ from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import (
     BCELoss,
-    DirichletLoss,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
     LossFunction,
     MSELoss,
