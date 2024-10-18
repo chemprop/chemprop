@@ -72,7 +72,7 @@ class MVEPredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             mves.append(preds)
         mves = torch.stack(mves, dim=0)
-        mean, var = mves.unbind(dim=3)
+        mean, var = mves.unbind(dim=-1)
         return mean, var
 
 
@@ -128,7 +128,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             uncs.append(preds)
         uncs = torch.stack(uncs)
-        mean, v, alpha, beta = uncs.unbind(3)
+        mean, v, alpha, beta = uncs.unbind(-1)
         total_uncs = (1 + 1 / v) * (beta / (alpha - 1))
         return mean, total_uncs
 
@@ -148,7 +148,7 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             uncs.append(preds)
         uncs = torch.stack(uncs)
-        mean, v, alpha, beta = uncs.unbind(3)
+        mean, v, alpha, beta = uncs.unbind(-1)
         epistemic_uncs = (1 / v) * (beta / (alpha - 1))
         return mean, epistemic_uncs
 
@@ -168,7 +168,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             uncs.append(preds)
         uncs = torch.stack(uncs)
-        mean, _, alpha, beta = uncs.unbind(3)
+        mean, _, alpha, beta = uncs.unbind(-1)
         aleatoric_uncs = beta / (alpha - 1)
         return mean, aleatoric_uncs
 
@@ -264,7 +264,13 @@ class ClassificationDirichletPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs, dim=0)
+        y, u = uncs.unbind(dim=-1)
+        return y, u
 
 
 @UncertaintyPredictorRegistry.register("multiclass-dirichlet")
