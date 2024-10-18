@@ -84,10 +84,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
-          python -m pip install ".[dev,docs,test]"
-      - name: Install hyperopt optional dependencies
-        run: |
-          python -m pip install ".[hpopt]"
+          python -m pip install ".[dev,docs,test,hpopt]"
       - name: Test with pytest
         shell: bash -l {0}
         run: |
