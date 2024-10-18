@@ -3,6 +3,8 @@ from pathlib import Path
 from lightning import pytorch as pl
 import numpy as np
 import pytest
+import torch
+from torch.nn import Identity
 from torch.utils.data import DataLoader
 
 from chemprop.data import (
@@ -11,7 +13,18 @@ from chemprop.data import (
     MulticomponentDataset,
     collate_multicomponent,
 )
-from chemprop.models import MulticomponentMPNN, save_model
+from chemprop.models import MulticomponentMPNN
+from chemprop.models.utils import load_model, save_model
+from chemprop.nn import (
+    BondMessagePassing,
+    GraphTransform,
+    MSELoss,
+    MulticomponentMessagePassing,
+    NormAggregation,
+    RegressionFFN,
+    ScaleTransform,
+    UnscaleTransform,
+)
 
 
 @pytest.fixture
@@ -95,3 +108,80 @@ def test_checkpoint_roundtrip(checkpoint_path, file_path, trainer, test_loader):
     ys_from_file = np.vstack(predss_from_file)
 
     assert np.allclose(ys_from_file, ys_from_checkpoint, atol=1e-6)
+
+
+def test_scalers_roundtrip_one_block(tmp_path):
+    E_f_transform = ScaleTransform(mean=[0.0, 1.0], scale=[2.0, 3.0])
+    graph_transform = GraphTransform(V_transform=Identity(), E_transform=E_f_transform)
+    V_d_transform = ScaleTransform(mean=[4.0, 5.0], scale=[6.0, 7.0])
+    mcmp = MulticomponentMessagePassing(
+        blocks=[BondMessagePassing(graph_transform=graph_transform, V_d_transform=V_d_transform)],
+        n_components=2,
+        shared=True,
+    )
+
+    output_transform = UnscaleTransform(mean=[8.0, 9.0], scale=[10.0, 11.0])
+    criterion = MSELoss(task_weights=[12.0])
+    ffn = RegressionFFN(output_transform=output_transform, criterion=criterion)
+
+    X_d_transform = ScaleTransform(mean=[13.0, 14.0], scale=[15.0, 16.0])
+    original = MulticomponentMPNN(mcmp, NormAggregation(), ffn, X_d_transform=X_d_transform)
+
+    save_model(tmp_path / "model.pt", original)
+    loaded = load_model(tmp_path / "model.pt", multicomponent=True)
+
+    assert torch.equal(
+        original.message_passing.blocks[0].V_d_transform.mean,
+        loaded.message_passing.blocks[0].V_d_transform.mean,
+    )
+    assert torch.equal(
+        original.message_passing.blocks[1].graph_transform.E_transform.mean,
+        loaded.message_passing.blocks[1].graph_transform.E_transform.mean,
+    )
+    assert torch.equal(
+        original.predictor.criterion.task_weights, loaded.predictor.criterion.task_weights
+    )
+    assert torch.equal(
+        original.predictor.output_transform.mean, loaded.predictor.output_transform.mean
+    )
+    assert torch.equal(original.X_d_transform.mean, loaded.X_d_transform.mean)
+
+
+def test_scalers_roundtrip_two_blocks(tmp_path):
+    E_f_transform = ScaleTransform(mean=[0.0, 1.0], scale=[2.0, 3.0])
+    graph_transform = GraphTransform(V_transform=Identity(), E_transform=E_f_transform)
+    V_d_transform = ScaleTransform(mean=[4.0, 5.0], scale=[6.0, 7.0])
+    mcmp = MulticomponentMessagePassing(
+        blocks=[
+            BondMessagePassing(graph_transform=graph_transform, V_d_transform=V_d_transform),
+            BondMessagePassing(graph_transform=graph_transform),
+        ],
+        n_components=2,
+        shared=True,
+    )
+
+    output_transform = UnscaleTransform(mean=[8.0, 9.0], scale=[10.0, 11.0])
+    criterion = MSELoss(task_weights=[12.0])
+    ffn = RegressionFFN(output_transform=output_transform, criterion=criterion)
+
+    X_d_transform = ScaleTransform(mean=[13.0, 14.0], scale=[15.0, 16.0])
+    original = MulticomponentMPNN(mcmp, NormAggregation(), ffn, X_d_transform=X_d_transform)
+
+    save_model(tmp_path / "model.pt", original)
+    loaded = load_model(tmp_path / "model.pt", multicomponent=True)
+
+    assert torch.equal(
+        original.message_passing.blocks[0].V_d_transform.mean,
+        loaded.message_passing.blocks[0].V_d_transform.mean,
+    )
+    assert torch.equal(
+        original.message_passing.blocks[1].graph_transform.E_transform.mean,
+        loaded.message_passing.blocks[1].graph_transform.E_transform.mean,
+    )
+    assert torch.equal(
+        original.predictor.criterion.task_weights, loaded.predictor.criterion.task_weights
+    )
+    assert torch.equal(
+        original.predictor.output_transform.mean, loaded.predictor.output_transform.mean
+    )
+    assert torch.equal(original.X_d_transform.mean, loaded.X_d_transform.mean)

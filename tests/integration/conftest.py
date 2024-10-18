@@ -17,6 +17,14 @@ def mpnn(request):
 
 
 @pytest.fixture(scope="session")
+def classification_mpnn_dirichlet(request):
+    agg = nn.SumAggregation()
+    ffn = nn.BinaryDirichletFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
 def classification_mpnn(request):
     agg = nn.SumAggregation()
     ffn = nn.BinaryClassificationFFN()
@@ -28,6 +36,14 @@ def classification_mpnn(request):
 def classification_mpnn_multiclass(request):
     agg = nn.SumAggregation()
     ffn = nn.MulticlassClassificationFFN(n_classes=3)
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
+def classification_mpnn_multiclass_dirichlet(request):
+    agg = nn.SumAggregation()
+    ffn = nn.MulticlassDirichletFFN(n_classes=3)
 
     return models.MPNN(request.param, agg, ffn, True)
 

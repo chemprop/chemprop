@@ -42,7 +42,6 @@ def test_train_quick(monkeypatch, data_path):
     task_types = ["classification", "classification-dirichlet"]
 
     for task_type in task_types:
-        print(f"Testing task type: {task_type}")
         args = base_args.copy()
 
         args += ["--task-type", task_type]

@@ -12,7 +12,7 @@ Chemprop can either be installed from PyPI via pip_, from source (i.e., directly
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
 .. note:: 
-    *Python 3.11 vs. 3.12:* Options 1, 2, and 4 below explicitly specify ``python=3.11``, but for most Chemprop functionality, you can choose to replace ``python=3.11`` with ``python=3.12`` in these commands. We test Chemprop on both versions in our CI. However, Ray Tune, which is an optional dependency that Chemprop relies on for hyperparameter optimization, is not yet compatible with ``python=3.12``.
+    *Python 3.11 vs. 3.12:* Options 1, 2, and 4 below explicitly specify ``python=3.11`` but you can choose to replace ``python=3.11`` with ``python=3.12`` in these commands. We test Chemprop on both versions in our CI.
 
 .. note:: 
     *CPU-only installation:* For the following options 1-3, if you do not have a GPU, you might need to manually install a CPU-only version of PyTorch. This should be handled automatically, but if you find that it is not, you should run the following command before installing Chemprop:

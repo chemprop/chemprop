@@ -80,26 +80,26 @@ def get_column_names(
     splits_col: str | None,
     weight_col: str | None,
     no_header_row: bool = False,
-):
-    df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
+) -> tuple[list[str], list[str]]:
+    df_cols = pd.read_csv(path, index_col=False, nrows=0).columns.tolist()
 
     if no_header_row:
-        return ["SMILES"] + ["pred_" + str(i) for i in range((len(df.columns) - 1))]
+        return ["SMILES"], ["pred_" + str(i) for i in range((len(df_cols) - 1))]
 
     input_cols = (smiles_cols or []) + (rxn_cols or [])
 
     if len(input_cols) == 0:
-        input_cols = [df.columns[0]]
+        input_cols = [df_cols[0]]
 
     if target_cols is None:
         target_cols = list(
             column
-            for column in df.columns
+            for column in df_cols
             if column
             not in set(input_cols + (ignore_cols or []) + (splits_col or []) + (weight_col or []))
         )
 
-    return input_cols + target_cols
+    return input_cols, target_cols
 
 
 def make_datapoints(

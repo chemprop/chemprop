@@ -531,6 +531,20 @@ def process_train_args(args: Namespace) -> Namespace:
             argument=None, message="Class balance is only applicable for classification tasks."
         )
 
+    input_cols, target_cols = get_column_names(
+        args.data_path,
+        args.smiles_columns,
+        args.reaction_columns,
+        args.target_columns,
+        args.ignore_columns,
+        args.splits_column,
+        args.weight_column,
+        args.no_header_row,
+    )
+
+    args.input_columns = input_cols
+    args.target_columns = target_cols
+
     return args
 
 
@@ -624,6 +638,55 @@ def normalize_inputs(train_dset, val_dset, args):
             V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
     return X_d_transform, graph_transforms, V_d_transforms
+
+
+def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
+    if isinstance(train_dset, MulticomponentDataset):
+        _model = MulticomponentMPNN.load_from_file(model_path)
+        blocks = _model.message_passing.blocks
+        train_dsets = train_dset.datasets
+        val_dsets = val_dset.datasets
+    else:
+        _model = MPNN.load_from_file(model_path)
+        blocks = [_model.message_passing]
+        train_dsets = [train_dset]
+        val_dsets = [val_dset]
+
+    for i in range(len(blocks)):
+        if isinstance(_model.X_d_transform, ScaleTransform):
+            scaler = _model.X_d_transform.to_standard_scaler()
+            train_dsets[i].normalize_inputs("X_d", scaler)
+            val_dsets[i].normalize_inputs("X_d", scaler)
+
+        if isinstance(blocks[i].graph_transform, GraphTransform):
+            if isinstance(blocks[i].graph_transform.V_transform, ScaleTransform):
+                V_anti_pad = (
+                    train_dsets[i].featurizer.atom_fdim - train_dsets[i].featurizer.extra_atom_fdim
+                )
+                scaler = blocks[i].graph_transform.V_transform.to_standard_scaler(
+                    anti_pad=V_anti_pad
+                )
+                train_dsets[i].normalize_inputs("V_f", scaler)
+                val_dsets[i].normalize_inputs("V_f", scaler)
+            if isinstance(blocks[i].graph_transform.E_transform, ScaleTransform):
+                E_anti_pad = (
+                    train_dsets[i].featurizer.bond_fdim - train_dsets[i].featurizer.extra_bond_fdim
+                )
+                scaler = blocks[i].graph_transform.E_transform.to_standard_scaler(
+                    anti_pad=E_anti_pad
+                )
+                train_dsets[i].normalize_inputs("E_f", scaler)
+                val_dsets[i].normalize_inputs("E_f", scaler)
+
+        if isinstance(blocks[i].V_d_transform, ScaleTransform):
+            scaler = blocks[i].V_d_transform.to_standard_scaler()
+            train_dsets[i].normalize_inputs("V_d", scaler)
+            val_dsets[i].normalize_inputs("V_d", scaler)
+
+    if isinstance(_model.predictor.output_transform, UnscaleTransform):
+        scaler = _model.predictor.output_transform.to_standard_scaler()
+        train_dset.normalize_targets(scaler)
+        val_dset.normalize_targets(scaler)
 
 
 def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
@@ -723,21 +786,10 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     return train_data, val_data, test_data
 
 
-def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
-    columns = get_column_names(
-        args.data_path,
-        args.smiles_columns,
-        args.reaction_columns,
-        args.target_columns,
-        args.ignore_columns,
-        args.splits_column,
-        args.weight_column,
-        args.no_header_row,
-    )
-
-    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-    if args.task_type in ["regression", "regression-mve", "regression-evidential"]:
+def summarize(
+    target_cols: list[str], task_type: str, dataset: _MolGraphDatasetMixin
+) -> tuple[list, list]:
+    if task_type in ["regression", "regression-mve", "regression-evidential"]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
@@ -762,7 +814,7 @@ def summarize(args, dataset: _MolGraphDatasetMixin) -> tuple[list, list]:
             ["% within 2 s.d."] + [f"{sigma:0.0%}" for sigma in frac_2_sigma],
         ]
         return (column_headers, table_rows)
-    elif args.task_type in [
+    elif task_type in [
         "classification",
         "classification-dirichlet",
         "multiclass",
@@ -848,7 +900,7 @@ def build_datasets(args, train_data, val_data, test_data):
         for dataset, label in zip(
             [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
         ):
-            column_headers, table_rows = summarize(args, dataset)
+            column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
             output = build_table(column_headers, table_rows, f"Summary of {label} Data")
             logger.info("\n" + output)
 
@@ -1012,13 +1064,12 @@ def train_model(
             # TODO: model_frzn is deprecated and then remove in v2.2
             if args.model_frzn or args.freeze_encoder:
                 model.message_passing.apply(lambda module: module.requires_grad_(False))
-                model.message_passing.apply(
-                    lambda m: setattr(m, "p", 0.0) if isinstance(m, torch.nn.Dropout) else None
-                )
+                model.message_passing.eval()
                 model.bn.apply(lambda module: module.requires_grad_(False))
+                model.bn.eval()
                 for idx in range(args.frzn_ffn_layers):
                     model.predictor.ffn[idx].requires_grad_(False)
-                    setattr(model.predictor.ffn[idx + 1][1], "p", 0.0)
+                    model.predictor.ffn[idx + 1].eval()
         else:
             model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
@@ -1099,7 +1150,7 @@ def train_model(
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model)
+        save_model(p_model, model, args.target_columns)
         logger.info(f"Best model saved to '{p_model}'")
 
         if args.remove_checkpoints:
@@ -1118,23 +1169,10 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
     gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
 
-    columns = get_column_names(
-        args.data_path,
-        args.smiles_columns,
-        args.reaction_columns,
-        args.target_columns,
-        args.ignore_columns,
-        args.splits_column,
-        args.weight_column,
-        args.no_header_row,
-    )
-    input_cols = (args.smiles_columns or []) + (args.reaction_columns or [])
-    target_cols = columns[1:] if len(input_cols) == 0 else columns[len(input_cols) :]
-
     individual_scores = dict()
     for metric in metrics:
         individual_scores[metric.alias] = []
-        for i, col in enumerate(target_cols):
+        for i, col in enumerate(args.target_columns):
             if "multiclass" in args.task_type:
                 preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
                 targets_slice = torch.from_numpy(targets[:, i : i + 1])
@@ -1159,7 +1197,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     if args.show_individual_scores:
         logger.info("Entire Test Set individual results:")
         for metric in metrics:
-            for i, col in enumerate(target_cols):
+            for i, col in enumerate(args.target_columns):
                 logger.info(
                     f"entire_test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}"
                 )
@@ -1169,8 +1207,10 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         namess = list(zip(*names))
     else:
         namess = [names]
+
+    columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
-        columns = columns + [f"{col}_prob" for col in target_cols]
+        columns = columns + [f"{col}_prob" for col in args.target_columns]
         formatted_probability_strings = np.apply_along_axis(
             lambda x: ",".join(map(str, x)), 2, preds
         )
@@ -1218,18 +1258,33 @@ def main(args):
 
         train_dset, val_dset, test_dset = build_datasets(args, train_data, val_data, test_data)
 
-        input_transforms = normalize_inputs(train_dset, val_dset, args)
-
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
-        if "regression" in args.task_type:
-            output_scaler = train_dset.normalize_targets()
-            val_dset.normalize_targets(output_scaler)
-            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
-            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
-        else:
+        if args.checkpoint or args.model_frzn is not None:
+            model_paths = find_models(args.checkpoint)
+            if len(model_paths) > 1:
+                logger.warning(
+                    "Multiple checkpoint files were loaded, but only the scalers from "
+                    f"{model_paths[0]} are used. It is assumed that all models provided have the "
+                    "same data scalings, meaning they were trained on the same data."
+                )
+            model_path = model_paths[0] if args.checkpoint else args.model_frzn
+            load_and_use_pretrained_model_scalers(model_path, train_dset, val_dset)
+            input_transforms = (None, None, None)
             output_transform = None
+        else:
+            input_transforms = normalize_inputs(train_dset, val_dset, args)
+
+            if "regression" in args.task_type:
+                output_scaler = train_dset.normalize_targets()
+                val_dset.normalize_targets(output_scaler)
+                logger.info(
+                    f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+                )
+                output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
+            else:
+                output_transform = None
 
         if not args.no_cache:
             train_dset.cache = True
