@@ -84,26 +84,17 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
-          python -m pip install ".[dev,docs,test]"
-      - name: Install hyperopt optional dependencies (Python 3.11 only)
-        if: ${{ matrix.python-version == '3.11' }} 
-        run: |
-          python -m pip install ".[hpopt]"
+          python -m pip install ".[dev,docs,test,hpopt]"
       - name: Test with pytest
         shell: bash -l {0}
         run: |
           pytest -v tests
-      - name: Test notebooks (excluding hpopting.ipynb)
+      - name: Test notebooks 
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'hpopting.ipynb')
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
-      - name: Test hpopting.ipynb (Python 3.11 only)
-        if: ${{ matrix.python-version == '3.11' }}
-        shell: bash -l {0}
-        run: |
-          pytest --no-cov -v --nbmake examples/hpopting.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install
