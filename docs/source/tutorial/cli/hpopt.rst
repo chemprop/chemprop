@@ -4,7 +4,7 @@ Hyperparameter Optimization
 ============================
 
 .. note::
-    Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization, which is not yet compatible with python=3.12 and is an optional install. To install the required dependencies, make sure your Python version is 3.11 and run :code:`pip install -U ray[tune]` if installing with PyPI, or :code:`pip install -e .[hpopt]` if installing from source.
+    Chemprop relies on `Ray Tune <https://docs.ray.io/en/latest/tune/index.html>`_ for hyperparameter optimization which is an optional install. To install the required dependencies, run :code:`pip install -U ray[tune]` if installing with PyPI, or :code:`pip install -e .[hpopt]` if installing from source.
 
 Searching Hyperparameter Space
 --------------------------------
