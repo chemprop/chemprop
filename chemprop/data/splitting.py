@@ -49,7 +49,7 @@ def make_split_indices(
     num_replicates : int, optional
         Number of replicates, by default 1
     num_folds : None, optional
-        This argument is deprecated and will be removed in v2.1 - use `num_replicates` instead.
+        This argument was removed in v2.1 - use `num_replicates` instead.
 
     Returns
     -------
