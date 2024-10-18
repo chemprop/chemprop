@@ -4,6 +4,7 @@ from typing import Iterable
 from lightning import pytorch as pl
 import torch
 from torch import Tensor
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from chemprop.models.model import MPNN
@@ -201,12 +202,52 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
         return
 
 
-@UncertaintyPredictorRegistry.register("dirichlet")
-class DirichletPredictor(UncertaintyPredictor):
+@UncertaintyPredictorRegistry.register("classification-dirichlet")
+class ClassificationDirichletPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs, dim=0)
+        y, u = uncs.unbind(dim=-1)
+        return y, u
+
+
+@UncertaintyPredictorRegistry.register("multiclass-dirichlet")
+class MulticlassDirichletPredictor(UncertaintyPredictor):
+    def __call__(
+        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+    ) -> tuple[Tensor, Tensor]:
+        preds = []
+        uncs = []
+        for model in models:
+            self._setup_model(model)
+            output = torch.concat(trainer.predict(model, dataloader), 0)
+            self._restore_model(model)
+            preds.append(output[..., :-1])
+            uncs.append(output[..., -1])
+        
+        return torch.stack(preds, 0), torch.stack(uncs, 0)
+    
+    def _setup_model(self, model):
+        model.predictor._forward = model.predictor.forward
+        model.predictor.forward = self._forward
+
+    def _restore_model(self, model):
+        model.predictor.forward = model.predictor._forward
+        del model.predictor._forward
+
+    def _forward(self, Z: Tensor) -> Tensor:
+        alpha = self.train_step(Z)
+
+        u = alpha.shape[2] / alpha.sum(-1, keepdim=True)
+        Y = alpha / alpha.sum(-1, keepdim=True)
+
+        return torch.concat([Y, u], -1)
+
 
 
 @UncertaintyPredictorRegistry.register("quantile-regression")
