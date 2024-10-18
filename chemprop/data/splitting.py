@@ -31,6 +31,7 @@ def make_split_indices(
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
     num_replicates: int = 1,
+    num_folds: None = None,
 ) -> tuple[list[list[int]], ...]:
     """Splits data into training, validation, and test splits.
 
@@ -47,6 +48,8 @@ def make_split_indices(
         The random seed passed to astartes, by default 0
     num_replicates : int, optional
         Number of replicates, by default 1
+    num_folds : None, optional
+        This argument is deprecated and will be removed in v2.1 - use `num_replicates` instead.
 
     Returns
     -------
