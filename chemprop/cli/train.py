@@ -1316,7 +1316,7 @@ def main(args):
             )
         else:
             test_loader = None
-        return
+
         train_model(
             args,
             train_loader,
