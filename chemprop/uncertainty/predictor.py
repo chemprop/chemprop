@@ -51,7 +51,7 @@ class UncertaintyPredictor(ABC):
 UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
 
 
-@UncertaintyPredictorRegistry.register(None)
+@UncertaintyPredictorRegistry.register("none")
 class NoUncertaintyPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
