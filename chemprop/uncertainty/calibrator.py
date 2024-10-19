@@ -87,7 +87,7 @@ class ZScalingCalibrator(RegressionCalibrator):
     """
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        scalings = []
+        scalings = np.zeros(uncs.shape[1])
         for j in range(uncs.shape[1]):
             mask_j = mask[:, j]
             preds_j = preds[:, j][mask_j].numpy()
@@ -102,9 +102,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 
             zscore = errors / np.sqrt(uncs_j)
             initial_guess = np.std(zscore)
-            scalings.append(fmin(objective, x0=initial_guess, disp=False))
-
-        self.scalings = torch.tensor(scalings)
+            scalings[j] = fmin(objective, x0=initial_guess, disp=False)
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
