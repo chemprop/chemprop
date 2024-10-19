@@ -37,7 +37,7 @@ class MPNN(pl.LightningModule):
         the aggregation operation to use during molecule-level predictor
     predictor : Predictor
         the function to use to calculate the final prediction
-    batch_norm : bool, default=True
+    batch_norm : bool, default=False
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
         the metrics to use to evaluate the model during training and evaluation
@@ -62,7 +62,7 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        batch_norm: bool = True,
+        batch_norm: bool = False,
         metrics: Iterable[Metric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
