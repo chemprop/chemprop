@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import logging
 import math
 from typing import Self
-import warnings
 
 import numpy as np
 from scipy.optimize import fmin
@@ -285,8 +284,9 @@ class RegressionConformalCalibrator(RegressionCalibrator):
                 q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
-                warnings.warn(
-                    "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                logger.warning(
+                    "The error rate (i.e., `alpha`) is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, "
+                    "but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(calibration_scores, q_level, interpolation="higher")
             self.qhats.append(qhat)
@@ -627,8 +627,9 @@ class MulticlassConformalCalibrator(MulticlassClassificationCalibrator):
                 q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
-                warnings.warn(
-                    "`alpha` is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                logger.warning(
+                    "`alpha` is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, "
+                    "but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(scores_j, q_level, interpolation="higher")
             self.qhats.append(qhat)
