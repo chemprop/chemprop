@@ -61,10 +61,26 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("mve")
 class MVEPredictor(UncertaintyPredictor):
+    """
+    Class that estimates prediction means and variances (MVE). [nix1994]_
+
+    References
+    ----------
+    .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
+        probability distribution." Proceedings of 1994 IEEE International Conference on Neural
+        Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        mves = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            mves.append(preds)
+        mves = torch.stack(mves, dim=0)
+        mean, var = mves.unbind(dim=-1)
+        return mean, var
 
 
 @UncertaintyPredictorRegistry.register("ensemble")
@@ -100,26 +116,68 @@ class ClassPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("evidential-total")
 class EvidentialTotalPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the total evidential uncertainty based on hyperparameters of
+    the evidential distribution [amini2020]_.
+
+    References
+    -----------
+    .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression".
+    NeurIPS, 2020. https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
+
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(-1)
+        total_uncs = (1 + 1 / v) * (beta / (alpha - 1))
+        return mean, total_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-epistemic")
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the epistemic evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(-1)
+        epistemic_uncs = (1 / v) * (beta / (alpha - 1))
+        return mean, epistemic_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-aleatoric")
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the aleatoric evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, _, alpha, beta = uncs.unbind(-1)
+        aleatoric_uncs = beta / (alpha - 1)
+        return mean, aleatoric_uncs
 
 
 @UncertaintyPredictorRegistry.register("dropout")
@@ -208,8 +266,22 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
         return
 
 
-@UncertaintyPredictorRegistry.register("dirichlet")
-class DirichletPredictor(UncertaintyPredictor):
+@UncertaintyPredictorRegistry.register("classification-dirichlet")
+class ClassificationDirichletPredictor(UncertaintyPredictor):
+    def __call__(
+        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+    ) -> tuple[Tensor, Tensor]:
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs, dim=0)
+        y, u = uncs.unbind(dim=-1)
+        return y, u
+
+
+@UncertaintyPredictorRegistry.register("multiclass-dirichlet")
+class MulticlassDirichletPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
