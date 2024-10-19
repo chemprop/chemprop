@@ -60,8 +60,8 @@ class RegressionCalibrator(CalibratorBase):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
@@ -174,8 +174,8 @@ class MVEWeightingCalibrator(RegressionCalibrator):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties of the shape of ``m x n x t``
         targets: Tensor
