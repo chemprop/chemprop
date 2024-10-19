@@ -10,11 +10,16 @@ import pandas as pd
 import torch
 
 from chemprop import data
-from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
+from chemprop.cli.common import (
+    add_common_args,
+    find_models,
+    process_common_args,
+    validate_common_args,
+)
 from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
-from chemprop.models import load_model
+from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import MulticlassClassificationFFN, RegressionFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN, RegressionFFN
 from chemprop.uncertainty import (
     UncertaintyCalibratorRegistry,
     UncertaintyEvaluatorRegistry,
@@ -69,11 +74,6 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         nargs="+",
         help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
-    )
-    parser.add_argument(
-        "--target-columns",
-        nargs="+",
-        help="Column names to save the predictions to (by default, the predictions will be saved to columns named ``pred_0``, ``pred_1``, etc.)",
     )
 
     unc_args = parser.add_argument_group("Uncertainty and calibration args")
@@ -169,23 +169,6 @@ def process_predict_args(args: Namespace) -> Namespace:
             argument=None, message=f"Output must be a CSV or Pickle file. Got {args.output}"
         )
     return args
-
-
-def find_models(model_paths: list[Path]):
-    collected_model_paths = []
-
-    for model_path in model_paths:
-        if model_path.suffix in [".ckpt", ".pt"]:
-            collected_model_paths.append(model_path)
-        elif model_path.is_dir():
-            collected_model_paths.extend(list(model_path.rglob("*.pt")))
-        else:
-            raise ArgumentError(
-                argument=None,
-                message=f"Model path must be a .ckpt, .pt file, or a directory. Got {model_path}",
-            )
-
-    return collected_model_paths
 
 
 def make_prediction_for_models(
@@ -294,18 +277,17 @@ def make_prediction_for_models(
                 f"Uncertainty evaluation metric: '{evaluator.alias}', metric value: {metric_value}"
             )
 
-    if args.target_columns is not None:
-        assert (
-            len(args.target_columns) == model.n_tasks
-        ), "Number of target columns must match the number of tasks."
-        target_columns = args.target_columns
-    else:
-        target_columns = [
+    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+        test_preds = test_preds[..., 0]
+
+    output_columns = load_output_columns(model_paths[0])
+    if output_columns is None:
+        output_columns = [
             f"pred_{i}" for i in range(test_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
     if isinstance(model.predictor, MulticlassClassificationFFN):
-        target_columns = target_columns + [f"{col}_prob" for col in target_columns]
+        output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
             lambda x: ",".join(map(str, x)), 2, test_preds
@@ -317,7 +299,7 @@ def make_prediction_for_models(
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    df_test[target_columns] = test_preds
+    df_test[output_columns] = test_preds
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -326,8 +308,8 @@ def make_prediction_for_models(
     logger.info(f"Predictions saved to '{output_path}'")
 
     if len(model_paths) > 1:
-        target_columns = [
-            f"{col}_model_{i}" for i in range(len(model_paths)) for col in target_columns
+        output_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
         ]
 
         if isinstance(model.predictor, MulticlassClassificationFFN):
@@ -338,13 +320,15 @@ def make_prediction_for_models(
             test_individual_preds = np.concatenate(
                 (predicted_class_labels, formatted_probability_strings), axis=-1
             )
+        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+            test_individual_preds = test_individual_preds[..., 0]
 
         m, n, t = test_individual_preds.shape
         test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
         df_test = pd.read_csv(
             args.test_path, header=None if args.no_header_row else "infer", index_col=False
         )
-        df_test[target_columns] = test_individual_preds
+        df_test[output_columns] = test_individual_preds
 
         output_path = output_path.parent / Path(
             str(args.output.stem) + "_individual" + str(output_path.suffix)

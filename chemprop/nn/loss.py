@@ -23,10 +23,13 @@ __all__ = [
     "MulticlassDirichletLoss",
     "SIDLoss",
     "WassersteinLoss",
+    "QuantileLoss",
 ]
 
 
 class LossFunction(nn.Module):
+    minimize: bool = True
+
     def __init__(self, task_weights: ArrayLike = 1.0):
         """
         Parameters
@@ -42,19 +45,19 @@ class LossFunction(nn.Module):
         self,
         preds: Tensor,
         targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        lt_mask: Tensor,
-        gt_mask: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
     ):
         """Calculate the mean loss function value given predicted and target values
 
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x (t * s)` (regression), `b x t` (binary classification), or
+            a tensor of shape `b x t x u` (regression), `b x t` (binary classification), or
             `b x t x c` (multiclass classification) containing the predictions, where `b` is the
-            batch size, `t` is the number of tasks to predict, `s` is the number of
+            batch size, `t` is the number of tasks to predict, `u` is the number of
             targets to predict for each task, and `c` is the number of classes.
         targets : Tensor
             a float tensor of shape `b x t` containing the target values
@@ -71,6 +74,11 @@ class LossFunction(nn.Module):
         Tensor
             a scalar containing the fully reduced loss
         """
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
+        gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
+
         L = self._calc_unreduced_loss(preds, targets, mask, weights, lt_mask, gt_mask)
         L = L * weights.view(-1, 1) * self.task_weights.view(1, -1) * mask
 
@@ -116,7 +124,7 @@ class MVELoss(LossFunction):
     """
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, var = torch.chunk(preds, 2, 1)
+        mean, var = torch.unbind(preds, dim=-1)
 
         L_sos = (mean - targets) ** 2 / (2 * var)
         L_kl = (2 * torch.pi * var).log() / 2
@@ -144,7 +152,7 @@ class EvidentialLoss(LossFunction):
         self.eps = eps
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        mean, v, alpha, beta = torch.chunk(preds, 4, 1)
+        mean, v, alpha, beta = torch.unbind(preds, dim=-1)
 
         residuals = targets - mean
         twoBlambda = 2 * beta * (1 + v)
@@ -183,7 +191,17 @@ class CrossEntropyLoss(LossFunction):
 
 @LossFunctionRegistry.register("binary-mcc")
 class BinaryMCCLoss(LossFunction):
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        *args,
+    ):
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
 
@@ -214,7 +232,16 @@ class MulticlassMCCLoss(LossFunction):
     .. [mccSklearn] https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html
     """
 
-    def forward(self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args):
+    def forward(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        *args,
+    ):
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.softmax(2)
 
@@ -348,3 +375,31 @@ class WassersteinLoss(LossFunction):
 
     def extra_repr(self) -> str:
         return f"threshold={self.threshold}"
+
+
+@LossFunctionRegistry.register(["quantile", "pinball"])
+class QuantileLoss(LossFunction):
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
+        super().__init__(task_weights)
+        self.alpha = alpha
+
+        bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1, 1)
+        tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
+            2, 2, 1, 1
+        )
+
+        self.register_buffer("bounds", bounds)
+        self.register_buffer("tau", tau)
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
+        mean, interval = torch.unbind(preds, dim=-1)
+
+        interval_bounds = self.bounds * interval
+        pred_bounds = mean + interval_bounds
+        error_bounds = targets - pred_bounds
+        loss_bounds = (self.tau * error_bounds).amax(0)
+
+        return loss_bounds.sum(0)
+
+    def extra_repr(self) -> str:
+        return f"alpha={self.alpha}"

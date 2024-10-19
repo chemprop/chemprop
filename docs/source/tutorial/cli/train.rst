@@ -24,6 +24,7 @@ The following modeling tasks are supported:
  * :code:`regression`
  * :code:`regression-mve`
  * :code:`regression-evidential`
+ * :code:`regression-quantile`
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`
@@ -60,9 +61,52 @@ Our code supports several methods of splitting data into train, validation, and 
 
 * **Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding :code:`--split-type scaffold_balanced`.
 
-* **User Specified Splits** The ability to specify your own split indices will be added soon.
+* **User Specified Splits** Custom splits can be specified in two ways, :code:`--splits-column` and :code:`--splits-file`, examples of which are shown below.
 
-*Note*: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
+.. code-block::
+
+    chemprop train --splits-column split -i data.csv -t regression
+
+.. list-table:: data.csv
+    :widths: 10 10 10
+    :header-rows: 1
+    
+    * - smiles
+      - property
+      - split
+    * - C
+      - 1.0
+      - train
+    * - CC
+      - 2.0
+      - train
+    * - CCC
+      - 3.0
+      - test
+    * - CCCC
+      - 4.0
+      - val
+    * - CCCCC
+      - 5.0
+      - val
+    * - CCCCCC
+      - 6.0
+      - test
+
+.. code-block::
+
+    chemprop train --splits-file splits.csv -i data.csv -t regression
+
+.. code-block:: JSON
+    :caption: splits.csv
+
+    [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+.. note::
+    By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
 
 Other supported splitting methods include :code:`cv`, :code:`cv_no_val`, :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
 
@@ -165,13 +209,11 @@ Advanced Training Methods
 Pretraining and Transfer Learning
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
+An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using :code:`--checkpoint <path>`. :code:`<model_path>`` is the location of checkpoint(s) or model file(s). It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s).
 
-..  * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
-..  * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
-.. when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
+When training the new model, its architecture **must** resemble that of the old model. Depending on the similarity of the tasks and datasets, as well as the quality of the old model, the new model might require fewer epochs to achieve optimal performance compared to training from scratch.
 
-It is possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--model-frzn <path>`, where :code:`<path>` points to the checkpoint file location. After loading the model, the MPNN weights are automatically frozen. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
+It is also possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--checkpoint <path>`. After loading the model, the MPNN weights can be frozen via :code:`--freeze-encoder`. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
 .. _train-on-reactions:
 
