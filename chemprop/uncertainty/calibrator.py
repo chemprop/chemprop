@@ -83,7 +83,8 @@ class ZScalingCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [levi2022] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540.
+    .. [levi2022] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in
+        Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540
     """
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
@@ -124,7 +125,8 @@ class ZelikmanCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [zelikman2020] Zelikman, E.; Healy, C.; Zhou, S.; Avati, A. "CRUDE: calibrating regression uncertainty distributions empirically." arXiv preprint arXiv:2005.12496. https://doi.org/10.48550/arXiv.2005.12496.
+    .. [zelikman2020] Zelikman, E.; Healy, C.; Zhou, S.; Avati, A. "CRUDE: calibrating regression uncertainty distributions
+        empirically." arXiv preprint arXiv:2005.12496. https://doi.org/10.48550/arXiv.2005.12496
     """
 
     def __init__(self, p: float):
@@ -160,7 +162,9 @@ class MVEWeightingCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [wang2021] Wang, D.; Yu, J.; Chen, L.; Li, X.; Jiang, H.; Chen, K.; Zheng, M.; Luo, X. "A hybrid framework for improving uncertainty quantification in deep learning-based QSAR regression modeling." J. Cheminform., 2021, 13, 1-17. https://doi.org/10.1186/s13321-021-00551-x.
+    .. [wang2021] Wang, D.; Yu, J.; Chen, L.; Li, X.; Jiang, H.; Chen, K.; Zheng, M.; Luo, X. "A hybrid framework
+        for improving uncertainty quantification in deep learning-based QSAR regression modeling." J. Cheminform.,
+        2021, 13, 1-17. https://doi.org/10.1186/s13321-021-00551-x
     """
 
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
@@ -225,7 +229,7 @@ class MVEWeightingCalibrator(RegressionCalibrator):
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class RegressionConformalCalibrator(RegressionCalibrator):
     r"""Conformalize quantiles to make the interval :math:`[\hat{t}_{\alpha/2}(x),\hat{t}_{1-\alpha/2}(x)]` to have
-    approximately :math:`1-\alpha` coverage. [1]_
+    approximately :math:`1-\alpha` coverage. [angelopoulos2021]_
 
     .. math::
         s(x, y) &= \max \left\{ \hat{t}_{\alpha/2}(x) - y, y - \hat{t}_{1-\alpha/2}(x) \right\}
@@ -252,7 +256,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [1] Angelopoulos, A.N.; Bates, S.; "A Gentle Introduction to Conformal Prediction and Distribution-Free
+    .. [angelopoulos2021] Angelopoulos, A.N.; Bates, S.; "A Gentle Introduction to Conformal Prediction and Distribution-Free
         Uncertainty Quantification." arXiv Preprint 2021, https://arxiv.org/abs/2107.07511
     """
 
@@ -346,9 +350,9 @@ class PlattCalibrator(BinaryClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     .. [platt1999] Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to
-    Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
+        Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
     """
 
     def fit(
@@ -415,7 +419,7 @@ class IsotonicCalibrator(BinaryClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     """
 
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
@@ -671,7 +675,7 @@ class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     """
 
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:

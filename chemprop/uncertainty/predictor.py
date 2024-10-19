@@ -119,8 +119,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
     References
     -----------
     .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression".
-    NeurIPS, 2020. https://proceedings.neurips.cc/paper_files/paper/2020/file/aab085461de182608ee9f607f3f7d18f-Paper.pdf
-
+        NeurIPS, 2020. https://arxiv.org/abs/1910.02600
     """
 
     def __call__(
@@ -180,11 +179,7 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
 class DropoutPredictor(UncertaintyPredictor):
     """
     A :class:`DropoutPredictor` creates a virtual ensemble of models via Monte Carlo dropout with
-    the provided model [1]_.
-
-    References
-    -----------
-    .. [1] arXiv:1506.02142 [stat.ML]
+    the provided model [gal2016]_.
 
     Parameters
     ----------
@@ -194,6 +189,11 @@ class DropoutPredictor(UncertaintyPredictor):
         The probability of dropping out units in the dropout layers. If unspecified,
         the training probability is used, which is prefered but not possible if the model was not
         trained with dropout (i.e. p=0).
+
+    References
+    -----------
+    .. [gal2016] Gal, Y.; Ghahramani, Z. "Dropout as a bayesian approximation: Representing model uncertainty in deep learning."
+        International conference on machine learning. PMLR, 2016. https://arxiv.org/abs/1506.02142
     """
 
     def __init__(self, ensemble_size: int, dropout: None | float = None):
