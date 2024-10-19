@@ -254,12 +254,13 @@ class DropoutPredictor(UncertaintyPredictor):
             del module._p
 
 
-@UncertaintyPredictorRegistry.register("spectra-roundrobin")
-class RoundRobinSpectraPredictor(UncertaintyPredictor):
-    def __call__(
-        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
-    ) -> tuple[Tensor, Tensor]:
-        return
+# TODO: Add in v2.1.x
+# @UncertaintyPredictorRegistry.register("spectra-roundrobin")
+# class RoundRobinSpectraPredictor(UncertaintyPredictor):
+#     def __call__(
+#         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+#     ) -> tuple[Tensor, Tensor]:
+#         return
 
 
 @UncertaintyPredictorRegistry.register("classification-dirichlet")
