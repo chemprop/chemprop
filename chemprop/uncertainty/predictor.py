@@ -110,14 +110,6 @@ class EnsemblePredictor(UncertaintyPredictor):
         return stacked_preds, vars
 
 
-@UncertaintyPredictorRegistry.register("classification")
-class ClassPredictor(UncertaintyPredictor):
-    def __call__(
-        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
-    ) -> tuple[Tensor, Tensor]:
-        return
-
-
 @UncertaintyPredictorRegistry.register("evidential-total")
 class EvidentialTotalPredictor(UncertaintyPredictor):
     """

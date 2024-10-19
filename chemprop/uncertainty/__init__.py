@@ -32,7 +32,6 @@ from .evaluator import (
 )
 from .predictor import (
     ClassificationDirichletPredictor,
-    ClassPredictor,
     DropoutPredictor,
     EnsemblePredictor,
     EvidentialAleatoricPredictor,
@@ -78,7 +77,6 @@ __all__ = [
     "SpearmanEvaluator",
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
-    "ClassPredictor",
     "ClassificationDirichletPredictor",
     "MulticlassDirichletPredictor",
     "DropoutPredictor",
