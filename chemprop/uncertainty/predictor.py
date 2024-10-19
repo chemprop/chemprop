@@ -51,12 +51,16 @@ class UncertaintyPredictor(ABC):
 UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
 
 
-@UncertaintyPredictorRegistry.register(None)
+@UncertaintyPredictorRegistry.register("none")
 class NoUncertaintyPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        predss = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            predss.append(preds)
+        return torch.stack(predss), None
 
 
 @UncertaintyPredictorRegistry.register("mve")
