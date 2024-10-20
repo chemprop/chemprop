@@ -24,6 +24,7 @@ from chemprop.uncertainty import (
     MVEWeightingCalibrator,
     NoUncertaintyPredictor,
     RegressionCalibrator,
+    RegressionEvaluator,
     UncertaintyCalibratorRegistry,
     UncertaintyEvaluatorRegistry,
     UncertaintyPredictorRegistry,
@@ -285,7 +286,7 @@ def make_prediction_for_models(
             if isinstance(uncertinaty_calibrator, RegressionCalibrator):
                 uncertinaty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
             else:
-                test_uncs = uncertinaty_calibrator.apply(test_uncs)
+                uncertinaty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
             test_uncs = uncertinaty_calibrator.apply(test_uncs)
             for i in range(test_individual_uncs.shape[0]):
                 test_individual_uncs[i] = uncertinaty_calibrator.apply(test_individual_uncs[i])
@@ -301,7 +302,10 @@ def make_prediction_for_models(
             test_mask = torch.from_numpy(np.isfinite(test_targets))
             test_targets = np.nan_to_num(test_targets, nan=0.0)
             test_targets = torch.from_numpy(test_targets)
-            metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
+            if isinstance(evaluator, RegressionEvaluator):
+                metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
+            else:
+                metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
             logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
     if args.uncertainty_method == "none" and (
@@ -345,7 +349,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     )
     df_test[output_columns] = test_preds
 
-    if test_uncs is not None:
+    if args.uncertainty_method not in ["none", "classification"]:
         unc_columns = [f"{col}_unc" for col in output_columns]
         df_test[unc_columns] = test_uncs
 
@@ -387,7 +391,7 @@ def save_individual_predictions(
     )
     df_test[output_columns] = test_individual_preds
 
-    if test_individual_uncs is not None:
+    if args.uncertainty_method not in ["none", "classification"]:
         test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
         df_test[unc_columns] = test_individual_uncs
 
