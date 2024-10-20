@@ -115,7 +115,11 @@ class ClassPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        predss = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            predss.append(preds)
+        return torch.stack(predss), torch.stack(predss)
 
 
 @UncertaintyPredictorRegistry.register("evidential-total")
