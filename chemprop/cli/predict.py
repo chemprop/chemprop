@@ -19,8 +19,11 @@ from chemprop.cli.common import (
 from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.loss import LossFunctionRegistry
-from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN, RegressionFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
+    MVEWeightingCalibrator,
+    NoUncertaintyPredictor,
+    RegressionCalibrator,
     UncertaintyCalibratorRegistry,
     UncertaintyEvaluatorRegistry,
     UncertaintyPredictorRegistry,
@@ -120,17 +123,24 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         help="Sets the percentile used in the calibration methods. Must be in the range (1, 100).",
     )
     unc_args.add_argument(
-        "--regression-calibrator-metric",
-        choices=["stdev", "interval"],
-        help="Regression calibrators can output either a stdev or an inverval.",
+        "--conformal-alpha",
+        type=float,
+        default=0.1,
+        help="Target error rate for conformal prediction. Must be in the range (0, 1).",
     )
+    # TODO: Decide if we want to implment this in v2.1.x
+    # unc_args.add_argument(
+    #     "--regression-calibrator-metric",
+    #     choices=["stdev", "interval"],
+    #     help="Regression calibrators can output either a stdev or an inverval.",
+    # )
     unc_args.add_argument(
         "--cal-descriptors-path",
         nargs="+",
         action="append",
         help="Path to extra descriptors to concatenate to learned representation in calibration dataset.",
     )
-    # TODO: Add in v2.1
+    # TODO: Add in v2.1.x
     # unc_args.add_argument(
     #     "--calibration-phase-features-path",
     #     help=" ",
@@ -171,10 +181,42 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
+def prepare_data_loader(
+    args: Namespace, multicomponent: bool, is_calibration: bool, format_kwargs: dict
+):
+    data_path = args.cal_path if is_calibration else args.test_path
+    descriptors_path = args.cal_descriptors_path if is_calibration else args.descriptors_path
+    atom_feats_path = args.cal_atom_features_path if is_calibration else args.atom_features_path
+    bond_feats_path = args.cal_bond_features_path if is_calibration else args.bond_features_path
+    atom_descs_path = (
+        args.cal_atom_descriptors_path if is_calibration else args.atom_descriptors_path
+    )
+
+    featurization_kwargs = dict(
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+    )
+
+    datas = build_data_from_files(
+        data_path,
+        **format_kwargs,
+        p_descriptors=descriptors_path,
+        p_atom_feats=atom_feats_path,
+        p_bond_feats=bond_feats_path,
+        p_atom_descs=atom_descs_path,
+        **featurization_kwargs,
+    )
+
+    dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
+    dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
+
+    return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
+
+
 def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
     model = load_model(model_paths[0], multicomponent)
+    output_columns = load_output_columns(model_paths[0])
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
@@ -184,108 +226,110 @@ def make_prediction_for_models(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
-        target_cols=[],
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
         bounded=bounded,
     )
-    featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
-    )
-
-    test_data = build_data_from_files(
-        args.test_path,
-        **format_kwargs,
-        p_descriptors=args.descriptors_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **featurization_kwargs,
-    )
-    logger.info(f"test size: {len(test_data[0])}")
-    test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
-    ]
-
-    if multicomponent:
-        test_dset = data.MulticomponentDataset(test_dsets)
-    else:
-        test_dset = test_dsets[0]
-
-    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
-
+    format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
+    test_loader = prepare_data_loader(args, multicomponent, False, format_kwargs)
+    logger.info(f"test size: {len(test_loader.dataset)}")
     if args.cal_path is not None:
-        cal_data = build_data_from_files(
-            args.cal_path,
-            **format_kwargs,
-            p_descriptors=args.cal_descriptors_path,
-            p_atom_feats=args.cal_atom_features_path,
-            p_bond_feats=args.cal_bond_features_path,
-            p_atom_descs=args.cal_atom_descriptors_path,
-            **featurization_kwargs,
-        )
-        logger.info(f"calibration size: {len(cal_data)}")
-        cal_dsets = [
-            make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in cal_data
-        ]
-        if multicomponent:
-            cal_dset = data.MulticomponentDataset(cal_dsets)
-        else:
-            cal_dset = test_dsets[0]
-        cal_loader = data.build_dataloader(
-            cal_dset, args.batch_size, args.num_workers, shuffle=False
-        )
-    else:
-        cal_loader = None
+        format_kwargs["target_cols"] = output_columns
+        cal_loader = prepare_data_loader(args, multicomponent, True, format_kwargs)
+        logger.info(f"calibration size: {len(cal_loader.dataset)}")
 
-    uncertinaty_predictor = Factory.build(UncertaintyPredictorRegistry[args.uncertainty_method])
+    uncertinaty_predictor = Factory.build(
+        UncertaintyPredictorRegistry[args.uncertainty_method],
+        ensemble_size=args.dropout_sampling_size,
+        dropout=args.uncertainty_dropout_p,
+    )
 
     models = [load_model(model_path, multicomponent) for model_path in model_paths]
-
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
-
-    test_individual_preds, test_uncs = uncertinaty_predictor(test_loader, models, trainer)
+    test_individual_preds, test_individual_uncs = uncertinaty_predictor(
+        test_loader, models, trainer
+    )
     test_preds = torch.mean(test_individual_preds, dim=0)
+    if not isinstance(uncertinaty_predictor, NoUncertaintyPredictor):
+        test_uncs = torch.mean(test_individual_uncs, dim=0)
+    else:
+        test_uncs = None
 
     if args.calibration_method is not None:
+        if args.calibration_method == "platt":
+            raise NotImplementedError(
+                "`PlattCalibrator` requires the number of positive and negative training examples "
+                "to adjust the target probability values. This method is not currently exposed in the predict CLI."
+            )
         uncertinaty_calibrator = Factory.build(
-            UncertaintyCalibratorRegistry[args.calibration_method]
+            UncertaintyCalibratorRegistry[args.calibration_method],
+            p=args.calibration_interval_percentile / 100,
+            alpha=args.conformal_alpha,
         )
-        cal_targets = torch.from_numpy(cal_dset.Y)
+        cal_targets = cal_loader.dataset.Y
         cal_mask = torch.from_numpy(np.isfinite(cal_targets))
-        cal_individual_preds, cal_uncs = uncertinaty_predictor(cal_loader, models, trainer)
+        cal_targets = np.nan_to_num(cal_targets, nan=0.0)
+        cal_targets = torch.from_numpy(cal_targets)
+        cal_individual_preds, cal_individual_uncs = uncertinaty_predictor(
+            cal_loader, models, trainer
+        )
         cal_preds = torch.mean(cal_individual_preds, dim=0)
-        if isinstance(model, RegressionFFN):
-            uncertinaty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+        cal_uncs = torch.mean(cal_individual_uncs, dim=0)
+        if isinstance(uncertinaty_calibrator, MVEWeightingCalibrator):
+            uncertinaty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
+            test_uncs = uncertinaty_calibrator.apply(cal_individual_uncs)
         else:
-            uncertinaty_calibrator.fit(None, cal_preds, cal_targets, cal_mask)
-        test_uncs = uncertinaty_calibrator.apply(test_uncs)
+            if isinstance(uncertinaty_calibrator, RegressionCalibrator):
+                uncertinaty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+            else:
+                test_uncs = uncertinaty_calibrator.apply(test_uncs)
+            test_uncs = uncertinaty_calibrator.apply(test_uncs)
+            for i in range(test_individual_uncs.shape[0]):
+                test_individual_uncs[i] = uncertinaty_calibrator.apply(test_individual_uncs[i])
 
     if args.evaluation_methods is not None:
         uncertinaty_evaluators = [
             Factory.build(UncertaintyEvaluatorRegistry[method])
             for method in args.evaluation_methods
         ]
+        logger.info("Uncertainty evaluation metric:")
         for evaluator in uncertinaty_evaluators:
-            test_targets = torch.from_numpy(test_dset.Y)
+            test_targets = test_loader.dataset.Y
             test_mask = torch.from_numpy(np.isfinite(test_targets))
+            test_targets = np.nan_to_num(test_targets, nan=0.0)
+            test_targets = torch.from_numpy(test_targets)
             metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
-            logger.info(
-                f"Uncertainty evaluation metric: '{evaluator.alias}', metric value: {metric_value}"
-            )
+            logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
-    if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
+    if args.uncertainty_method == "none" and (
+        isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN)
+    ):
         test_preds = test_preds[..., 0]
+        test_individual_preds = test_individual_preds[..., 0]
 
-    output_columns = load_output_columns(model_paths[0])
     if output_columns is None:
         output_columns = [
             f"pred_{i}" for i in range(test_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
+    save_predictions(args, model, output_columns, test_preds, test_uncs, output_path)
+
+    if len(model_paths) > 1:
+        save_individual_predictions(
+            args,
+            model,
+            model_paths,
+            output_columns,
+            test_individual_preds,
+            test_individual_uncs,
+            output_path,
+        )
+
+
+def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
     if isinstance(model.predictor, MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
@@ -300,6 +344,11 @@ def make_prediction_for_models(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
     df_test[output_columns] = test_preds
+
+    if test_uncs is not None:
+        unc_columns = [f"{col}_unc" for col in output_columns]
+        df_test[unc_columns] = test_uncs
+
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
         df_test.to_pickle(output_path)
@@ -307,42 +356,54 @@ def make_prediction_for_models(
         df_test.to_csv(output_path, index=False)
     logger.info(f"Predictions saved to '{output_path}'")
 
-    if len(model_paths) > 1:
-        output_columns = [
-            f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
-        ]
 
-        if isinstance(model.predictor, MulticlassClassificationFFN):
-            predicted_class_labels = test_individual_preds.argmax(axis=-1)
-            formatted_probability_strings = np.apply_along_axis(
-                lambda x: ",".join(map(str, x)), 3, test_individual_preds
-            )
-            test_individual_preds = np.concatenate(
-                (predicted_class_labels, formatted_probability_strings), axis=-1
-            )
-        if isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN):
-            test_individual_preds = test_individual_preds[..., 0]
+def save_individual_predictions(
+    args,
+    model,
+    model_paths,
+    output_columns,
+    test_individual_preds,
+    test_individual_uncs,
+    output_path,
+):
+    unc_columns = [
+        f"{col}_unc_model_{i}" for i in range(len(model_paths)) for col in output_columns
+    ]
+    output_columns = [f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns]
 
-        m, n, t = test_individual_preds.shape
-        test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
-        df_test = pd.read_csv(
-            args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    if isinstance(model.predictor, MulticlassClassificationFFN):
+        predicted_class_labels = test_individual_preds.argmax(axis=-1)
+        formatted_probability_strings = np.apply_along_axis(
+            lambda x: ",".join(map(str, x)), 3, test_individual_preds
         )
-        df_test[output_columns] = test_individual_preds
-
-        output_path = output_path.parent / Path(
-            str(args.output.stem) + "_individual" + str(output_path.suffix)
+        test_individual_preds = np.concatenate(
+            (predicted_class_labels, formatted_probability_strings), axis=-1
         )
-        if output_path.suffix == ".pkl":
-            df_test = df_test.reset_index(drop=True)
-            df_test.to_pickle(output_path)
-        else:
-            df_test.to_csv(output_path, index=False)
-        logger.info(f"Individual predictions saved to '{output_path}'")
-        for i, model_path in enumerate(model_paths):
-            logger.info(
-                f"Results from model path {model_path} are saved under the column name ending with 'model_{i}'"
-            )
+
+    m, n, t = test_individual_preds.shape
+    test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
+    df_test = pd.read_csv(
+        args.test_path, header=None if args.no_header_row else "infer", index_col=False
+    )
+    df_test[output_columns] = test_individual_preds
+
+    if test_individual_uncs is not None:
+        test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
+        df_test[unc_columns] = test_individual_uncs
+
+    output_path = output_path.parent / Path(
+        str(args.output.stem) + "_individual" + str(output_path.suffix)
+    )
+    if output_path.suffix == ".pkl":
+        df_test = df_test.reset_index(drop=True)
+        df_test.to_pickle(output_path)
+    else:
+        df_test.to_csv(output_path, index=False)
+    logger.info(f"Individual predictions saved to '{output_path}'")
+    for i, model_path in enumerate(model_paths):
+        logger.info(
+            f"Results from model path {model_path} are saved under the column name ending with 'model_{i}'"
+        )
 
 
 def main(args):
