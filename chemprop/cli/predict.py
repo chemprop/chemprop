@@ -373,9 +373,15 @@ def save_individual_predictions(
     unc_columns = [
         f"{col}_unc_model_{i}" for i in range(len(model_paths)) for col in output_columns
     ]
-    output_columns = [f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns]
 
     if isinstance(model.predictor, MulticlassClassificationFFN):
+        output_columns = [
+            item
+            for i in range(len(model_paths))
+            for col in output_columns
+            for item in (f"{col}_model_{i}", f"{col}_prob_model_{i}")
+        ]
+
         predicted_class_labels = test_individual_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
             lambda x: ",".join(map(str, x)), 3, test_individual_preds
@@ -383,6 +389,10 @@ def save_individual_predictions(
         test_individual_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
         )
+    else:
+        output_columns = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
+        ]
 
     m, n, t = test_individual_preds.shape
     test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
