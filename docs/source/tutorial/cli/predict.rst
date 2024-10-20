@@ -7,9 +7,9 @@ To load a trained model and make predictions, run:
 
 .. code-block::
    
-    chemprop predict --test-path <test_path> --model-paths <model_paths>
+    chemprop predict --test-path <test_path> --model-paths <[model_paths]>
 
-where :code:`<test_path>` is the path to the data to test on, and :code:`<model_paths>` is the location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--preds-path <path>`. The predictions <path> can end with either .csv or .pkl, and the output will be saved to the corresponding file type.
+where :code:`<test_path>` is the path to the data to test on, and :code:`<[model_paths]>` is the location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models. By default, predictions will be saved to the same directory as the test path. If desired, a different directory can be specified by using :code:`--preds-path <path>`. The predictions <path> can end with either .csv or .pkl, and the output will be saved to the corresponding file type.
 
 For example:
 
@@ -48,7 +48,7 @@ To load a trained model and make uncertainty quantification, run:
         --calibration-method <method> \
         --evaluation-methods <[methods]>
 
-where :code:`<test_path>` is the path to the data to test on, :code:`<cal_path>` is the calibration dataset used for uncertainty calibration if needed, and :code:`<model_paths>` is the location of checkpoint(s) or model file(s) to use for prediction. The uncertianty estimation, calibration, and evaluations methods are detailed below. 
+where :code:`<test_path>` is the path to the data to test on, :code:`<cal_path>` is the calibration dataset used for uncertainty calibration if needed, and :code:`<[model_paths]>` is the location of checkpoint(s) or model file(s) to use for prediction. The uncertianty estimation, calibration, and evaluations methods are detailed below. 
 
 Uncertainty Estimation
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -81,14 +81,14 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 
  .. * :code:`platt`
 
- * :code:`isotonic` Fits an isotonic regression model to the predictions. Prediction outputs are transformed using a stepped histogram-style to match the empirical probability observed in the calibration data. Number and size of the histogram bins are procedurally decided. Histogram bins are wider in the regions of the model output that are less reliable in ordering confidence. Implemented for both classification and multiclass datasets. (https://arxiv.org/abs/1706.04599)
+ * :code:`isotonic` Fits an isotonic regression model to the predictions. Prediction outputs are transformed using a stepped histogram-style to match the empirical probability observed in the calibration data. Number and size of the histogram bins are procedurally decided. Histogram bins are wider in the regions of the model output that are less reliable in ordering confidence. (https://arxiv.org/abs/1706.04599)
  * :code:`conformal-multilabel` Generates a pair of sets of labels :math:`C_{in} \subset C_{out}` such that the true set of labels :math:`S` satisfies the property :math:`C_{in} \subset S \subset C_{out}` with probability at least :math:`1-\alpha`. The desired error rate :math:`\alpha` can be controlled with the parameter :code:`--conformal-alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2004.10181)
 
 
 **Multiclass**:
 
  * :code:`conformal-multiclass` Generates a set of possible classes for each prediction such that the true class has probability :math:`1-\alpha` of falling in the set. The desired error rate :math:`\alpha` can be controlled with the parameter :code:`--conformal-alpha <float>` which is set by default to 0.1. Set generated using the basic conformal method. (https://arxiv.org/abs/2107.07511)
- * :code:`conformal-adaptive` Generates a set of possible classes for each prediction such that the true class has probability :math:`1-\alpha` of falling in the set. The desired error rate :math:`\alpha` can be controlled with the parameter `--conformal_alpha <float>` which is set by default to 0.1. Set generated using the adaptive conformal method. (https://arxiv.org/abs/2107.07511)
+ * :code:`conformal-adaptive` Similar to conformal-multiclass, this method generates a set of possible classes but uses an adaptive conformal method. The desired error rate :math:`\alpha` can be controlled with the parameter `--conformal_alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2107.07511)
  * :code:`isotonic-multiclass` Calibrate multiclass classification datasets using isotonic regression. It uses a one-vs-all aggregation scheme to extend isotonic regression from binary to multiclass classifiers. (https://arxiv.org/abs/1706.04599)
 
 Uncertainty Evaluation Metrics
@@ -97,12 +97,13 @@ Uncertainty Evaluation Metrics
 The performance of uncertainty predictions (calibrated or uncalibrated) as evaluated on the test set using different evaluation metrics as specified with :code:`--evaluation-methods <[methods]>`.
 Evaluation scores will only appear in the output trace. Multiple evaluation methods can be provided and they will be calculated separately for each model task. Evaluation is only available when the target values are provided with the data in :code:`--test-path <test_path>`. As with the data used in training, evaluation data for multitask models are allowed to have gaps and missing targets in the data.
 
-.. * Any valid classification or multiclass metric. Because classification and multiclass outputs are inherently probabilistic, any metric used to assess them during training is appropriate to evaluate the confidences produced after calibration.
-* :code:`nll-regression`, :code:`nll-classification`, :code:`nll-multiclass` Returns the average negative log likelihood of the real target as indicated by the uncertainty predictions. Enabled for regression, classification, and multiclass dataset types.
-* :code:`spearman` A regression evaluation metric. Returns the Spearman rank correlation between the predicted uncertainty and the actual error in predictions. Only considers ordering, does not assume a particular probability distribution.
-* :code:`ence` Expected normalized calibration error. A regression evaluation metric. Bins model prediction according to uncertainty prediction and compares the RMSE in each bin versus the expected error based on the predicted uncertainty variance then scaled by variance. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
-* :code:`miscalibration_area` A regression evaluation metric. Calculates the model's performance of expected probability versus realized probability at different points along the probability distribution. Values range (0, 0.5) with perfect calibration at 0. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
-* :code:`conformal-coverage-regression`, :code:`conformal-coverage-classification`, :code:`conformal-coverage-multiclass` Measures the empirical coverage of the conformal methods, that is the proportion of datapoints that fall within the output set or interval. Must be used with a conformal calibration method which outputs a set or interval. The metric can be used with multiclass, multilabel, or regression conformal methods.
+ .. * Any valid classification or multiclass metric. Because classification and multiclass outputs are inherently probabilistic, any metric used to assess them during training is appropriate to evaluate the confidences produced after calibration.
+
+ * :code:`nll-regression`, :code:`nll-classification`, :code:`nll-multiclass` Returns the average negative log likelihood of the real target as indicated by the uncertainty predictions. Enabled for regression, classification, and multiclass dataset types.
+ * :code:`spearman` A regression evaluation metric. Returns the Spearman rank correlation between the predicted uncertainty and the actual error in predictions. Only considers ordering, does not assume a particular probability distribution.
+ * :code:`ence` Expected normalized calibration error. A regression evaluation metric. Bins model prediction according to uncertainty prediction and compares the RMSE in each bin versus the expected error based on the predicted uncertainty variance then scaled by variance. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
+ * :code:`miscalibration_area` A regression evaluation metric. Calculates the model's performance of expected probability versus realized probability at different points along the probability distribution. Values range (0, 0.5) with perfect calibration at 0. (discussed in https://doi.org/10.1021/acs.jcim.9b00975)
+ * :code:`conformal-coverage-regression`, :code:`conformal-coverage-classification`, :code:`conformal-coverage-multiclass` Measures the empirical coverage of the conformal methods, that is the proportion of datapoints that fall within the output set or interval. Must be used with a conformal calibration method which outputs a set or interval. The metric can be used with multiclass, multilabel, or regression conformal methods.
 
 Different evaluation metrics consider different aspects of uncertainty. It is often appropriate to consider multiple metrics. For intance, miscalibration error is important for evaluating uncertainty magnitude but does not indicate that the uncertainty function discriminates well between different outputs. Similarly, spearman tests ordering but not prediction magnitude.
 
