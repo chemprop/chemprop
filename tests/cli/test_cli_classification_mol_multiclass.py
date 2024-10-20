@@ -52,6 +52,29 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
+def test_predict_isotonic_quick(monkeypatch, data_path, model_path):
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path,
+        "--cal-path",
+        data_path,
+        "--uncertainty-method",
+        "classification",
+        "--calibration-method",
+        "isotonic-multiclass",
+        "--evaluation-methods",
+        "nll-multiclass",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
 def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
     args = [

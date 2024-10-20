@@ -151,7 +151,25 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
     input_path, *_ = data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        mve_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "mve",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "miscalibration_area",
+        "ence",
+        "spearman",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -160,7 +178,25 @@ def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
 
 def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
     input_path, *_ = data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", evidential_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        evidential_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "evidential-total",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "miscalibration_area",
+        "ence",
+        "spearman",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
