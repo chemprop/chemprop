@@ -16,6 +16,7 @@ __all__ = [
     "MSE",
     "MAE",
     "RMSE",
+    "BoundedMixin",
     "BoundedMSE",
     "BoundedMAE",
     "BoundedRMSE",
@@ -38,6 +39,7 @@ __all__ = [
     "BinaryMCCMetric",
     "MulticlassMCCLoss",
     "MulticlassMCCMetric",
+    "ClassificationMixin",
     "BinaryAUROC",
     "BinaryAUPRC",
     "BinaryAccuracy",
@@ -143,7 +145,7 @@ class RMSE(MSE):
         return (self.total_loss / self.num_samples).sqrt()
 
 
-class _BoundedMixin:
+class BoundedMixin:
     def _calc_unreduced_loss(self, preds, targets, mask, weights, lt_mask, gt_mask) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
@@ -153,19 +155,19 @@ class _BoundedMixin:
 
 @LossFunctionRegistry.register("bounded-mse")
 @MetricRegistry.register("bounded-mse")
-class BoundedMSE(_BoundedMixin, MSE):
+class BoundedMSE(BoundedMixin, MSE):
     pass
 
 
 @LossFunctionRegistry.register("bounded-mae")
 @MetricRegistry.register("bounded-mae")
-class BoundedMAE(_BoundedMixin, MAE):
+class BoundedMAE(BoundedMixin, MAE):
     pass
 
 
 @LossFunctionRegistry.register("bounded-rmse")
 @MetricRegistry.register("bounded-rmse")
-class BoundedRMSE(_BoundedMixin, RMSE):
+class BoundedRMSE(BoundedMixin, RMSE):
     pass
 
 
@@ -397,7 +399,7 @@ class MulticlassMCCMetric(MulticlassMCCLoss):
         return 1 - super().compute()
 
 
-class _ClassificationMixin:
+class ClassificationMixin:
     def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
         """
         Parameters
@@ -415,24 +417,24 @@ class _ClassificationMixin:
 
 
 @MetricRegistry.register("roc")
-class BinaryAUROC(_ClassificationMixin, torchmetrics.classification.BinaryAUROC):
+class BinaryAUROC(ClassificationMixin, torchmetrics.classification.BinaryAUROC):
     pass
 
 
 @MetricRegistry.register("prc")
-class BinaryAUPRC(_ClassificationMixin, torchmetrics.classification.BinaryPrecisionRecallCurve):
+class BinaryAUPRC(ClassificationMixin, torchmetrics.classification.BinaryPrecisionRecallCurve):
     def compute(self) -> Tensor:
         p, r, _ = super().compute()
         return auc(r, p)
 
 
 @MetricRegistry.register("accuracy")
-class BinaryAccuracy(_ClassificationMixin, torchmetrics.classification.BinaryAccuracy):
+class BinaryAccuracy(ClassificationMixin, torchmetrics.classification.BinaryAccuracy):
     pass
 
 
 @MetricRegistry.register("f1")
-class BinaryF1Score(_ClassificationMixin, torchmetrics.classification.BinaryF1Score):
+class BinaryF1Score(ClassificationMixin, torchmetrics.classification.BinaryF1Score):
     pass
 
 
