@@ -17,7 +17,6 @@ from chemprop.nn.metrics import (
     BinaryAccuracy,
     BinaryAUPRC,
     BinaryAUROC,
-    BinaryDirichletLoss,
     BinaryF1Score,
     BinaryMCCLoss,
     BinaryMCCMetric,
@@ -25,8 +24,8 @@ from chemprop.nn.metrics import (
     BoundedMSE,
     BoundedRMSE,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
-    MulticlassDirichletLoss,
     MulticlassMCCLoss,
     MulticlassMCCMetric,
     MVELoss,
@@ -98,18 +97,16 @@ evi_train_step = torch.stack(
     2,
 )
 evi_forward = evi_train_step.clone()
+
 b_class_train_step = mockffn.clone()[:40].view(-1, 2)
 b_class_forward = b_class_train_step.clone().sigmoid()
-b_diri_forward = (
-    mockffn.clone()[40:80].view(-1, 2)
-    / (mockffn.clone()[:40].view(-1, 2) + mockffn.clone()[40:80].view(-1, 2))
-).sigmoid()
-b_diri_train_step = F.softplus(mockffn.clone()[0:80].view(-1, 4)) + 1
+b_diri_train_step = F.softplus(mockffn.clone()[0:80].view(-1, 2, 2)) + 1
+b_diri_forward = b_diri_train_step[..., 1] / b_diri_train_step.sum(-1)
+
 m_class_train_step = mockffn.clone()[:120].view(20, 2, 3)
 m_class_forward = m_class_train_step.clone().softmax(-1)
 m_diri_train_step = F.softplus(mockffn.clone()[:120].view(20, 2, 3)) + 1
-_alpha = F.softplus(mockffn.clone()[:120].view(20, 2, 3).softmax(-1)) + 1
-m_diri_forward = torch.stack((_alpha / _alpha.sum(-1, keepdim=True), _alpha), -1)
+m_diri_forward = m_diri_train_step / m_diri_train_step.sum(-1, keepdim=True)
 spectral_train_step = mockffn.clone()[:150].view(-1, 10).exp() / mockffn.clone()[:150].view(
     -1, 10
 ).exp().sum(1, keepdim=True)
@@ -199,7 +196,7 @@ class _MockMPNN(pl.LightningModule):
 
     def _evalute_batch(self, batch, val_test):
         _, forward, targets, mask, w, lt_mask, gt_mask = batch
-        if isinstance(self.metrics[-1], (MVELoss, EvidentialLoss, MulticlassDirichletLoss)):
+        if isinstance(self.metrics[-1], (MVELoss, EvidentialLoss)):
             forward = forward[..., 0]
         self.metrics[0].update(forward, targets, mask, w, lt_mask, gt_mask)
         self.log(f"{val_test}_metric", self.metrics[0], prog_bar=True)
@@ -241,10 +238,10 @@ groups = [
     (BinaryMCCLoss(), BinaryAUROC(), b_class_train_step, b_class_forward, b_class_targets, mask),
     (BCELoss(), BinaryAUPRC(), b_class_train_step, b_class_forward, b_class_targets, mask),
     (BCELoss(), BinaryAccuracy(), b_class_train_step, b_class_forward, b_class_targets, mask),
-    (BinaryDirichletLoss(), BinaryF1Score(), b_diri_train_step, b_diri_forward, b_class_targets, mask),
+    (DirichletLoss(), BinaryF1Score(), b_diri_train_step, b_diri_forward, b_class_targets, mask),
     (CrossEntropyLoss(), MulticlassMCCMetric(), m_class_train_step, m_class_forward, m_class_targets, mask),
     (MulticlassMCCLoss(), MulticlassMCCMetric(), m_class_train_step, m_class_forward, m_class_targets, mask),
-    (MulticlassDirichletLoss(), MulticlassMCCMetric(), m_diri_train_step, m_diri_forward, m_class_targets, mask),
+    (DirichletLoss(), MulticlassMCCMetric(), m_diri_train_step, m_diri_forward, m_class_targets, mask),
     (SID(), Wasserstein(), spectral_train_step, spectral_forward, spectral_targets, spectral_mask),
     (Wasserstein(), SID(), spectral_train_step, spectral_forward, spectral_targets, spectral_mask),
 ]

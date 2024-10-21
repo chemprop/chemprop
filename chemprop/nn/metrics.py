@@ -44,8 +44,7 @@ __all__ = [
     "BinaryAUPRC",
     "BinaryAccuracy",
     "BinaryF1Score",
-    "BinaryDirichletLoss",
-    "MulticlassDirichletLoss",
+    "DirichletLoss",
     "SID",
     "Wasserstein",
 ]
@@ -438,7 +437,8 @@ class BinaryF1Score(ClassificationMixin, torchmetrics.classification.BinaryF1Sco
     pass
 
 
-class DirichletMixin:
+@LossFunctionRegistry.register("dirichlet")
+class DirichletLoss(ChempropMetric):
     """Uses the loss function from [sensoy2018]_ based on the implementation at [sensoyGithub]_
 
     References
@@ -452,7 +452,9 @@ class DirichletMixin:
         super().__init__(task_weights)
         self.v_kl = v_kl
 
-    def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        targets = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
+
         S = preds.sum(-1, keepdim=True)
         p = preds / S
 
@@ -478,25 +480,6 @@ class DirichletMixin:
 
     def extra_repr(self) -> str:
         return f"v_kl={self.v_kl}"
-
-
-@LossFunctionRegistry.register("binary-dirichlet")
-class BinaryDirichletLoss(DirichletMixin, ChempropMetric):
-    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        N_CLASSES = 2
-        n_tasks = targets.shape[1]
-        preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
-        y_one_hot = torch.eye(N_CLASSES, device=preds.device)[targets.long()]
-
-        return super()._calc_unreduced_loss(preds, y_one_hot, *args)
-
-
-@LossFunctionRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletLoss(DirichletMixin, ChempropMetric):
-    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
-        y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
-
-        return super()._calc_unreduced_loss(preds, y_one_hot, mask)
 
 
 @LossFunctionRegistry.register("sid")

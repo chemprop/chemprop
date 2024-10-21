@@ -13,11 +13,10 @@ from chemprop.nn.metrics import (
     SID,
     BCELoss,
     BinaryAUROC,
-    BinaryDirichletLoss,
     ChempropMetric,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
-    MulticlassDirichletLoss,
     MulticlassMCCMetric,
     MVELoss,
 )
@@ -226,7 +225,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _T_default_criterion = BinaryDirichletLoss
+    _T_default_criterion = DirichletLoss
     _T_default_metric = BinaryAUROC
 
     def forward(self, Z: Tensor) -> Tensor:
@@ -294,7 +293,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _T_default_criterion = MulticlassDirichletLoss
+    _T_default_criterion = DirichletLoss
     _T_default_metric = MulticlassMCCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
