@@ -10,7 +10,7 @@ from chemprop.models.model import MPNN
 from chemprop.utils.registry import ClassRegistry
 
 
-class UncertaintyPredictor(ABC):
+class UncertaintyEstimator(ABC):
     """A helper class for making model predictions and associated uncertainty predictions."""
 
     @abstractmethod
@@ -47,11 +47,11 @@ class UncertaintyPredictor(ABC):
         """
 
 
-UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
+UncertaintyEstimatorRegistry = ClassRegistry[UncertaintyEstimator]()
 
 
-@UncertaintyPredictorRegistry.register("none")
-class NoUncertaintyPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("none")
+class NoUncertaintyEstimator(UncertaintyEstimator):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -62,8 +62,8 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         return torch.stack(predss), None
 
 
-@UncertaintyPredictorRegistry.register("mve")
-class MVEPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("mve")
+class MVEEstimator(UncertaintyEstimator):
     """
     Class that estimates prediction means and variances (MVE). [nix1994]_
 
@@ -86,8 +86,8 @@ class MVEPredictor(UncertaintyPredictor):
         return mean, var
 
 
-@UncertaintyPredictorRegistry.register("ensemble")
-class EnsemblePredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("ensemble")
+class EnsembleEstimator(UncertaintyEstimator):
     """
     Class that predicts the uncertainty of predictions based on the variance in predictions among
     an ensemble's submodels.
@@ -109,8 +109,8 @@ class EnsemblePredictor(UncertaintyPredictor):
         return stacked_preds, vars
 
 
-@UncertaintyPredictorRegistry.register("classification")
-class ClassPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("classification")
+class ClassEstimator(UncertaintyEstimator):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -121,8 +121,8 @@ class ClassPredictor(UncertaintyPredictor):
         return torch.stack(predss), torch.stack(predss)
 
 
-@UncertaintyPredictorRegistry.register("evidential-total")
-class EvidentialTotalPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("evidential-total")
+class EvidentialTotalEstimator(UncertaintyEstimator):
     """
     Class that predicts the total evidential uncertainty based on hyperparameters of
     the evidential distribution [amini2020]_.
@@ -146,8 +146,8 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
         return mean, total_uncs
 
 
-@UncertaintyPredictorRegistry.register("evidential-epistemic")
-class EvidentialEpistemicPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("evidential-epistemic")
+class EvidentialEpistemicEstimator(UncertaintyEstimator):
     """
     Class that predicts the epistemic evidential uncertainty based on hyperparameters of
     the evidential distribution.
@@ -166,8 +166,8 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
         return mean, epistemic_uncs
 
 
-@UncertaintyPredictorRegistry.register("evidential-aleatoric")
-class EvidentialAleatoricPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("evidential-aleatoric")
+class EvidentialAleatoricEstimator(UncertaintyEstimator):
     """
     Class that predicts the aleatoric evidential uncertainty based on hyperparameters of
     the evidential distribution.
@@ -186,10 +186,10 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
         return mean, aleatoric_uncs
 
 
-@UncertaintyPredictorRegistry.register("dropout")
-class DropoutPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("dropout")
+class DropoutEstimator(UncertaintyEstimator):
     """
-    A :class:`DropoutPredictor` creates a virtual ensemble of models via Monte Carlo dropout with
+    A :class:`DropoutEstimator` creates a virtual ensemble of models via Monte Carlo dropout with
     the provided model [gal2016]_.
 
     Parameters
@@ -266,18 +266,18 @@ class DropoutPredictor(UncertaintyPredictor):
 
 
 # TODO: Add in v2.1.x
-# @UncertaintyPredictorRegistry.register("spectra-roundrobin")
-# class RoundRobinSpectraPredictor(UncertaintyPredictor):
+# @UncertaintyEstimatorRegistry.register("spectra-roundrobin")
+# class RoundRobinSpectraEstimator(UncertaintyEstimator):
 #     def __call__(
 #         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
 #     ) -> tuple[Tensor, Tensor]:
 #         return
 
 
-@UncertaintyPredictorRegistry.register("classification-dirichlet")
-class ClassificationDirichletPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("classification-dirichlet")
+class ClassificationDirichletEstimator(UncertaintyEstimator):
     """
-    A :class:`ClassificationDirichletPredictor` predicts an amount of 'evidence' for both the
+    A :class:`ClassificationDirichletEstimator` predicts an amount of 'evidence' for both the
     negative class and the positive class as described in [sensoy2018]_. The class probabilities and
     the uncertainty are calculated based on the evidence.
 
@@ -307,10 +307,10 @@ class ClassificationDirichletPredictor(UncertaintyPredictor):
         return y, u
 
 
-@UncertaintyPredictorRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("multiclass-dirichlet")
+class MulticlassDirichletEstimator(UncertaintyEstimator):
     """
-    A :class:`MulticlassDirichletPredictor` predicts an amount of 'evidence' for each class as
+    A :class:`MulticlassDirichletEstimator` predicts an amount of 'evidence' for each class as
     described in [sensoy2018]_. The class probabilities and the uncertainty are calculated based on
     the evidence.
 
@@ -361,8 +361,8 @@ class MulticlassDirichletPredictor(UncertaintyPredictor):
         return torch.concat([Y, u], -1)
 
 
-@UncertaintyPredictorRegistry.register("quantile-regression")
-class QuantileRegressionPredictor(UncertaintyPredictor):
+@UncertaintyEstimatorRegistry.register("quantile-regression")
+class QuantileRegressionEstimator(UncertaintyEstimator):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
