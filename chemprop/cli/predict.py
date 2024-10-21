@@ -240,7 +240,7 @@ def make_prediction_for_models(
         cal_loader = prepare_data_loader(args, multicomponent, True, format_kwargs)
         logger.info(f"calibration size: {len(cal_loader.dataset)}")
 
-    uncertinaty_predictor = Factory.build(
+    uncertainty_predictor = Factory.build(
         UncertaintyPredictorRegistry[args.uncertainty_method],
         ensemble_size=args.dropout_sampling_size,
         dropout=args.uncertainty_dropout_p,
@@ -250,11 +250,11 @@ def make_prediction_for_models(
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
-    test_individual_preds, test_individual_uncs = uncertinaty_predictor(
+    test_individual_preds, test_individual_uncs = uncertainty_predictor(
         test_loader, models, trainer
     )
     test_preds = torch.mean(test_individual_preds, dim=0)
-    if not isinstance(uncertinaty_predictor, NoUncertaintyPredictor):
+    if not isinstance(uncertainty_predictor, NoUncertaintyPredictor):
         test_uncs = torch.mean(test_individual_uncs, dim=0)
     else:
         test_uncs = None
@@ -265,7 +265,7 @@ def make_prediction_for_models(
                 "`PlattCalibrator` requires the number of positive and negative training examples "
                 "to adjust the target probability values. This method is not currently exposed in the predict CLI."
             )
-        uncertinaty_calibrator = Factory.build(
+        uncertainty_calibrator = Factory.build(
             UncertaintyCalibratorRegistry[args.calibration_method],
             p=args.calibration_interval_percentile / 100,
             alpha=args.conformal_alpha,
@@ -274,30 +274,30 @@ def make_prediction_for_models(
         cal_mask = torch.from_numpy(np.isfinite(cal_targets))
         cal_targets = np.nan_to_num(cal_targets, nan=0.0)
         cal_targets = torch.from_numpy(cal_targets)
-        cal_individual_preds, cal_individual_uncs = uncertinaty_predictor(
+        cal_individual_preds, cal_individual_uncs = uncertainty_predictor(
             cal_loader, models, trainer
         )
         cal_preds = torch.mean(cal_individual_preds, dim=0)
         cal_uncs = torch.mean(cal_individual_uncs, dim=0)
-        if isinstance(uncertinaty_calibrator, MVEWeightingCalibrator):
-            uncertinaty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
-            test_uncs = uncertinaty_calibrator.apply(cal_individual_uncs)
+        if isinstance(uncertainty_calibrator, MVEWeightingCalibrator):
+            uncertainty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
+            test_uncs = uncertainty_calibrator.apply(cal_individual_uncs)
         else:
-            if isinstance(uncertinaty_calibrator, RegressionCalibrator):
-                uncertinaty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+            if isinstance(uncertainty_calibrator, RegressionCalibrator):
+                uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
             else:
-                uncertinaty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
-            test_uncs = uncertinaty_calibrator.apply(test_uncs)
+                uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
+            test_uncs = uncertainty_calibrator.apply(test_uncs)
             for i in range(test_individual_uncs.shape[0]):
-                test_individual_uncs[i] = uncertinaty_calibrator.apply(test_individual_uncs[i])
+                test_individual_uncs[i] = uncertainty_calibrator.apply(test_individual_uncs[i])
 
     if args.evaluation_methods is not None:
-        uncertinaty_evaluators = [
+        uncertainty_evaluators = [
             Factory.build(UncertaintyEvaluatorRegistry[method])
             for method in args.evaluation_methods
         ]
         logger.info("Uncertainty evaluation metric:")
-        for evaluator in uncertinaty_evaluators:
+        for evaluator in uncertainty_evaluators:
             test_targets = test_loader.dataset.Y
             test_mask = torch.from_numpy(np.isfinite(test_targets))
             test_targets = np.nan_to_num(test_targets, nan=0.0)
