@@ -2,11 +2,10 @@ from abc import ABC, abstractmethod
 import logging
 import math
 from typing import Self
-import warnings
 
 import numpy as np
 from scipy.optimize import fmin
-from scipy.special import expit, logit
+from scipy.special import expit, logit, softmax
 from sklearn.isotonic import IsotonicRegression
 import torch
 from torch import Tensor
@@ -60,8 +59,8 @@ class RegressionCalibrator(CalibratorBase):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
@@ -78,44 +77,158 @@ class RegressionCalibrator(CalibratorBase):
 
 @UncertaintyCalibratorRegistry.register("zscaling")
 class ZScalingCalibrator(RegressionCalibrator):
+    """Calibrate regression datasets by applying a scaling value to the uncalibrated standard deviation,
+    fitted by minimizing the negative-log-likelihood of a normal distribution around each prediction. [levi2022]_
+
+    References
+    ----------
+    .. [levi2022] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in
+        Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540
+    """
+
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        scalings = np.zeros(uncs.shape[1])
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j].numpy()
+            uncs_j = uncs[:, j][mask_j].numpy()
+            targets_j = targets[:, j][mask_j].numpy()
+            errors = preds_j - targets_j
+
+            def objective(scaler_value: float):
+                scaled_vars = uncs_j * scaler_value**2
+                nll = np.log(2 * np.pi * scaled_vars) / 2 + errors**2 / (2 * scaled_vars)
+                return nll.sum()
+
+            zscore = errors / np.sqrt(uncs_j)
+            initial_guess = np.std(zscore)
+            scalings[j] = fmin(objective, x0=initial_guess, disp=False)
+
+        self.scalings = torch.tensor(scalings)
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        return
-
-
-@UncertaintyCalibratorRegistry.register("tscaling")
-class TScalingCalibrator(RegressionCalibrator):
-    def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
-        return self
-
-    def apply(self, uncs: Tensor) -> Tensor:
-        return
+        return uncs * self.scalings**2
 
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(RegressionCalibrator):
+    """Calibrate regression datasets using a method that does not depend on a particular probability function form.
+
+    It uses the "CRUDE" method as described in [zelikman2020]_. We implemented this method to be used with variance as the uncertainty.
+
+    Parameters
+    ----------
+    p: float
+        The target qunatile, :math:`p \in [0, 1]`
+
+    References
+    ----------
+    .. [zelikman2020] Zelikman, E.; Healy, C.; Zhou, S.; Avati, A. "CRUDE: calibrating regression uncertainty distributions
+        empirically." arXiv preprint arXiv:2005.12496. https://doi.org/10.48550/arXiv.2005.12496
+    """
+
+    def __init__(self, p: float):
+        super().__init__()
+        self.p = p
+        if not 0 <= self.p <= 1:
+            raise ValueError(f"arg `p` must be between 0 and 1. got: {p}.")
+
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        scalings = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
+            z = (preds_j - targets_j).abs() / (uncs_j).sqrt()
+            scaling = torch.quantile(z, self.p, interpolation="lower")
+            scalings.append(scaling)
+
+        self.scalings = torch.tensor(scalings)
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        return
+        return uncs * self.scalings**2
 
 
 @UncertaintyCalibratorRegistry.register("mve-weighting")
 class MVEWeightingCalibrator(RegressionCalibrator):
+    """Calibrate regression datasets that have ensembles of individual models that make variance predictions.
+
+    This method minimizes the negative log likelihood for the predictions versus the targets by applying
+    a weighted average across the variance predictions of the ensemble. [wang2021]_
+
+    References
+    ----------
+    .. [wang2021] Wang, D.; Yu, J.; Chen, L.; Li, X.; Jiang, H.; Chen, K.; Zheng, M.; Luo, X. "A hybrid framework
+        for improving uncertainty quantification in deep learning-based QSAR regression modeling." J. Cheminform.,
+        2021, 13, 1-17. https://doi.org/10.1186/s13321-021-00551-x
+    """
+
     def fit(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
+        """
+        Fit calibration method for the calibration data.
+
+        Parameters
+        ----------
+        preds: Tensor
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
+        uncs: Tensor
+            the predicted uncertainties of the shape of ``m x n x t``
+        targets: Tensor
+            a tensor of the shape ``n x t``
+        mask: Tensor
+            a tensor of the shape ``n x t`` indicating whether the given values should be used in the fitting
+
+        Returns
+        -------
+        self : MVEWeightingCalibrator
+            the fitted calibrator
+        """
+        scalings = []
+        for j in range(uncs.shape[2]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j].numpy()
+            uncs_j = uncs[:, mask_j, j].numpy()
+            targets_j = targets[:, j][mask_j].numpy()
+            errors = preds_j - targets_j
+
+            def objective(scaler_values: np.ndarray):
+                scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (m, 1)
+                scaled_vars = np.sum(uncs_j * scaler_values, axis=0, keepdims=False)
+                nll = np.log(2 * np.pi * scaled_vars) / 2 + errors**2 / (2 * scaled_vars)
+                return np.sum(nll)
+
+            initial_guess = np.ones(uncs_j.shape[0])
+            sol = fmin(objective, x0=initial_guess, disp=False)
+            scalings.append(torch.tensor(softmax(sol)))
+
+        self.scalings = torch.stack(scalings).t().unsqueeze(1)
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        return
+        """
+        Apply this calibrator to the input uncertainties.
+
+        Parameters
+        ----------
+        uncs: Tensor
+            a tensor containinig uncalibrated uncertainties of the shape of ``m x n x t``
+
+        Returns
+        -------
+        Tensor
+            the calibrated uncertainties of the shape of ``n x t``
+        """
+        return (uncs * self.scalings).sum(0)
 
 
 @UncertaintyCalibratorRegistry.register("conformal-regression")
 class RegressionConformalCalibrator(RegressionCalibrator):
     r"""Conformalize quantiles to make the interval :math:`[\hat{t}_{\alpha/2}(x),\hat{t}_{1-\alpha/2}(x)]` to have
-    approximately :math:`1-\alpha` coverage. [1]_
+    approximately :math:`1-\alpha` coverage. [angelopoulos2021]_
 
     .. math::
         s(x, y) &= \max \left\{ \hat{t}_{\alpha/2}(x) - y, y - \hat{t}_{1-\alpha/2}(x) \right\}
@@ -142,7 +255,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
 
     References
     ----------
-    .. [1] Angelopoulos, A.N.; Bates, S.; "A Gentle Introduction to Conformal Prediction and Distribution-Free
+    .. [angelopoulos2021] Angelopoulos, A.N.; Bates, S.; "A Gentle Introduction to Conformal Prediction and Distribution-Free
         Uncertainty Quantification." arXiv Preprint 2021, https://arxiv.org/abs/2107.07511
     """
 
@@ -171,8 +284,9 @@ class RegressionConformalCalibrator(RegressionCalibrator):
                 q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
-                warnings.warn(
-                    "The error rate (i.e., alpha) is smaller than 1 / (number of data + 1), so the 1 - alpha quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                logger.warning(
+                    "The error rate (i.e., `alpha`) is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, "
+                    "but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(calibration_scores, q_level, interpolation="higher")
             self.qhats.append(qhat)
@@ -236,9 +350,9 @@ class PlattCalibrator(BinaryClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     .. [platt1999] Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to
-    Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
+        Regularized Likelihood Methods." Adv. Large Margin Classif. 1999, 10 (3), 61–74.
     """
 
     def fit(
@@ -277,8 +391,6 @@ class PlattCalibrator(BinaryClassificationCalibrator):
             uncs_j = uncs[:, j][mask_j].numpy()
             targets_j = targets[:, j][mask_j].numpy()
 
-            # if is_atom_bond_targets: # Not yet implemented
-
             def objective(parameters):
                 a, b = parameters
                 scaled_uncs = expit(a * logit(uncs_j) + b)
@@ -307,7 +419,7 @@ class IsotonicCalibrator(BinaryClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     """
 
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:
@@ -515,8 +627,9 @@ class MulticlassConformalCalibrator(MulticlassClassificationCalibrator):
                 q_level = math.ceil((num_data + 1) * (1 - self.alpha)) / num_data
             else:
                 q_level = 1
-                warnings.warn(
-                    "`alpha` is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, but this only ensures that the coverage is trivially satisfied."
+                logger.warning(
+                    "`alpha` is smaller than `1 / (number of data + 1)`, so the `1 - alpha` quantile is set to 1, "
+                    "but this only ensures that the coverage is trivially satisfied."
                 )
             qhat = torch.quantile(scores_j, q_level, interpolation="higher")
             self.qhats.append(qhat)
@@ -563,7 +676,7 @@ class IsotonicMulticlassCalibrator(MulticlassClassificationCalibrator):
     References
     ----------
     .. [guo2017] Guo, C.; Pleiss, G.; Sun, Y.; Weinberger, K. Q. "On calibration of modern neural
-    networks". ICML, 2017. https://arxiv.org/abs/1706.04599
+        networks". ICML, 2017. https://arxiv.org/abs/1706.04599
     """
 
     def fit(self, uncs: Tensor, targets: Tensor, mask: Tensor) -> Self:

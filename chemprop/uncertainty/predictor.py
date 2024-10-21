@@ -34,30 +34,57 @@ class UncertaintyPredictor(ABC):
 
             * regression/binary classification: ``m x n x t``
 
-            * multiclass classification: ``m x n x t x c``, where ``m`` is the number of models, ``n`` is the number of inputs, ``t`` is the number of tasks, and ``c`` is the number of classes.
+            * multiclass classification: ``m x n x t x c``, where ``m`` is the number of models,
+            ``n`` is the number of inputs, ``t`` is the number of tasks, and ``c`` is the number of classes.
         uncs : Tensor
-            the predicted uncertainties, with shapes of ``n x t`` for regression
-            or binary classification, and ``n x t x c`` for multiclass classification.
+            the predicted uncertainties, with shapes of ``m' x n x t`` for regression,
+            or binary classification, and ``m' n x t x c`` for multiclass classification.
+
+        .. note::
+            The ``m`` and ``m'`` are different by definition. The ``m`` is the number of models,
+            while the ``m'`` is the number of uncertainty estimations. For example, if two MVE
+            or evidential models are provided, both ``m`` and ``m'`` are two. However, for an
+            ensemble of two models, ``m'`` would be one (even though ``m = 2``).
         """
 
 
 UncertaintyPredictorRegistry = ClassRegistry[UncertaintyPredictor]()
 
 
-@UncertaintyPredictorRegistry.register(None)
+@UncertaintyPredictorRegistry.register("none")
 class NoUncertaintyPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        predss = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            predss.append(preds)
+        return torch.stack(predss), None
 
 
 @UncertaintyPredictorRegistry.register("mve")
 class MVEPredictor(UncertaintyPredictor):
+    """
+    Class that estimates prediction means and variances (MVE). [nix1994]_
+
+    References
+    ----------
+    .. [nix1994] Nix, D. A.; Weigend, A. S. "Estimating the mean and variance of the target
+        probability distribution." Proceedings of 1994 IEEE International Conference on Neural
+        Networks, 1994 https://doi.org/10.1109/icnn.1994.374138
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        mves = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            mves.append(preds)
+        mves = torch.stack(mves, dim=0)
+        mean, var = mves.unbind(dim=-1)
+        return mean, var
 
 
 @UncertaintyPredictorRegistry.register("ensemble")
@@ -79,7 +106,7 @@ class EnsemblePredictor(UncertaintyPredictor):
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             ensemble_preds.append(preds)
         stacked_preds = torch.stack(ensemble_preds).float()
-        vars = torch.var(stacked_preds, dim=0, correction=0)
+        vars = torch.var(stacked_preds, dim=0, correction=0).unsqueeze(0)
         return stacked_preds, vars
 
 
@@ -88,42 +115,83 @@ class ClassPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        predss = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            predss.append(preds)
+        return torch.stack(predss), torch.stack(predss)
 
 
 @UncertaintyPredictorRegistry.register("evidential-total")
 class EvidentialTotalPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the total evidential uncertainty based on hyperparameters of
+    the evidential distribution [amini2020]_.
+
+    References
+    -----------
+    .. [amini2020] Amini, A.; Schwarting, W.; Soleimany, A.; Rus, D. "Deep Evidential Regression".
+        NeurIPS, 2020. https://arxiv.org/abs/1910.02600
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(-1)
+        total_uncs = (1 + 1 / v) * (beta / (alpha - 1))
+        return mean, total_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-epistemic")
 class EvidentialEpistemicPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the epistemic evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, v, alpha, beta = uncs.unbind(-1)
+        epistemic_uncs = (1 / v) * (beta / (alpha - 1))
+        return mean, epistemic_uncs
 
 
 @UncertaintyPredictorRegistry.register("evidential-aleatoric")
 class EvidentialAleatoricPredictor(UncertaintyPredictor):
+    """
+    Class that predicts the aleatoric evidential uncertainty based on hyperparameters of
+    the evidential distribution.
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        uncs = []
+        for model in models:
+            preds = torch.concat(trainer.predict(model, dataloader), 0)
+            uncs.append(preds)
+        uncs = torch.stack(uncs)
+        mean, _, alpha, beta = uncs.unbind(-1)
+        aleatoric_uncs = beta / (alpha - 1)
+        return mean, aleatoric_uncs
 
 
 @UncertaintyPredictorRegistry.register("dropout")
 class DropoutPredictor(UncertaintyPredictor):
     """
     A :class:`DropoutPredictor` creates a virtual ensemble of models via Monte Carlo dropout with
-    the provided model [1]_.
-
-    References
-    -----------
-    .. [1] arXiv:1506.02142 [stat.ML]
+    the provided model [gal2016]_.
 
     Parameters
     ----------
@@ -133,6 +201,11 @@ class DropoutPredictor(UncertaintyPredictor):
         The probability of dropping out units in the dropout layers. If unspecified,
         the training probability is used, which is prefered but not possible if the model was not
         trained with dropout (i.e. p=0).
+
+    References
+    -----------
+    .. [gal2016] Gal, Y.; Ghahramani, Z. "Dropout as a bayesian approximation: Representing model uncertainty in deep learning."
+        International conference on machine learning. PMLR, 2016. https://arxiv.org/abs/1506.02142
     """
 
     def __init__(self, ensemble_size: int, dropout: None | float = None):
@@ -142,23 +215,23 @@ class DropoutPredictor(UncertaintyPredictor):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        if len(models) != 1:
-            raise ValueError("Dropout method for uncertainty only takes exactly one model.")
-        model = next(iter(models))
-        self._setup_model(model)
-        individual_preds = []
+        meanss, varss = [], []
+        for model in models:
+            self._setup_model(model)
+            individual_preds = []
 
-        for _ in range(self.ensemble_size):
-            predss = trainer.predict(model, dataloader)
-            preds = torch.concat(predss, 0)
-            individual_preds.append(preds)
+            for _ in range(self.ensemble_size):
+                predss = trainer.predict(model, dataloader)
+                preds = torch.concat(predss, 0)
+                individual_preds.append(preds)
 
-        stacked_preds = torch.stack(individual_preds, dim=0).float()
-        means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
-        vars = torch.var(stacked_preds, dim=0, correction=0)
-
-        self._restore_model(model)
-        return means, vars
+            stacked_preds = torch.stack(individual_preds, dim=0).float()
+            means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
+            vars = torch.var(stacked_preds, dim=0, correction=0)
+            self._restore_model(model)
+            meanss.append(means)
+            varss.append(vars)
+        return torch.stack(meanss), torch.stack(varss)
 
     def _setup_model(self, model):
         model._predict_step = model.predict_step
@@ -193,12 +266,13 @@ class DropoutPredictor(UncertaintyPredictor):
             del module._p
 
 
-@UncertaintyPredictorRegistry.register("spectra-roundrobin")
-class RoundRobinSpectraPredictor(UncertaintyPredictor):
-    def __call__(
-        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
-    ) -> tuple[Tensor, Tensor]:
-        return
+# TODO: Add in v2.1.x
+# @UncertaintyPredictorRegistry.register("spectra-roundrobin")
+# class RoundRobinSpectraPredictor(UncertaintyPredictor):
+#     def __call__(
+#         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+#     ) -> tuple[Tensor, Tensor]:
+#         return
 
 
 @UncertaintyPredictorRegistry.register("classification-dirichlet")
@@ -258,6 +332,5 @@ class QuantileRegressionPredictor(UncertaintyPredictor):
             predss = trainer.predict(model, dataloader)
             individual_preds.append(torch.concat(predss, 0))
         stacked_preds = torch.stack(individual_preds).float()
-        mean = stacked_preds[..., 0]
-        interval = torch.mean(stacked_preds[..., 1], dim=0)
+        mean, interval = stacked_preds.unbind(2)
         return mean, interval

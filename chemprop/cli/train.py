@@ -281,9 +281,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
     extra_mpnn_args.add_argument(
-        "--no-batch-norm",
-        action="store_true",
-        help="Turn off batch normalization after aggregation",
+        "--batch-norm", action="store_true", help="Turn on batch normalization after aggregation"
     )
     extra_mpnn_args.add_argument(
         "--multiclass-num-classes",
@@ -844,7 +842,7 @@ def summarize(
         column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
 
         table_rows = [
-            [f"{k}"] + [f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])]
+            [f"{k}"] + [f"{class_counts[j, i]}/{class_fracs[j, i]:0.0%}" for j in range(y.shape[1])]
             for i, k in enumerate(classes)
         ]
 
@@ -1019,7 +1017,7 @@ def build_model(
         mp_block,
         agg,
         predictor,
-        not args.no_batch_norm,
+        args.batch_norm,
         metrics,
         args.warmup_epochs,
         args.init_lr,

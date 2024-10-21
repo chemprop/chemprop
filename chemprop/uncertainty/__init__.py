@@ -11,7 +11,6 @@ from .calibrator import (
     PlattCalibrator,
     RegressionCalibrator,
     RegressionConformalCalibrator,
-    TScalingCalibrator,
     UncertaintyCalibratorRegistry,
     ZelikmanCalibrator,
     ZScalingCalibrator,
@@ -31,7 +30,8 @@ from .evaluator import (
     SpearmanEvaluator,
     UncertaintyEvaluatorRegistry,
 )
-from .predictor import (
+from .predictor import (  # RoundRobinSpectraPredictor,
+    ClassificationDirichletPredictor,
     ClassPredictor,
     DropoutPredictor,
     EnsemblePredictor,
@@ -42,7 +42,6 @@ from .predictor import (
     MVEPredictor,
     NoUncertaintyPredictor,
     QuantileRegressionPredictor,
-    RoundRobinSpectraPredictor,
     UncertaintyPredictor,
     UncertaintyPredictorRegistry,
 )
@@ -60,7 +59,6 @@ __all__ = [
     "PlattCalibrator",
     "RegressionCalibrator",
     "RegressionConformalCalibrator",
-    "TScalingCalibrator",
     "UncertaintyCalibratorRegistry",
     "ZelikmanCalibrator",
     "ZScalingCalibrator",
@@ -79,6 +77,7 @@ __all__ = [
     "SpearmanEvaluator",
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
+    "ClassificationDirichletPredictor",
     "ClassPredictor",
     "MulticlassDirichletPredictor",
     "DropoutPredictor",
@@ -89,7 +88,7 @@ __all__ = [
     "MVEPredictor",
     "NoUncertaintyPredictor",
     "QuantileRegressionPredictor",
-    "RoundRobinSpectraPredictor",
+    # "RoundRobinSpectraPredictor",
     "UncertaintyPredictor",
     "UncertaintyPredictorRegistry",
 ]

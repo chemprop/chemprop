@@ -7,8 +7,11 @@ from chemprop.uncertainty.calibrator import (
     IsotonicMulticlassCalibrator,
     MulticlassConformalCalibrator,
     MultilabelConformalCalibrator,
+    MVEWeightingCalibrator,
     PlattCalibrator,
     RegressionConformalCalibrator,
+    ZelikmanCalibrator,
+    ZScalingCalibrator,
 )
 
 
@@ -99,6 +102,96 @@ def test_PlattCalibrator(
 
     torch.testing.assert_close(uncs1, cal_test_uncs)
     torch.testing.assert_close(uncs2, cal_test_uncs_with_training_targets)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        ),
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(2, 201, step=2, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1) / 4,
+        ),
+    ],
+)
+def test_ZScalingCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the ZScalingCalibrator
+    """
+    calibrator = ZScalingCalibrator()
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).pow(2),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        ),
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1) * 8100,
+        ),
+    ],
+)
+def test_ZelikmanCalibrator(cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs):
+    """
+    Testing the ZelikmanCalibrator
+    """
+    calibrator = ZelikmanCalibrator(p=0.9)
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
+
+
+@pytest.mark.parametrize(
+    "cal_preds,cal_uncs,cal_targets,cal_mask,test_uncs,cal_test_uncs",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).repeat(5, 1, 1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.arange(1, 101, dtype=float).unsqueeze(1).repeat(5, 1, 1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+        )
+    ],
+)
+def test_MVEWeightingCalibrator(
+    cal_preds, cal_uncs, cal_targets, cal_mask, test_uncs, cal_test_uncs
+):
+    """
+    Testing the MVEWeightingCalibrator
+    """
+    calibrator = MVEWeightingCalibrator()
+    calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+    uncs = calibrator.apply(test_uncs)
+
+    torch.testing.assert_close(uncs, cal_test_uncs)
 
 
 @pytest.mark.parametrize(
@@ -279,4 +372,5 @@ def test_IsotonicMulticlassCalibratorCalibrator(
     calibrator = IsotonicMulticlassCalibrator()
     calibrator.fit(cal_uncs, cal_targets, cal_mask)
     uncs = calibrator.apply(test_uncs)
+
     torch.testing.assert_close(uncs, cal_test_uncs)

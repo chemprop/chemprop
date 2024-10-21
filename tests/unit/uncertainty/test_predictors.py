@@ -5,7 +5,11 @@ from torch.utils.data import DataLoader
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
-from chemprop.uncertainty.predictor import DropoutPredictor, EnsemblePredictor
+from chemprop.uncertainty.predictor import (
+    DropoutPredictor,
+    EnsemblePredictor,
+    NoUncertaintyPredictor,
+)
 
 
 @pytest.fixture
@@ -29,6 +33,15 @@ def trainer():
     )
 
 
+def test_NoUncertaintyPredictor(data_dir, dataloader, trainer):
+    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
+    predictor = NoUncertaintyPredictor()
+    preds, uncs = predictor(dataloader, [model], trainer)
+
+    torch.testing.assert_close(preds, torch.tensor([[[2.25354], [2.23501]]]))
+    assert uncs is None
+
+
 def test_DropoutPredictor(data_dir, dataloader, trainer):
     model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
     predictor = DropoutPredictor(ensemble_size=2, dropout=0.1)
@@ -36,12 +49,6 @@ def test_DropoutPredictor(data_dir, dataloader, trainer):
 
     assert torch.all(uncs != 0)
     assert getattr(model.message_passing.dropout, "p", None) == 0.0
-
-
-def test_DropoutPredictor_wrong_n_models():
-    predictor = DropoutPredictor(ensemble_size=2)
-    with pytest.raises(ValueError):
-        predictor("mock_dataloader", ["mock_model", "mock_model"], "mock_trainer")
 
 
 def test_EnsemblePredictor(data_dir, dataloader, trainer):
@@ -56,7 +63,7 @@ def test_EnsemblePredictor(data_dir, dataloader, trainer):
     torch.testing.assert_close(
         preds, torch.tensor([[[2.25354], [2.23501]], [[0.09652], [0.08291]]])
     )
-    torch.testing.assert_close(uncs, torch.tensor([[1.16318], [1.15788]]))
+    torch.testing.assert_close(uncs, torch.tensor([[[1.16318], [1.15788]]]))
 
 
 def test_EnsemblePredictor_wrong_n_models():
