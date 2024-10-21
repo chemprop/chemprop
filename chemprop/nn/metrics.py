@@ -406,7 +406,9 @@ class _ClassificationMixin:
             .. important::
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
-        super().__init__(task_weights)
+        super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         super().update(preds[mask], targets[mask].long())
