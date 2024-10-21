@@ -76,7 +76,7 @@ class ChempropMetric(torchmetrics.Metric):
         weights: Tensor | None = None,
         lt_mask: Tensor | None = None,
         gt_mask: Tensor | None = None,
-    ):
+    ) -> None:
         """Calculate the mean loss function value given predicted and target values
 
         Parameters
@@ -95,11 +95,6 @@ class ChempropMetric(torchmetrics.Metric):
             a tensor of shape `b` or `b x 1` containing the per-sample weight
         lt_mask: Tensor
         gt_mask: Tensor
-
-        Returns
-        -------
-        Tensor
-            a scalar containing the fully reduced loss
         """
         mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
