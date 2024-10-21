@@ -22,12 +22,12 @@ from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,
-    NoUncertaintyPredictor,
+    NoUncertaintyEstimator,
     RegressionCalibrator,
     RegressionEvaluator,
     UncertaintyCalibratorRegistry,
+    UncertaintyEstimatorRegistry,
     UncertaintyEvaluatorRegistry,
-    UncertaintyPredictorRegistry,
 )
 from chemprop.utils import Factory
 
@@ -87,7 +87,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     unc_args.add_argument(
         "--uncertainty-method",
         default="none",
-        action=LookupAction(UncertaintyPredictorRegistry),
+        action=LookupAction(UncertaintyEstimatorRegistry),
         help="The method of calculating uncertainty.",
     )
     unc_args.add_argument(
@@ -240,8 +240,8 @@ def make_prediction_for_models(
         cal_loader = prepare_data_loader(args, multicomponent, True, format_kwargs)
         logger.info(f"calibration size: {len(cal_loader.dataset)}")
 
-    uncertainty_predictor = Factory.build(
-        UncertaintyPredictorRegistry[args.uncertainty_method],
+    uncertainty_estimator = Factory.build(
+        UncertaintyEstimatorRegistry[args.uncertainty_method],
         ensemble_size=args.dropout_sampling_size,
         dropout=args.uncertainty_dropout_p,
     )
@@ -250,11 +250,11 @@ def make_prediction_for_models(
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
-    test_individual_preds, test_individual_uncs = uncertainty_predictor(
+    test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
     )
     test_preds = torch.mean(test_individual_preds, dim=0)
-    if not isinstance(uncertainty_predictor, NoUncertaintyPredictor):
+    if not isinstance(uncertainty_estimator, NoUncertaintyEstimator):
         test_uncs = torch.mean(test_individual_uncs, dim=0)
     else:
         test_uncs = None
@@ -269,7 +269,7 @@ def make_prediction_for_models(
         cal_mask = torch.from_numpy(np.isfinite(cal_targets))
         cal_targets = np.nan_to_num(cal_targets, nan=0.0)
         cal_targets = torch.from_numpy(cal_targets)
-        cal_individual_preds, cal_individual_uncs = uncertainty_predictor(
+        cal_individual_preds, cal_individual_uncs = uncertainty_estimator(
             cal_loader, models, trainer
         )
         cal_preds = torch.mean(cal_individual_preds, dim=0)
