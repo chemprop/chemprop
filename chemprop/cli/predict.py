@@ -260,11 +260,6 @@ def make_prediction_for_models(
         test_uncs = None
 
     if args.calibration_method is not None:
-        if args.calibration_method == "platt":
-            raise NotImplementedError(
-                "`PlattCalibrator` requires the number of positive and negative training examples "
-                "to adjust the target probability values. This method is not currently exposed in the predict CLI."
-            )
         uncertainty_calibrator = Factory.build(
             UncertaintyCalibratorRegistry[args.calibration_method],
             p=args.calibration_interval_percentile / 100,

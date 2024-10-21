@@ -59,7 +59,8 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
-def test_predict_isotonic_quick(monkeypatch, data_path, model_path):
+@pytest.mark.parametrize("calibration_method", ["platt", "isotonic"])
+def test_predict_unc_quick(monkeypatch, data_path, model_path, calibration_method):
     args = [
         "chemprop",
         "predict",
@@ -72,7 +73,7 @@ def test_predict_isotonic_quick(monkeypatch, data_path, model_path):
         "--uncertainty-method",
         "classification",
         "--calibration-method",
-        "isotonic",
+        calibration_method,
         "--evaluation-methods",
         "nll-classification",
     ]
