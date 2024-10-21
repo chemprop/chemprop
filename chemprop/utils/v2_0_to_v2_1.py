@@ -34,7 +34,7 @@ class Unpickler(pickle.Unpickler):
 
 
 if __name__ == "__main__":
-    import v2_0_to_v2_1
+    import sys
 
-    model = torch.load(sys.argv[1], map_location="cpu", pickle_module=v2_0_to_v2_1)
+    model = torch.load(sys.argv[1], map_location="cpu", pickle_module=sys.modules[__name__])
     torch.save(model, sys.argv[2])
