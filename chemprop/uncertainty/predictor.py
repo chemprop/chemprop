@@ -277,6 +277,25 @@ class DropoutPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("classification-dirichlet")
 class ClassificationDirichletPredictor(UncertaintyPredictor):
+    """
+    A :class:`ClassificationDirichletPredictor` predicts an amount of 'evidence' for both the
+    negative class and the positive class as described in [sensoy2018]_. The class probabilities and
+    the uncertainty are calculated based on the evidence.
+
+    .. math::
+        S = \sum_{i=1}^K \alpha_i
+        p_i = \alpha_i / S
+        u = K / S
+
+    where :math:`K` is the number of classes, :math:`\alpha_i` is the evidence for class :math:`i`,
+    :math:`p_i` is the probability of class :math:`i`, and :math:`u` is the uncertainty.
+
+    References
+    ----------
+    .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -291,6 +310,25 @@ class ClassificationDirichletPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletPredictor(UncertaintyPredictor):
+    """
+    A :class:`MulticlassDirichletPredictor` predicts an amount of 'evidence' for each class as
+    described in [sensoy2018]_. The class probabilities and the uncertainty are calculated based on
+    the evidence.
+
+    .. math::
+        S = \sum_{i=1}^K \alpha_i
+        p_i = \alpha_i / S
+        u = K / S
+
+    where :math:`K` is the number of classes, :math:`\alpha_i` is the evidence for class :math:`i`,
+    :math:`p_i` is the probability of class :math:`i`, and :math:`u` is the uncertainty.
+
+    References
+    ----------
+    .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
