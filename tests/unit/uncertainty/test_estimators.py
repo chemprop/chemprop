@@ -5,12 +5,12 @@ from torch.utils.data import DataLoader
 
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
-from chemprop.uncertainty.predictor import (
-    ClassificationDirichletPredictor,
-    DropoutPredictor,
-    EnsemblePredictor,
-    MulticlassDirichletPredictor,
-    NoUncertaintyPredictor,
+from chemprop.uncertainty.estimator import (
+    ClassificationDirichletEstimator,
+    DropoutEstimator,
+    EnsembleEstimator,
+    MulticlassDirichletEstimator,
+    NoUncertaintyEstimator,
 )
 
 
@@ -35,32 +35,32 @@ def trainer():
     )
 
 
-def test_NoUncertaintyPredictor(data_dir, dataloader, trainer):
+def test_NoUncertaintyEstimator(data_dir, dataloader, trainer):
     model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
-    predictor = NoUncertaintyPredictor()
+    predictor = NoUncertaintyEstimator()
     preds, uncs = predictor(dataloader, [model], trainer)
 
     torch.testing.assert_close(preds, torch.tensor([[[2.25354], [2.23501]]]))
     assert uncs is None
 
 
-def test_DropoutPredictor(data_dir, dataloader, trainer):
+def test_DropoutEstimator(data_dir, dataloader, trainer):
     model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
-    predictor = DropoutPredictor(ensemble_size=2, dropout=0.1)
+    predictor = DropoutEstimator(ensemble_size=2, dropout=0.1)
     preds, uncs = predictor(dataloader, [model], trainer)
 
     assert torch.all(uncs != 0)
     assert getattr(model.message_passing.dropout, "p", None) == 0.0
 
 
-def test_EnsemblePredictor(data_dir, dataloader, trainer):
+def test_EnsembleEstimator(data_dir, dataloader, trainer):
     model1 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
     model2 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
 
     # Make the second model predict different values than the first
     model2.predictor.output_transform = torch.nn.Identity()
 
-    predictor = EnsemblePredictor()
+    predictor = EnsembleEstimator()
     preds, uncs = predictor(dataloader, [model1, model2], trainer)
 
     torch.testing.assert_close(
@@ -69,15 +69,15 @@ def test_EnsemblePredictor(data_dir, dataloader, trainer):
     torch.testing.assert_close(uncs, torch.tensor([[[1.16318], [1.15788]]]))
 
 
-def test_EnsemblePredictor_wrong_n_models():
-    predictor = EnsemblePredictor()
+def test_EnsembleEstimator_wrong_n_models():
+    predictor = EnsembleEstimator()
     with pytest.raises(ValueError):
         predictor("mock_dataloader", ["mock_model"], "mock_trainer")
 
 
-def test_ClassificationDirichletPredictor(data_dir, dataloader, trainer):
+def test_ClassificationDirichletEstimator(data_dir, dataloader, trainer):
     model = MPNN.load_from_file(data_dir / "example_model_v2_classification_dirichlet_mol.pt")
-    predictor = ClassificationDirichletPredictor()
+    predictor = ClassificationDirichletEstimator()
     preds, uncs = predictor(dataloader, [model], trainer)
 
     torch.testing.assert_close(
@@ -94,9 +94,9 @@ def test_ClassificationDirichletPredictor(data_dir, dataloader, trainer):
     )
 
 
-def test_MulticlassDirichletPredictor(data_dir, dataloader, trainer):
+def test_MulticlassDirichletEstimator(data_dir, dataloader, trainer):
     model = MPNN.load_from_file(data_dir / "example_model_v2_multiclass_dirichlet_mol.pt")
-    predictor = MulticlassDirichletPredictor()
+    predictor = MulticlassDirichletEstimator()
     preds, uncs = predictor(dataloader, [model], trainer)
 
     torch.testing.assert_close(
