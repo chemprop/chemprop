@@ -329,6 +329,8 @@ def make_prediction_for_models(
 
 
 def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
+    unc_columns = [f"{col}_unc" for col in output_columns]
+
     if isinstance(model.predictor, MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
@@ -345,7 +347,6 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     df_test[output_columns] = test_preds
 
     if args.uncertainty_method not in ["none", "classification"]:
-        unc_columns = [f"{col}_unc" for col in output_columns]
         df_test[unc_columns] = np.round(test_uncs, 6)
 
     if output_path.suffix == ".pkl":
@@ -397,6 +398,7 @@ def save_individual_predictions(
     df_test[output_columns] = test_individual_preds
 
     if args.uncertainty_method not in ["none", "classification"]:
+        m, n, t = test_individual_uncs.shape
         test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
         df_test[unc_columns] = np.round(test_individual_uncs, 6)
 
