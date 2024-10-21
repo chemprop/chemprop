@@ -103,5 +103,5 @@ def test_MulticlassDirichletPredictor(data_dir, dataloader, trainer):
         preds, torch.tensor([[[[0.906426, 0.046787, 0.046787]], [[0.925395, 0.037303, 0.037303]]]])
     )
     torch.testing.assert_close(
-        uncs, torch.tensor([[[[0.140361, 0.140361, 0.140361]], [[0.111908, 0.111908, 0.111908]]]])
+        uncs, torch.tensor([[[0.140361], [0.111908]]])
     )
