@@ -261,9 +261,7 @@ class BinaryMCCLoss(ChempropMetric):
         task_weights :  ArrayLike, default=1.0
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
-        super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        super().__init__(task_weights)
 
         self.add_state("TP", default=[], dist_reduce_fx="cat")
         self.add_state("FP", default=[], dist_reduce_fx="cat")
@@ -333,9 +331,7 @@ class MulticlassMCCLoss(ChempropMetric):
         task_weights :  ArrayLike, default=1.0
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
-        super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        super().__init__(task_weights)
 
         self.add_state("p", default=[], dist_reduce_fx="cat")
         self.add_state("t", default=[], dist_reduce_fx="cat")
@@ -410,9 +406,7 @@ class ChempropClassificationMixin:
             .. important::
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
-        super().__init__()
-        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
-        self.register_buffer("task_weights", task_weights)
+        super().__init__(task_weights)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         super().update(preds[mask], targets[mask].long())
