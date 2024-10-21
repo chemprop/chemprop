@@ -143,7 +143,7 @@ class RMSE(MSE):
         return (self.total_loss / self.num_samples).sqrt()
 
 
-class BoundedMixin:
+class _BoundedMixin:
     def _calc_unreduced_loss(self, preds, targets, mask, weights, lt_mask, gt_mask) -> Tensor:
         preds = torch.where((preds < targets) & lt_mask, targets, preds)
         preds = torch.where((preds > targets) & gt_mask, targets, preds)
@@ -153,19 +153,19 @@ class BoundedMixin:
 
 @LossFunctionRegistry.register("bounded-mse")
 @MetricRegistry.register("bounded-mse")
-class BoundedMSE(BoundedMixin, MSE):
+class BoundedMSE(_BoundedMixin, MSE):
     pass
 
 
 @LossFunctionRegistry.register("bounded-mae")
 @MetricRegistry.register("bounded-mae")
-class BoundedMAE(BoundedMixin, MAE):
+class BoundedMAE(_BoundedMixin, MAE):
     pass
 
 
 @LossFunctionRegistry.register("bounded-rmse")
 @MetricRegistry.register("bounded-rmse")
-class BoundedRMSE(BoundedMixin, RMSE):
+class BoundedRMSE(_BoundedMixin, RMSE):
     pass
 
 
@@ -397,7 +397,7 @@ class MulticlassMCCMetric(MulticlassMCCLoss):
         return 1 - super().compute()
 
 
-class ChempropClassificationMixin:
+class _ClassificationMixin:
     def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
         """
         Parameters
@@ -413,26 +413,24 @@ class ChempropClassificationMixin:
 
 
 @MetricRegistry.register("roc")
-class BinaryAUROC(ChempropClassificationMixin, torchmetrics.classification.BinaryAUROC):
+class BinaryAUROC(_ClassificationMixin, torchmetrics.classification.BinaryAUROC):
     pass
 
 
 @MetricRegistry.register("prc")
-class BinaryAUPRC(
-    ChempropClassificationMixin, torchmetrics.classification.BinaryPrecisionRecallCurve
-):
+class BinaryAUPRC(_ClassificationMixin, torchmetrics.classification.BinaryPrecisionRecallCurve):
     def compute(self) -> Tensor:
         p, r, _ = super().compute()
         return auc(r, p)
 
 
 @MetricRegistry.register("accuracy")
-class BinaryAccuracy(ChempropClassificationMixin, torchmetrics.classification.BinaryAccuracy):
+class BinaryAccuracy(_ClassificationMixin, torchmetrics.classification.BinaryAccuracy):
     pass
 
 
 @MetricRegistry.register("f1")
-class BinaryF1Score(ChempropClassificationMixin, torchmetrics.classification.BinaryF1Score):
+class BinaryF1Score(_ClassificationMixin, torchmetrics.classification.BinaryF1Score):
     pass
 
 
