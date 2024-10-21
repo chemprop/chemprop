@@ -79,8 +79,7 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 
 **Classification**:
 
- .. * :code:`platt`
-
+ * :code:`platt` Uses a linear scaling before the sigmoid function in prediction to minimize the negative log likelihood of the predictions. (https://arxiv.org/abs/1706.04599)
  * :code:`isotonic` Fits an isotonic regression model to the predictions. Prediction outputs are transformed using a stepped histogram-style to match the empirical probability observed in the calibration data. Number and size of the histogram bins are procedurally decided. Histogram bins are wider in the regions of the model output that are less reliable in ordering confidence. (https://arxiv.org/abs/1706.04599)
  * :code:`conformal-multilabel` Generates a pair of sets of labels :math:`C_{in} \subset C_{out}` such that the true set of labels :math:`S` satisfies the property :math:`C_{in} \subset S \subset C_{out}` with probability at least :math:`1-\alpha`. The desired error rate :math:`\alpha` can be controlled with the parameter :code:`--conformal-alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2004.10181)
 
