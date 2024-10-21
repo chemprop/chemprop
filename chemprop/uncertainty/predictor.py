@@ -340,12 +340,14 @@ class MulticlassDirichletPredictor(UncertaintyPredictor):
             self._restore_model(model)
             preds.append(output[..., :-1])
             uncs.append(output[..., -1])
+            preds = torch.stack(preds, 0)
+            uncs = torch.stack(uncs, 0).unsqueeze(-1).repeat(1, 1, 1, preds.shape[-1])
 
-        return torch.stack(preds, 0), torch.stack(uncs, 0)
+        return preds, uncs
 
     def _setup_model(self, model):
         model.predictor._forward = model.predictor.forward
-        model.predictor.forward = self._forward
+        model.predictor.forward = self._forward.__get__(model.predictor, model.predictor.__class__)
 
     def _restore_model(self, model):
         model.predictor.forward = model.predictor._forward
