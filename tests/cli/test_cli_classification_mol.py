@@ -19,6 +19,11 @@ def model_path(data_dir):
     return str(data_dir / "example_model_v2_classification_mol.pt")
 
 
+@pytest.fixture
+def dirichlet_model_path(data_dir):
+    return str(data_dir / "example_model_v2_classification_dirichlet_mol.pt")
+
+
 def test_train_quick(monkeypatch, data_path):
     base_args = [
         "chemprop",
@@ -53,6 +58,23 @@ def test_train_quick(monkeypatch, data_path):
 
 def test_predict_quick(monkeypatch, data_path, model_path):
     args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_dirichlet_quick(monkeypatch, data_path, dirichlet_model_path):
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        dirichlet_model_path,
+        "--uncertainty-method",
+        "classification-dirichlet",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
