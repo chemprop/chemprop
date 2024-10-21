@@ -88,7 +88,7 @@ Uncertainty predictions may be calibrated to improve their performance on new pr
 **Multiclass**:
 
  * :code:`conformal-multiclass` Generates a set of possible classes for each prediction such that the true class has probability :math:`1-\alpha` of falling in the set. The desired error rate :math:`\alpha` can be controlled with the parameter :code:`--conformal-alpha <float>` which is set by default to 0.1. Set generated using the basic conformal method. (https://arxiv.org/abs/2107.07511)
- * :code:`conformal-adaptive` Similar to conformal-multiclass, this method generates a set of possible classes but uses an adaptive conformal method. The desired error rate :math:`\alpha` can be controlled with the parameter `--conformal_alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2107.07511)
+ * :code:`conformal-adaptive` Similar to conformal-multiclass, this method generates a set of possible classes but uses an adaptive conformal method. The desired error rate :math:`\alpha` can be controlled with the parameter :code:`--conformal_alpha <float>` which is set by default to 0.1. (https://arxiv.org/abs/2107.07511)
  * :code:`isotonic-multiclass` Calibrate multiclass classification datasets using isotonic regression. It uses a one-vs-all aggregation scheme to extend isotonic regression from binary to multiclass classifiers. (https://arxiv.org/abs/1706.04599)
 
 Uncertainty Evaluation Metrics
