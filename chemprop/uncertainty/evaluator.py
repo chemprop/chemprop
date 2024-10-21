@@ -20,8 +20,8 @@ class RegressionEvaluator(ABC):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties of the shape of ``n x t``
         targets: Tensor
@@ -80,8 +80,8 @@ class CalibrationAreaEvaluator(RegressionEvaluator):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties (variance) of the shape of ``n x t``
         targets: Tensor
@@ -122,13 +122,15 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
     .. math::
         \mathrm{ENCE} = \frac{1}{N} \sum_{i=1}^{N} \frac{|\mathrm{RMV}_i - \mathrm{RMSE}_i|}{\mathrm{RMV}_i}
 
-    where :math:`N` is the number of bins, :math:`\mathrm{RMV}_i` is the root of the mean uncertainty over the :math:`i`-th bin and :math:`\mathrm{RMSE}_i`
-    is the root mean square error over the :math:`i`-th bin. This discrepancy is further normalized by the
-    uncertainty over the bin, :math:`\mathrm{RMV}_i`, because the error is expected to be naturally higher as the uncertainty increases.
+    where :math:`N` is the number of bins, :math:`\mathrm{RMV}_i` is the root of the mean uncertainty over the
+    :math:`i`-th bin and :math:`\mathrm{RMSE}_i` is the root mean square error over the :math:`i`-th bin. This
+    discrepancy is further normalized by the uncertainty over the bin, :math:`\mathrm{RMV}_i`, because the error
+    is expected to be naturally higher as the uncertainty increases.
 
     References
     ----------
-    .. [1] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks." Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540.
+    .. [1] Levi, D.; Gispan, L.; Giladi, N.; Fetaya, E. "Evaluating and Calibrating Uncertainty Prediction in Regression Tasks."
+        Sensors, 2022, 22(15), 5540. https://www.mdpi.com/1424-8220/22/15/5540
     """
 
     def evaluate(
@@ -139,8 +141,8 @@ class ExpectedNormalizedErrorEvaluator(RegressionEvaluator):
         Parameters
         ----------
         preds: Tensor
-            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is the number of input
-            molecules/reactions, and ``t`` is the number of tasks.
+            the predictions for regression tasks. It is a tensor of the shape of ``n x t``, where ``n`` is
+            the number of input molecules/reactions, and ``t`` is the number of tasks.
         uncs: Tensor
             the predicted uncertainties (variance) of the shape of ``n x t``
         targets: Tensor
