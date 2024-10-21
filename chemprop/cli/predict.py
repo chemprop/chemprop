@@ -346,7 +346,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
 
     if args.uncertainty_method not in ["none", "classification"]:
         unc_columns = [f"{col}_unc" for col in output_columns]
-        df_test[unc_columns] = test_uncs
+        df_test[unc_columns] = np.round(test_uncs, 6)
 
     if output_path.suffix == ".pkl":
         df_test = df_test.reset_index(drop=True)
@@ -398,7 +398,7 @@ def save_individual_predictions(
 
     if args.uncertainty_method not in ["none", "classification"]:
         test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
-        df_test[unc_columns] = test_individual_uncs
+        df_test[unc_columns] = np.round(test_individual_uncs, 6)
 
     output_path = output_path.parent / Path(
         str(args.output.stem) + "_individual" + str(output_path.suffix)
