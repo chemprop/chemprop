@@ -110,10 +110,11 @@ Our code supports several methods of splitting data into train, validation, and 
 
 Other supported splitting methods include :code:`cv`, :code:`cv_no_val`, :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
 
-Cross Validation
-^^^^^^^^^^^^^^^^
+Replicates
+^^^^^^^^^^
 
-k-fold cross-validation can be run by specifying :code:`--num-folds <k>` (default 1, i.e. no cross-validation).
+Repeat random trials (i.e. replicates) run by specifying :code:`--num-replicates <n>` (default 1, i.e. no replicates).
+This is analogous to the 'outer loop' of nested cross validation but at a lower cost, suitable for deep learning applications.
 
 Ensembling
 ^^^^^^^^^^
@@ -153,14 +154,14 @@ The loss function can be specified using the :code:`--loss-function <function>` 
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`binary-dirichlet` Binary Dirichlet 
+ * :code:`dirichlet` Dirichlet 
 
 
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
- * :code:`multiclass-dirichlet` Multiclass Dirichlet
+ * :code:`dirichlet` Dirichlet
 
 **Spectral**:
 

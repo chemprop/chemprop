@@ -37,8 +37,7 @@ class UncertaintyPredictor(ABC):
             * multiclass classification: ``m x n x t x c``, where ``m`` is the number of models,
             ``n`` is the number of inputs, ``t`` is the number of tasks, and ``c`` is the number of classes.
         uncs : Tensor
-            the predicted uncertainties, with shapes of ``m' x n x t`` for regression,
-            or binary classification, and ``m' n x t x c`` for multiclass classification.
+            the predicted uncertainties, with shapes of ``m' x n x t``.
 
         .. note::
             The ``m`` and ``m'`` are different by definition. The ``m`` is the number of models,
@@ -277,6 +276,25 @@ class DropoutPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("classification-dirichlet")
 class ClassificationDirichletPredictor(UncertaintyPredictor):
+    """
+    A :class:`ClassificationDirichletPredictor` predicts an amount of 'evidence' for both the
+    negative class and the positive class as described in [sensoy2018]_. The class probabilities and
+    the uncertainty are calculated based on the evidence.
+
+    .. math::
+        S = \sum_{i=1}^K \alpha_i
+        p_i = \alpha_i / S
+        u = K / S
+
+    where :math:`K` is the number of classes, :math:`\alpha_i` is the evidence for class :math:`i`,
+    :math:`p_i` is the probability of class :math:`i`, and :math:`u` is the uncertainty.
+
+    References
+    ----------
+    .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
@@ -291,10 +309,56 @@ class ClassificationDirichletPredictor(UncertaintyPredictor):
 
 @UncertaintyPredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletPredictor(UncertaintyPredictor):
+    """
+    A :class:`MulticlassDirichletPredictor` predicts an amount of 'evidence' for each class as
+    described in [sensoy2018]_. The class probabilities and the uncertainty are calculated based on
+    the evidence.
+
+    .. math::
+        S = \sum_{i=1}^K \alpha_i
+        p_i = \alpha_i / S
+        u = K / S
+
+    where :math:`K` is the number of classes, :math:`\alpha_i` is the evidence for class :math:`i`,
+    :math:`p_i` is the probability of class :math:`i`, and :math:`u` is the uncertainty.
+
+    References
+    ----------
+    .. [sensoy2018] Sensoy, M.; Kaplan, L.; Kandemir, M. "Evidential deep learning to quantify
+        classification uncertainty." NeurIPS, 2018, 31. https://doi.org/10.48550/arXiv.1806.01768
+    """
+
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        return
+        preds = []
+        uncs = []
+        for model in models:
+            self._setup_model(model)
+            output = torch.concat(trainer.predict(model, dataloader), 0)
+            self._restore_model(model)
+            preds.append(output[..., :-1])
+            uncs.append(output[..., -1])
+        preds = torch.stack(preds, 0)
+        uncs = torch.stack(uncs, 0)
+
+        return preds, uncs
+
+    def _setup_model(self, model):
+        model.predictor._forward = model.predictor.forward
+        model.predictor.forward = self._forward.__get__(model.predictor, model.predictor.__class__)
+
+    def _restore_model(self, model):
+        model.predictor.forward = model.predictor._forward
+        del model.predictor._forward
+
+    def _forward(self, Z: Tensor) -> Tensor:
+        alpha = self.train_step(Z)
+
+        u = alpha.shape[2] / alpha.sum(-1, keepdim=True)
+        Y = alpha / alpha.sum(-1, keepdim=True)
+
+        return torch.concat([Y, u], -1)
 
 
 @UncertaintyPredictorRegistry.register("quantile-regression")

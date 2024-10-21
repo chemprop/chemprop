@@ -59,6 +59,11 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
+_CV_REMOVAL_ERROR = (
+    "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
+)
+
+
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
     HELP = "Train a chemprop model."
@@ -318,6 +323,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off caching the featurized ``MolGraph`` s at the beginning of training",
     )
+    train_data_args.add_argument(
+        "--splits-column",
+        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
+    )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
     #     "--spectra-phase-mask-path",
@@ -434,13 +443,8 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         default=0,
         help="Specify the index of the key molecule used for splitting when multiple molecules are present and constrained split_type is used (e.g., ``scaffold_balanced`` or ``random_with_repeated_smiles``). Note that this index begins with zero for the first molecule.",
     )
-    split_args.add_argument(
-        "-k",
-        "--num-folds",
-        type=int,
-        default=1,
-        help="Number of folds when performing cross validation",
-    )
+    split_args.add_argument("--num-replicates", type=int, default=1, help="Number of replicates.")
+    split_args.add_argument("-k", "--num-folds", help=_CV_REMOVAL_ERROR)
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
@@ -451,15 +455,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or formatted strings (e.g. [0, 1, 2, 4] or '0-2,4')",
     )
-    train_data_args.add_argument(
-        "--splits-column",
-        help="Name of the column in the input CSV file containing ``train``, ``val``, or ``test`` for each row",
-    )
     split_args.add_argument(
         "--data-seed",
         type=int,
         default=0,
-        help="Specify the random seed to use when splitting data into train/val/test sets. When ``num_folds`` > 1, the first fold uses this seed and all subsequent folds add 1 to the seed (also used for shuffling data in ``build_dataloader`` when ``shuffle`` is True).",
+        help="Specify the random seed to use when splitting data into train/val/test sets. When ``--num-replicates`` > 1, the first replicate uses this seed and all subsequent replicates add 1 to the seed (also used for shuffling data in ``build_dataloader`` when ``shuffle`` is True).",
     )
 
     parser.add_argument(
@@ -482,6 +482,9 @@ def process_train_args(args: Namespace) -> Namespace:
 def validate_train_args(args):
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
+    if args.num_folds is not None:  # i.e. user-specified
+        raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
 
     if args.data_path.suffix not in [".csv"]:
         raise ArgumentError(
@@ -768,17 +771,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         else:
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
-            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_folds
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
-        if not (
-            SplitType.get(args.split) == SplitType.CV_NO_VAL
-            or SplitType.get(args.split) == SplitType.CV
-        ):
-            train_indices, val_indices, test_indices = (
-                [train_indices],
-                [val_indices],
-                [test_indices],
-            )
 
     train_data, val_data, test_data = split_data_by_indices(
         all_data, train_indices, val_indices, test_indices
@@ -1263,11 +1257,11 @@ def main(args):
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
 
-    for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
-        if args.num_folds == 1:
+    for replicate_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
+        if args.num_replicates == 1:
             output_dir = args.output_dir
         else:
-            output_dir = args.output_dir / f"fold_{fold_idx}"
+            output_dir = args.output_dir / f"replicate_{replicate_idx}"
 
         output_dir.mkdir(exist_ok=True, parents=True)
 

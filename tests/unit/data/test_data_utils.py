@@ -52,9 +52,9 @@ def test_seed0(mol_data):
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
         train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=0), True
     )
-    assert set(train) == set(train_astartes)
-    assert set(val) == set(val_astartes)
-    assert set(test) == set(test_astartes)
+    assert set(train[0]) == set(train_astartes)
+    assert set(val[0]) == set(val_astartes)
+    assert set(test[0]) == set(test_astartes)
 
 
 def test_seed100(mol_data):
@@ -66,9 +66,9 @@ def test_seed100(mol_data):
     train_astartes, val_astartes, test_astartes = _unpack_astartes_result(
         train_val_test_split(np.arange(len(mol_data)), sampler="random", random_state=100), True
     )
-    assert set(train) == set(train_astartes)
-    assert set(val) == set(val_astartes)
-    assert set(test) == set(test_astartes)
+    assert set(train[0]) == set(train_astartes)
+    assert set(val[0]) == set(val_astartes)
+    assert set(test[0]) == set(test_astartes)
 
 
 def test_split_4_4_2(mol_data):
@@ -85,15 +85,15 @@ def test_split_4_4_2(mol_data):
         ),
         True,
     )
-    assert set(train) == set(train_astartes)
-    assert set(val) == set(val_astartes)
-    assert set(test) == set(test_astartes)
+    assert set(train[0]) == set(train_astartes)
+    assert set(val[0]) == set(val_astartes)
+    assert set(test[0]) == set(test_astartes)
 
 
 def test_split_empty_validation_set(mol_data):
     """Testing the random split with an empty validation set"""
     train, val, test = make_split_indices(mols=mol_data, sizes=(0.4, 0, 0.6))
-    assert set(val) == set([])
+    assert set(val[0]) == set([])
 
 
 def test_random_split(mol_data_with_repeated_mols):
@@ -106,7 +106,7 @@ def test_random_split(mol_data_with_repeated_mols):
         mols=mol_data_with_repeated_mols, sizes=(0.4, 0.4, 0.2), split=split_type
     )
 
-    assert train == [2, 1]
+    assert train[0] == [2, 1]
 
 
 def test_repeated_smiles(mol_data_with_repeated_mols):
@@ -119,8 +119,8 @@ def test_repeated_smiles(mol_data_with_repeated_mols):
         mols=mol_data_with_repeated_mols, sizes=(0.8, 0.0, 0.2), split=split_type
     )
 
-    assert train == [4, 1, 0, 5]
-    assert test == [2, 3]
+    assert train[0] == [4, 1, 0, 5]
+    assert test[0] == [2, 3]
 
 
 def test_kennard_stone(mol_data):
@@ -131,7 +131,7 @@ def test_kennard_stone(mol_data):
     split_type = "kennard_stone"
     train, val, test = make_split_indices(mols=mol_data, sizes=(0.4, 0.4, 0.2), split=split_type)
 
-    assert set(test) == set([9, 5])
+    assert set(test[0]) == set([9, 5])
 
 
 def test_kmeans(mol_data):
@@ -142,7 +142,7 @@ def test_kmeans(mol_data):
     split_type = "kmeans"
     train, val, test = make_split_indices(mols=mol_data, sizes=(0.5, 0.0, 0.5), split=split_type)
 
-    assert train == [0, 1, 2, 3, 7, 8, 9]
+    assert train[0] == [0, 1, 2, 3, 7, 8, 9]
 
 
 def test_scaffold(molecule_dataset_with_rings):
@@ -155,4 +155,4 @@ def test_scaffold(molecule_dataset_with_rings):
         mols=molecule_dataset_with_rings, sizes=(0.3, 0.3, 0.3), split=split_type
     )
 
-    assert train == [0, 1, 2]
+    assert train[0] == [0, 1, 2]
