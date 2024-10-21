@@ -12,6 +12,7 @@ from chemprop.uncertainty.predictor import (
     EvidentialEpistemicPredictor,
     EvidentialTotalPredictor,
     MVEPredictor,
+    NoUncertaintyPredictor,
 )
 
 
@@ -34,6 +35,15 @@ def trainer():
         accelerator="cpu",
         devices=1,
     )
+
+
+def test_NoUncertaintyPredictor(data_dir, dataloader, trainer):
+    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
+    predictor = NoUncertaintyPredictor()
+    preds, uncs = predictor(dataloader, [model], trainer)
+
+    torch.testing.assert_close(preds, torch.tensor([[[2.25354], [2.23501]]]))
+    assert uncs is None
 
 
 def test_DropoutPredictor(data_dir, dataloader, trainer):

@@ -30,7 +30,7 @@ from .evaluator import (
     SpearmanEvaluator,
     UncertaintyEvaluatorRegistry,
 )
-from .predictor import (
+from .predictor import (  # RoundRobinSpectraPredictor,
     ClassificationDirichletPredictor,
     ClassPredictor,
     DropoutPredictor,
@@ -42,7 +42,6 @@ from .predictor import (
     MVEPredictor,
     NoUncertaintyPredictor,
     QuantileRegressionPredictor,
-    RoundRobinSpectraPredictor,
     UncertaintyPredictor,
     UncertaintyPredictorRegistry,
 )
@@ -78,8 +77,8 @@ __all__ = [
     "SpearmanEvaluator",
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
-    "ClassPredictor",
     "ClassificationDirichletPredictor",
+    "ClassPredictor",
     "MulticlassDirichletPredictor",
     "DropoutPredictor",
     "EnsemblePredictor",
@@ -89,7 +88,7 @@ __all__ = [
     "MVEPredictor",
     "NoUncertaintyPredictor",
     "QuantileRegressionPredictor",
-    "RoundRobinSpectraPredictor",
+    # "RoundRobinSpectraPredictor",
     "UncertaintyPredictor",
     "UncertaintyPredictorRegistry",
 ]
