@@ -15,6 +15,21 @@ from .calibrator import (
     ZelikmanCalibrator,
     ZScalingCalibrator,
 )
+from .estimator import (  # RoundRobinSpectraEstimator,
+    ClassEstimator,
+    ClassificationDirichletEstimator,
+    DropoutEstimator,
+    EnsembleEstimator,
+    EvidentialAleatoricEstimator,
+    EvidentialEpistemicEstimator,
+    EvidentialTotalEstimator,
+    MulticlassDirichletEstimator,
+    MVEEstimator,
+    NoUncertaintyEstimator,
+    QuantileRegressionEstimator,
+    UncertaintyEstimator,
+    UncertaintyEstimatorRegistry,
+)
 from .evaluator import (
     BinaryClassificationEvaluator,
     CalibrationAreaEvaluator,
@@ -29,21 +44,6 @@ from .evaluator import (
     RegressionEvaluator,
     SpearmanEvaluator,
     UncertaintyEvaluatorRegistry,
-)
-from .estimator import (  # RoundRobinSpectraEstimator,
-    ClassificationDirichletEstimator,
-    ClassEstimator,
-    DropoutEstimator,
-    EnsembleEstimator,
-    EvidentialAleatoricEstimator,
-    EvidentialEpistemicEstimator,
-    EvidentialTotalEstimator,
-    MulticlassDirichletEstimator,
-    MVEEstimator,
-    NoUncertaintyEstimator,
-    QuantileRegressionEstimator,
-    UncertaintyEstimator,
-    UncertaintyEstimatorRegistry,
 )
 
 __all__ = [
