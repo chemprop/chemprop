@@ -20,3 +20,4 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     convert_v1_to_v2
     active_learning
     transfer_learning
+    uncertainty
