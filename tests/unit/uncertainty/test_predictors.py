@@ -6,8 +6,10 @@ from torch.utils.data import DataLoader
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
 from chemprop.uncertainty.predictor import (
+    ClassificationDirichletPredictor,
     DropoutPredictor,
     EnsemblePredictor,
+    MulticlassDirichletPredictor,
     NoUncertaintyPredictor,
 )
 
@@ -55,6 +57,7 @@ def test_EnsemblePredictor(data_dir, dataloader, trainer):
     model1 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
     model2 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
 
+    # Make the second model predict different values than the first
     model2.predictor.output_transform = torch.nn.Identity()
 
     predictor = EnsemblePredictor()
@@ -70,3 +73,33 @@ def test_EnsemblePredictor_wrong_n_models():
     predictor = EnsemblePredictor()
     with pytest.raises(ValueError):
         predictor("mock_dataloader", ["mock_model"], "mock_trainer")
+
+
+def test_ClassificationDirichletPredictor(data_dir, dataloader, trainer):
+    model = MPNN.load_from_file(data_dir / "example_model_v2_classification_dirichlet_mol.pt")
+    predictor = ClassificationDirichletPredictor()
+    preds, uncs = predictor(dataloader, [model], trainer)
+
+    torch.testing.assert_close(
+        preds,
+        torch.tensor(
+            [[[0.085077, 0.085050, 0.086104, 0.138729], [0.069522, 0.069501, 0.070306, 0.116051]]]
+        ),
+    )
+    torch.testing.assert_close(
+        uncs,
+        torch.tensor(
+            [[[0.170140, 0.170079, 0.172037, 0.277232], [0.139044, 0.138999, 0.140591, 0.232073]]]
+        ),
+    )
+
+
+def test_MulticlassDirichletPredictor(data_dir, dataloader, trainer):
+    model = MPNN.load_from_file(data_dir / "example_model_v2_multiclass_dirichlet_mol.pt")
+    predictor = MulticlassDirichletPredictor()
+    preds, uncs = predictor(dataloader, [model], trainer)
+
+    torch.testing.assert_close(
+        preds, torch.tensor([[[[0.906426, 0.046787, 0.046787]], [[0.925395, 0.037303, 0.037303]]]])
+    )
+    torch.testing.assert_close(uncs, torch.tensor([[[0.140361], [0.111908]]]))
