@@ -499,3 +499,6 @@ def test_Wasserstein(
     wasserstein_loss = Wasserstein(task_weights=task_weights, threshold=threshold)
     loss = wasserstein_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
+
+
+# TODO: Add quantile loss tests
