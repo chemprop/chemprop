@@ -1194,12 +1194,12 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
                 preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
                 targets_slice = torch.from_numpy(targets[:, i : i + 1])
             else:
-                preds_slice = torch.from_numpy(preds[:, i])
-                targets_slice = torch.from_numpy(targets[:, i])
+                preds_slice = torch.from_numpy(preds[:, i : i + 1])
+                targets_slice = torch.from_numpy(targets[:, i : i + 1])
             preds_loss = metric(
                 preds_slice,
                 targets_slice,
-                mask[:, i],
+                mask[:, i : i + 1],
                 weights,
                 lt_mask[:, i] if lt_mask is not None else None,
                 gt_mask[:, i] if gt_mask is not None else None,

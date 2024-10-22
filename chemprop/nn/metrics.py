@@ -348,13 +348,9 @@ class MulticlassMCCLoss(ChempropMetric):
         weights: Tensor | None = None,
         *args,
     ):
-        mask = (
-            torch.ones_like(targets, dtype=torch.bool) if mask is None else mask.reshape_as(targets)
-        )
+        mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         weights = (
-            torch.ones_like(targets, dtype=torch.float)
-            if weights is None
-            else weights.reshape_as(targets)
+            torch.ones_like(targets, dtype=torch.float) if weights is None else weights.view(-1, 1)
         )
 
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
@@ -372,7 +368,6 @@ class MulticlassMCCLoss(ChempropMetric):
         C = preds.shape[2]
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
-        print(weights.shape, mask.shape)
         masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
         p = (bin_preds * masked_data_weights).sum(0)
         t = (bin_targets * masked_data_weights).sum(0)
@@ -420,6 +415,7 @@ class ClassificationMixin:
         self.register_buffer("task_weights", task_weights)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        print(preds.shape, mask.shape, targets.shape)
         super().update(preds[mask], targets[mask].long())
 
 
