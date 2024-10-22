@@ -18,11 +18,10 @@ __all__ = [
     "CrossEntropyLoss",
     "BinaryMCCLoss",
     "MulticlassMCCLoss",
-    "DirichletMixin",
-    "BinaryDirichletLoss",
-    "MulticlassDirichletLoss",
+    "DirichletLoss",
     "SIDLoss",
     "WassersteinLoss",
+    "QuantileLoss",
 ]
 
 
@@ -274,7 +273,8 @@ class MulticlassMCCLoss(LossFunction):
         return 1 - MCC
 
 
-class DirichletMixin:
+@LossFunctionRegistry.register("dirichlet")
+class DirichletLoss(LossFunction):
     """Uses the loss function from [sensoy2018]_ based on the implementation at [sensoyGithub]_
 
     References
@@ -288,7 +288,9 @@ class DirichletMixin:
         super().__init__(task_weights)
         self.v_kl = v_kl
 
-    def _calc_unreduced_loss(self, preds, targets, *args) -> Tensor:
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        targets = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
+
         S = preds.sum(-1, keepdim=True)
         p = preds / S
 
@@ -314,25 +316,6 @@ class DirichletMixin:
 
     def extra_repr(self) -> str:
         return f"v_kl={self.v_kl}"
-
-
-@LossFunctionRegistry.register("binary-dirichlet")
-class BinaryDirichletLoss(DirichletMixin, LossFunction):
-    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
-        N_CLASSES = 2
-        n_tasks = targets.shape[1]
-        preds = preds.reshape(len(preds), n_tasks, N_CLASSES)
-        y_one_hot = torch.eye(N_CLASSES, device=preds.device)[targets.long()]
-
-        return super()._calc_unreduced_loss(preds, y_one_hot, *args)
-
-
-@LossFunctionRegistry.register("multiclass-dirichlet")
-class MulticlassDirichletLoss(DirichletMixin, LossFunction):
-    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
-        y_one_hot = torch.eye(preds.shape[2], device=preds.device)[targets.long()]
-
-        return super()._calc_unreduced_loss(preds, y_one_hot, mask)
 
 
 @LossFunctionRegistry.register("sid")
@@ -374,3 +357,31 @@ class WassersteinLoss(LossFunction):
 
     def extra_repr(self) -> str:
         return f"threshold={self.threshold}"
+
+
+@LossFunctionRegistry.register(["quantile", "pinball"])
+class QuantileLoss(LossFunction):
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
+        super().__init__(task_weights)
+        self.alpha = alpha
+
+        bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1, 1)
+        tau = torch.tensor([[alpha / 2, 1 - alpha / 2], [alpha / 2 - 1, -alpha / 2]]).view(
+            2, 2, 1, 1
+        )
+
+        self.register_buffer("bounds", bounds)
+        self.register_buffer("tau", tau)
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
+        mean, interval = torch.unbind(preds, dim=-1)
+
+        interval_bounds = self.bounds * interval
+        pred_bounds = mean + interval_bounds
+        error_bounds = targets - pred_bounds
+        loss_bounds = (self.tau * error_bounds).amax(0)
+
+        return loss_bounds.sum(0)
+
+    def extra_repr(self) -> str:
+        return f"alpha={self.alpha}"

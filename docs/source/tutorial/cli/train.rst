@@ -24,6 +24,7 @@ The following modeling tasks are supported:
  * :code:`regression`
  * :code:`regression-mve`
  * :code:`regression-evidential`
+ * :code:`regression-quantile`
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`
@@ -153,14 +154,14 @@ The loss function can be specified using the :code:`--loss-function <function>` 
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`binary-dirichlet` Binary Dirichlet 
+ * :code:`dirichlet` Dirichlet 
 
 
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
- * :code:`multiclass-dirichlet` Multiclass Dirichlet
+ * :code:`dirichlet` Dirichlet
 
 **Spectral**:
 

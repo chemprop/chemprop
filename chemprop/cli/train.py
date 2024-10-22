@@ -358,6 +358,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
     )
+    train_args.add_argument(
+        "--alpha", type=float, default=0.1, help="Target error bounds for quantile interval loss"
+    )
     # TODO: Add in v2.1
     # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
     #     "-T",
@@ -784,7 +787,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 def summarize(
     target_cols: list[str], task_type: str, dataset: _MolGraphDatasetMixin
 ) -> tuple[list, list]:
-    if task_type in ["regression", "regression-mve", "regression-evidential"]:
+    if task_type in [
+        "regression",
+        "regression-mve",
+        "regression-evidential",
+        "regression-quantile",
+    ]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
         else:
@@ -831,7 +839,7 @@ def summarize(
         column_headers = ["Class"] + [f"Count/Percent {target_cols[i]}" for i in range(y.shape[1])]
 
         table_rows = [
-            [f"{k}"] + [f"{class_counts[j,i]}/{class_fracs[j,i]:0.0%}" for j in range(y.shape[1])]
+            [f"{k}"] + [f"{class_counts[j, i]}/{class_fracs[j, i]:0.0%}" for j in range(y.shape[1])]
             for i, k in enumerate(classes)
         ]
 
@@ -843,7 +851,7 @@ def summarize(
 
         return (column_headers, table_rows)
     else:
-        raise ValueError(f"unsupported task type! Task type '{args.task_type}' was not recognized.")
+        raise ValueError(f"unsupported task type! Task type '{task_type}' was not recognized.")
 
 
 def build_table(column_headers: list[str], table_rows: list[str], title: str | None = None) -> str:
@@ -975,6 +983,7 @@ def build_model(
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
+            alpha=args.alpha,
         )
     else:
         criterion = None

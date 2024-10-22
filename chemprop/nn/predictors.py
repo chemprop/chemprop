@@ -10,13 +10,13 @@ from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import (
     BCELoss,
-    BinaryDirichletLoss,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
     LossFunction,
     MSELoss,
-    MulticlassDirichletLoss,
     MVELoss,
+    QuantileLoss,
     SIDLoss,
 )
 from chemprop.nn.metrics import BinaryAUROCMetric, CrossEntropyMetric, Metric, MSEMetric, SIDMetric
@@ -203,6 +203,26 @@ class EvidentialFFN(RegressionFFN):
     train_step = forward
 
 
+@PredictorRegistry.register("regression-quantile")
+class QuantileFFN(RegressionFFN):
+    n_targets = 2
+    _T_default_criterion = QuantileLoss
+
+    def forward(self, Z: Tensor) -> Tensor:
+        Y = super().forward(Z)
+        lower_bound, upper_bound = torch.chunk(Y, self.n_targets, 1)
+
+        lower_bound = self.output_transform(lower_bound)
+        upper_bound = self.output_transform(upper_bound)
+
+        mean = (lower_bound + upper_bound) / 2
+        interval = upper_bound - lower_bound
+
+        return torch.stack((mean, interval), dim=2)
+
+    train_step = forward
+
+
 class BinaryClassificationFFNBase(_FFNPredictorBase):
     pass
 
@@ -225,7 +245,7 @@ class BinaryClassificationFFN(BinaryClassificationFFNBase):
 @PredictorRegistry.register("classification-dirichlet")
 class BinaryDirichletFFN(BinaryClassificationFFNBase):
     n_targets = 2
-    _T_default_criterion = BinaryDirichletLoss
+    _T_default_criterion = DirichletLoss
     _T_default_metric = BinaryAUROCMetric
 
     def forward(self, Z: Tensor) -> Tensor:
@@ -293,7 +313,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
 
 @PredictorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletFFN(MulticlassClassificationFFN):
-    _T_default_criterion = MulticlassDirichletLoss
+    _T_default_criterion = DirichletLoss
     _T_default_metric = CrossEntropyMetric
 
     def forward(self, Z: Tensor) -> Tensor:
