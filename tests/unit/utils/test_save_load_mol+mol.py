@@ -16,9 +16,9 @@ from chemprop.data import (
 from chemprop.models import MulticomponentMPNN
 from chemprop.models.utils import load_model, save_model
 from chemprop.nn import (
+    MSE,
     BondMessagePassing,
     GraphTransform,
-    MSELoss,
     MulticomponentMessagePassing,
     NormAggregation,
     RegressionFFN,
@@ -121,7 +121,7 @@ def test_scalers_roundtrip_one_block(tmp_path):
     )
 
     output_transform = UnscaleTransform(mean=[8.0, 9.0], scale=[10.0, 11.0])
-    criterion = MSELoss(task_weights=[12.0])
+    criterion = MSE(task_weights=[12.0])
     ffn = RegressionFFN(output_transform=output_transform, criterion=criterion)
 
     X_d_transform = ScaleTransform(mean=[13.0, 14.0], scale=[15.0, 16.0])
@@ -161,7 +161,7 @@ def test_scalers_roundtrip_two_blocks(tmp_path):
     )
 
     output_transform = UnscaleTransform(mean=[8.0, 9.0], scale=[10.0, 11.0])
-    criterion = MSELoss(task_weights=[12.0])
+    criterion = MSE(task_weights=[12.0])
     ffn = RegressionFFN(output_transform=output_transform, criterion=criterion)
 
     X_d_transform = ScaleTransform(mean=[13.0, 14.0], scale=[15.0, 16.0])
