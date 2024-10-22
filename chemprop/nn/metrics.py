@@ -415,7 +415,6 @@ class ClassificationMixin:
         self.register_buffer("task_weights", task_weights)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        print(preds.shape, mask.shape, targets.shape)
         super().update(preds[mask], targets[mask].long())
 
 
