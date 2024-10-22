@@ -1,0 +1,16 @@
+{
+    "name": "Chemprop - CPU",
+    "build": {
+        "context": "..",
+        "dockerfile": "../Dockerfile"
+    },
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "postCreateCommand": "pip install -e \".[hpopt,dev,docs,test,notebooks]\"",
+    "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker"
+    ]
+}
