@@ -358,6 +358,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
     )
+    train_args.add_argument(
+        "--alpha", type=float, default=0.1, help="Target error bounds for quantile interval loss"
+    )
     # TODO: Add in v2.1
     # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
     #     "-T",
@@ -980,6 +983,7 @@ def build_model(
             v_kl=args.v_kl,
             # threshold=args.threshold, TODO: Add in v2.1
             eps=args.eps,
+            alpha=args.alpha,
         )
     else:
         criterion = None
