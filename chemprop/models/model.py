@@ -6,11 +6,10 @@ import warnings
 
 from lightning import pytorch as pl
 import torch
-from torch import Tensor, distributed, nn, optim
+from torch import Tensor, nn, optim
 
 from chemprop.data import BatchMolGraph, TrainingBatch
-from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 
@@ -63,7 +62,7 @@ class MPNN(pl.LightningModule):
         agg: Aggregation,
         predictor: Predictor,
         batch_norm: bool = False,
-        metrics: Iterable[Metric] | None = None,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -91,9 +90,9 @@ class MPNN(pl.LightningModule):
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
-            nn.ModuleList([*metrics, self.criterion])
+            nn.ModuleList([*metrics, self.criterion.clone()])
             if metrics
-            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion])
+            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion.clone()])
         )
 
         self.warmup_epochs = warmup_epochs
@@ -114,7 +113,7 @@ class MPNN(pl.LightningModule):
         return self.predictor.n_targets
 
     @property
-    def criterion(self) -> LossFunction:
+    def criterion(self) -> ChempropMetric:
         return self.predictor.criterion
 
     def fingerprint(
@@ -149,7 +148,7 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train_loss", l, prog_bar=True)
+        self.log("train_loss", self.criterion, prog_bar=True, on_epoch=True)
 
         return l
 
@@ -167,17 +166,11 @@ class MPNN(pl.LightningModule):
 
         Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
-        loss = self.metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
-        self.log(
-            "val_loss",
-            loss,
-            batch_size=len(batch[0]),
-            prog_bar=True,
-            sync_dist=distributed.is_initialized(),
-        )
+        self.metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
+        self.log("val_loss", self.metrics[-1], batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        self._evaluate_batch(batch, "batch_averaged_test")
+        self._evaluate_batch(batch, "test")
 
     def _evaluate_batch(self, batch: TrainingBatch, label: str) -> None:
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
@@ -190,11 +183,9 @@ class MPNN(pl.LightningModule):
         if self.predictor.n_targets > 1:
             preds = preds[..., 0]
 
-        losses = [
-            metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
-        ]
-        metric2loss = {f"{label}/{m.alias}": l for m, l in zip(self.metrics[:-1], losses)}
-        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        for m in self.metrics[:-1]:
+            m.update(preds, targets, mask, weights, lt_mask, gt_mask)
+            self.log(f"{label}/{m.alias}", m, batch_size=len(batch[0]))
 
     def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
@@ -261,6 +252,12 @@ class MPNN(pl.LightningModule):
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
+
+        if not hasattr(submodules["predictor"].criterion, "_defaults"):
+            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
+                task_weights=submodules["predictor"].criterion.task_weights
+            )
+
         return submodules, state_dict, hparams
 
     @classmethod

@@ -18,7 +18,7 @@ from chemprop.cli.common import (
 )
 from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
 from chemprop.models.utils import load_model, load_output_columns
-from chemprop.nn.loss import LossFunctionRegistry
+from chemprop.nn.metrics import LossFunctionRegistry
 from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,

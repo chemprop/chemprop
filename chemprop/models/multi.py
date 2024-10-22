@@ -6,7 +6,7 @@ from torch import Tensor
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
 
 
@@ -17,7 +17,7 @@ class MulticomponentMPNN(MPNN):
         agg: Aggregation,
         predictor: Predictor,
         batch_norm: bool = False,
-        metrics: Iterable[Metric] | None = None,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -70,4 +70,10 @@ class MulticomponentMPNN(MPNN):
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
+
+        if not hasattr(submodules["predictor"].criterion, "_defaults"):
+            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
+                task_weights=submodules["predictor"].criterion.task_weights
+            )
+
         return submodules, state_dict, hparams
