@@ -53,7 +53,9 @@ def parse_csv(
             column
             for column in df.columns
             if column
-            not in set(input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or []))
+            not in set(
+                input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or [])
+            )
         )
 
     Y = df[target_cols]
@@ -96,7 +98,9 @@ def get_column_names(
             column
             for column in df_cols
             if column
-            not in set(input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or []))
+            not in set(
+                input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or [])
+            )
         )
 
     return input_cols, target_cols
