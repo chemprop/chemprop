@@ -53,8 +53,8 @@ def parse_csv(
             column
             for column in df.columns
             if column
-            not in set(
-                input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or [])
+            not in set(  # if splits or weight is None, df.columns will never have None
+                input_cols + (ignore_cols or []) + [splits_col] + [weight_col]
             )
         )
 
