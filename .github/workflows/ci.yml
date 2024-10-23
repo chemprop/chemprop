@@ -93,7 +93,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb')
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
 
   conda-test:

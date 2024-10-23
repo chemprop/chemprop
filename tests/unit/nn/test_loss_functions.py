@@ -4,18 +4,17 @@ import numpy as np
 import pytest
 import torch
 
-from chemprop.nn.loss import (
+from chemprop.nn.metrics import (
+    SID,
     BCELoss,
-    BinaryDirichletLoss,
     BinaryMCCLoss,
-    BoundedMSELoss,
+    BoundedMSE,
     CrossEntropyLoss,
+    DirichletLoss,
     EvidentialLoss,
-    MulticlassDirichletLoss,
     MulticlassMCCLoss,
     MVELoss,
-    SIDLoss,
-    WassersteinLoss,
+    Wasserstein,
 )
 
 
@@ -58,7 +57,7 @@ def test_BoundedMSE(preds, targets, mask, weights, task_weights, lt_mask, gt_mas
     """
     Testing the bounded_mse loss function
     """
-    bmse_loss = BoundedMSELoss(task_weights)
+    bmse_loss = BoundedMSE(task_weights)
     loss = bmse_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, mse)
 
@@ -92,7 +91,7 @@ def test_MVE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, like
     "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,v_kl,expected_loss",
     [
         (
-            torch.tensor([[2, 2]]),
+            torch.tensor([[[2, 2]]]),
             torch.ones([1, 1]),
             torch.ones([1, 2], dtype=torch.bool),
             torch.ones([1]),
@@ -103,7 +102,7 @@ def test_MVE(preds, targets, mask, weights, task_weights, lt_mask, gt_mask, like
             torch.tensor(0.6, dtype=torch.float),
         ),
         (
-            torch.tensor([[2, 2]]),
+            torch.tensor([[[2, 2]]]),
             torch.ones([1, 1]),
             torch.ones([1, 2], dtype=torch.bool),
             torch.ones([1]),
@@ -123,7 +122,7 @@ def test_BinaryDirichlet(
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    binary_dirichlet_loss = BinaryDirichletLoss(task_weights=task_weights, v_kl=v_kl)
+    binary_dirichlet_loss = DirichletLoss(task_weights=task_weights, v_kl=v_kl)
     loss = binary_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -149,8 +148,8 @@ def test_BinaryDirichlet_wrong_dimensions(
     Test on the dirichlet loss function for classification
     for dimension errors.
     """
-    with pytest.raises(RuntimeError):
-        binary_dirichlet_loss = BinaryDirichletLoss(task_weights)
+    with pytest.raises(IndexError):
+        binary_dirichlet_loss = DirichletLoss(task_weights)
         binary_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
 
 
@@ -189,7 +188,7 @@ def test_MulticlassDirichlet(
     Note these values were not hand derived, just testing for
     dimensional consistency.
     """
-    multiclass_dirichlet_loss = MulticlassDirichletLoss(task_weights=task_weights, v_kl=v_kl)
+    multiclass_dirichlet_loss = DirichletLoss(task_weights=task_weights, v_kl=v_kl)
     loss = multiclass_dirichlet_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -447,7 +446,7 @@ def test_SID(
     Test on the SID loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    sid_loss = SIDLoss(task_weights=task_weights, threshold=threshold)
+    sid_loss = SID(task_weights=task_weights, threshold=threshold)
     loss = sid_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
 
@@ -497,6 +496,9 @@ def test_Wasserstein(
     Test on the Wasserstein loss function. These values were not handchecked,
     just checking function returns values with/without mask and threshold.
     """
-    wasserstein_loss = WassersteinLoss(task_weights=task_weights, threshold=threshold)
+    wasserstein_loss = Wasserstein(task_weights=task_weights, threshold=threshold)
     loss = wasserstein_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
+
+
+# TODO: Add quantile loss tests
