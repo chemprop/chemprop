@@ -6,7 +6,7 @@ from torch import Tensor
 from chemprop.data import BatchMolGraph
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
 
 
@@ -16,8 +16,8 @@ class MulticomponentMPNN(MPNN):
         message_passing: MulticomponentMessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        batch_norm: bool = True,
-        metrics: Iterable[Metric] | None = None,
+        batch_norm: bool = False,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -52,41 +52,28 @@ class MulticomponentMPNN(MPNN):
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
     @classmethod
-    def load_submodules(cls, checkpoint_path, map_location=None, **kwargs):
-        hparams = torch.load(checkpoint_path, map_location=map_location)["hyper_parameters"]
-
-        hparams["message_passing"]["blocks"] = [
-            block_hparams.pop("cls")(**block_hparams)
-            for block_hparams in hparams["message_passing"]["blocks"]
-        ]
-        kwargs |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-            if key not in kwargs
-        }
-        return kwargs
-
-    @classmethod
-    def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
-        d = torch.load(model_path, map_location=map_location)
+    def _load(cls, path, map_location, **submodules):
+        d = torch.load(path, map_location)
 
         try:
             hparams = d["hyper_parameters"]
             state_dict = d["state_dict"]
         except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {model_path}. ")
+            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
-        for key in ["message_passing", "agg", "predictor"]:
-            hparam_kwargs = hparams[key]
-            if key == "message_passing":
-                hparam_kwargs["blocks"] = [
-                    block_hparams.pop("cls")(**block_hparams)
-                    for block_hparams in hparam_kwargs["blocks"]
-                ]
-            hparam_cls = hparam_kwargs.pop("cls")
-            hparams[key] = hparam_cls(**hparam_kwargs)
+        hparams["message_passing"]["blocks"] = [
+            block_hparams.pop("cls")(**block_hparams)
+            for block_hparams in hparams["message_passing"]["blocks"]
+        ]
+        submodules |= {
+            key: hparams[key].pop("cls")(**hparams[key])
+            for key in ("message_passing", "agg", "predictor")
+            if key not in submodules
+        }
 
-        model = cls(**hparams)
-        model.load_state_dict(state_dict, strict=strict)
+        if not hasattr(submodules["predictor"].criterion, "_defaults"):
+            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
+                task_weights=submodules["predictor"].criterion.task_weights
+            )
 
-        return model
+        return submodules, state_dict, hparams
