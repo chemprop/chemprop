@@ -32,7 +32,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, canonicalize: bool = False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -43,12 +43,16 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
         whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
     add_h : bool
         whether to add hydrogens to the molecule
+    canonicalize: bool, Optional
+        whether to canonicalize the SMILES before generating the mol object. Defaults to False.
 
     Returns
     -------
     Chem.Mol
         the RDKit molecule.
     """
+    if canonicalize:
+        smi = Chem.CanonSmiles(smi)
     if keep_h:
         mol = Chem.MolFromSmiles(smi, sanitize=False)
         Chem.SanitizeMol(

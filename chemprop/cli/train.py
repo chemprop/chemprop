@@ -1252,7 +1252,10 @@ def main(args):
     )
 
     featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers,
+        keep_h=args.keep_h,
+        add_h=args.add_h,
+        canonicalize=args.canonicalize_smiles,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
