@@ -4,6 +4,7 @@ from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
     Datum,
     MoleculeDataset,
+    AtomDataset,
     MolGraphDataset,
     MulticomponentDataset,
     ReactionDataset,
@@ -21,6 +22,7 @@ __all__ = [
     "MoleculeDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "AtomDataset",
     "ReactionDataset",
     "Datum",
     "MulticomponentDataset",

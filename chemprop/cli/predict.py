@@ -208,15 +208,16 @@ def prepare_data_loader(
     )
 
     dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
+    slices = dsets._slices()
     dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
-    return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
+    return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False), slices
 
 
 def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_paths[0], multicomponent)
+    model = load_model(model_paths[0], multicomponent, args.is_atom_bond_targets)
     output_columns = load_output_columns(model_paths[0])
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
@@ -233,7 +234,7 @@ def make_prediction_for_models(
         bounded=bounded,
     )
     format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
-    test_loader = prepare_data_loader(args, multicomponent, False, format_kwargs)
+    test_loader, slices = prepare_data_loader(args, multicomponent, False, format_kwargs)
     logger.info(f"test size: {len(test_loader.dataset)}")
     if args.cal_path is not None:
         format_kwargs["target_cols"] = output_columns
@@ -314,7 +315,7 @@ def make_prediction_for_models(
             f"pred_{i}" for i in range(test_preds.shape[1])
         ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    save_predictions(args, model, output_columns, test_preds, test_uncs, output_path)
+    save_predictions(args, model, output_columns, test_preds, test_uncs, output_path, slices)
 
     if len(model_paths) > 1:
         save_individual_predictions(
@@ -325,10 +326,11 @@ def make_prediction_for_models(
             test_individual_preds,
             test_individual_uncs,
             output_path,
+            slices,
         )
 
 
-def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
+def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path, slices):
     unc_columns = [f"{col}_unc" for col in output_columns]
 
     if isinstance(model.predictor, MulticlassClassificationFFN):
@@ -344,7 +346,12 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    df_test[output_columns] = test_preds
+
+    for i in range(len(df_test)):
+        first_atom = slices.index(i)
+        last_atom = first_atom + slices.count(i)
+        mol_avg_preds = average_preds[first_atom:last_atom]
+        df_test.loc[i, target_columns] = [str(mol_avg_preds[:,j].tolist()) for j in range(len(target_columns))]
 
     if args.uncertainty_method not in ["none", "classification"]:
         df_test[unc_columns] = np.round(test_uncs, 6)
@@ -365,6 +372,7 @@ def save_individual_predictions(
     test_individual_preds,
     test_individual_uncs,
     output_path,
+    slices,
 ):
     unc_columns = [
         f"{col}_unc_model_{i}" for i in range(len(model_paths)) for col in output_columns
@@ -395,7 +403,12 @@ def save_individual_predictions(
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    df_test[output_columns] = test_individual_preds
+
+    for i in range(len(df_test)):
+        first_atom = slices.index(i)
+        last_atom = first_atom + slices.count(i)
+        mol_indiv_preds = test_individual_preds[first_atom:last_atom]
+        df_test.loc[i, target_columns] = [str(mol_indiv_preds[:,j].tolist()) for j in range(len(target_columns))]
 
     if args.uncertainty_method not in ["none", "classification"]:
         m, n, t = test_individual_uncs.shape

@@ -4,9 +4,10 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+import ast
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.data.datasets import MoleculeDataset, AtomDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
@@ -28,6 +29,7 @@ def parse_csv(
     weight_col: str | None,
     bounded: bool = False,
     no_header_row: bool = False,
+    is_atom_bond_targets: bool = False,
 ):
     df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
@@ -58,13 +60,32 @@ def parse_csv(
             )
         )
 
-    Y = df[target_cols]
+    if is_atom_bond_targets:
+        Y = []
+        for molecule in range(len(df)):
+            list_props = []
+            for prop in target_cols:
+                np_prop = np.array(ast.literal_eval(df.iloc[molecule][prop]))
+                np_prop = np.expand_dims(np_prop, axis=1)
+                list_props.append(np_prop)
+            Y.append(np.hstack(list_props))
+    else:    
+        Y = df[target_cols]
+
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
 
-    if bounded:
+    if bounded and not is_atom_bond_targets:
         lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
         gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
         Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
+    elif bounded and is_atom_bond_targets:
+        dim = Y[0].shape[1]
+        lt_mask = np.empty((0,dim))
+        gt_mask = np.empty((0,dim))
+        for i in range(len(Y)):
+            lt_mask = np.vstack([lt_mask, Y[i].applymap(lambda x: "<" in x).to_numpy()])
+            gt_mask = np.vstack([gt_mask, Y[i].applymap(lambda x: ">" in x).to_numpy()])
+            Y[i] = Y[i].applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
     else:
         Y = Y.to_numpy(np.single)
         lt_mask = None
@@ -109,7 +130,7 @@ def get_column_names(
 def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
-    Y: np.ndarray,
+    Y: np.ndarray | list[np.ndarray],
     weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
@@ -401,7 +422,8 @@ def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
     reaction_mode: str,
     multi_hot_atom_featurizer_mode: str = "V2",
-) -> MoleculeDataset | ReactionDataset:
+    is_atom_bond_targets: bool = False,
+) -> MoleculeDataset | AtomDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
 
     if isinstance(data[0], MoleculeDatapoint):
@@ -412,7 +434,7 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        return MoleculeDataset(data, featurizer)
+        return MoleculeDataset(data, featurizer) if is_atom_bond_targets else AtomDataset(data, featurizer)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
         mode_=reaction_mode, atom_featurizer=atom_featurizer
