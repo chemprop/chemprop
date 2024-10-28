@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass
 from enum import auto
 from typing import Iterable, Sequence, TypeAlias
-import warnings
+import logging
 
 import numpy as np
 from rdkit import Chem
@@ -13,6 +13,7 @@ from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
 
+logger = logging.getLogger(__name__)
 
 class RxnMode(EnumMapping):
     """The mode by which a reaction should be featurized into a `MolGraph`"""
@@ -107,9 +108,9 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         """
 
         if atom_features_extra is not None:
-            warnings.warn("'atom_features_extra' is currently unsupported for reactions")
+            logger.warn("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
-            warnings.warn("'bond_features_extra' is currently unsupported for reactions")
+            logger.warn("'bond_features_extra' is currently unsupported for reactions")
 
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from typing import Iterable
-import warnings
+import logging
 
 from lightning import pytorch as pl
 import torch
@@ -12,6 +12,8 @@ from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+
+logger = logging.getLogger(__name__)
 
 
 class MPNN(pl.LightningModule):
@@ -221,7 +223,7 @@ class MPNN(pl.LightningModule):
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
-            warnings.warn(
+            logger.warn(
                 "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
