@@ -81,27 +81,30 @@ class TrainingBatch(NamedTuple):
     lt_mask: Tensor | None
     gt_mask: Tensor | None
 
-
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
 
-    if ys[0] is not None:
-        dim = ys[0].shape[1]
-        np_y = np.empty((0, dim), float)
-        for y in ys:
-            np_y = np.vstack([np_y, y])
-    if lt_masks[0] is not None:
-        dim = lt_masks[0].shape[1]
-        np_lt = np.empty((0, dim))
-        for lt in lt_masks:
-            np_lt = np.vstack([np_lt, lt])
-    if gt_masks[0] is not None:
-        dim = gt_masks[0].shape[1]
-        np_gt = np.empty((0, dim))
-        for gt in gt_masks:
-            np_gt = np.vstack([np_gt, gt])
+    # if ys[0] is not None:
+    #     dim = ys[0].shape[1]
+    #     np_y = np.empty((0, dim), float)
+    #     for y in ys:
+    #         np_y = np.vstack([np_y, y])
+    # if lt_masks[0] is not None:
+    #     dim = lt_masks[0].shape[1]
+    #     np_lt = np.empty((0, dim))
+    #     for lt in lt_masks:
+    #         np_lt = np.vstack([np_lt, lt])
+    # if gt_masks[0] is not None:
+    #     dim = gt_masks[0].shape[1]
+    #     np_gt = np.empty((0, dim))
+    #     for gt in gt_masks:
+    #         np_gt = np.vstack([np_gt, gt])
 
-    num_atoms = torch.tensor([y.shape[0] for y in ys])
+    np_y = np.vstack(ys)
+    np_lt = np.vstack(lt_masks)
+    np_gt = np.vstack(gt_masks)
+
+    num_atoms = torch.tensor([1 for y in ys]) if np_y.shape[0] == len(ys) else torch.tensor([y.shape[0] for y in ys])
     weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
     weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
 
@@ -114,7 +117,6 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         None if lt_masks[0] is None else torch.from_numpy(np_lt),
         None if gt_masks[0] is None else torch.from_numpy(np_gt),
     )
-
 
 class MulticomponentTrainingBatch(NamedTuple):
     bmgs: list[BatchMolGraph]

@@ -321,11 +321,12 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 class AtomDataset(MoleculeDataset):
     @cached_property
     def _Y(self) -> np.ndarray:
-        dim = self.data[0].y.shape[1]
-        raw_targets = np.empty((0, dim), float)
-        for d in self.data:
-            raw_targets = np.vstack([raw_targets, d.y])
-        return raw_targets
+        return np.vstack([d.y for d in self.data])
+        # dim = self.data[0].y.shape[1]
+        # raw_targets = np.empty((0, dim), float)
+        # for d in self.data:
+        #     raw_targets = np.vstack([raw_targets, d.y])
+        # return raw_targets
 
     @property
     def Y(self) -> np.ndarray:
@@ -347,19 +348,21 @@ class AtomDataset(MoleculeDataset):
 
     @property
     def gt_mask(self) -> np.ndarray:
-        dim = self.data[0].gt_mask.shape[1]
-        temp_gt_mask = np.empty((0, dim))
-        for d in self.data:
-            temp_gt_mask = np.vstack([temp_gt_mask, np.vstack(d.gt_mask)])
-        return temp_gt_mask
+        return np.vstack([d.gt_mask for d in self.data])
+        # dim = self.data[0].gt_mask.shape[1]
+        # temp_gt_mask = np.empty((0, dim))
+        # for d in self.data:
+        #     temp_gt_mask = np.vstack([temp_gt_mask, np.vstack(d.gt_mask)])
+        # return temp_gt_mask
 
     @property
     def lt_mask(self) -> np.ndarray:
-        dim = self.data[0].lt_mask.shape[1]
-        temp_lt_mask = np.empty((0, dim))
-        for d in self.data:
-            temp_lt_mask = np.vstack([temp_lt_mask, np.vstack(d.lt_mask)])
-        return temp_lt_mask
+        return np.vstack([d.lt_mask for d in self.data])
+        # dim = self.data[0].lt_mask.shape[1]
+        # temp_lt_mask = np.empty((0, dim))
+        # for d in self.data:
+        #     temp_lt_mask = np.vstack([temp_lt_mask, np.vstack(d.lt_mask)])
+        # return temp_lt_mask
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]

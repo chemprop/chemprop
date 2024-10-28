@@ -435,9 +435,9 @@ def make_dataset(
             extra_bond_fdim=extra_bond_fdim,
         )
         return (
-            MoleculeDataset(data, featurizer)
+            AtomDataset(data, featurizer)
             if is_atom_bond_targets
-            else AtomDataset(data, featurizer)
+            else MoleculeDataset(data, featurizer)
         )
 
     featurizer = CondensedGraphOfReactionFeaturizer(
