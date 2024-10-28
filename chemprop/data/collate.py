@@ -81,6 +81,7 @@ class TrainingBatch(NamedTuple):
     lt_mask: Tensor | None
     gt_mask: Tensor | None
 
+
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
 
@@ -104,7 +105,11 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     np_lt = np.vstack(lt_masks)
     np_gt = np.vstack(gt_masks)
 
-    num_atoms = torch.tensor([1 for y in ys]) if np_y.shape[0] == len(ys) else torch.tensor([y.shape[0] for y in ys])
+    num_atoms = (
+        torch.tensor([1 for y in ys])
+        if np_y.shape[0] == len(ys)
+        else torch.tensor([y.shape[0] for y in ys])
+    )
     weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
     weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
 
@@ -117,6 +122,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         None if lt_masks[0] is None else torch.from_numpy(np_lt),
         None if gt_masks[0] is None else torch.from_numpy(np_gt),
     )
+
 
 class MulticomponentTrainingBatch(NamedTuple):
     bmgs: list[BatchMolGraph]

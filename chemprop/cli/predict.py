@@ -346,7 +346,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    if args.is_atom_bond_targets:    
+    if args.is_atom_bond_targets:
         slices = test_loader.dataset._slices()
         for i in range(len(df_test)):
             first_atom = slices.index(i)
