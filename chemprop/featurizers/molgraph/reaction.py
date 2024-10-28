@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass
 from enum import auto
-from typing import Iterable, Sequence, TypeAlias
 import logging
+from typing import Iterable, Sequence, TypeAlias
 
 import numpy as np
 from rdkit import Chem
@@ -14,6 +14,7 @@ from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
+
 
 class RxnMode(EnumMapping):
     """The mode by which a reaction should be featurized into a `MolGraph`"""

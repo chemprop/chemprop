@@ -1,5 +1,5 @@
-from typing import Iterable, Sequence
 import logging
+from typing import Iterable, Sequence
 
 from torch import Tensor, nn
 

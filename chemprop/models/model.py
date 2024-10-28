@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import io
-from typing import Iterable
 import logging
+from typing import Iterable
 
 from lightning import pytorch as pl
 import torch
