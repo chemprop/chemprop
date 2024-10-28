@@ -59,6 +59,20 @@ def mol_regression_data(data_dir):
 
     return smis, Y
 
+@pytest.fixture
+def mol_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/atoms/atoms.csv")
+    smis = df_input.loc[:, "smiles"].values
+    target_columns = ['charges', 'charges2']
+    ys = df_input.loc[:, target_columns]
+    Y = []
+    for molecule in range(len(ys)):
+        list_props = []
+        for prop in target_columns:
+            np_prop = np.array(ast.literal_eval(ys.iloc[molecule][prop]))
+            np_prop = np.expand_dims(np_prop, axis=1)
+            list_props.append(np_prop)
+        Y.append(np.hstack(list_props))
 
 @pytest.fixture
 def rxn_regression_data(data_dir):
