@@ -31,7 +31,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--is-atom-bond-targets",
         action="store_true",
-        help="Whether or not the targets are for atom/bond type versus molecule type"
+        help="Whether or not the targets are for atom/bond type versus molecule type",
     )
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(

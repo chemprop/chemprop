@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop import nn
-from chemprop.data import MoleculeDatapoint, AtomDataset, collate_batch
+from chemprop.data import AtomDataset, MoleculeDatapoint, collate_batch
 
 pytestmark = [
     pytest.mark.parametrize(

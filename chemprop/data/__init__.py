@@ -2,9 +2,9 @@ from .collate import BatchMolGraph, TrainingBatch, collate_batch, collate_multic
 from .dataloader import build_dataloader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
+    AtomDataset,
     Datum,
     MoleculeDataset,
-    AtomDataset,
     MolGraphDataset,
     MulticomponentDataset,
     ReactionDataset,

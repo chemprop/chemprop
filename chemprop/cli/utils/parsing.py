@@ -1,13 +1,13 @@
+import ast
 import logging
 from os import PathLike
 from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-import ast
 
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.data.datasets import MoleculeDataset, AtomDataset, ReactionDataset
+from chemprop.data.datasets import AtomDataset, MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
@@ -69,7 +69,7 @@ def parse_csv(
                 np_prop = np.expand_dims(np_prop, axis=1)
                 list_props.append(np_prop)
             Y.append(np.hstack(list_props))
-    else:    
+    else:
         Y = df[target_cols]
 
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
@@ -80,8 +80,8 @@ def parse_csv(
         Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
     elif bounded and is_atom_bond_targets:
         dim = Y[0].shape[1]
-        lt_mask = np.empty((0,dim))
-        gt_mask = np.empty((0,dim))
+        lt_mask = np.empty((0, dim))
+        gt_mask = np.empty((0, dim))
         for i in range(len(Y)):
             lt_mask = np.vstack([lt_mask, Y[i].applymap(lambda x: "<" in x).to_numpy()])
             gt_mask = np.vstack([gt_mask, Y[i].applymap(lambda x: ">" in x).to_numpy()])
@@ -434,7 +434,11 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        return MoleculeDataset(data, featurizer) if is_atom_bond_targets else AtomDataset(data, featurizer)
+        return (
+            MoleculeDataset(data, featurizer)
+            if is_atom_bond_targets
+            else AtomDataset(data, featurizer)
+        )
 
     featurizer = CondensedGraphOfReactionFeaturizer(
         mode_=reaction_mode, atom_featurizer=atom_featurizer

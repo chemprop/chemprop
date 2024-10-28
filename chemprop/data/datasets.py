@@ -316,15 +316,15 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.__E_fs = self._E_fs
         self.__V_ds = self._V_ds
 
+
 @dataclass
 class AtomDataset(MoleculeDataset):
-
     @cached_property
     def _Y(self) -> np.ndarray:
         dim = self.data[0].y.shape[1]
-        raw_targets = np.empty((0,dim),float)
+        raw_targets = np.empty((0, dim), float)
         for d in self.data:
-            raw_targets = np.vstack([raw_targets,d.y])
+            raw_targets = np.vstack([raw_targets, d.y])
         return raw_targets
 
     @property
@@ -341,24 +341,24 @@ class AtomDataset(MoleculeDataset):
         slice_indices = []
         index = 0
         for d in self.data:
-            slice_indices.extend([index] * d.y.shape[0]) 
+            slice_indices.extend([index] * d.y.shape[0])
             index += 1
         return slice_indices
 
     @property
     def gt_mask(self) -> np.ndarray:
         dim = self.data[0].gt_mask.shape[1]
-        temp_gt_mask = np.empty((0,dim))
+        temp_gt_mask = np.empty((0, dim))
         for d in self.data:
-            temp_gt_mask = np.vstack([temp_gt_mask,np.vstack(d.gt_mask)])
+            temp_gt_mask = np.vstack([temp_gt_mask, np.vstack(d.gt_mask)])
         return temp_gt_mask
 
     @property
     def lt_mask(self) -> np.ndarray:
         dim = self.data[0].lt_mask.shape[1]
-        temp_lt_mask = np.empty((0,dim))
+        temp_lt_mask = np.empty((0, dim))
         for d in self.data:
-            temp_lt_mask = np.vstack([temp_lt_mask,np.vstack(d.lt_mask)])
+            temp_lt_mask = np.vstack([temp_lt_mask, np.vstack(d.lt_mask)])
         return temp_lt_mask
 
     def __getitem__(self, idx: int) -> Datum:
@@ -368,9 +368,17 @@ class AtomDataset(MoleculeDataset):
         ind_first = slices.index(idx)
         ind_last = ind_first + slices.count(idx)
 
-        #TODO: fix this for lt_mask and gt_mask and weights!
+        # TODO: fix this for lt_mask and gt_mask and weights!
 
-        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[ind_first:ind_last], d.weight, d.lt_mask, d.gt_mask)
+        return Datum(
+            mg,
+            self.V_ds[idx],
+            self.X_d[idx],
+            self.Y[ind_first:ind_last],
+            d.weight,
+            d.lt_mask,
+            d.gt_mask,
+        )
 
     def reset(self):
         """Reset the atom and bond features; atom and extra descriptors; and targets of each

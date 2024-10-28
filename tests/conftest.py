@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import numpy as np
@@ -59,12 +60,13 @@ def mol_regression_data(data_dir):
 
     return smis, Y
 
+
 @pytest.fixture
-def mol_regression_data(data_dir):
+def atom_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/atoms/atoms.csv")
-    smis = df_input.loc[:, "smiles"].values
-    target_columns = ['charges', 'charges2']
-    ys = df_input.loc[:, target_columns]
+    smis = df.loc[:, "smiles"].values
+    target_columns = ["charges", "charges2"]
+    ys = df.loc[:, target_columns]
     Y = []
     for molecule in range(len(ys)):
         list_props = []
@@ -73,6 +75,9 @@ def mol_regression_data(data_dir):
             np_prop = np.expand_dims(np_prop, axis=1)
             list_props.append(np_prop)
         Y.append(np.hstack(list_props))
+
+    return smis, Y
+
 
 @pytest.fixture
 def rxn_regression_data(data_dir):

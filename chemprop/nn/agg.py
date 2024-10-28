@@ -68,6 +68,7 @@ class NoAggregation(Aggregation):
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
         return H
 
+
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
     r"""Average the graph-level representation:

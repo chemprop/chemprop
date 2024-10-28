@@ -350,8 +350,10 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     for i in range(len(df_test)):
         first_atom = slices.index(i)
         last_atom = first_atom + slices.count(i)
-        mol_avg_preds = average_preds[first_atom:last_atom]
-        df_test.loc[i, target_columns] = [str(mol_avg_preds[:,j].tolist()) for j in range(len(target_columns))]
+        mol_avg_preds = test_preds[first_atom:last_atom]
+        df_test.loc[i, output_columns] = [
+            str(mol_avg_preds[:, j].tolist()) for j in range(len(output_columns))
+        ]
 
     if args.uncertainty_method not in ["none", "classification"]:
         df_test[unc_columns] = np.round(test_uncs, 6)
@@ -408,7 +410,9 @@ def save_individual_predictions(
         first_atom = slices.index(i)
         last_atom = first_atom + slices.count(i)
         mol_indiv_preds = test_individual_preds[first_atom:last_atom]
-        df_test.loc[i, target_columns] = [str(mol_indiv_preds[:,j].tolist()) for j in range(len(target_columns))]
+        df_test.loc[i, output_columns] = [
+            str(mol_indiv_preds[:, j].tolist()) for j in range(len(output_columns))
+        ]
 
     if args.uncertainty_method not in ["none", "classification"]:
         m, n, t = test_individual_uncs.shape

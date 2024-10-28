@@ -2,8 +2,8 @@ from .agg import (
     Aggregation,
     AggregationRegistry,
     AttentiveAggregation,
-    NoAggregation,
     MeanAggregation,
+    NoAggregation,
     NormAggregation,
     SumAggregation,
 )
