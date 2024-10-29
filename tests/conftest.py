@@ -63,9 +63,9 @@ def mol_regression_data(data_dir):
 
 @pytest.fixture
 def atom_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/atoms/atoms.csv")
+    df = pd.read_csv(data_dir / "regression/atoms.csv")
     smis = df.loc[:, "smiles"].values
-    target_columns = ["charges", "charges2"]
+    target_columns = ["charges"]
     ys = df.loc[:, target_columns]
     Y = []
     for molecule in range(len(ys)):

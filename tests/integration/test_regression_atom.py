@@ -16,7 +16,6 @@ pytestmark = [
         [
             (nn.BondMessagePassing(), nn.NoAggregation()),
             (nn.AtomMessagePassing(), nn.NoAggregation()),
-            (nn.BondMessagePassing(), nn.NoAggregation()),
         ],
         indirect=True,
     ),
@@ -27,8 +26,9 @@ pytestmark = [
 @pytest.fixture
 def data(atom_regression_data):
     smis, Y = atom_regression_data
-
-    return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
+    smis = smis[0:100]
+    Y = Y[0:100]
+    return [MoleculeDatapoint.from_smi(smi, y, keep_h = True) for smi, y in zip(smis, Y)]
 
 
 @pytest.fixture

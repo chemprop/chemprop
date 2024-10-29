@@ -105,13 +105,12 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     np_lt = np.vstack(lt_masks)
     np_gt = np.vstack(gt_masks)
 
-    num_atoms = (
-        torch.tensor([1 for y in ys])
-        if np_y.shape[0] == len(ys)
-        else torch.tensor([y.shape[0] for y in ys])
-    )
-    weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
-    weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
+    if np_y.shape[0] == len(ys):
+        weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
+    else:       
+        num_atoms = torch.tensor([y.shape[0] for y in ys])
+        weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
+        weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
 
     return TrainingBatch(
         BatchMolGraph(mgs),
