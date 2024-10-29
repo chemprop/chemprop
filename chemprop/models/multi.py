@@ -51,6 +51,12 @@ class MulticomponentMPNN(MPNN):
 
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
+    def atomic_encodings(
+        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]
+    ) -> list[tuple[Tensor]]:
+        H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
+        return [H_v.split(torch.bincount(bmgs.batch).tolist()) for H_v in H_vs]
+
     @classmethod
     def _load(cls, path, map_location, **submodules):
         d = torch.load(path, map_location)
