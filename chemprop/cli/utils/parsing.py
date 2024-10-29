@@ -226,20 +226,23 @@ def make_datapoints(
     else:
         N = len(smiss[0])
 
-
-
     if len(smiss) > 0:
         molss = [[make_mol(smi, keep_h, add_h, keep_atom_map) for smi in smis] for smis in smiss]
     if len(rxnss) > 0:
         rctss = [
             [
-                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, keep_atom_map)
+                make_mol(
+                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, keep_atom_map
+                )
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss
         ]
         pdtss = [
-            [make_mol(pdt_smi, keep_h, add_h, keep_atom_map) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
+            [
+                make_mol(pdt_smi, keep_h, add_h, keep_atom_map)
+                for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
+            ]
             for rxns in rxnss
         ]
 

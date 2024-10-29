@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Iterable, Iterator
-import numpy as np
 
+import numpy as np
 from rdkit import Chem
 
 
@@ -68,6 +68,7 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, keep_atom_map: bool = False) -
                 return Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
+
 
 def pretty_shape(shape: Iterable[int]) -> str:
     """Make a pretty string from an input shape

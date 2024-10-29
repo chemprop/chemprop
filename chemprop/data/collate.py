@@ -107,7 +107,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
     if np_y.shape[0] == len(ys):
         weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
-    else:       
+    else:
         num_atoms = torch.tensor([y.shape[0] for y in ys])
         weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
         weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
