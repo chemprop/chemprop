@@ -26,9 +26,8 @@ pytestmark = [
 @pytest.fixture
 def data(atom_regression_data):
     smis, Y = atom_regression_data
-    smis = smis[0:100]
-    Y = Y[0:100]
-    return [MoleculeDatapoint.from_smi(smi, y, keep_h = True) for smi, y in zip(smis, Y)]
+
+    return [MoleculeDatapoint.from_smi(smi, y, keep_h = True, keep_atom_map = True) for smi, y in zip(smis, Y)]
 
 
 @pytest.fixture

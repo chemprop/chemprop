@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Iterable, Iterator
+import numpy as np
 
 from rdkit import Chem
 
@@ -32,7 +33,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, keep_atom_map: bool = False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -57,8 +58,16 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     else:
         mol = Chem.MolFromSmiles(smi)
 
-    return Chem.AddHs(mol) if add_h else mol
+    mol = Chem.AddHs(mol) if add_h else mol
 
+    if keep_atom_map and mol is not None:
+        atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
+        for idx, map_num in enumerate(atom_map_numbers):
+            if idx + 1 != map_num:
+                new_order = np.argsort(atom_map_numbers).tolist()
+                return Chem.rdmolops.RenumberAtoms(mol, new_order)
+
+    return mol
 
 def pretty_shape(shape: Iterable[int]) -> str:
     """Make a pretty string from an input shape

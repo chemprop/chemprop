@@ -139,6 +139,7 @@ def make_datapoints(
     E_fss: list[list[np.ndarray] | list[None]] | None,
     V_dss: list[list[np.ndarray] | list[None]] | None,
     molecule_featurizers: list[str] | None,
+    keep_atom_map: bool,
     keep_h: bool,
     add_h: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
@@ -225,18 +226,20 @@ def make_datapoints(
     else:
         N = len(smiss[0])
 
+
+
     if len(smiss) > 0:
-        molss = [[make_mol(smi, keep_h, add_h) for smi in smis] for smis in smiss]
+        molss = [[make_mol(smi, keep_h, add_h, keep_atom_map) for smi in smis] for smis in smiss]
     if len(rxnss) > 0:
         rctss = [
             [
-                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h)
+                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, keep_atom_map)
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss
         ]
         pdtss = [
-            [make_mol(pdt_smi, keep_h, add_h) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
+            [make_mol(pdt_smi, keep_h, add_h, keep_atom_map) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
             for rxns in rxnss
         ]
 
@@ -362,6 +365,8 @@ def build_data_from_files(
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
 
+    keep_atom_map = True if np.vstack(Y).shape[0] == n_molecules else False
+
     mol_data, rxn_data = make_datapoints(
         smiss,
         rxnss,
@@ -373,6 +378,7 @@ def build_data_from_files(
         V_fss,
         E_fss,
         V_dss,
+        keep_atom_map,
         **featurization_kwargs,
     )
 
