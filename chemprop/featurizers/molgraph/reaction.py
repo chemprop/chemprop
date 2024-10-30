@@ -109,9 +109,9 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         """
 
         if atom_features_extra is not None:
-            logger.warn("'atom_features_extra' is currently unsupported for reactions")
+            logger.warning("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
-            logger.warn("'bond_features_extra' is currently unsupported for reactions")
+            logger.warning("'bond_features_extra' is currently unsupported for reactions")
 
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)

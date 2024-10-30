@@ -51,7 +51,7 @@ class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, VectorF
 @MoleculeFeaturizerRegistry("rdkit_2d")
 class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __init__(self):
-        logger.warn(
+        logger.warning(
             "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
             "manually scaling them using an appropriate scaler before creating datapoints, rather "
             "than using the scikit-learn `StandardScaler` (the default in Chemprop)."

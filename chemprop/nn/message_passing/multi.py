@@ -38,7 +38,7 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
         if len(blocks) == 0:
             raise ValueError("arg 'blocks' was empty!")
         if shared and len(blocks) > 1:
-            logger.warn(
+            logger.warning(
                 "More than 1 block was supplied but 'shared' was True! Using only the 0th block..."
             )
         elif not shared and len(blocks) != n_components:
