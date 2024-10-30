@@ -53,7 +53,7 @@ class MulticomponentMPNN(MPNN):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location)
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
