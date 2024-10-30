@@ -241,7 +241,7 @@ class MPNN(pl.LightningModule):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location, weights_only = False)
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
@@ -285,7 +285,7 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        d = torch.load(checkpoint_path, map_location, weights_only = False)
+        d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
         buffer = io.BytesIO()
         torch.save(d, buffer)
