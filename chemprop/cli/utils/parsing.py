@@ -360,6 +360,7 @@ def build_data_from_files(
         bounded,
         no_header_row,
     )
+
     n_molecules = len(smiss) if smiss is not None else 0
     n_datapoints = len(Y)
 
