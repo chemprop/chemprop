@@ -24,6 +24,7 @@ The following modeling tasks are supported:
  * :code:`regression`
  * :code:`regression-mve`
  * :code:`regression-evidential`
+ * :code:`regression-quantile`
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`
@@ -94,10 +95,10 @@ Our code supports several methods of splitting data into train, validation, and 
 
 .. code-block::
 
-    chemprop train --splits-file splits.csv -i data.csv -t regression
+    chemprop train --splits-file splits.json -i data.csv -t regression
 
 .. code-block:: JSON
-    :caption: splits.csv
+    :caption: splits.json
 
     [
         {"train": [1, 2], "val": "3-5", "test": "6,7"},
@@ -107,12 +108,13 @@ Our code supports several methods of splitting data into train, validation, and 
 .. note::
     By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
 
-Other supported splitting methods include :code:`cv`, :code:`cv_no_val`, :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
+Other supported splitting methods include :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
 
-Cross Validation
-^^^^^^^^^^^^^^^^
+Replicates
+^^^^^^^^^^
 
-k-fold cross-validation can be run by specifying :code:`--num-folds <k>` (default 1, i.e. no cross-validation).
+Repeat random trials (i.e. replicates) run by specifying :code:`--num-replicates <n>` (default 1, i.e. no replicates).
+This is analogous to the 'outer loop' of nested cross validation but at a lower cost, suitable for deep learning applications.
 
 Ensembling
 ^^^^^^^^^^
@@ -152,14 +154,14 @@ The loss function can be specified using the :code:`--loss-function <function>` 
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`binary-dirichlet` Binary Dirichlet 
+ * :code:`dirichlet` Dirichlet 
 
 
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
- * :code:`multiclass-dirichlet` Multiclass Dirichlet
+ * :code:`dirichlet` Dirichlet
 
 **Spectral**:
 
@@ -174,9 +176,9 @@ The following evaluation metrics are supported during training:
 
 **Regression**:
 
- * :code:`rmse` Root mean squared error (default)
+ * :code:`rmse` Root mean squared error
  * :code:`mae` Mean absolute error
- * :code:`mse` Mean squared error
+ * :code:`mse` Mean squared error (default)
  * :code:`bounded-mae` Bounded mean absolute error
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`bounded-rmse` Bounded root mean squared error
@@ -253,7 +255,8 @@ The reaction and molecule SMILES columns can be ordered in any way. However, the
 Training on Spectra
 ^^^^^^^^^^^^^^^^^^^
 
-Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. 
+Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. Spectral prediction are still in beta and will be updated in the future.
+
 .. Activation to enforce positivity is an exponential function by default but can also be set as a Softplus function, according to the argument :code:`--spectral-activation <exp or softplus>`. Value positivity is enforced on input targets as well using a floor value that replaces negative or smaller target values with the floor value, customizable with the argument :code:`--spectra_target_floor <float>` (default 1e-8).
 
 .. In absorption spectra, sometimes the phase of collection will create regions in the spectrum where data collection or prediction would be unreliable. To exclude these regions, include paths to phase features for your data (:code:`--phase-features-path <path>`) and a mask indicating the spectrum regions that are supported (:code:`--spectra-phase-mask-path <path>`). The format for the mask file is a .csv file with columns for the spectrum positions and rows for the phases, with column and row labels in the same order as they appear in the targets and features files.
