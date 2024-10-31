@@ -78,7 +78,10 @@ class TrainSubcommand(Subcommand):
         args = process_train_args(args)
         validate_train_args(args)
 
-        if not args.dry_run:
+        if args.dry_run:
+            temp_output_dir = TemporaryDirectory()
+            args.output_dir = Path(temp_output_dir.name)
+        else:
             args.output_dir.mkdir(exist_ok=True, parents=True)
             config_path = args.output_dir / "config.toml"
             save_config(cls.parser, args, config_path)
@@ -108,7 +111,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        default=False,
         help="Turn on dry run test and runs the code for only a few epochs.",
     )
     parser.add_argument(
@@ -445,7 +447,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     split_args.add_argument(
         "--save-smiles-splits",
         action="store_true",
-        default=False,
         help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
@@ -475,9 +476,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    if args.dry_run:
-        return args
-
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
@@ -1182,8 +1180,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
 
-    if not args.dry_run:
-        df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+    df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
 def main(args):
@@ -1203,10 +1200,6 @@ def main(args):
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
-
-    if args.dry_run:
-        temp_output_dir = TemporaryDirectory()
-        args.output_dir = Path(temp_output_dir.name)
 
     for fold_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
         if args.num_folds == 1:

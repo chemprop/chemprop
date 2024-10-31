@@ -28,6 +28,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
     )
+
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
         "-n",
@@ -47,6 +48,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         default="auto",
         help="Passed directly to the lightning ``Trainer()`` (must be a single string of comma separated devices, e.g. '1, 2' if specifying multiple devices)",
     )
+
     featurization_args = parser.add_argument_group("Featurization args")
     featurization_args.add_argument(
         "--rxn-mode",

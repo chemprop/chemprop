@@ -355,7 +355,7 @@ def build_data_from_files(
 
 
 def load_input_feats_and_descs(
-    paths: dict[int, PathLike] | PathLike,
+    paths: dict[int, PathLike] | PathLike | None,
     n_molecules: int | None,
     n_datapoints: int | None,
     feat_desc: str,
