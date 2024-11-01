@@ -1,6 +1,6 @@
-"""This integration test is designed to ensure that the chemprop model can _overfit_ the training
-data. A small enough dataset should be memorizable by even a moderately sized model, so this test
-should generally pass."""
+"""This integration test is designed to ensure that the chemprop model for atom properties can
+_overfit_ the training data. A small enough dataset should be memorizable by even a moderately sized
+model, so this test should generally pass."""
 
 from lightning import pytorch as pl
 import pytest
@@ -22,6 +22,22 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
+@pytest.fixture
+def atom_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/atoms.csv")
+    smis = df.loc[:, "smiles"].values
+    target_columns = ["charges"]
+    ys = df.loc[:, target_columns]
+    Y = []
+    for molecule in range(len(ys)):
+        list_props = []
+        for prop in target_columns:
+            np_prop = np.array(ast.literal_eval(ys.iloc[molecule][prop]))
+            np_prop = np.expand_dims(np_prop, axis=1)
+            list_props.append(np_prop)
+        Y.append(np.hstack(list_props))
+
+    return smis, Y
 
 @pytest.fixture
 def data(atom_regression_data):
