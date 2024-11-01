@@ -2,7 +2,11 @@
 _overfit_ the training data. A small enough dataset should be memorizable by even a moderately sized
 model, so this test should generally pass."""
 
+import ast
+
 from lightning import pytorch as pl
+import numpy as np
+import pandas as pd
 import pytest
 import torch
 from torch.utils.data import DataLoader
@@ -22,6 +26,7 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
+
 @pytest.fixture
 def atom_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/atoms.csv")
@@ -38,6 +43,7 @@ def atom_regression_data(data_dir):
         Y.append(np.hstack(list_props))
 
     return smis, Y
+
 
 @pytest.fixture
 def data(atom_regression_data):

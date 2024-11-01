@@ -1,4 +1,3 @@
-import ast
 from pathlib import Path
 
 import numpy as np
@@ -59,6 +58,7 @@ def mol_regression_data(data_dir):
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
     return smis, Y
+
 
 @pytest.fixture
 def rxn_regression_data(data_dir):

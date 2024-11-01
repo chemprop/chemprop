@@ -235,7 +235,7 @@ def make_prediction_for_models(
     format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
     test_loader = prepare_data_loader(args, multicomponent, False, format_kwargs)
     logger.info(f"test size: {len(test_loader.dataset)}")
-    
+
     if args.cal_path is not None:
         format_kwargs["target_cols"] = output_columns
         cal_loader = prepare_data_loader(args, multicomponent, True, format_kwargs)

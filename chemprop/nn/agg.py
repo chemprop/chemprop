@@ -62,6 +62,7 @@ class Aggregation(nn.Module, HasHParams):
 
 AggregationRegistry = ClassRegistry[Aggregation]()
 
+
 @AggregationRegistry.register("mean")
 class MeanAggregation(Aggregation):
     r"""Average the graph-level representation:
