@@ -51,6 +51,14 @@ class MulticomponentMPNN(MPNN):
 
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        for block in self.message_passing.blocks:
+            block.V_d_transform.train()
+            block.graph_transform.train()
+        self.X_d_transform.train()
+        self.predictor.output_transform.train()
+
     @classmethod
     def _load(cls, path, map_location, **submodules):
         d = torch.load(path, map_location)
