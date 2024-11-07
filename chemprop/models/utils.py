@@ -27,6 +27,6 @@ def load_model(path: PathLike, multicomponent: bool) -> MPNN:
 
 
 def load_output_columns(path: PathLike) -> list[str] | None:
-    model_file = torch.load(path, map_location=torch.device("cpu"))
+    model_file = torch.load(path, map_location=torch.device("cpu"), weights_only=False)
 
     return model_file.get("output_columns")
