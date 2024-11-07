@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import io
+import logging
 from typing import Iterable
-import warnings
 
 from lightning import pytorch as pl
 import torch
@@ -12,6 +12,8 @@ from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+
+logger = logging.getLogger(__name__)
 
 
 class MPNN(pl.LightningModule):
@@ -224,7 +226,7 @@ class MPNN(pl.LightningModule):
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
-            warnings.warn(
+            logger.warning(
                 "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
@@ -242,7 +244,7 @@ class MPNN(pl.LightningModule):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location)
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
@@ -286,7 +288,7 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        d = torch.load(checkpoint_path, map_location)
+        d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
         buffer = io.BytesIO()
         torch.save(d, buffer)
