@@ -1,8 +1,9 @@
+
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, Namespace, _SubParsersAction
 
 
-class Subcommand(ABC):
+class Subcommand(ABC): 
     COMMAND: str
     HELP: str | None = None
 

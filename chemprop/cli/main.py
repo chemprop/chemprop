@@ -50,36 +50,4 @@ def construct_parser():
     return parser
 
 
-def main():
-    parser = construct_parser()
-    args = parser.parse_args()
-    logfile, v_flag, q_count, mode, func = (
-        pop_attr(args, attr) for attr in ["logfile", "v", "q", "mode", "func"]
-    )
-
-    if v_flag and q_count:
-        parser.error("The -v and -q options cannot be used together.")
-
-    match logfile:
-        case None:
-            handler = logging.StreamHandler(sys.stderr)
-        case "default":
-            (LOG_DIR / mode).mkdir(parents=True, exist_ok=True)
-            handler = logging.FileHandler(str(LOG_DIR / mode / f"{NOW}.log"))
-        case _:
-            Path(logfile).parent.mkdir(parents=True, exist_ok=True)
-            handler = logging.FileHandler(logfile)
-
-    verbosity = q_count * -1 if q_count else (1 if v_flag else 0)
-    logging_level = LOG_LEVELS.get(verbosity, logging.ERROR)
-    logging.basicConfig(
-        handlers=[handler],
-        format="%(asctime)s - %(levelname)s:%(name)s - %(message)s",
-        level=logging_level,
-        datefmt="%Y-%m-%dT%H:%M:%S",
-        force=True,
-    )
-
-    logger.info(f"Running in mode '{mode}' with args: {vars(args)}")
-
-    func(args)
+  
