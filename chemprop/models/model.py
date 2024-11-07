@@ -156,6 +156,9 @@ class MPNN(pl.LightningModule):
 
     def on_validation_model_eval(self) -> None:
         self.eval()
+        self.message_passing.V_d_transform.train()
+        self.message_passing.graph_transform.train()
+        self.X_d_transform.train()
         self.predictor.output_transform.train()
 
     def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
