@@ -173,6 +173,18 @@ class BoundedRMSE(BoundedMixin, RMSE):
 
 @MetricRegistry.register("r2")
 class R2Score(torchmetrics.R2Score):
+    def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
+        """
+        Parameters
+        ----------
+        task_weights :  ArrayLike = 1.0
+            .. important::
+                Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        """
+        super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         super().update(preds[mask], targets[mask])
 
