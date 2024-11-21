@@ -2,6 +2,7 @@ from .collate import BatchMolGraph, TrainingBatch, collate_batch, collate_multic
 from .dataloader import build_dataloader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
+    AtomDataset,
     Datum,
     MoleculeDataset,
     MolGraphDataset,
@@ -21,6 +22,7 @@ __all__ = [
     "MoleculeDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "AtomDataset",
     "ReactionDataset",
     "Datum",
     "MulticomponentDataset",

@@ -9,6 +9,7 @@ from chemprop.utils import ClassRegistry
 __all__ = [
     "Aggregation",
     "AggregationRegistry",
+    "NoAggregation",
     "MeanAggregation",
     "SumAggregation",
     "NormAggregation",
@@ -111,6 +112,14 @@ class NormAggregation(SumAggregation):
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
         return super().forward(H, batch) / self.norm
+
+
+@AggregationRegistry.register("none")
+class NoAggregation(Aggregation):
+    """No aggregation done for atom/bond property prediction"""
+
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        return H
 
 
 class AttentiveAggregation(Aggregation):
