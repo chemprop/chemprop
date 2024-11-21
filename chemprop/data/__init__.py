@@ -1,4 +1,10 @@
-from .collate import BatchMolGraph, TrainingBatch, collate_batch, collate_multicomponent
+from .collate import (
+    BatchMolGraph,
+    PreBatchMolGraph,
+    TrainingBatch,
+    collate_batch,
+    collate_multicomponent,
+)
 from .dataloader import build_dataloader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
@@ -8,12 +14,13 @@ from .datasets import (
     MulticomponentDataset,
     ReactionDataset,
 )
-from .molgraph import MolGraph
+from .molgraph import MolGraph, MolGraphPretrain
 from .samplers import ClassBalanceSampler, SeededSampler
 from .splitting import SplitType, make_split_indices, split_data_by_indices
 
 __all__ = [
     "BatchMolGraph",
+    "PreBatchMolGraph",
     "TrainingBatch",
     "collate_batch",
     "collate_multicomponent",
@@ -26,6 +33,7 @@ __all__ = [
     "MulticomponentDataset",
     "MolGraphDataset",
     "MolGraph",
+    "MolGraphPretrain",
     "ClassBalanceSampler",
     "SeededSampler",
     "SplitType",
