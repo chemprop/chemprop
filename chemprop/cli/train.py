@@ -1093,9 +1093,10 @@ def train_model(
 
         if args.tracking_metric == "val_loss":
             T_tracking_metric = model.criterion.__class__
+            tracking_metric = args.tracking_metric
         else:
             T_tracking_metric = MetricRegistry[args.tracking_metric]
-            args.tracking_metric = "val/" + args.tracking_metric
+            tracking_metric = "val/" + args.tracking_metric
 
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
@@ -1107,13 +1108,13 @@ def train_model(
             checkpoint_dir = model_output_dir
 
         checkpoint_filename = (
-            f"best-epoch={{epoch}}-{args.tracking_metric.replace('/', '_')}="
-            f"{{{args.tracking_metric}:.2f}}"
+            f"best-epoch={{epoch}}-{tracking_metric.replace('/', '_')}="
+            f"{{{tracking_metric}:.2f}}"
         )
         checkpointing = ModelCheckpoint(
             checkpoint_dir / "checkpoints",
             checkpoint_filename,
-            args.tracking_metric,
+            tracking_metric,
             mode=monitor_mode,
             save_last=True,
             auto_insert_metric_name=False,
@@ -1121,9 +1122,7 @@ def train_model(
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping(
-                args.tracking_metric, patience=patience, mode=monitor_mode
-            )
+            early_stopping = EarlyStopping(tracking_metric, patience=patience, mode=monitor_mode)
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
