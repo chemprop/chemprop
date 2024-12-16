@@ -57,11 +57,11 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     else:
         mol = Chem.MolFromSmiles(smi)
 
-    if add_h:
-        mol = Chem.AddHs(mol)
-
     if mol is None:
         raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
+
+    if add_h:
+        mol = Chem.AddHs(mol)
 
     return mol
 
