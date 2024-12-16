@@ -57,7 +57,13 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     else:
         mol = Chem.MolFromSmiles(smi)
 
-    return Chem.AddHs(mol) if add_h else mol
+    if add_h:
+        mol = Chem.AddHs(mol)
+
+    if mol is None:
+        raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
+
+    return mol
 
 
 def pretty_shape(shape: Iterable[int]) -> str:
