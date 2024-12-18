@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Iterable
+from typing import Iterable, TypeAlias
 
 from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMolGraph, TrainingBatch
+from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 
 logger = logging.getLogger(__name__)
+
+BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
 class MPNN(pl.LightningModule):
@@ -140,7 +142,8 @@ class MPNN(pl.LightningModule):
         """Generate predictions for the input molecules/reactions"""
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
-    def training_step(self, batch: TrainingBatch, batch_idx):
+    def training_step(self, batch: BatchType, batch_idx):
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -150,7 +153,7 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train_loss", self.criterion, prog_bar=True, on_epoch=True)
+        self.log("train_loss", self.criterion, batch_size=batch_size, prog_bar=True, on_epoch=True)
 
         return l
 
@@ -161,9 +164,10 @@ class MPNN(pl.LightningModule):
         self.X_d_transform.train()
         self.predictor.output_transform.train()
 
-    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
+    def validation_step(self, batch: BatchType, batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -172,12 +176,13 @@ class MPNN(pl.LightningModule):
         Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
         self.metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
-        self.log("val_loss", self.metrics[-1], batch_size=len(batch[0]), prog_bar=True)
+        self.log("val_loss", self.metrics[-1], batch_size=batch_size, prog_bar=True)
 
-    def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
+    def test_step(self, batch: BatchType, batch_idx: int = 0):
         self._evaluate_batch(batch, "test")
 
-    def _evaluate_batch(self, batch: TrainingBatch, label: str) -> None:
+    def _evaluate_batch(self, batch: BatchType, label: str) -> None:
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -190,9 +195,9 @@ class MPNN(pl.LightningModule):
 
         for m in self.metrics[:-1]:
             m.update(preds, targets, mask, weights, lt_mask, gt_mask)
-            self.log(f"{label}/{m.alias}", m, batch_size=len(batch[0]))
+            self.log(f"{label}/{m.alias}", m, batch_size=batch_size)
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+    def predict_step(self, batch: BatchType, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
 
         Parameters
@@ -241,6 +246,9 @@ class MPNN(pl.LightningModule):
         lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+
+    def get_batch_size(self, batch: TrainingBatch) -> int:
+        return len(batch[0])
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
