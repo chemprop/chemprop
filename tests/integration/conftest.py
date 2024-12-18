@@ -17,6 +17,22 @@ def mpnn(request):
 
 
 @pytest.fixture(scope="session")
+def regression_mpnn_mve(request):
+    agg = nn.SumAggregation()
+    ffn = nn.MveFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
+def regression_mpnn_evidential(request):
+    agg = nn.SumAggregation()
+    ffn = nn.EvidentialFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
 def classification_mpnn_dirichlet(request):
     agg = nn.SumAggregation()
     ffn = nn.BinaryDirichletFFN()
