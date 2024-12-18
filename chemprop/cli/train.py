@@ -83,9 +83,13 @@ class TrainSubcommand(Subcommand):
         args = process_train_args(args)
         validate_train_args(args)
 
-        args.output_dir.mkdir(exist_ok=True, parents=True)
-        config_path = args.output_dir / "config.toml"
-        save_config(cls.parser, args, config_path)
+        if args.dry_run:
+            temp_output_dir = TemporaryDirectory()
+            args.output_dir = Path(temp_output_dir.name)
+        else:
+            args.output_dir.mkdir(exist_ok=True, parents=True)
+            config_path = args.output_dir / "config.toml"
+            save_config(cls.parser, args, config_path)
         main(args)
 
 
@@ -108,6 +112,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--save-dir",
         type=Path,
         help="Directory where training outputs will be saved (defaults to ``CURRENT_DIRECTORY/chemprop_training/STEM_OF_INPUT/TIME_STAMP``)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Turn on dry run test and runs the code for only a few epochs.",
     )
     parser.add_argument(
         "--remove-checkpoints",
@@ -1136,8 +1145,12 @@ def train_model(
             callbacks=callbacks,
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
+            fast_dev_run=args.dry_run,
         )
         trainer.fit(model, train_loader, val_loader)
+
+        if args.dry_run:
+            return
 
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
@@ -1236,6 +1249,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
