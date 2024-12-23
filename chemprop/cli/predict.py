@@ -397,7 +397,7 @@ def save_individual_predictions(
     )
     df_test[output_columns] = test_individual_preds
 
-    if args.uncertainty_method not in ["none", "classification"]:
+    if args.uncertainty_method not in ["none", "classification", "ensemble"]:
         m, n, t = test_individual_uncs.shape
         test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
         df_test[unc_columns] = np.round(test_individual_uncs, 6)
