@@ -58,7 +58,7 @@ class MulticomponentMPNN(MPNN):
             block.graph_transform.train()
         self.X_d_transform.train()
         self.predictor.output_transform.train()
-        
+
     def get_batch_size(self, batch: MulticomponentTrainingBatch) -> int:
         return len(batch[0][0])
 
