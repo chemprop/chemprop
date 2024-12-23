@@ -10,19 +10,6 @@ from torch.utils.data import DataLoader
 from chemprop import nn
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
-# pytestmark = [
-#     pytest.mark.parametrize(
-#         "mpnn",
-#         [
-#             (nn.BondMessagePassing(), nn.MeanAggregation()),
-#             (nn.AtomMessagePassing(), nn.SumAggregation()),
-#             (nn.BondMessagePassing(), nn.NormAggregation()),
-#         ],
-#         indirect=True,
-#     ),
-#     pytest.mark.integration,
-# ]
-
 
 @pytest.fixture
 def data(mol_regression_data):
