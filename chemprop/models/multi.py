@@ -3,7 +3,7 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
-from chemprop.data import BatchMolGraph
+from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
 from chemprop.nn.metrics import ChempropMetric
@@ -58,6 +58,9 @@ class MulticomponentMPNN(MPNN):
             block.graph_transform.train()
         self.X_d_transform.train()
         self.predictor.output_transform.train()
+
+    def get_batch_size(self, batch: MulticomponentTrainingBatch) -> int:
+        return len(batch[0][0])
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
