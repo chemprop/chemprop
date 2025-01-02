@@ -100,7 +100,7 @@ class ChargeFeaurizer(VectorFeaturizer[Mol]):
         return 1
 
 @MoleculeFeaturizerRegistry("multiplicity")
-class ChargeFeaurizer(VectorFeaturizer[Mol]):
+class MultiplicityFeaurizer(VectorFeaturizer[Mol]):
     def __call__(self, mol: Chem.Mol) -> np.ndarray:
         mult = sum(atom.GetNumRadicalElectrons() for atom in mol.GetAtoms()) + 1
         return np.array([mult])
