@@ -370,11 +370,11 @@ def test_BinaryMCC(preds, targets, mask, weights, task_weights, lt_mask, gt_mask
             ),
             torch.tensor([[2, 1], [0, 0]]),
             torch.ones([2, 2], dtype=torch.bool),
-            torch.ones([1, 2]),
+            torch.ones([2]),
             torch.ones([2]),
             torch.zeros([2, 2], dtype=torch.bool),
             torch.zeros([2, 2], dtype=torch.bool),
-            torch.tensor(0.2697033, dtype=torch.float),
+            torch.tensor(0.5, dtype=torch.float),
         ),
         (
             torch.tensor(
@@ -382,11 +382,11 @@ def test_BinaryMCC(preds, targets, mask, weights, task_weights, lt_mask, gt_mask
             ),
             torch.tensor([[2, 1], [0, 0]]),
             torch.tensor([[1, 1], [0, 1]], dtype=torch.bool),
-            torch.ones([1, 2]),
+            torch.ones([2]),
             torch.ones([2]),
             torch.zeros([2, 2], dtype=bool),
             torch.zeros([2, 2], dtype=bool),
-            torch.tensor(0.3876276, dtype=torch.float),
+            torch.tensor(1.0, dtype=torch.float),
         ),
     ],
 )
