@@ -176,3 +176,4 @@ chemprop/_version.py
 config.toml
 
 !tests/data/*
+!notebooks/
