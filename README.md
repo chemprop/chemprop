@@ -1,5 +1,5 @@
 **Implements `rigr` as a flag**
 
-See [rigr_home](https://github.com/akshatzalte/chemprop/tree/rigr_home) for more information.
+Use the RIGR featurizer by adding `--rigr` to train (and infer) your chemprop models. See [rigr_home](https://github.com/akshatzalte/chemprop/tree/rigr_home) for more information.
 
 Reference:  [Resonance Invariant Graph Representation (RIGR) for Molecular Property Prediction]()
