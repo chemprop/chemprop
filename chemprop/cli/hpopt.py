@@ -24,11 +24,9 @@ from chemprop.cli.train import (
 )
 from chemprop.cli.utils.command import Subcommand
 from chemprop.data import build_dataloader
-from chemprop.featurizers import MoleculeFeaturizerRegistry
-from chemprop.nn import AggregationRegistry
+from chemprop.nn import AggregationRegistry, MetricRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
-from chemprop.utils import Factory
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {
@@ -106,7 +104,7 @@ SEARCH_PARAM_KEYWORDS_MAP = {
 
 class HpoptSubcommand(Subcommand):
     COMMAND = "hpopt"
-    HELP = "perform hyperparameter optimization on the given task"
+    HELP = "Perform hyperparameter optimization on the given task."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -132,15 +130,10 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         type=str,
         nargs="+",
         default=["basic"],
-        help=f"""The model parameters over which to search for an optimal hyperparameter configuration.
-    Some options are bundles of parameters or otherwise special parameter operations.
-
-    Special keywords:
-        basic - the default set of hyperparameters for search: depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim.
-        learning_rate - search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values
-            are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
-        all - include search for all 13 inidividual keyword options
-
+        help=f"""The model parameters over which to search for an optimal hyperparameter configuration. Some options are bundles of parameters or otherwise special parameter operations. Special keywords include:
+        - ``basic``: Default set of hyperparameters for search (depth, ffn_num_layers, dropout, message_hidden_dim, and ffn_hidden_dim)
+        - ``learning_rate``: Search for max_lr, init_lr_ratio, final_lr_ratio, and warmup_epochs. The search for init_lr and final_lr values are defined as fractions of the max_lr value. The search for warmup_epochs is as a fraction of the total epochs used.
+        - ``all``: Include search for all 13 individual keyword options (including: activation, aggregation, aggregation_norm, and batch_size which aren't included in the other two keywords).
     Individual supported parameters:
         {list(DEFAULT_SEARCH_SPACE.keys())}
     """,
@@ -158,55 +151,55 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
         "--raytune-num-samples",
         type=int,
         default=10,
-        help="Passed directly to Ray Tune TuneConfig to control number of trials to run",
+        help="Passed directly to Ray Tune ``TuneConfig`` to control number of trials to run",
     )
 
     raytune_args.add_argument(
         "--raytune-search-algorithm",
         choices=["random", "hyperopt", "optuna"],
         default="hyperopt",
-        help="Passed to Ray Tune TuneConfig to control search algorithm",
+        help="Passed to Ray Tune ``TuneConfig`` to control search algorithm",
     )
 
     raytune_args.add_argument(
         "--raytune-trial-scheduler",
         choices=["FIFO", "AsyncHyperBand"],
         default="FIFO",
-        help="Passed to Ray Tune TuneConfig to control trial scheduler",
+        help="Passed to Ray Tune ``TuneConfig`` to control trial scheduler",
     )
 
     raytune_args.add_argument(
         "--raytune-num-workers",
         type=int,
         default=1,
-        help="Passed directly to Ray Tune ScalingConfig to control number of workers to use",
+        help="Passed directly to Ray Tune ``ScalingConfig`` to control number of workers to use",
     )
 
     raytune_args.add_argument(
         "--raytune-use-gpu",
         action="store_true",
-        help="Passed directly to Ray Tune ScalingConfig to control whether to use GPUs",
+        help="Passed directly to Ray Tune ``ScalingConfig`` to control whether to use GPUs",
     )
 
     raytune_args.add_argument(
         "--raytune-num-checkpoints-to-keep",
         type=int,
         default=1,
-        help="Passed directly to Ray Tune CheckpointConfig to control number of checkpoints to keep",
+        help="Passed directly to Ray Tune ``CheckpointConfig`` to control number of checkpoints to keep",
     )
 
     raytune_args.add_argument(
         "--raytune-grace-period",
         type=int,
         default=10,
-        help="Passed directly to Ray Tune ASHAScheduler to control grace period",
+        help="Passed directly to Ray Tune ``ASHAScheduler`` to control grace period",
     )
 
     raytune_args.add_argument(
         "--raytune-reduction-factor",
         type=int,
         default=2,
-        help="Passed directly to Ray Tune ASHAScheduler to control reduction factor",
+        help="Passed directly to Ray Tune ``ASHAScheduler`` to control reduction factor",
     )
 
     raytune_args.add_argument(
@@ -236,14 +229,14 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     hyperopt_args.add_argument(
         "--hyperopt-n-initial-points",
         type=int,
-        help="Passed directly to HyperOptSearch to control number of initial points to sample",
+        help="Passed directly to ``HyperOptSearch`` to control number of initial points to sample",
     )
 
     hyperopt_args.add_argument(
         "--hyperopt-random-state-seed",
         type=int,
         default=None,
-        help="Passed directly to HyperOptSearch to control random state seed",
+        help="Passed directly to ``HyperOptSearch`` to control random state seed",
     )
 
     return parser
@@ -322,11 +315,17 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
-    logger.debug(f"Evaluation metric: '{model.metrics[0].alias}', mode: '{monitor_mode}'")
+    if args.tracking_metric == "val_loss":
+        T_tracking_metric = model.criterion.__class__
+    else:
+        T_tracking_metric = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
+
+    monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
+    logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
     patience = args.patience if args.patience is not None else args.epochs
-    early_stopping = EarlyStopping("val_loss", patience=patience, mode=monitor_mode)
+    early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
 
     trainer = pl.Trainer(
         accelerator=args.accelerator,
@@ -379,7 +378,7 @@ def tune_model(
 
     checkpoint_config = CheckpointConfig(
         num_to_keep=args.raytune_num_checkpoints_to_keep,
-        checkpoint_score_attribute="val_loss",
+        checkpoint_score_attribute=args.tracking_metric,
         checkpoint_score_order=monitor_mode,
     )
 
@@ -418,11 +417,12 @@ def tune_model(
             search_alg = OptunaSearch()
 
     tune_config = tune.TuneConfig(
-        metric="val_loss",
+        metric=args.tracking_metric,
         mode=monitor_mode,
         num_samples=args.raytune_num_samples,
         scheduler=scheduler,
         search_alg=search_alg,
+        trial_dirname_creator=lambda trial: str(trial.trial_id),
     )
 
     tuner = tune.Tuner(
@@ -439,7 +439,7 @@ def tune_model(
 def main(args: Namespace):
     if NO_RAY:
         raise ImportError(
-            "Ray Tune requires ray to be installed. If you installed Chemprop from PyPI, make sure that your Python version is 3.11 and use 'pip install -U ray[tune]' to install ray. If you installed from source, use 'pip install -e .[hpopt]' in Chemprop folder to install all hpopt relevant packages."
+            "Ray Tune requires ray to be installed. If you installed Chemprop from PyPI, run 'pip install -U ray[tune]' to install ray. If you installed from source, use 'pip install -e .[hpopt]' in Chemprop folder to install all hpopt relevant packages."
         )
 
     if not ray.is_initialized():
@@ -470,17 +470,8 @@ def main(args: Namespace):
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
 
-    if args.features_generators is not None:
-        # TODO: MorganFeaturizers take radius, length, and include_chirality as arguements. Should we expose these through the CLI?
-        features_generators = [
-            Factory.build(MoleculeFeaturizerRegistry[features_generator])
-            for features_generator in args.features_generators
-        ]
-    else:
-        features_generators = None
-
     featurization_kwargs = dict(
-        features_generators=features_generators, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
@@ -501,7 +492,7 @@ def main(args: Namespace):
     )
 
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-    monitor_mode = "min" if model.metrics[0].minimize else "max"
+    monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms

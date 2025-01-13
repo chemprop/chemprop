@@ -25,7 +25,7 @@ def test_train_quick(monkeypatch, data_path):
         "-i",
         data_path,
         "--epochs",
-        "1",
+        "3",
         "--num-workers",
         "0",
         "--show-individual-scores",
@@ -37,27 +37,7 @@ def test_train_quick(monkeypatch, data_path):
 
 
 def test_predict_quick(monkeypatch, data_path, model_path):
-    args = [
-        "chemprop",
-        "predict",
-        "-i",
-        data_path,
-        "--model-path",
-        model_path,
-        "--target-columns",
-        "mu",
-        "alpha",
-        "homo",
-        "lumo",
-        "gap",
-        "r2",
-        "zpve",
-        "cv",
-        "u0",
-        "u298",
-        "h298",
-        "g298",
-    ]
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

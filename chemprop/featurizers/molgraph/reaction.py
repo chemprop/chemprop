@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass
 from enum import auto
+import logging
 from typing import Iterable, Sequence, TypeAlias
-import warnings
 
 import numpy as np
 from rdkit import Chem
@@ -12,6 +12,8 @@ from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
+
+logger = logging.getLogger(__name__)
 
 
 class RxnMode(EnumMapping):
@@ -107,9 +109,9 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         """
 
         if atom_features_extra is not None:
-            warnings.warn("'atom_features_extra' is currently unsupported for reactions")
+            logger.warning("'atom_features_extra' is currently unsupported for reactions")
         if bond_features_extra is not None:
-            warnings.warn("'bond_features_extra' is currently unsupported for reactions")
+            logger.warning("'bond_features_extra' is currently unsupported for reactions")
 
         reac, pdt = rxn
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
@@ -121,7 +123,6 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         n_atoms_tot = len(V)
         n_atoms_reac = reac.GetNumAtoms()
 
-        i = 0
         for u in range(n_atoms_tot):
             for v in range(u + 1, n_atoms_tot):
                 b_reac, b_prod = self._get_bonds(
@@ -135,9 +136,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
 
-                i += 2
-
-        E = np.array(E)
+        E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
 

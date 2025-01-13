@@ -25,6 +25,9 @@ concurrency:
   group: actions-id-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  USE_LIBUV: 0  # libuv doesn't work on GitHub actions Windows runner
+
 jobs:
   build:
     name: Check Build
@@ -81,28 +84,17 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
-          python -m pip install ".[dev,docs,test]"
-      - name: Install hyperopt optional dependencies (Python 3.11 only)
-        if: ${{ matrix.python-version == '3.11' }} 
-        run: |
-          python -m pip install ".[hpopt]"
+          python -m pip install ".[dev,docs,test,hpopt]"
       - name: Test with pytest
         shell: bash -l {0}
         run: |
-          # specifically disable running on GPU, otherwise Lightning will attempt to use the Apple GPU
-          # that the GitHub actions runners still have but are not allowed to actually use
           pytest -v tests
-      - name: Test notebooks (excluding hpopting.ipynb)
+      - name: Test notebooks 
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'hpopting.ipynb')
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
-      - name: Test hpopting.ipynb (Python 3.11 only)
-        if: ${{ matrix.python-version == '3.11' }}
-        shell: bash -l {0}
-        run: |
-          pytest --no-cov -v --nbmake examples/hpopting.ipynb
 
   conda-test:
     name: Execute Tests with Conda-based Install

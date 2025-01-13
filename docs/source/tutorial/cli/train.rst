@@ -24,6 +24,7 @@ The following modeling tasks are supported:
  * :code:`regression`
  * :code:`regression-mve`
  * :code:`regression-evidential`
+ * :code:`regression-quantile`
  * :code:`classification`
  * :code:`classification-dirichlet`
  * :code:`multiclass`
@@ -60,16 +61,60 @@ Our code supports several methods of splitting data into train, validation, and 
 
 * **Scaffold:** Alternatively, the data can be split by molecular scaffold so that the same scaffold never appears in more than one split. This can be specified by adding :code:`--split-type scaffold_balanced`.
 
-* **User Specified Splits** The ability to specify your own split indices will be added soon.
+* **User Specified Splits** Custom splits can be specified in two ways, :code:`--splits-column` and :code:`--splits-file`, examples of which are shown below.
 
-*Note*: By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
+.. code-block::
 
-Other supported splitting methods include :code:`cv`, :code:`cv_no_val`, :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
+    chemprop train --splits-column split -i data.csv -t regression
 
-Cross Validation
-^^^^^^^^^^^^^^^^
+.. list-table:: data.csv
+    :widths: 10 10 10
+    :header-rows: 1
+    
+    * - smiles
+      - property
+      - split
+    * - C
+      - 1.0
+      - train
+    * - CC
+      - 2.0
+      - train
+    * - CCC
+      - 3.0
+      - test
+    * - CCCC
+      - 4.0
+      - val
+    * - CCCCC
+      - 5.0
+      - val
+    * - CCCCCC
+      - 6.0
+      - test
 
-k-fold cross-validation can be run by specifying :code:`--num-folds <k>` (default 1, i.e. no cross-validation).
+.. code-block::
+
+    chemprop train --splits-file splits.json -i data.csv -t regression
+
+.. code-block:: JSON
+    :caption: splits.json
+
+    [
+        {"train": [1, 2], "val": "3-5", "test": "6,7"},
+        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+    ]
+
+.. note::
+    By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
+
+Other supported splitting methods include :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
+
+Replicates
+^^^^^^^^^^
+
+Repeat random trials (i.e. replicates) run by specifying :code:`--num-replicates <n>` (default 1, i.e. no replicates).
+This is analogous to the 'outer loop' of nested cross validation but at a lower cost, suitable for deep learning applications.
 
 Ensembling
 ^^^^^^^^^^
@@ -88,7 +133,7 @@ Model performance is often highly dependent on the hyperparameters used. Below i
  * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default :code:`relu`)
  * :code:`--epochs <n>` How many epochs to train over (default 50)
  * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2)
- * :code:`--init_lr <n>` Initial learning rate (default 0.0001)
+ * :code:`--init-lr <n>` Initial learning rate (default 0.0001)
  * :code:`--max-lr <n>` Maximum learning rate (default 0.001)
  * :code:`--final-lr <n>` Final learning rate (default 0.0001)
 
@@ -109,14 +154,14 @@ The loss function can be specified using the :code:`--loss-function <function>` 
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`binary-dirichlet` Binary Dirichlet 
+ * :code:`dirichlet` Dirichlet 
 
 
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
  * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
- * :code:`multiclass-dirichlet` Multiclass Dirichlet
+ * :code:`dirichlet` Dirichlet
 
 **Spectral**:
 
@@ -131,9 +176,9 @@ The following evaluation metrics are supported during training:
 
 **Regression**:
 
- * :code:`rmse` Root mean squared error (default)
+ * :code:`rmse` Root mean squared error
  * :code:`mae` Mean absolute error
- * :code:`mse` Mean squared error
+ * :code:`mse` Mean squared error (default)
  * :code:`bounded-mae` Bounded mean absolute error
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`bounded-rmse` Bounded root mean squared error
@@ -162,18 +207,14 @@ The following evaluation metrics are supported during training:
 Advanced Training Methods
 -------------------------
 
-Pretraining
-^^^^^^^^^^^
+Pretraining and Transfer Learning
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using either:
+An existing model, for example from training on a larger, lower quality dataset, can be used for parameter-initialization of a new model by providing a checkpoint of the existing model using :code:`--checkpoint <path>`. :code:`<model_path>`` is the location of checkpoint(s) or model file(s). It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s).
 
-..  * :code:`--checkpoint-dir <dir>` Directory where the model checkpoint(s) are saved (i.e. :code:`--save_dir` during training of the old model). This will walk the directory, and load all :code:`.pt` files it finds.
-..  * :code:`--checkpoint-path <path>` Path to a model checkpoint file (:code:`.pt` file).
-.. when training the new model. The model architecture of the new model should resemble the architecture of the old model - otherwise some or all parameters might not be loaded correctly. Please note that the old model is only used to initialize the parameters of the new model, but all parameters remain trainable (no frozen layers). Depending on the quality of the old model, the new model might only need a few epochs to train.
+When training the new model, its architecture **must** resemble that of the old model. Depending on the similarity of the tasks and datasets, as well as the quality of the old model, the new model might require fewer epochs to achieve optimal performance compared to training from scratch.
 
-It is possible to freeze the weights of a loaded model during training, such as for transfer learning applications. To do so, specify :code:`--model-frzn <path>` where :code:`<path>` refers to a model's checkpoint file that will be used to overwrite and freeze the model weights. The following flags may be used:
-
- * :code:`--frzn-ffn-layers <n>` Overwrites weights for the first n layers of the FFN from the checkpoint (default 0)  
+It is also possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--checkpoint <path>`. After loading the model, the MPNN weights can be frozen via :code:`--freeze-encoder`. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
 .. _train-on-reactions:
 
@@ -214,7 +255,8 @@ The reaction and molecule SMILES columns can be ordered in any way. However, the
 Training on Spectra
 ^^^^^^^^^^^^^^^^^^^
 
-Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. 
+Spectra training is different than other datatypes because it considers the predictions of all targets together. Targets for spectra should be provided as the values for the spectrum at a specific position in the spectrum. Spectra predictions are configured to return only positive values and normalize them to sum each spectrum to 1. Spectral prediction are still in beta and will be updated in the future.
+
 .. Activation to enforce positivity is an exponential function by default but can also be set as a Softplus function, according to the argument :code:`--spectral-activation <exp or softplus>`. Value positivity is enforced on input targets as well using a floor value that replaces negative or smaller target values with the floor value, customizable with the argument :code:`--spectra_target_floor <float>` (default 1e-8).
 
 .. In absorption spectra, sometimes the phase of collection will create regions in the spectrum where data collection or prediction would be unreliable. To exclude these regions, include paths to phase features for your data (:code:`--phase-features-path <path>`) and a mask indicating the spectrum regions that are supported (:code:`--spectra-phase-mask-path <path>`). The format for the mask file is a .csv file with columns for the spectrum positions and rows for the phases, with column and row labels in the same order as they appear in the targets and features files.
@@ -250,22 +292,32 @@ Note that bond descriptors are not currently supported because the post message 
 The bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-features-scaling`.
 
 
-Extra Descriptors
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Extra Datapoint Descriptors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Additional descriptors can be concatenated to the learned representation after aggregation. These could be molecule features, for example. If you install from source, you can modify the code to load custom descriptors as follows:
+Additional datapoint descriptors can be concatenated to the learned representation after aggregation. These extra descriptors could be molecule-level features. If you install from source, you can modify the code to load custom descriptors as follows:
 
 1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features. 
-2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
+2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` where the descriptors are saved as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
 
 
 Molecule-Level 2D Features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Morgan fingerprints can be generated as molecular 2D features using :code:`--features-generators`:
+Chemprop provides several molecule featurizers that automatically calculate molecular features and uses them as extra datapoint descriptors. These are specified using :code:`--molecule-featurizers` followed by one or more of the following:
 
-* :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits.
-* :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits.
+ * :code:`morgan_binary` binary Morgan fingerprints, radius 2 and 2048 bits
+ * :code:`morgan_count` count-based Morgan, radius 2 and 2048 bits
+ * :code:`rdkit_2d` RDKit 2D features
+ * :code:`v1_rdkit_2d` The RDKit 2D features used in Chemprop v1
+ * :code:`v1_rdkit_2d_normalized` The normalized RDKit 2D features used in Chemprop v1
+
+.. note::
+   The Morgan fingerprints should not be scaled. Use :code:`--no-descriptor-scaling` to ensure this.
+
+   The RDKit 2D features are not normalized. The :code:`StandardScaler` used in the CLI to normalize is non-optimal for some of the RDKit features. It is recommended to precompute and scale these features outside of the CLI using an appropriate scaler and then provide them using :code:`--descriptors-path` and :code:`--no-descriptor-scaling` as described above. 
+
+   In Chemprop v1, :code:`descriptastorus` was used to calculate RDKit 2D features. This package offers normalization of the features, with the normalizations fit to a set of molecules randomly selected from ChEMBL. Several descriptors have been added to :code:`rdkit` recently which are not included in :code:`descriptastorus` including 'AvgIpc', 'BCUT2D_CHGHI', 'BCUT2D_CHGLO', 'BCUT2D_LOGPHI', 'BCUT2D_LOGPLOW', 'BCUT2D_MRHI', 'BCUT2D_MRLOW', 'BCUT2D_MWHI', 'BCUT2D_MWLOW', and 'SPS'.
 
 
 Missing Target Values

@@ -1,11 +1,13 @@
+import logging
 from typing import Iterable, Sequence
-import warnings
 
 from torch import Tensor, nn
 
 from chemprop.data import BatchMolGraph
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.message_passing.proto import MessagePassing
+
+logger = logging.getLogger(__name__)
 
 
 class MulticomponentMessagePassing(nn.Module, HasHParams):
@@ -36,7 +38,7 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
         if len(blocks) == 0:
             raise ValueError("arg 'blocks' was empty!")
         if shared and len(blocks) > 1:
-            warnings.warn(
+            logger.warning(
                 "More than 1 block was supplied but 'shared' was True! Using only the 0th block..."
             )
         elif not shared and len(blocks) != n_components:

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chemprop"
 description = "Molecular Property Prediction with Message Passing Neural Networks"
-version = "2.0.2"
+version = "2.1.0"
 authors = [
     {name = "The Chemprop Development Team (see LICENSE.txt)", email="chemprop@mit.edu"}
 ]
@@ -36,14 +36,16 @@ dependencies = [
     "torch >= 2.1",
     "astartes[molecules]",
     "ConfigArgParse",
+    "rich",
+    "descriptastorus",
 ]
 
 [project.optional-dependencies]
 hpopt = ["ray[tune]", "hyperopt", "optuna"]
 dev = ["black == 23.*", "bumpversion", "autopep8", "flake8", "pytest", "pytest-cov", "isort"]
-docs = ["nbsphinx", "sphinx", "sphinx-argparse", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21", "readthedocs-sphinx-ext", "pandoc"]
+docs = ["nbsphinx", "sphinx", "sphinx-argparse != 0.5.0", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21", "readthedocs-sphinx-ext", "pandoc"]
 test = ["pytest >= 6.2", "pytest-cov"]
-notebooks = ["ipykernel"]
+notebooks = ["ipykernel", "matplotlib"]
 
 [project.urls]
 documentation = "https://chemprop.readthedocs.io/en/latest/"
