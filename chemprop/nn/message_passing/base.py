@@ -33,7 +33,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         if `True`, pass messages on undirected edges
     dropout : float, default=0.0
         the dropout probability
-    activation : str, default="relu"
+    activation : str | nn.Module, default="relu"
         the activation function to use
     d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
@@ -53,7 +53,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         bias: bool = False,
         depth: int = 3,
         dropout: float = 0.0,
-        activation: str | Activation = Activation.RELU,
+        activation: str | nn.Module | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
         V_d_transform: ScaleTransform | None = None,
