@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import csv
 from typing import List, Optional, Union, Tuple
+from tqdm import tqdm
 
 import numpy as np
 
@@ -76,7 +77,7 @@ def load_data(args: PredictArgs, smiles: List[List[str]]):
     print("Validating SMILES")
     full_to_valid_indices = {}
     valid_index = 0
-    for full_index in range(len(full_data)):
+    for full_index in tqdm(range(len(full_data))):
         if all(mol is not None for mol in full_data[full_index].mol):
             full_to_valid_indices[full_index] = valid_index
             valid_index += 1
