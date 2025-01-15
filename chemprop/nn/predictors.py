@@ -121,9 +121,14 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         super().__init__()
         # manually add criterion and output_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        ignore_list = ["criterion", "output_transform"]
+        if isinstance(activation, nn.Module):
+            ignore_list.append("activation")
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["criterion"] = criterion
         self.hparams["output_transform"] = output_transform
+        if isinstance(activation, nn.Module):
+            self.hparams["activation"] = activation
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
