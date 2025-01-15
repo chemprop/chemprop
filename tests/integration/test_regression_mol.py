@@ -29,9 +29,9 @@ def dataloader(data):
 @pytest.mark.parametrize(
     "mpnn",
     [
-        (nn.BondMessagePassing(), nn.MeanAggregation(), "RELU"),
-        (nn.AtomMessagePassing(), nn.SumAggregation(), "RELU"),
-        (nn.BondMessagePassing(), nn.NormAggregation(), "RELU"),
+        (nn.BondMessagePassing(), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(), nn.SumAggregation()),
+        (nn.BondMessagePassing(), nn.NormAggregation()),
         (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
     ],
     indirect=True,
@@ -53,9 +53,9 @@ def test_quick(mpnn, dataloader):
 @pytest.mark.parametrize(
     "mpnn",
     [
-        (nn.BondMessagePassing(), nn.MeanAggregation(), "RELU"),
-        (nn.AtomMessagePassing(), nn.SumAggregation(), "RELU"),
-        (nn.BondMessagePassing(), nn.NormAggregation(), "RELU"),
+        (nn.BondMessagePassing(), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(), nn.SumAggregation()),
+        (nn.BondMessagePassing(), nn.NormAggregation()),
         (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
     ],
     indirect=True,
