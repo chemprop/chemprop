@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 @pytest.fixture(scope="session")
 def mpnn(request):
     message_passing, agg, *act = request.param
-    ffn = nn.RegressionFFN(activation=act or "RELU")
+    ffn = nn.RegressionFFN(activation=act[0] if act else "RELU")
 
     return models.MPNN(message_passing, agg, ffn, True)
 
