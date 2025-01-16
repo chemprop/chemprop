@@ -225,7 +225,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--activation",
         type=uppercase,
         default="RELU",
-        choices=list(Activation.keys()),
+        choices=list(Activation.keys()) + ["CUSTOM"],
         help="Activation function in message passing/FFN layers",
     )
     mp_args.add_argument(
@@ -243,6 +243,39 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
+    )
+
+    mp_args.add_argument(
+        "--activation-module",
+        type=str,
+        default="ReLU",
+        choices=torch.nn.modules.activation.__all__,
+        help="A CUSTOM activation function for message passing/FFN layers.",
+    )
+
+    def parse_value(value):
+        value = value.strip()
+        if value.isdigit():
+            return int(value)
+        if value.isfloat():
+            return float(value)
+        return value
+
+    def comma_separated_args(string):
+        posargs, kwargs = [], {}
+        for item in string.split(','):
+            if "=" in item:
+                key, value = item.split("=")
+                kwargs[key.strip()] = parse_value(value)
+            else:
+                posargs.append(parse_value(item))
+        return posargs, kwargs
+
+    mp_args.add_argument(
+        "--activation-args",
+        type=comma_separated_args,
+        default="",
+        help="Comma-separated arguments for a CUSTOM activation function.",
     )
 
     # TODO: Add in v2.1
@@ -921,6 +954,14 @@ def build_model(
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
+    if args.activation == "CUSTOM":
+        cls = args.activation_module
+        posargs, kwargs = args.activation_args
+        logger.info(f"Custom activation function: {cls}(*{posargs}, **{kwargs})")
+        activation = getattr(torch.nn.modules.activation, cls)(*posargs, **kwargs)
+    else:
+        activation = args.activation
+
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
@@ -937,7 +978,7 @@ def build_model(
                 depth=args.depth,
                 undirected=args.undirected,
                 dropout=args.dropout,
-                activation=args.activation,
+                activation=activation,
                 V_d_transform=V_d_transforms[i],
                 graph_transform=graph_transforms[i],
             )
@@ -968,7 +1009,7 @@ def build_model(
             depth=args.depth,
             undirected=args.undirected,
             dropout=args.dropout,
-            activation=args.activation,
+            activation=activation,
             V_d_transform=V_d_transforms[0],
             graph_transform=graph_transforms[0],
         )
@@ -1002,7 +1043,7 @@ def build_model(
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
-        activation=args.activation,
+        activation=activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
         output_transform=output_transform,
