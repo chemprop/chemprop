@@ -144,7 +144,7 @@ class MPNN(pl.LightningModule):
 
     def training_step(self, batch: BatchType, batch_idx):
         batch_size = self.get_batch_size(batch)
-        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
+        bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
@@ -168,7 +168,7 @@ class MPNN(pl.LightningModule):
         self._evaluate_batch(batch, "val")
 
         batch_size = self.get_batch_size(batch)
-        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
+        bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
@@ -183,7 +183,7 @@ class MPNN(pl.LightningModule):
 
     def _evaluate_batch(self, batch: BatchType, label: str) -> None:
         batch_size = self.get_batch_size(batch)
-        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
+        bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
@@ -218,7 +218,7 @@ class MPNN(pl.LightningModule):
 
             * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
         """
-        bmg, X_vd, X_d, *_ = batch
+        bmg, X_vd, X_ed, X_d, *_ = batch
 
         return self(bmg, X_vd, X_d)
 

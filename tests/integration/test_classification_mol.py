@@ -83,7 +83,7 @@ def test_overfit(classification_mpnn, dataloader):
     targetss = []
     masks = []
     for batch in dataloader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = classification_mpnn(bmg)
         not_nan = ~targets.isnan()
         predss.append(preds)
@@ -120,7 +120,7 @@ def test_dirichlet_overfit(classification_mpnn_dirichlet, dataloader):
     targetss = []
     masks = []
     for batch in dataloader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = classification_mpnn_dirichlet(bmg)
         not_nan = ~targets.isnan()
         predss.append(preds)
