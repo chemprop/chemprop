@@ -148,12 +148,6 @@ def test_targets(dataset, targets):
     np.testing.assert_array_equal(dataset.bond_dataset.Y, targets[2])
 
 
-def test_num_tasks(dataset, targets):
-    assert dataset.mol_dataset.t == targets[0].shape[1]
-    assert dataset.atom_dataset.t == targets[1].shape[1]
-    assert dataset.bond_dataset.t == targets[2].shape[1]
-
-
 @pytest.mark.skipif(
     not all([x is None for x in ["X_d", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
 )

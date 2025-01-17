@@ -18,6 +18,7 @@ def datum_1():
     return Datum(
         mol_graph1,
         V_d=np.array([[1.0], [2.0], [4.0]]),
+        E_d=None,
         x_d=[3, 4],
         y=[6, 7],
         weight=[8.0],
@@ -37,6 +38,7 @@ def datum_2():
     return Datum(
         mol_graph2,
         V_d=np.array([[5.0], [7.0]]),
+        E_d=None,
         x_d=[8, 9],
         y=[6, 4],
         weight=[1.0],
@@ -49,7 +51,7 @@ def test_collate_batch_single_graph(datum_1):
     batch = [datum_1]
 
     result = collate_batch(batch)
-    mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(result, tuple)
     assert isinstance(mgs, BatchMolGraph)
@@ -68,7 +70,7 @@ def test_collate_batch_multiple_graphs(datum_1, datum_2):
     batch = [datum_1, datum_2]
 
     result = collate_batch(batch)
-    mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(mgs, BatchMolGraph)
     assert (
