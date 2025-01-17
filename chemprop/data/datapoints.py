@@ -48,9 +48,15 @@ class _MoleculeDatapointMixin:
 
     @classmethod
     def from_smi(
-        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        keep_atom_map: bool = False,
+        **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h)
+        mol = make_mol(smi, keep_h, add_h, keep_atom_map)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -73,8 +79,12 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
     ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
+    E_d: np.ndarray | None = None
 
     def __post_init__(self):
+        if self.mol is None:
+            raise ValueError("Input molecule was `None`!")
+
         NAN_TOKEN = 0
         if self.V_f is not None:
             self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
@@ -82,6 +92,8 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
             self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
         if self.V_d is not None:
             self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
+        if self.E_d is not None:
+            self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
 
         super().__post_init__()
 
@@ -103,6 +115,7 @@ class _ReactionDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
+        keep_atom_map: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -119,8 +132,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h)
-        pdt = make_mol(pdt_smi, keep_h, add_h)
+        rct = make_mol(rct_smi, keep_h, add_h, keep_atom_map)
+        pdt = make_mol(pdt_smi, keep_h, add_h, keep_atom_map)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
