@@ -17,6 +17,16 @@ def mpnn(request):
 
 
 @pytest.fixture(scope="session")
+def mol_atom_bond_mpnn(request):
+    message_passing, agg = request.param
+    mol_ffn = nn.RegressionFFN()
+    atom_ffn = nn.RegressionFFN()
+    bond_ffn = nn.RegressionFFN(input_dim=600)
+
+    return models.MolAtomBondMPNN(message_passing, agg, mol_ffn, atom_ffn, bond_ffn, True)
+
+
+@pytest.fixture(scope="session")
 def regression_mpnn_mve(request):
     agg = nn.SumAggregation()
     ffn = nn.MveFFN()

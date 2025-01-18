@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import ast
 import numpy as np
 import pandas as pd
 import pytest
@@ -58,6 +59,19 @@ def mol_regression_data(data_dir):
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
     return smis, Y
+
+
+@pytest.fixture
+def mixed_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/mixed/mixed.csv")
+    smis = df["smiles"].to_list()
+    mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
+    atom_Y, bond_Y = [], []
+    for i in range(len(df)):
+        atom_Y.append(np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1,1))
+        bond_Y.append(np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1,1))
+
+    return smis, mol_Y, atom_Y, bond_Y
 
 
 @pytest.fixture
