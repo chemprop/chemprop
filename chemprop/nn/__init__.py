@@ -9,9 +9,9 @@ from .agg import (
 from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
+    MessagePassing,
     MixedAtomMessagePassing,
     MixedBondMessagePassing,
-    MessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (

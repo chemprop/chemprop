@@ -36,22 +36,13 @@ def data(mixed_regression_data):
     smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
     all_data = []
     all_data.append(
-        [
-            MoleculeDatapoint.from_smi(smi, y, keep_h=True)
-            for smi, y in zip(smis, mol_Y)
-        ]
+        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, mol_Y)]
     )
     all_data.append(
-        [
-            MoleculeDatapoint.from_smi(smi, y, keep_h=True)
-            for smi, y in zip(smis, atom_Y)
-        ]
+        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, atom_Y)]
     )
     all_data.append(
-        [
-            MoleculeDatapoint.from_smi(smi, y, keep_h=True)
-            for smi, y in zip(smis, bond_Y)
-        ]
+        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, bond_Y)]
     )
     return all_data
 

@@ -1,6 +1,6 @@
+import ast
 from pathlib import Path
 
-import ast
 import numpy as np
 import pandas as pd
 import pytest
@@ -68,8 +68,8 @@ def mixed_regression_data(data_dir):
     mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
     atom_Y, bond_Y = [], []
     for i in range(len(df)):
-        atom_Y.append(np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1,1))
-        bond_Y.append(np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1,1))
+        atom_Y.append(np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1, 1))
+        bond_Y.append(np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1, 1))
 
     return smis, mol_Y, atom_Y, bond_Y
 

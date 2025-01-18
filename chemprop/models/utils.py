@@ -41,4 +41,3 @@ def load_output_columns(path: PathLike) -> tuple[list[str] | None, list[list[str
     model_file = torch.load(path, map_location=torch.device("cpu"))
 
     return model_file.get("output_columns"), model_file.get("mixed_columns")
-    

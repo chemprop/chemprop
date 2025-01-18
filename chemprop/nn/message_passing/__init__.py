@@ -1,4 +1,9 @@
-from .base import AtomMessagePassing, BondMessagePassing, MixedAtomMessagePassing, MixedBondMessagePassing
+from .base import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MixedAtomMessagePassing,
+    MixedBondMessagePassing,
+)
 from .multi import MulticomponentMessagePassing
 from .proto import MessagePassing
 

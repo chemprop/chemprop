@@ -569,7 +569,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
-            warnings.warn(
+            logger.warn(
                 "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
