@@ -96,7 +96,7 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=100,
+        max_epochs=130,
         overfit_batches=1.00,
     )
     trainer.fit(mol_atom_bond_mpnn, dataloader)
