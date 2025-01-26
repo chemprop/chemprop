@@ -338,18 +338,13 @@ def make_datapoints(
     if len(rxnss) > 0:
         rctss = [
             [
-                make_mol(
-                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h
-                )
+                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h)
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss
         ]
         pdtss = [
-            [
-                make_mol(pdt_smi, keep_h, add_h)
-                for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
-            ]
+            [make_mol(pdt_smi, keep_h, add_h) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
             for rxns in rxnss
         ]
 
