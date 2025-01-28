@@ -24,6 +24,7 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     transfer_learning
     uncertainty
     interpreting_monte_carlo_tree_search
+    shapley_value_with_customized_featurizers
     extra_features_descriptors
     use_featurizer_with_other_libraries
     convert_v1_to_v2
