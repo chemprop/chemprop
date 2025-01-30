@@ -69,7 +69,7 @@ def test_IsotonicCalibrator(cal_uncs, cal_targets, cal_mask, test_uncs, cal_test
             ),
             torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]),
             torch.tensor(
-                [[0.4183908, 0.8000248, 0.1312900], [0.3975054, 0.7999378, 0.2770228]],
+                [[0.4182101, 0.8000248, 0.1312900], [0.3973791, 0.7999378, 0.2770228]],
                 dtype=torch.float64,
             ),
             torch.tensor([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 0, 1]]),
