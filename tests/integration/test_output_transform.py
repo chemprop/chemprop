@@ -42,7 +42,7 @@ def test_output_transform(data):
     mpnn.train()
     predss = []
     for batch in train_loader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = mpnn(bmg)
         predss.append(preds)
 
