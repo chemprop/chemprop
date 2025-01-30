@@ -86,7 +86,7 @@ def test_overfit(classification_mpnn_multiclass, dataloader):
     predss = []
     targetss = []
     for batch in dataloader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = classification_mpnn_multiclass(bmg)
         preds = preds.transpose(1, 2)
         predss.append(preds)
@@ -122,7 +122,7 @@ def test_dirichlet_overfit(classification_mpnn_multiclass_dirichlet, dataloader)
     predss = []
     targetss = []
     for batch in dataloader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = classification_mpnn_multiclass_dirichlet(bmg)
         preds = preds.transpose(1, 2)
         predss.append(preds)
