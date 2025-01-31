@@ -124,7 +124,7 @@ def test_train_quick_features(monkeypatch, data_path):
         atom_descriptors_path,
     ]
 
-    task_types = ["", "regression-mve", "regression-evidential"]
+    task_types = ["", "regression-mve", "regression-evidential", "regression-quantile"]
 
     for task_type in task_types:
         args = base_args.copy()
@@ -151,7 +151,25 @@ def test_predict_quick(monkeypatch, data_path, model_path):
 
 def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
     input_path, *_ = data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        mve_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "mve",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "miscalibration_area",
+        "ence",
+        "spearman",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -160,7 +178,25 @@ def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
 
 def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
     input_path, *_ = data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", evidential_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        evidential_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "evidential-total",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "miscalibration_area",
+        "ence",
+        "spearman",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -213,7 +249,7 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "test_predictions.csv").exists()
 
 
-def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
+def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     args = [
         "chemprop",
@@ -228,8 +264,8 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         str(tmp_path),
         "--save-smiles-splits",
         "--split-type",
-        "cv",
-        "--num-folds",
+        "random",
+        "--num-replicates",
         "3",
         "--ensemble-size",
         "2",
@@ -244,10 +280,10 @@ def test_train_output_structure_cv_ensemble(monkeypatch, data_path, tmp_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "fold_2" / "model_1" / "best.pt").exists()
-    assert (tmp_path / "fold_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "fold_2" / "model_1" / "trainer_logs" / "version_0").exists()
-    assert (tmp_path / "fold_2" / "train_smiles.csv").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "best.pt").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
+    assert (tmp_path / "replicate_2" / "model_1" / "trainer_logs" / "version_0").exists()
+    assert (tmp_path / "replicate_2" / "train_smiles.csv").exists()
 
 
 def test_train_csv_splits(monkeypatch, data_dir, tmp_path):
@@ -393,8 +429,9 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
-        "--model-frzn",
+        "--checkpoint",
         model_path,
+        "--freeze-encoder",
         "--frzn-ffn-layers",
         "1",
     ]
@@ -414,6 +451,33 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     assert torch.equal(
         trained_model.predictor.ffn[0][0].weight, frzn_model.predictor.ffn[0][0].weight
     )
+
+
+def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--checkpoint",
+        model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
+
+    model = MPNN.load_from_checkpoint(checkpoint_path)
+    assert model is not None
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")

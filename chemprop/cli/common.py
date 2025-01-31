@@ -198,3 +198,20 @@ def process_common_args(args: Namespace) -> Namespace:
 
 def validate_common_args(args):
     pass
+
+
+def find_models(model_paths: list[Path]):
+    collected_model_paths = []
+
+    for model_path in model_paths:
+        if model_path.suffix in [".ckpt", ".pt"]:
+            collected_model_paths.append(model_path)
+        elif model_path.is_dir():
+            collected_model_paths.extend(list(model_path.rglob("*.pt")))
+        else:
+            raise ArgumentError(
+                argument=None,
+                message=f"Expected a .ckpt or .pt file, or a directory. Got {model_path}",
+            )
+
+    return collected_model_paths

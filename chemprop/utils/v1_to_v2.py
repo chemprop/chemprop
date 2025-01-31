@@ -5,9 +5,8 @@ from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
 from chemprop.nn.agg import AggregationRegistry
-from chemprop.nn.loss import LossFunctionRegistry
 from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
-from chemprop.nn.metrics import MetricRegistry
+from chemprop.nn.metrics import LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.utils import Factory
@@ -146,8 +145,8 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
 
 
 def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
-    """Converts a v1 model .pt file to a v2 model .ckpt file"""
+    """Converts a v1 model .pt file to a v2 model .pt file"""
 
-    model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"))
+    model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"), weights_only=False)
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
     torch.save(model_v2_dict, model_v2_file)

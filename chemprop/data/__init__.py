@@ -1,4 +1,10 @@
-from .collate import BatchMolGraph, TrainingBatch, collate_batch, collate_multicomponent
+from .collate import (
+    BatchMolGraph,
+    MulticomponentTrainingBatch,
+    TrainingBatch,
+    collate_batch,
+    collate_multicomponent,
+)
 from .dataloader import build_dataloader
 from .datapoints import MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
@@ -16,6 +22,7 @@ __all__ = [
     "BatchMolGraph",
     "TrainingBatch",
     "collate_batch",
+    "MulticomponentTrainingBatch",
     "collate_multicomponent",
     "build_dataloader",
     "MoleculeDatapoint",

@@ -1,17 +1,21 @@
 from __future__ import annotations
 
-from typing import Iterable
-import warnings
+import io
+import logging
+from typing import Iterable, TypeAlias
 
 from lightning import pytorch as pl
 import torch
-from torch import Tensor, distributed, nn, optim
+from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMolGraph, TrainingBatch
-from chemprop.nn import Aggregation, LossFunction, MessagePassing, Predictor
-from chemprop.nn.metrics import Metric
+from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
+from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+
+logger = logging.getLogger(__name__)
+
+BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
 class MPNN(pl.LightningModule):
@@ -36,7 +40,7 @@ class MPNN(pl.LightningModule):
         the aggregation operation to use during molecule-level predictor
     predictor : Predictor
         the function to use to calculate the final prediction
-    batch_norm : bool, default=True
+    batch_norm : bool, default=False
         if `True`, apply batch normalization to the output of the aggregation operation
     metrics : Iterable[Metric] | None, default=None
         the metrics to use to evaluate the model during training and evaluation
@@ -61,8 +65,8 @@ class MPNN(pl.LightningModule):
         message_passing: MessagePassing,
         agg: Aggregation,
         predictor: Predictor,
-        batch_norm: bool = True,
-        metrics: Iterable[Metric] | None = None,
+        batch_norm: bool = False,
+        metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
         init_lr: float = 1e-4,
         max_lr: float = 1e-3,
@@ -90,9 +94,9 @@ class MPNN(pl.LightningModule):
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
         self.metrics = (
-            [*metrics, self.criterion]
+            nn.ModuleList([*metrics, self.criterion.clone()])
             if metrics
-            else [self.predictor._T_default_metric(), self.criterion]
+            else nn.ModuleList([self.predictor._T_default_metric(), self.criterion.clone()])
         )
 
         self.warmup_epochs = warmup_epochs
@@ -113,7 +117,7 @@ class MPNN(pl.LightningModule):
         return self.predictor.n_targets
 
     @property
-    def criterion(self) -> LossFunction:
+    def criterion(self) -> ChempropMetric:
         return self.predictor.criterion
 
     def fingerprint(
@@ -138,7 +142,8 @@ class MPNN(pl.LightningModule):
         """Generate predictions for the input molecules/reactions"""
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
-    def training_step(self, batch: TrainingBatch, batch_idx):
+    def training_step(self, batch: BatchType, batch_idx):
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -148,49 +153,51 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train_loss", l, prog_bar=True)
+        self.log("train_loss", self.criterion, batch_size=batch_size, prog_bar=True, on_epoch=True)
 
         return l
 
     def on_validation_model_eval(self) -> None:
         self.eval()
+        self.message_passing.V_d_transform.train()
+        self.message_passing.graph_transform.train()
+        self.X_d_transform.train()
         self.predictor.output_transform.train()
 
-    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
-        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+    def validation_step(self, batch: BatchType, batch_idx: int = 0):
+        self._evaluate_batch(batch, "val")
 
-        self.log_dict(metric2loss, batch_size=len(batch[0]))
-        self.log(
-            "val_loss",
-            losses[0],
-            batch_size=len(batch[0]),
-            prog_bar=True,
-            sync_dist=distributed.is_initialized(),
-        )
+        batch_size = self.get_batch_size(batch)
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
-    def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
-        losses = self._evaluate_batch(batch)
-        metric2loss = {f"batch_averaged_test/{m.alias}": l for m, l in zip(self.metrics, losses)}
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
 
-        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        Z = self.fingerprint(bmg, V_d, X_d)
+        preds = self.predictor.train_step(Z)
+        self.metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
+        self.log("val_loss", self.metrics[-1], batch_size=batch_size, prog_bar=True)
 
-    def _evaluate_batch(self, batch) -> list[Tensor]:
-        bmg, V_d, X_d, targets, _, lt_mask, gt_mask = batch
+    def test_step(self, batch: BatchType, batch_idx: int = 0):
+        self._evaluate_batch(batch, "test")
+
+    def _evaluate_batch(self, batch: BatchType, label: str) -> None:
+        batch_size = self.get_batch_size(batch)
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
         targets = targets.nan_to_num(nan=0.0)
         preds = self(bmg, V_d, X_d)
-        weights = torch.ones_like(targets)
+        weights = torch.ones_like(weights)
 
         if self.predictor.n_targets > 1:
             preds = preds[..., 0]
 
-        return [
-            metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]
-        ]
+        for m in self.metrics[:-1]:
+            m.update(preds, targets, mask, weights, lt_mask, gt_mask)
+            self.log(f"{label}/{m.alias}", m, batch_size=batch_size)
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+    def predict_step(self, batch: BatchType, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
 
         Parameters
@@ -224,7 +231,7 @@ class MPNN(pl.LightningModule):
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
-            warnings.warn(
+            logger.warning(
                 "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
@@ -240,40 +247,69 @@ class MPNN(pl.LightningModule):
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
-    @classmethod
-    def load_submodules(cls, checkpoint_path, map_location=None, **kwargs):
-        hparams = torch.load(checkpoint_path, map_location=map_location)["hyper_parameters"]
-
-        kwargs |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-            if key not in kwargs
-        }
-        return kwargs
+    def get_batch_size(self, batch: TrainingBatch) -> int:
+        return len(batch[0])
 
     @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
-        kwargs = cls.load_submodules(checkpoint_path, map_location, **kwargs)
-        return super().load_from_checkpoint(
-            checkpoint_path, map_location, hparams_file, strict, **kwargs
-        )
-
-    @classmethod
-    def load_from_file(cls, model_path, map_location=None, strict=True) -> MPNN:
-        d = torch.load(model_path, map_location=map_location)
+    def _load(cls, path, map_location, **submodules):
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
             state_dict = d["state_dict"]
         except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {model_path}. ")
+            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
-        for key in ["message_passing", "agg", "predictor"]:
-            hparam_kwargs = hparams[key]
-            hparam_cls = hparam_kwargs.pop("cls")
-            hparams[key] = hparam_cls(**hparam_kwargs)
+        submodules |= {
+            key: hparams[key].pop("cls")(**hparams[key])
+            for key in ("message_passing", "agg", "predictor")
+            if key not in submodules
+        }
+
+        if not hasattr(submodules["predictor"].criterion, "_defaults"):
+            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
+                task_weights=submodules["predictor"].criterion.task_weights
+            )
+
+        return submodules, state_dict, hparams
+
+    @classmethod
+    def _add_metric_task_weights_to_state_dict(cls, state_dict, hparams):
+        if "metrics.0.task_weights" not in state_dict:
+            metrics = hparams["metrics"]
+            n_metrics = len(metrics) if metrics is not None else 1
+            for i_metric in range(n_metrics):
+                state_dict[f"metrics.{i_metric}.task_weights"] = torch.tensor([[1.0]])
+            state_dict[f"metrics.{i_metric + 1}.task_weights"] = state_dict[
+                "predictor.criterion.task_weights"
+            ]
+        return state_dict
+
+    @classmethod
+    def load_from_checkpoint(
+        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
+    ) -> MPNN:
+        submodules = {
+            k: v for k, v in kwargs.items() if k in ["message_passing", "agg", "predictor"]
+        }
+        submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
+        kwargs.update(submodules)
+
+        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        d = torch.load(checkpoint_path, map_location, weights_only=False)
+        d["state_dict"] = state_dict
+        buffer = io.BytesIO()
+        torch.save(d, buffer)
+        buffer.seek(0)
+
+        return super().load_from_checkpoint(buffer, map_location, hparams_file, strict, **kwargs)
+
+    @classmethod
+    def load_from_file(cls, model_path, map_location=None, strict=True, **submodules) -> MPNN:
+        submodules, state_dict, hparams = cls._load(model_path, map_location, **submodules)
+        hparams.update(submodules)
+
+        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
