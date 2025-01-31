@@ -55,6 +55,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         chiral_tags: Sequence[int],
         num_Hs: Sequence[int],
         hybridizations: Sequence[int],
+        rigr: bool=False,
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {i: i for i in degrees}
@@ -62,25 +63,38 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         self.chiral_tags = {i: i for i in chiral_tags}
         self.num_Hs = {i: i for i in num_Hs}
         self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
+        self.rigr = rigr
 
-        self._subfeats: list[dict] = [
-            self.atomic_nums,
-            self.degrees,
-            self.formal_charges,
-            self.chiral_tags,
-            self.num_Hs,
-            self.hybridizations,
-        ]
-        subfeat_sizes = [
-            1 + len(self.atomic_nums),
-            1 + len(self.degrees),
-            1 + len(self.formal_charges),
-            1 + len(self.chiral_tags),
-            1 + len(self.num_Hs),
-            1 + len(self.hybridizations),
-            1,
-            1,
-        ]
+        if rigr:
+            self._subfeats: list[dict] = [
+                self.atomic_nums,
+                self.degrees,
+                self.num_Hs,
+            ]
+            subfeat_sizes = [
+                1 + len(self.atomic_nums),
+                1 + len(self.degrees),
+                1 + len(self.num_Hs),
+                1,
+            ]
+        else:
+            self._subfeats: list[dict] = [
+                self.atomic_nums,
+                self.degrees,
+                self.formal_charges,
+                self.chiral_tags,
+                self.num_Hs,
+                self.hybridizations,
+            ]
+            subfeat_sizes = [
+                1 + len(self.atomic_nums),
+                1 + len(self.degrees),
+                1 + len(self.formal_charges),
+                1 + len(self.chiral_tags),
+                1 + len(self.num_Hs),
+                1 + len(self.hybridizations),
+                1,
+            ]
         self.__size = sum(subfeat_sizes)
 
     def __len__(self) -> int:
@@ -92,21 +106,31 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         if a is None:
             return x
 
-        feats = [
-            a.GetAtomicNum(),
-            a.GetTotalDegree(),
-            a.GetFormalCharge(),
-            int(a.GetChiralTag()),
-            int(a.GetTotalNumHs()),
-            a.GetHybridization(),
-        ]
+        if self.rigr:
+            feats = [
+                a.GetAtomicNum(),
+                a.GetTotalDegree(),
+                int(a.GetTotalNumHs()),
+            ]
+        else:
+            feats = [
+                a.GetAtomicNum(),
+                a.GetTotalDegree(),
+                a.GetFormalCharge(),
+                int(a.GetChiralTag()),
+                int(a.GetTotalNumHs()),
+                a.GetHybridization(),
+            ]
+
         i = 0
         for feat, choices in zip(feats, self._subfeats):
             j = choices.get(feat, len(choices))
             x[i + j] = 1
             i += len(choices) + 1
-        x[i] = int(a.GetIsAromatic())
-        x[i + 1] = 0.01 * a.GetMass()
+        if not self.rigr:
+            x[i] = int(a.GetIsAromatic())
+            i += 1
+        x[i] = 0.01 * a.GetMass()
 
         return x
 
@@ -123,7 +147,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         return x
 
     @classmethod
-    def v1(cls, max_atomic_num: int = 100):
+    def v1(cls, max_atomic_num: int = 100, rigr: bool=False):
         """The original implementation used in Chemprop V1 [1]_, [2]_.
 
         Parameters
@@ -154,10 +178,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
                 HybridizationType.SP3D,
                 HybridizationType.SP3D2,
             ],
+            rigr=rigr,
         )
 
     @classmethod
-    def v2(cls):
+    def v2(cls, rigr: bool=False):
         """An implementation that includes an atom type bit for all elements in the first four rows of the periodic table plus iodine."""
 
         return cls(
@@ -175,10 +200,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
                 HybridizationType.SP3D,
                 HybridizationType.SP3D2,
             ],
+            rigr=rigr,
         )
 
     @classmethod
-    def organic(cls):
+    def organic(cls, rigr: bool=False):
         r"""A specific parameterization intended for use with organic or drug-like molecules.
 
         This parameterization features:
@@ -198,6 +224,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
                 HybridizationType.SP2,
                 HybridizationType.SP3,
             ],
+            rigr=rigr,
         )
 
 
@@ -209,14 +236,14 @@ class AtomFeatureMode(EnumMapping):
     ORGANIC = auto()
 
 
-def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
+def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode, rigr: bool=False) -> MultiHotAtomFeaturizer:
     """Build the corresponding multi-hot atom featurizer."""
     match AtomFeatureMode.get(mode):
         case AtomFeatureMode.V1:
-            return MultiHotAtomFeaturizer.v1()
+            return MultiHotAtomFeaturizer.v1(rigr=rigr)
         case AtomFeatureMode.V2:
-            return MultiHotAtomFeaturizer.v2()
+            return MultiHotAtomFeaturizer.v2(rigr=rigr)
         case AtomFeatureMode.ORGANIC:
-            return MultiHotAtomFeaturizer.organic()
+            return MultiHotAtomFeaturizer.organic(rigr=rigr)
         case _:
             raise RuntimeError("unreachable code reached!")
