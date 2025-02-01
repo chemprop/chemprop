@@ -896,10 +896,16 @@ def build_datasets(args, train_data, val_data, test_data):
         train_data = train_data[0]
         val_data = val_data[0]
         test_data = test_data[0]
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
+        train_dset = make_dataset(
+            train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr
+        )
+        val_dset = make_dataset(
+            val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr
+        )
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr)
+            test_dset = make_dataset(
+                test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, args.rigr
+            )
         else:
             test_dset = None
     if args.task_type != "spectral":

@@ -55,7 +55,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         chiral_tags: Sequence[int],
         num_Hs: Sequence[int],
         hybridizations: Sequence[int],
-        rigr: bool=False,
+        rigr: bool = False,
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {i: i for i in degrees}
@@ -66,11 +66,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         self.rigr = rigr
 
         if rigr:
-            self._subfeats: list[dict] = [
-                self.atomic_nums,
-                self.degrees,
-                self.num_Hs,
-            ]
+            self._subfeats: list[dict] = [self.atomic_nums, self.degrees, self.num_Hs]
             subfeat_sizes = [
                 1 + len(self.atomic_nums),
                 1 + len(self.degrees),
@@ -108,11 +104,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             return x
 
         if self.rigr:
-            feats = [
-                a.GetAtomicNum(),
-                a.GetTotalDegree(),
-                int(a.GetTotalNumHs()),
-            ]
+            feats = [a.GetAtomicNum(), a.GetTotalDegree(), int(a.GetTotalNumHs())]
         else:
             feats = [
                 a.GetAtomicNum(),
@@ -148,7 +140,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         return x
 
     @classmethod
-    def v1(cls, max_atomic_num: int = 100, rigr: bool=False):
+    def v1(cls, max_atomic_num: int = 100, rigr: bool = False):
         """The original implementation used in Chemprop V1 [1]_, [2]_.
 
         Parameters
@@ -183,7 +175,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         )
 
     @classmethod
-    def v2(cls, rigr: bool=False):
+    def v2(cls, rigr: bool = False):
         """An implementation that includes an atom type bit for all elements in the first four rows of the periodic table plus iodine."""
 
         return cls(
@@ -205,7 +197,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         )
 
     @classmethod
-    def organic(cls, rigr: bool=False):
+    def organic(cls, rigr: bool = False):
         r"""A specific parameterization intended for use with organic or drug-like molecules.
 
         This parameterization features:
@@ -237,7 +229,9 @@ class AtomFeatureMode(EnumMapping):
     ORGANIC = auto()
 
 
-def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode, rigr: bool=False) -> MultiHotAtomFeaturizer:
+def get_multi_hot_atom_featurizer(
+    mode: str | AtomFeatureMode, rigr: bool = False
+) -> MultiHotAtomFeaturizer:
     """Build the corresponding multi-hot atom featurizer."""
     match AtomFeatureMode.get(mode):
         case AtomFeatureMode.V1:
