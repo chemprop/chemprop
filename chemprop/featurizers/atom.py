@@ -94,6 +94,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
                 1 + len(self.num_Hs),
                 1 + len(self.hybridizations),
                 1,
+                1,
             ]
         self.__size = sum(subfeat_sizes)
 
