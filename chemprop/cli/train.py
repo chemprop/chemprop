@@ -255,11 +255,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     def parse_value(value):
         value = value.strip()
-        if value.isdigit():
+        try:
             return int(value)
-        if value.isfloat():
-            return float(value)
-        return value
+        except ValueError:
+            try:
+                return float(value)
+            except ValueError:
+                return value
 
     def comma_separated_args(string):
         posargs, kwargs = [], {}
