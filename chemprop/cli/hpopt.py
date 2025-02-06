@@ -316,7 +316,10 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     logger.info(model)
 
     if args.tracking_metric == "val_loss":
-        T_tracking_metric = model.criterion.__class__
+        if args.is_mixed:
+            T_tracking_metric = model.criterion[0].__class__
+        else:
+            T_tracking_metric = model.criterion.__class__
     else:
         T_tracking_metric = MetricRegistry[args.tracking_metric]
         args.tracking_metric = "val/" + args.tracking_metric
@@ -479,20 +482,45 @@ def main(args: Namespace):
 
     input_transforms = normalize_inputs(train_dset, val_dset, args)
 
-    if "regression" in args.task_type:
+    if args.is_mixed and "regression" in args.task_type:
+        output_transform = []
+        mol_output_scaler = train_dset.mol_dataset.normalize_targets()
+        val_dset.mol_dataset.normalize_targets(mol_output_scaler)
+        output_transform.append(UnscaleTransform.from_standard_scaler(mol_output_scaler))
+        atom_output_scaler = train_dset.atom_dataset.normalize_targets()
+        val_dset.atom_dataset.normalize_targets(atom_output_scaler)
+        output_transform.append(UnscaleTransform.from_standard_scaler(atom_output_scaler))
+        bond_output_scaler = train_dset.bond_dataset.normalize_targets()
+        val_dset.bond_dataset.normalize_targets(bond_output_scaler)
+        output_transform.append(UnscaleTransform.from_standard_scaler(bond_output_scaler))
+        logger.info(
+            f"Train data: mean = {mol_output_scaler.mean_} | std = {mol_output_scaler.scale_}"
+        )
+        logger.info(
+            f"Train data: mean = {atom_output_scaler.mean_} | std = {atom_output_scaler.scale_}"
+        )
+        logger.info(
+            f"Train data: mean = {bond_output_scaler.mean_} | std = {bond_output_scaler.scale_}"
+        )
+    elif args.is_mixed:
+        output_transform = [None, None, None]
+    elif "regression" in args.task_type:
         output_scaler = train_dset.normalize_targets()
         val_dset.normalize_targets(output_scaler)
         logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
-        output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
+        output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
     else:
-        output_transform = None
+        output_transform = [None]
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
     model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-    monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+    if args.is_mixed:
+        monitor_mode = "max" if model.metrics[0][0].higher_is_better else "min"
+    else:
+        monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms

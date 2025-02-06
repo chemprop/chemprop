@@ -66,12 +66,30 @@ def mixed_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/mixed/mixed.csv")
     smis = df["smiles"].to_list()
     mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
-    atom_Y, bond_Y = [], []
+    atom_Y, bond_Y = np.empty((0, 1)), np.empty((0, 1))
     for i in range(len(df)):
-        atom_Y.append(np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1, 1))
-        bond_Y.append(np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1, 1))
+        atom_Y = np.vstack((atom_Y, df.loc[i, "atom"].to_numpy().reshape(-1, 1)))
+        bond_Y = np.vstack((bond_Y, df.loc[i, "bond"].to_numpy().reshape(-1, 1)))
 
     return smis, mol_Y, atom_Y, bond_Y
+
+
+@pytest.fixture
+def atom_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "regression/atoms.csv")
+    smis = df.loc[:, "smiles"].values
+    target_columns = ["charges"]
+    ys = df.loc[:, target_columns]
+    Y = []
+    for molecule in range(len(ys)):
+        list_props = []
+        for prop in target_columns:
+            np_prop = np.array(ast.literal_eval(ys.iloc[molecule][prop]))
+            np_prop = np.expand_dims(np_prop, axis=1)
+            list_props.append(np_prop)
+        Y.append(np.hstack(list_props))
+
+    return smis, Y
 
 
 @pytest.fixture

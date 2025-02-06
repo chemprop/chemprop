@@ -677,6 +677,10 @@ class MolAtomBondDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return mixed_list
 
     @property
+    def featurizer(self):
+        return self.datasets[0].featurizer
+
+    @property
     def smiles(self) -> list[list[str]]:
         return list(zip(*[dset.smiles for dset in self.datasets]))
 
@@ -691,41 +695,37 @@ class MolAtomBondDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
         return self.datasets[0].normalize_targets(scaler)
 
-    def normalize_inputs(  # CHANGE
+    def normalize_inputs(
         self, key: str = "X_d", scaler: list[StandardScaler] | None = None
     ) -> list[StandardScaler]:
         match scaler:
             case None:
-                return [dset.normalize_inputs(key) for dset in self.datasets]
+                return self.datasets[0].normalize_inputs(key)
             case _:
-                assert len(scaler) == len(
-                    self.datasets
-                ), "Number of scalers must match number of datasets!"
-
-                return [dset.normalize_inputs(key, s) for dset, s in zip(self.datasets, scaler)]
+                return self.datasets[0].normalize_inputs(key, scaler)
 
     def reset(self):
         return [dset.reset() for dset in self.datasets]
 
     @property
-    def d_xd(self) -> list[int]:
+    def d_xd(self) -> int:
         return self.datasets[0].d_xd
 
     @property
-    def d_vf(self) -> list[int]:
-        return sum(dset.d_vf for dset in self.datasets)
+    def d_vf(self) -> int:
+        return self.datasets[0].d_vf
 
     @property
-    def d_ef(self) -> list[int]:
-        return sum(dset.d_ef for dset in self.datasets)
+    def d_ef(self) -> int:
+        return self.datasets[0].d_ef
 
     @property
-    def d_vd(self) -> list[int]:
-        return sum(dset.d_vd for dset in self.datasets)
+    def d_vd(self) -> int:
+        return self.datasets[0].d_vd
 
     @property
-    def d_ed(self) -> list[int]:
-        return sum(dset.d_ed for dset in self.datasets)
+    def d_ed(self) -> int:
+        return self.datasets[0].d_ed
 
 
 @dataclass
