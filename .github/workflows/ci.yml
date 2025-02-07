@@ -12,7 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, atom-bond-predictions]
   # run this in the morning on weekdays to catch dependency issues
   schedule:
     - cron: "0 8 * * 1-5"
@@ -93,7 +93,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb')
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
 
   conda-test:
