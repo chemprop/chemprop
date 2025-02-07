@@ -33,17 +33,25 @@ pytestmark = [
 
 @pytest.fixture
 def data(mixed_regression_data):
-    smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
+    smis, mol_Y, atom_Y, bond_Y, atom_slices, bond_slices = mixed_regression_data
     all_data = []
     all_data.append(
         [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, mol_Y)]
     )
-    all_data.append(
-        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, atom_Y)]
-    )
-    all_data.append(
-        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, bond_Y)]
-    )
+
+    atom_datapoints = []
+    for i in range(len(smis)):
+        smi = smis[i]
+        y = atom_Y[atom_slices[i]:atom_slices[i+1]]
+        atom_datapoints.append(MoleculeDatapoint.from_smi(smi, y, keep_h=True))
+    all_data.append(atom_datapoints)
+
+    bond_datapoints = []
+    for i in range(len(smis)):
+        smi = smis[i]
+        y = bond_Y[bond_slices[i]:bond_slices[i+1]]
+        bond_datapoints.append(MoleculeDatapoint.from_smi(smi, y, keep_h=True))
+    all_data.append(bond_datapoints)
     return all_data
 
 
