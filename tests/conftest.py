@@ -66,12 +66,22 @@ def mixed_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/mixed/mixed.csv")
     smis = df["smiles"].to_list()
     mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
-    atom_Y, bond_Y = np.empty((0, 1)), np.empty((0, 1))
-    for i in range(len(df)):
-        atom_Y = np.vstack((atom_Y, df.loc[i, "atom"].to_numpy().reshape(-1, 1)))
-        bond_Y = np.vstack((bond_Y, df.loc[i, "bond"].to_numpy().reshape(-1, 1)))
 
-    return smis, mol_Y, atom_Y, bond_Y
+    atom_Y, bond_Y = np.empty((0, 1)), np.empty((0, 1))
+    atom_slices, bond_slices = [], []
+    atom_slices.append(0)
+    atom_sum = 0
+    bond_slices.append(0)
+    bond_sum = 0
+    for i in range(len(df)):
+        atom_Y = np.vstack((atom_Y, np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1, 1)))
+        atom_sum += len(ast.literal_eval(df.loc[i, "atom"]))
+        atom_slices.append(atom_sum)
+        bond_Y = np.vstack((bond_Y, np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1, 1)))
+        bond_sum += len(ast.literal_eval(df.loc[i, "bond"]))
+        bond_slices.append(bond_sum)
+
+    return smis, mol_Y, atom_Y, bond_Y, atom_slices, bond_slices
 
 
 @pytest.fixture

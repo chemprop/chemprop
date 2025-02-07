@@ -42,14 +42,14 @@ def data(mixed_regression_data):
     atom_datapoints = []
     for i in range(len(smis)):
         smi = smis[i]
-        y = atom_Y[atom_slices[i]:atom_slices[i+1]]
+        y = atom_Y[atom_slices[i] : atom_slices[i + 1]]
         atom_datapoints.append(MoleculeDatapoint.from_smi(smi, y, keep_h=True))
     all_data.append(atom_datapoints)
 
     bond_datapoints = []
     for i in range(len(smis)):
         smi = smis[i]
-        y = bond_Y[bond_slices[i]:bond_slices[i+1]]
+        y = bond_Y[bond_slices[i] : bond_slices[i + 1]]
         bond_datapoints.append(MoleculeDatapoint.from_smi(smi, y, keep_h=True))
     all_data.append(bond_datapoints)
     return all_data

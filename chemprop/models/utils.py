@@ -38,6 +38,6 @@ def load_mixed_model(path: PathLike) -> MolAtomBondMPNN:
 
 
 def load_output_columns(path: PathLike) -> tuple[list[str] | None, list[list[str]] | None]:
-    model_file = torch.load(path, map_location=torch.device("cpu"))
+    model_file = torch.load(path, map_location=torch.device("cpu"), weights_only=False)
 
     return model_file.get("output_columns"), model_file.get("mixed_columns")

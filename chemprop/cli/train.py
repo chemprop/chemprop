@@ -1113,11 +1113,14 @@ def build_model(
     else:
         metrics = None
 
-    input_dims = [
-        mp_block.output_dim + d_xd,
-        mp_block.output_dim,
-        2 * (mp_block.output_dim - d_vd + d_ed),
-    ]
+    if args.is_mixed:
+        input_dims = [
+            mp_block.output_dim + d_xd,
+            mp_block.output_dim,
+            2 * (mp_block.output_dim - d_vd + d_ed),
+        ]
+    else:
+        input_dims = [mp_block.output_dim + d_xd]
     # input_dims[2] *= 2  # for bond edge input_dim
 
     predictors = [

@@ -205,7 +205,8 @@ class MveFFN(RegressionFFN):
         var = F.softplus(var)
 
         mean = self.output_transform(mean)
-        var = self.output_transform.transform_variance(var)
+        if not isinstance(self.output_transform, nn.Identity):
+            var = self.output_transform.transform_variance(var)
 
         return torch.stack((mean, var), dim=2)
 
@@ -225,7 +226,8 @@ class EvidentialFFN(RegressionFFN):
         beta = F.softplus(beta)
 
         mean = self.output_transform(mean)
-        beta = self.output_transform.transform_variance(beta)
+        if not isinstance(self.output_transform, nn.Identity):
+            beta = self.output_transform.transform_variance(beta)
 
         return torch.stack((mean, v, alpha, beta), dim=2)
 
