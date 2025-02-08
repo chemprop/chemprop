@@ -389,8 +389,6 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
         "--freeze-encoder",
         "--frzn-ffn-layers",
         "1",
-        "--accelerator",
-        "cpu",
         "--is-mixed",
     ]
 
@@ -521,8 +519,6 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "morgan_binary",
         "--search-parameter-keywords",
         "all",
-        "--accelerator",
-        "cpu",
         "--is-mixed",
     ]
 
