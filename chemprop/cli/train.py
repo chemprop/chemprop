@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
 import json
@@ -53,7 +54,6 @@ from chemprop.nn.message_passing import (
     MulticomponentMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
-from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,11 @@ logger = logging.getLogger(__name__)
 _CV_REMOVAL_ERROR = (
     "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
 )
+
+_ACTIVATION_FUNCTIONS = OrderedDict(
+    {uppercase(func): func for func in sorted(nn.modules.activation.__all__)}
+)
+_ACTIVATION_FUNCTIONS.move_to_end("RELU", last=False)
 
 
 class TrainSubcommand(Subcommand):
@@ -222,13 +227,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to use the same message passing neural network for all input molecules (only relevant if ``number_of_molecules`` > 1)",
     )
     mp_args.add_argument(
-        "--activation",
-        type=uppercase,
-        default="RELU",
-        choices=list(Activation.keys()) + ["CUSTOM"],
-        help="Activation function in message passing/FFN layers",
-    )
-    mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="norm",
@@ -246,38 +244,32 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
 
     mp_args.add_argument(
-        "--activation-module",
-        type=str,
-        default="ReLU",
-        choices=torch.nn.modules.activation.__all__,
-        help="A CUSTOM activation function for message passing/FFN layers.",
+        "--activation",
+        type=uppercase,
+        default="RELU",
+        choices=list(_ACTIVATION_FUNCTIONS.keys()),
+        help="Activation function in message passing/FFN layers.",
     )
 
-    def parse_value(value):
-        value = value.strip()
+    def parse_argument(argument):
+        *k, s = argument.split("=", 1)
+        s = s.strip().lower()
+        if s in {"true", "false"}:
+            v = s == "true"
         try:
-            return int(value)
+            v = int(s)
         except ValueError:
             try:
-                return float(value)
+                v = float(s)
             except ValueError:
-                return value
-
-    def comma_separated_args(string):
-        posargs, kwargs = [], {}
-        for item in string.split(','):
-            if "=" in item:
-                key, value = item.split("=")
-                kwargs[key.strip()] = parse_value(value)
-            else:
-                posargs.append(parse_value(item))
-        return posargs, kwargs
+                v = s
+        return {k[0]: v} if k else v
 
     mp_args.add_argument(
         "--activation-args",
-        type=comma_separated_args,
-        default="",
-        help="Comma-separated arguments for a CUSTOM activation function.",
+        nargs="*",
+        type=parse_argument,
+        help="Arguments for the activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
 
     # TODO: Add in v2.1
@@ -948,6 +940,24 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
+def _get_activation(activation, arguments):
+    cls = _ACTIVATION_FUNCTIONS[activation]
+    posargs, kwargs = [], {}
+    if arguments is not None:
+        for item in arguments:
+            if isinstance(item, dict):
+                kwargs.update(item)
+            else:
+                posargs.append(item)
+    passed_args = ", ".join(
+        [f"{v}" for v in posargs] + [f"{k}={v}" for k, v in kwargs.items()]
+    )
+    return (
+        getattr(nn.modules.activation, cls)(*posargs, **kwargs),
+        f"{cls}({passed_args})",
+    )
+
+
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
@@ -955,14 +965,8 @@ def build_model(
     input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
-
-    if args.activation == "CUSTOM":
-        cls = args.activation_module
-        posargs, kwargs = args.activation_args
-        logger.info(f"Custom activation function: {cls}(*{posargs}, **{kwargs})")
-        activation = getattr(torch.nn.modules.activation, cls)(*posargs, **kwargs)
-    else:
-        activation = args.activation
+    activation, signature = _get_activation(args.activation, args.activation_args)
+    logger.info(f"Message passing/FFN activation function: {signature}")
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):

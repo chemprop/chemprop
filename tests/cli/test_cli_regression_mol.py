@@ -589,11 +589,10 @@ def test_custom_activation_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--activation",
-        "CUSTOM",
-        "--activation-module",
-        "Softplus",
-        "--activation-args",
-        "beta=1.0,threshold=15",
+        "SOFTPLUS",
+        "--activation-arg",
+        "1.0",
+        "threshold=15",
     ]
 
     with monkeypatch.context() as m:
