@@ -1055,7 +1055,7 @@ def build_model(
     else:
         metrics = None
 
-    if args.output_activation is "NONE":
+    if args.output_activation == "NONE":
         output_activation, signature = None, "NONE"
     else:
         output_activation, signature = _get_activation(
