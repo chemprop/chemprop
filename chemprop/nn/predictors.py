@@ -303,6 +303,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
+        output_activation: str | nn.Module | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
@@ -316,6 +317,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
             criterion,
             task_weights,
             threshold,
+            output_activation,
             output_transform,
         )
 
