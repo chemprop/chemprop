@@ -55,6 +55,8 @@ class Predictor(nn.Module, HasHParams):
     """the loss function to use for training"""
     task_weights: Tensor
     """the weights to apply to each task when calculating the loss"""
+    output_activation: str | nn.Module | None
+    """the activation function to apply to the output of the predictor"""
     output_transform: UnscaleTransform
     """the transform to apply to the output of the predictor"""
 
@@ -116,6 +118,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
+        output_activation: str | nn.Module | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
@@ -124,15 +127,25 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         ignore_list = ["criterion", "output_transform"]
         if isinstance(activation, nn.Module):
             ignore_list.append("activation")
+        if isinstance(output_activation, nn.Module):
+            ignore_list.append("output_activation")
         self.save_hyperparameters(ignore=ignore_list)
         self.hparams["criterion"] = criterion
         self.hparams["output_transform"] = output_transform
         if isinstance(activation, nn.Module):
             self.hparams["activation"] = activation
+        if isinstance(output_activation, nn.Module):
+            self.hparams["output_activation"] = output_activation
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
-            input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
+            input_dim,
+            n_tasks * self.n_targets,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            output_activation,
         )
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         self.criterion = criterion or Factory.build(
