@@ -304,6 +304,19 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
         "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
     )
+    ffn_args.add_argument(
+        "--output-activation",
+        type=uppercase,
+        default="NONE",
+        choices=["NONE", *_ACTIVATION_FUNCTIONS.keys()],
+        help="Activation function in the output layer of the FFN top model.",
+    )
+    ffn_args.add_argument(
+        "--output-activation-args",
+        nargs="*",
+        type=parse_argument,
+        help="Arguments for the output activation function (Example: arg1 arg2 key1=value1 key2=value2).",
+    )
     # TODO: Decide if we want to implment this in v2
     # ffn_args.add_argument(
     #     "--features-only",
@@ -1042,6 +1055,14 @@ def build_model(
     else:
         metrics = None
 
+    if args.output_activation is "NONE":
+        output_activation, signature = None, "NONE"
+    else:
+        output_activation, signature = _get_activation(
+            args.output_activation, args.output_activation_args
+        )
+    logger.info(f"Output activation function: {signature}")
+
     predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xd,
@@ -1052,6 +1073,7 @@ def build_model(
         activation=activation,
         criterion=criterion,
         n_classes=args.multiclass_num_classes,
+        output_activation=output_activation,
         output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
