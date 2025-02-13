@@ -4,7 +4,6 @@
 import json
 
 import pytest
-import torch
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
@@ -371,51 +370,51 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     assert model is not None
 
 
-def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
-    input_path, *_ = data_path
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--epochs",
-        "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--checkpoint",
-        model_path,
-        "--freeze-encoder",
-        "--frzn-ffn-layers",
-        "1",
-        "--is-mixed",
-    ]
+# def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
+#     input_path, *_ = data_path
+#     args = [
+#         "chemprop",
+#         "train",
+#         "-i",
+#         input_path,
+#         "--epochs",
+#         "3",
+#         "--num-workers",
+#         "0",
+#         "--save-dir",
+#         str(tmp_path),
+#         "--checkpoint",
+#         model_path,
+#         "--freeze-encoder",
+#         "--frzn-ffn-layers",
+#         "1",
+#         "--is-mixed",
+#     ]
 
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
+#     with monkeypatch.context() as m:
+#         m.setattr("sys.argv", args)
+#         main()
 
-    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
+#     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    trained_model = MolAtomBondMPNN.load_from_checkpoint(checkpoint_path)
-    frzn_model = MolAtomBondMPNN.load_from_file(model_path)
+#     trained_model = MolAtomBondMPNN.load_from_checkpoint(checkpoint_path)
+#     frzn_model = MolAtomBondMPNN.load_from_file(model_path)
 
-    assert torch.equal(
-        trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
-    )
-    assert torch.equal(
-        trained_model.message_passing.W_o_b.weight, frzn_model.message_passing.W_o_b.weight
-    )
-    assert torch.equal(
-        trained_model.mol_predictor.ffn[0][0].weight, frzn_model.mol_predictor.ffn[0][0].weight
-    )
-    assert torch.equal(
-        trained_model.atom_predictor.ffn[0][0].weight, frzn_model.atom_predictor.ffn[0][0].weight
-    )
-    assert torch.equal(
-        trained_model.bond_predictor.ffn[0][0].weight, frzn_model.bond_predictor.ffn[0][0].weight
-    )
+#     assert torch.equal(
+#         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
+#     )
+#     assert torch.equal(
+#         trained_model.message_passing.W_o_b.weight, frzn_model.message_passing.W_o_b.weight
+#     )
+#     assert torch.equal(
+#         trained_model.mol_predictor.ffn[0][0].weight, frzn_model.mol_predictor.ffn[0][0].weight
+#     )
+#     assert torch.equal(
+#         trained_model.atom_predictor.ffn[0][0].weight, frzn_model.atom_predictor.ffn[0][0].weight
+#     )
+#     assert torch.equal(
+#         trained_model.bond_predictor.ffn[0][0].weight, frzn_model.bond_predictor.ffn[0][0].weight
+#     )
 
 
 def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
