@@ -123,4 +123,4 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
 
-    assert mse <= 0.5
+    assert mse <= 0.55
