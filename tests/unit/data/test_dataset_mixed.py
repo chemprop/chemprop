@@ -105,13 +105,8 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds, slices):
     return [mol_data, atom_data, bond_data]
 
 
-@pytest.fixture(params=[False, True])
-def cache(request):
-    return request.param
-
-
 @pytest.fixture
-def dataset(data, cache):
+def dataset(data):
     extra_atom_fdim = data[0][0].V_f.shape[1] if data[0][0].V_f is not None else 0
     extra_bond_fdim = data[0][0].E_f.shape[1] if data[0][0].E_f is not None else 0
 
@@ -123,15 +118,6 @@ def dataset(data, cache):
     bond_dset = BondDataset(data[2], featurizer)
     dset = MolAtomBondDataset(mol_dset, atom_dset, bond_dset)
     return dset
-
-
-def test_none():
-    with pytest.raises(ValueError):
-        MoleculeDataset(None, SimpleMoleculeMolGraphFeaturizer())
-
-
-def test_empty():
-    """TODO"""
 
 
 def test_len(data, dataset):

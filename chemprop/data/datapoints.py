@@ -74,6 +74,9 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
     E_d: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
+    descriptors *after* message passing"""
 
     def __post_init__(self):
         if self.mol is None:
