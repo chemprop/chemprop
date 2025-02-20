@@ -44,7 +44,7 @@ class MLP(nn.Sequential, FFN):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
         dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
-        blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
+        blocks = [nn.Linear(dims[0], dims[1])]
         if len(dims) > 2:
             blocks.extend(
                 [
@@ -54,7 +54,7 @@ class MLP(nn.Sequential, FFN):
             )
 
         if output_activation is not None:
-            blocks.append(nn.Sequential(get_activation_function(output_activation)))
+            blocks.append(get_activation_function(output_activation))
 
         return cls(*blocks)
 
