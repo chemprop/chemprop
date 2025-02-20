@@ -200,6 +200,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             ],
         )
 
+
 class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
     """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
 
@@ -220,18 +221,8 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
         self.degrees = {i: i for i in (degrees or list(range(6)))}
         self.num_Hs = {i: i for i in (num_Hs or list(range(5)))}
 
-        self._subfeats: list[dict] = [
-            self.atomic_nums,
-            self.degrees,
-            self.num_Hs,
-
-        ]
-        subfeat_sizes = [
-            1 + len(self.atomic_nums),
-            1 + len(self.degrees),
-            1 + len(self.num_Hs),
-            1,
-        ]
+        self._subfeats: list[dict] = [self.atomic_nums, self.degrees, self.num_Hs]
+        subfeat_sizes = [1 + len(self.atomic_nums), 1 + len(self.degrees), 1 + len(self.num_Hs), 1]
         self.__size = sum(subfeat_sizes)
 
     def __len__(self) -> int:
@@ -243,11 +234,7 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
         if a is None:
             return x
 
-        feats = [
-            a.GetAtomicNum(),
-            a.GetTotalDegree(),
-            int(a.GetTotalNumHs()),
-        ]
+        feats = [a.GetAtomicNum(), a.GetTotalDegree(), int(a.GetTotalNumHs())]
         i = 0
         for feat, choices in zip(feats, self._subfeats):
             j = choices.get(feat, len(choices))
@@ -268,6 +255,7 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
         x[i] = 1
 
         return x
+
 
 class AtomFeatureMode(EnumMapping):
     """The mode of an atom is used for featurization into a `MolGraph`"""

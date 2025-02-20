@@ -405,7 +405,7 @@ def make_dataset(
     multi_hot_atom_featurizer_mode: str = "V2",
 ) -> MoleculeDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
-    if multi_hot_atom_featurizer_mode == 'RIGR':
+    if multi_hot_atom_featurizer_mode == "RIGR":
         bond_featurizer = RIGRBondFeaturizer()
     else:
         bond_featurizer = MultiHotBondFeaturizer()

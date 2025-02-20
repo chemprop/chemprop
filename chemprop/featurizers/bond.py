@@ -91,6 +91,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
 
         return xs.index(x) if x in xs else n, n + 1
 
+
 class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
@@ -98,9 +99,7 @@ class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
     * in ring?
     """
 
-    def __init__(
-        self
-    ):
+    def __init__(self):
         pass
 
     def __len__(self):
