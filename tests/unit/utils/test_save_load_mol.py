@@ -127,3 +127,8 @@ def test_scalers_roundtrip(tmp_path):
         original.predictor.output_transform.mean, loaded.predictor.output_transform.mean
     )
     assert torch.equal(original.X_d_transform.mean, loaded.X_d_transform.mean)
+
+
+def test_load_checkpoint_with_metrics(data_dir):
+    MPNN.load_from_checkpoint(data_dir / "example_model_v2_regression_mol_with_metrics.ckpt")
+    MPNN.load_from_checkpoint(data_dir / "example_model_v2_classification_mol_with_metrics.ckpt")
