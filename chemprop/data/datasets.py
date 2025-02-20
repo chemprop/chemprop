@@ -148,31 +148,15 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    data = []
+    """A :class:`MockDataset` serves to create a mock empty dataset that passes through all the message passing code.
+    This is used when there are no target columns for any of molecule, atom, and/or bond for mixed predictions
+    """
+
     featurizer = SimpleMoleculeMolGraphFeaturizer
 
-    def __post_init__(self):
-        if self.data is None:
-            raise ValueError("Data cannot be None!")
-
-        self.reset()
-        self.cache = False
-
-    @cached_property
-    def _Y(self) -> np.ndarray:
-        """the raw targets of the dataset"""
-        return np.array([])
-
-    @property
     def Y(self) -> np.ndarray:
         """the (scaled) targets of the dataset"""
-        return self.__Y
-
-    @Y.setter
-    def Y(self, Y: ArrayLike):
-        self._validate_attribute(Y, "targets")
-
-        self.__Y = np.array(Y, float)
+        return np.array([])
 
     def __getitem__(self, idx: int) -> Datum:
         return None
@@ -197,79 +181,23 @@ class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return None
 
     @property
-    def smiles(self) -> list[str]:
-        """the SMILES strings associated with the dataset"""
-        return [Chem.MolToSmiles(d.mol) for d in self.data]
-
-    @property
-    def mols(self) -> list[Chem.Mol]:
-        """the molecules associated with the dataset"""
-        return [d.mol for d in self.data]
-
-    @property
-    def _V_fs(self) -> list[np.ndarray]:
+    def V_fs(self) -> list[np.ndarray]:
         """the raw atom features of the dataset"""
         return np.array([])
 
     @property
-    def V_fs(self) -> list[np.ndarray]:
-        """the (scaled) atom descriptors of the dataset"""
-        return self.__V_fs
-
-    @V_fs.setter
-    def V_fs(self, V_fs: list[np.ndarray]):
-        """the (scaled) atom features of the dataset"""
-        self._validate_attribute(V_fs, "atom features")
-
-        self.__V_fs = V_fs
-        self._init_cache()
-
-    @property
-    def _E_fs(self) -> list[np.ndarray]:
+    def E_fs(self) -> list[np.ndarray]:
         """the raw bond features of the dataset"""
         return np.array([])
 
     @property
-    def E_fs(self) -> list[np.ndarray]:
-        """the (scaled) bond features of the dataset"""
-        return self.__E_fs
-
-    @E_fs.setter
-    def E_fs(self, E_fs: list[np.ndarray]):
-        self._validate_attribute(E_fs, "bond features")
-
-        self.__E_fs = E_fs
-        self._init_cache()
-
-    @property
-    def _V_ds(self) -> list[np.ndarray]:
+    def V_ds(self) -> list[np.ndarray]:
         """the raw atom descriptors of the dataset"""
         return np.array([])
 
     @property
-    def V_ds(self) -> list[np.ndarray]:
-        """the (scaled) atom descriptors of the dataset"""
-        return self.__V_ds
-
-    @V_ds.setter
-    def V_ds(self, V_ds: list[np.ndarray]):
-        self._validate_attribute(V_ds, "atom descriptors")
-
-        self.__V_ds = V_ds
-
-    @property
-    def _E_ds(self) -> list[np.ndarray]:
-        return np.array([])
-
-    @property
     def E_ds(self) -> list[np.ndarray]:
-        return self.__E_ds
-
-    @E_ds.setter
-    def E_ds(self, E_ds: list[np.ndarray]):
-        self._validate_attribute(E_ds, "bond descriptors")
-
-        self.__E_ds = E_ds
+        return np.array([])
 
     @property
     def d_vf(self) -> int:
@@ -293,42 +221,9 @@ class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def normalize_inputs(
         self, key: str = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
-        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d", "E_d"}
-
-        match key:
-            case "X_d":
-                X = None if self.d_xd == 0 else self.X_d
-            case "V_f":
-                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
-            case "E_f":
-                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
-            case "V_d":
-                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
-            case "E_d":
-                X = None if self.d_ed == 0 else np.concatenate(self.E_ds, axis=0)
-            case _:
-                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
-
-        if X is None:
-            return scaler
-
-        if scaler is None:
-            scaler = StandardScaler().fit(X)
-
-        match key:
-            case "X_d":
-                self.X_d = scaler.transform(X)
-            case "V_f":
-                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
-            case "E_f":
-                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
-            case "V_d":
-                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
-            case "E_d":
-                self.E_ds = [scaler.transform(E_d) if E_d.size > 0 else E_d for E_d in self.E_ds]
-            case _:
-                raise RuntimeError("unreachable code reached!")
-
+        scaler = StandardScaler()
+        scaler.mean_ = [0]
+        scaler.scale_ = [1]
         return scaler
 
     def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
@@ -336,15 +231,6 @@ class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
         scaler.mean_ = [0]
         scaler.scale_ = [1]
         return scaler
-
-    def reset(self):
-        """Reset the atom and bond features; atom and extra descriptors; and targets of each
-        datapoint to their initial, unnormalized values."""
-        super().reset()
-        self.__V_fs = self._V_fs
-        self.__E_fs = self._E_fs
-        self.__V_ds = self._V_ds
-        self.__E_ds = self._E_ds
 
 
 @dataclass
