@@ -121,75 +121,6 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         x[i] = 1
 
         return x
-    
-class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
-    """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
-
-    The generated atom features are ordered as follows:
-    * atomic number
-    * degree
-    * number of hydrogens
-    * mass
-    """
-
-    def __init__(
-        self,
-        atomic_nums: Sequence[int],
-        degrees: Sequence[int],
-        num_Hs: Sequence[int],
-    ):
-        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)} or list(range(1, 37)) + [53]
-        self.degrees = {i: i for i in degrees} or list(range(6))
-        self.num_Hs = {i: i for i in num_Hs} or list(range(5))
-
-        self._subfeats: list[dict] = [
-            self.atomic_nums,
-            self.degrees,
-            self.num_Hs,
-
-        ]
-        subfeat_sizes = [
-            1 + len(self.atomic_nums),
-            1 + len(self.degrees),
-            1 + len(self.num_Hs),
-            1,
-        ]
-        self.__size = sum(subfeat_sizes)
-
-    def __len__(self) -> int:
-        return self.__size
-
-    def __call__(self, a: Atom | None) -> np.ndarray:
-        x = np.zeros(self.__size)
-
-        if a is None:
-            return x
-
-        feats = [
-            a.GetAtomicNum(),
-            a.GetTotalDegree(),
-            int(a.GetTotalNumHs()),
-        ]
-        i = 0
-        for feat, choices in zip(feats, self._subfeats):
-            j = choices.get(feat, len(choices))
-            x[i + j] = 1
-            i += len(choices) + 1
-        x[i] = 0.01 * a.GetMass()
-
-        return x
-
-    def num_only(self, a: Atom) -> np.ndarray:
-        """featurize the atom by setting only the atomic number bit"""
-        x = np.zeros(len(self))
-
-        if a is None:
-            return x
-
-        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
-        x[i] = 1
-
-        return x
 
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
@@ -269,6 +200,74 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
             ],
         )
 
+class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
+    """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
+
+    The generated atom features are ordered as follows:
+    * atomic number
+    * degree
+    * number of hydrogens
+    * mass
+    """
+
+    def __init__(
+        self,
+        atomic_nums: Sequence[int],
+        degrees: Sequence[int],
+        num_Hs: Sequence[int],
+    ):
+        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)} or list(range(1, 37)) + [53]
+        self.degrees = {i: i for i in degrees} or list(range(6))
+        self.num_Hs = {i: i for i in num_Hs} or list(range(5))
+
+        self._subfeats: list[dict] = [
+            self.atomic_nums,
+            self.degrees,
+            self.num_Hs,
+
+        ]
+        subfeat_sizes = [
+            1 + len(self.atomic_nums),
+            1 + len(self.degrees),
+            1 + len(self.num_Hs),
+            1,
+        ]
+        self.__size = sum(subfeat_sizes)
+
+    def __len__(self) -> int:
+        return self.__size
+
+    def __call__(self, a: Atom | None) -> np.ndarray:
+        x = np.zeros(self.__size)
+
+        if a is None:
+            return x
+
+        feats = [
+            a.GetAtomicNum(),
+            a.GetTotalDegree(),
+            int(a.GetTotalNumHs()),
+        ]
+        i = 0
+        for feat, choices in zip(feats, self._subfeats):
+            j = choices.get(feat, len(choices))
+            x[i + j] = 1
+            i += len(choices) + 1
+        x[i] = 0.01 * a.GetMass()
+
+        return x
+
+    def num_only(self, a: Atom) -> np.ndarray:
+        """featurize the atom by setting only the atomic number bit"""
+        x = np.zeros(len(self))
+
+        if a is None:
+            return x
+
+        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
+        x[i] = 1
+
+        return x
 
 class AtomFeatureMode(EnumMapping):
     """The mode of an atom is used for featurization into a `MolGraph`"""
