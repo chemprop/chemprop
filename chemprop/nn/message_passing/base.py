@@ -177,7 +177,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
                 H = self.dropout(H)
             except RuntimeError:
                 raise InvalidShapeError(
-                    "V_d", V_d.shape, [len(H), self.W_d.in_features - M.shape[1]]
+                    "V_d", V_d.shape, [len(H), self.W_d.in_features - self.W_o.out_features]
                 )
 
         return H
