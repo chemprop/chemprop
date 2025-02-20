@@ -212,13 +212,13 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
 
     def __init__(
         self,
-        atomic_nums: Sequence[int],
-        degrees: Sequence[int],
-        num_Hs: Sequence[int],
+        atomic_nums: Sequence[int] | None = None,
+        degrees: Sequence[int] | None = None,
+        num_Hs: Sequence[int] | None = None,
     ):
-        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)} or list(range(1, 37)) + [53]
-        self.degrees = {i: i for i in degrees} or list(range(6))
-        self.num_Hs = {i: i for i in num_Hs} or list(range(5))
+        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums or list(range(1, 37)) + [53])}
+        self.degrees = {i: i for i in (degrees or list(range(6)))}
+        self.num_Hs = {i: i for i in (num_Hs or list(range(5)))}
 
         self._subfeats: list[dict] = [
             self.atomic_nums,
@@ -288,6 +288,6 @@ def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFe
         case AtomFeatureMode.ORGANIC:
             return MultiHotAtomFeaturizer.organic()
         case AtomFeatureMode.RIGR:
-            return RIGRAtomFeaturizer
+            return RIGRAtomFeaturizer()
         case _:
             raise RuntimeError("unreachable code reached!")
