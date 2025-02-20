@@ -12,6 +12,7 @@ from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBa
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+from chemprop.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -267,8 +268,9 @@ class MPNN(pl.LightningModule):
         }
 
         if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
+            submodules["predictor"].criterion = Factory.build(
+                submodules["predictor"].criterion.__class__,
+                **submodules["predictor"].criterion.__dict__,
             )
 
         return submodules, state_dict, hparams
@@ -286,6 +288,17 @@ class MPNN(pl.LightningModule):
         return state_dict
 
     @classmethod
+    def _update_old_metrics_to_torchmetrics(cls, hparams):
+        if hparams["metrics"] is not None:
+            if not hasattr(hparams["metrics"][0], "_defaults"):
+                metrics = hparams["metrics"]
+                fixed_metrics = []
+                for metric in metrics:
+                    fixed_metrics.append(Factory.build(metric.__class__, **metric.__dict__))
+                hparams["metrics"] = fixed_metrics
+        return hparams
+
+    @classmethod
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
@@ -296,8 +309,10 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        hparams = cls._update_old_metrics_to_torchmetrics(hparams)
         d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
+        d["hyper_parameters"] = hparams
         buffer = io.BytesIO()
         torch.save(d, buffer)
         buffer.seek(0)
@@ -310,6 +325,7 @@ class MPNN(pl.LightningModule):
         hparams.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
+        hparams = cls._update_old_metrics_to_torchmetrics(hparams)
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
