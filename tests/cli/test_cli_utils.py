@@ -24,7 +24,7 @@ def test_find_models(data_dir):
     models = find_models([data_dir / "example_model_v2_regression_mol.ckpt"])
     assert len(models) == 1
     models = find_models([data_dir])
-    assert len(models) == 12
+    assert len(models) == 13
     models = find_models(
         [
             data_dir / "example_model_v2_regression_mol.pt",
@@ -32,7 +32,7 @@ def test_find_models(data_dir):
             data_dir,
         ]
     )
-    assert len(models) == 14
+    assert len(models) == 15
 
 
 @pytest.mark.parametrize(

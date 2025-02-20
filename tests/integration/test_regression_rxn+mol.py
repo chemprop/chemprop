@@ -80,7 +80,7 @@ def test_overfit(mcmpnn, dataloader):
 
     errors = []
     for batch in dataloader:
-        bmg, _, _, targets, *_ = batch
+        bmg, _, _, _, targets, *_ = batch
         preds = mcmpnn(bmg)
         errors.append(preds - targets)
 

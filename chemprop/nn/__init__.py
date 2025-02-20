@@ -3,6 +3,7 @@ from .agg import (
     AggregationRegistry,
     AttentiveAggregation,
     MeanAggregation,
+    NoAggregation,
     NormAggregation,
     SumAggregation,
 )
@@ -10,6 +11,8 @@ from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
     MessagePassing,
+    MixedAtomMessagePassing,
+    MixedBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (
@@ -47,6 +50,7 @@ from .predictors import (
     BinaryClassificationFFNBase,
     BinaryDirichletFFN,
     EvidentialFFN,
+    FFNMockPredictor,
     MulticlassClassificationFFN,
     MulticlassDirichletFFN,
     MveFFN,
@@ -62,6 +66,7 @@ from .utils import Activation
 __all__ = [
     "Aggregation",
     "AggregationRegistry",
+    "NoAggregation",
     "MeanAggregation",
     "SumAggregation",
     "NormAggregation",
@@ -106,7 +111,9 @@ __all__ = [
     "QuantileLoss",
     "MessagePassing",
     "AtomMessagePassing",
+    "MixedAtomMessagePassing",
     "BondMessagePassing",
+    "MixedBondMessagePassing",
     "MulticomponentMessagePassing",
     "Predictor",
     "PredictorRegistry",
@@ -115,6 +122,7 @@ __all__ = [
     "MveFFN",
     "DirichletLoss",
     "EvidentialFFN",
+    "FFNMockPredictor",
     "BinaryClassificationFFNBase",
     "BinaryClassificationFFN",
     "BinaryDirichletFFN",

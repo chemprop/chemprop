@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from chemprop.models.model import MPNN
+from chemprop.models.model import MPNN, MolAtomBondMPNN
 from chemprop.utils.registry import ClassRegistry
 
 
@@ -15,7 +15,10 @@ class UncertaintyEstimator(ABC):
 
     @abstractmethod
     def __call__(
-        self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
+        self,
+        dataloader: DataLoader,
+        models: Iterable[MPNN] | Iterable[MolAtomBondMPNN],
+        trainer: pl.Trainer,
     ) -> tuple[Tensor, Tensor]:
         """
         Calculate the uncalibrated predictions and uncertainties for the dataloader.
@@ -55,11 +58,32 @@ class NoUncertaintyEstimator(UncertaintyEstimator):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
+        print("hi")
         predss = []
         for model in models:
             preds = torch.concat(trainer.predict(model, dataloader), 0)
             predss.append(preds)
         return torch.stack(predss), None
+
+
+@UncertaintyEstimatorRegistry.register("mixed_none")
+class MixedNoUncertaintyEstimator(UncertaintyEstimator):
+    def __call__(
+        self, dataloader: DataLoader, models: Iterable[MolAtomBondMPNN], trainer: pl.Trainer
+    ) -> tuple[Tensor, Tensor]:
+        preds = [torch.concat(type, 0) for type in zip(*trainer.predict(models[0], dataloader))]
+        predss = []
+        for pred in preds:
+            predss.append([pred])
+        if len(models) > 1:
+            for model_idx in range(1, len(models)):
+                preds = [
+                    torch.concat(type, 0)
+                    for type in zip(*trainer.predict(models[model_idx], dataloader))
+                ]
+                for pred_idx in range(len(preds)):
+                    predss[pred_idx].append(preds[pred_idx])
+        return [torch.stack(prediction) for prediction in predss], None
 
 
 @UncertaintyEstimatorRegistry.register("mve")
