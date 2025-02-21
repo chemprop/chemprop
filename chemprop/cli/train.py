@@ -1004,6 +1004,7 @@ def build_model(
         dropout=args.dropout,
         activation=args.activation,
         criterion=criterion,
+        task_weights=args.task_weights,
         n_classes=args.multiclass_num_classes,
         output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
