@@ -8,6 +8,7 @@ from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
 from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
+from chemprop.utils.registry import Factory
 
 
 class MulticomponentMPNN(MPNN):
@@ -83,8 +84,9 @@ class MulticomponentMPNN(MPNN):
         }
 
         if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
+            submodules["predictor"].criterion = Factory.build(
+                submodules["predictor"].criterion.__class__,
+                **submodules["predictor"].criterion.__dict__,
             )
 
         return submodules, state_dict, hparams
