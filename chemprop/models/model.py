@@ -270,6 +270,7 @@ class MPNN(pl.LightningModule):
         if not hasattr(submodules["predictor"].criterion, "_defaults"):
             submodules["predictor"].criterion = Factory.build(
                 submodules["predictor"].criterion.__class__,
+                task_weights=submodules["predictor"].criterion.task_weights,
                 **submodules["predictor"].criterion.__dict__,
             )
 
@@ -294,7 +295,11 @@ class MPNN(pl.LightningModule):
                 metrics = hparams["metrics"]
                 fixed_metrics = []
                 for metric in metrics:
-                    fixed_metrics.append(Factory.build(metric.__class__, **metric.__dict__))
+                    fixed_metrics.append(
+                        Factory.build(
+                            metric.__class__, task_weights=metric.task_weights, **metric.__dict__
+                        )
+                    )
                 hparams["metrics"] = fixed_metrics
         return hparams
 
