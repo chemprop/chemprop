@@ -176,7 +176,9 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
                 H = self.W_d(torch.cat((H, V_d), dim=1))  # V x (d_o + d_vd)
                 H = self.dropout(H)
             except RuntimeError:
-                raise InvalidShapeError("V_d", V_d.shape, [len(H), self.W_d.in_features])
+                raise InvalidShapeError(
+                    "V_d", V_d.shape, [len(H), self.W_d.in_features - self.W_o.out_features]
+                )
 
         return H
 
