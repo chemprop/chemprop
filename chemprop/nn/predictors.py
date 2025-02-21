@@ -55,6 +55,8 @@ class Predictor(nn.Module, HasHParams):
     """the loss function to use for training"""
     task_weights: Tensor
     """the weights to apply to each task when calculating the loss"""
+    output_activation: str | nn.Module | None
+    """the activation function to apply to the output of the predictor"""
     output_transform: UnscaleTransform
     """the transform to apply to the output of the predictor"""
 
@@ -112,22 +114,38 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
+        output_activation: str | nn.Module | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
         super().__init__()
         # manually add criterion and output_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        ignore_list = ["criterion", "output_transform"]
+        if isinstance(activation, nn.Module):
+            ignore_list.append("activation")
+        if isinstance(output_activation, nn.Module):
+            ignore_list.append("output_activation")
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["criterion"] = criterion
         self.hparams["output_transform"] = output_transform
+        if isinstance(activation, nn.Module):
+            self.hparams["activation"] = activation
+        if isinstance(output_activation, nn.Module):
+            self.hparams["output_activation"] = output_activation
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
-            input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
+            input_dim,
+            n_tasks * self.n_targets,
+            hidden_dim,
+            n_layers,
+            dropout,
+            activation,
+            output_activation,
         )
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         self.criterion = criterion or Factory.build(
@@ -281,10 +299,11 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
+        output_activation: str | nn.Module | None = None,
         output_transform: UnscaleTransform | None = None,
     ):
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
@@ -298,6 +317,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
             criterion,
             task_weights,
             threshold,
+            output_activation,
             output_transform,
         )
 

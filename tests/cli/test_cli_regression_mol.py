@@ -574,3 +574,50 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "model_0" / "best.pt").exists()
+
+
+def test_custom_activation_quick(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--activation",
+        "SOFTPLUS",
+        "--activation-args",
+        "1.0",
+        "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_output_activation_quick(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--output-activation",
+        "GELU",
+        "--output-activation-args",
+        "approximate=tanh",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()

@@ -33,7 +33,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         if `True`, pass messages on undirected edges
     dropout : float, default=0.0
         the dropout probability
-    activation : str, default="relu"
+    activation : str | nn.Module, default="relu"
         the activation function to use
     d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
@@ -53,7 +53,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         bias: bool = False,
         depth: int = 3,
         dropout: float = 0.0,
-        activation: str | Activation = Activation.RELU,
+        activation: str | nn.Module | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
         V_d_transform: ScaleTransform | None = None,
@@ -63,9 +63,14 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         super().__init__()
         # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["V_d_transform", "graph_transform"])
+        ignore_list = ["V_d_transform", "graph_transform"]
+        if isinstance(activation, nn.Module):
+            ignore_list.append("activation")
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["V_d_transform"] = V_d_transform
         self.hparams["graph_transform"] = graph_transform
+        if isinstance(activation, nn.Module):
+            self.hparams["activation"] = activation
         self.hparams["cls"] = self.__class__
 
         self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
