@@ -9,7 +9,7 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import MolDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
@@ -18,6 +18,18 @@ from chemprop.types import Rxn
 
 
 class Datum(NamedTuple):
+    """a singular training data point"""
+
+    mg: MolGraph
+    V_d: np.ndarray | None
+    x_d: np.ndarray | None
+    y: np.ndarray | None
+    weight: float
+    lt_mask: np.ndarray | None
+    gt_mask: np.ndarray | None
+
+
+class MolAtomBondDatum(NamedTuple):
     """a singular training data point"""
 
     mg: MolGraph
@@ -31,6 +43,7 @@ class Datum(NamedTuple):
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
+MolAtomBondGraphDataset: TypeAlias = Dataset[MolAtomBondDatum]
 
 
 class _MolGraphDatasetMixin:
@@ -179,16 +192,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         d = self.data[idx]
         mg = self.mg_cache[idx]
 
-        return Datum(
-            mg,
-            self.V_ds[idx],
-            self.E_ds[idx],
-            self.X_d[idx],
-            self.Y[idx],
-            d.weight,
-            d.lt_mask,
-            d.gt_mask,
-        )
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def cache(self) -> bool:
@@ -267,20 +271,6 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.__V_ds = V_ds
 
     @property
-    def _E_ds(self) -> list[np.ndarray]:
-        return [d.E_d for d in self.data]
-
-    @property
-    def E_ds(self) -> list[np.ndarray]:
-        return self.__E_ds
-
-    @E_ds.setter
-    def E_ds(self, E_ds: list[np.ndarray]):
-        self._validate_attribute(E_ds, "bond descriptors")
-
-        self.__E_ds = E_ds
-
-    @property
     def d_vf(self) -> int:
         """the extra atom feature dimension, if any"""
         return 0 if self.V_fs[0] is None else self.V_fs[0].shape[1]
@@ -294,6 +284,102 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def d_vd(self) -> int:
         """the extra atom descriptor dimension, if any"""
         return 0 if self.V_ds[0] is None else self.V_ds[0].shape[1]
+
+    def normalize_inputs(
+        self, key: str = "X_d", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d"}
+
+        match key:
+            case "X_d":
+                X = None if self.d_xd == 0 else self.X_d
+            case "V_f":
+                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
+            case "E_f":
+                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
+            case "V_d":
+                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
+            case _:
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        if X is None:
+            return scaler
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        match key:
+            case "X_d":
+                self.X_d = scaler.transform(X)
+            case "V_f":
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
+            case "E_f":
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
+            case "V_d":
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
+            case _:
+                raise RuntimeError("unreachable code reached!")
+
+        return scaler
+
+    def reset(self):
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
+        super().reset()
+        self.__V_fs = self._V_fs
+        self.__E_fs = self._E_fs
+        self.__V_ds = self._V_ds
+
+
+@dataclass
+class MolDataset(MoleculeDataset, MolAtomBondGraphDataset):
+    """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
+
+    A :class:`MoleculeDataset` produces featurized data for input to a
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``MoleculeDataset.cache=True``.
+
+    Parameters
+    ----------
+    data : Iterable[MoleculeDatapoint]
+        the data from which to create a dataset
+    featurizer : MoleculeFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
+    """
+
+    data: list[MolDatapoint]
+
+    def __getitem__(self, idx: int) -> MolAtomBondDatum:
+        d = self.data[idx]
+        mg = self.mg_cache[idx]
+
+        return MolAtomBondDatum(
+            mg,
+            self.V_ds[idx],
+            self.E_ds[idx],
+            self.X_d[idx],
+            self.Y[idx],
+            d.weight,
+            d.lt_mask,
+            d.gt_mask,
+        )
+
+    @property
+    def _E_ds(self) -> list[np.ndarray]:
+        return [d.E_d for d in self.data]
+
+    @property
+    def E_ds(self) -> list[np.ndarray]:
+        return self.__E_ds
+
+    @E_ds.setter
+    def E_ds(self, E_ds: list[np.ndarray]):
+        self._validate_attribute(E_ds, "bond descriptors")
+
+        self.__E_ds = E_ds
 
     @property
     def d_ed(self) -> int:
@@ -344,14 +430,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         """Reset the atom and bond features; atom and extra descriptors; and targets of each
         datapoint to their initial, unnormalized values."""
         super().reset()
-        self.__V_fs = self._V_fs
-        self.__E_fs = self._E_fs
-        self.__V_ds = self._V_ds
         self.__E_ds = self._E_ds
 
 
 @dataclass
-class AtomDataset(MoleculeDataset):
+class AtomDataset(MolDataset):
     @cached_property
     def _Y(self) -> np.ndarray:
         return np.vstack([d.y for d in self.data])
@@ -392,16 +475,14 @@ class AtomDataset(MoleculeDataset):
         #     temp_lt_mask = np.vstack([temp_lt_mask, np.vstack(d.lt_mask)])
         # return temp_lt_mask
 
-    def __getitem__(self, idx: int) -> Datum:
+    def __getitem__(self, idx: int) -> MolAtomBondDatum:
         d = self.data[idx]
         mg = self.mg_cache[idx]
         slices = self._slices
         ind_first = slices.index(idx)
         ind_last = ind_first + slices.count(idx)
 
-        # TODO: check for E_d?
-
-        return Datum(
+        return MolAtomBondDatum(
             mg,
             self.V_ds[idx],
             self.E_ds[idx],
@@ -432,7 +513,7 @@ class BondDataset(AtomDataset):
 
 
 @dataclass
-class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
+class MockDataset(_MolGraphDatasetMixin, MolAtomBondGraphDataset):
     """A :class:`MockDataset` serves to create a mock empty dataset that passes through all the message passing code.
     This is used when there are no target columns for any of molecule, atom, and/or bond for mixed predictions
     """
@@ -565,12 +646,12 @@ class MockDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 
 @dataclass(repr=False, eq=False)
-class MolAtomBondDataset(_MolGraphDatasetMixin, Dataset[list[Datum]]):
+class MolAtomBondDataset(_MolGraphDatasetMixin, Dataset[list[MolAtomBondDatum]]):
     """A :class:`MolAtomBondDataset` is a dataset class composed of a list of three datasets,
     with the first index being :class:`MoleculeDataset`, second being :class:`AtomDataset`, and
     third being :class:`MoleculeDataset`."""
 
-    mol_dataset: MoleculeDataset | MockDataset
+    mol_dataset: MolDataset | MockDataset
     atom_dataset: AtomDataset | MockDataset
     bond_dataset: BondDataset | MockDataset
 
@@ -584,11 +665,11 @@ class MolAtomBondDataset(_MolGraphDatasetMixin, Dataset[list[Datum]]):
     def n_components(self) -> int:
         return len(self.datasets)
 
-    def __getitem__(self, idx: int) -> list[Datum]:
+    def __getitem__(self, idx: int) -> list[MolAtomBondDatum]:
         mixed_list = []
         for dset in self.datasets:
             mixed_list.append(
-                Datum(
+                MolAtomBondDatum(
                     dset[idx].mg,
                     dset[idx].V_d,
                     dset[idx].E_d,

@@ -73,10 +73,6 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
     ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
-    E_d: np.ndarray | None = None
-    """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
-    ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
-    descriptors *after* message passing"""
 
     def __post_init__(self):
         if self.mol is None:
@@ -89,13 +85,25 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
             self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
         if self.V_d is not None:
             self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
-        if self.E_d is not None:
-            self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
 
         super().__post_init__()
 
     def __len__(self) -> int:
         return 1
+
+
+@dataclass
+class MolDatapoint(MoleculeDatapoint):
+    E_d: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
+    descriptors *after* message passing"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        NAN_TOKEN = 0
+        if self.E_d is not None:
+            self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
 
 
 @dataclass
