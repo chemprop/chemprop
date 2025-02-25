@@ -774,7 +774,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         d = self.data[idx]
         mg = self.mg_cache[idx]
 
-        return Datum(mg, None, None, self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, None, self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     @property
     def smiles(self) -> list[tuple]:
