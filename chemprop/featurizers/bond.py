@@ -99,9 +99,6 @@ class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
     * in ring?
     """
 
-    def __init__(self):
-        pass
-
     def __len__(self):
         return 2
 
