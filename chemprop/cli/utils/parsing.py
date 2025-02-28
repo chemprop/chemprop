@@ -410,8 +410,9 @@ def make_dataset(
         case "V1" | "V2" | "ORGANIC":
             bond_featurizer = MultiHotBondFeaturizer()
         case _:
-            raise TypeError(f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!")
-    
+            raise TypeError(
+                f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!"
+            )
 
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

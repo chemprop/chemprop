@@ -240,7 +240,7 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
             j = choices.get(feat, len(choices))
             x[i + j] = 1
             i += len(choices) + 1
-        x[i] = 0.01 * a.GetMass() # scaled to about the same range as other features
+        x[i] = 0.01 * a.GetMass()  # scaled to about the same range as other features
 
         return x
 
