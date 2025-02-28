@@ -124,7 +124,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
 
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
-        r"""The original implementation used in Chemprop V1 [1]_, [2]_.
+        """The original implementation used in Chemprop V1 [1]_, [2]_.
 
         Parameters
         ----------
