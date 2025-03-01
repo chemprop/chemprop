@@ -38,12 +38,13 @@ class MLP(nn.Sequential, FFN):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
+        output_activation: str | nn.Module | None = None,
     ):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
         dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
-        blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
+        blocks = [nn.Linear(dims[0], dims[1])]
         if len(dims) > 2:
             blocks.extend(
                 [
@@ -51,6 +52,9 @@ class MLP(nn.Sequential, FFN):
                     for d1, d2 in zip(dims[1:-1], dims[2:])
                 ]
             )
+
+        if output_activation is not None:
+            blocks.append(get_activation_function(output_activation))
 
         return cls(*blocks)
 
