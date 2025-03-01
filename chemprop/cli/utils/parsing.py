@@ -1,6 +1,6 @@
 import logging
 from os import PathLike
-from typing import Mapping, Sequence
+from typing import Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ import pandas as pd
 from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
+from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
@@ -400,15 +401,25 @@ def load_input_feats_and_descs(
 def make_dataset(
     data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
     reaction_mode: str,
-    multi_hot_atom_featurizer_mode: str = "V2",
+    multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
 ) -> MoleculeDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
+    match multi_hot_atom_featurizer_mode:
+        case "RIGR":
+            bond_featurizer = RIGRBondFeaturizer()
+        case "V1" | "V2" | "ORGANIC":
+            bond_featurizer = MultiHotBondFeaturizer()
+        case _:
+            raise TypeError(
+                f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!"
+            )
 
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
             atom_featurizer=atom_featurizer,
+            bond_featurizer=bond_featurizer,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
