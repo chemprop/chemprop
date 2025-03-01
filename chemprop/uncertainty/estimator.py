@@ -261,8 +261,9 @@ class DropoutEstimator(UncertaintyEstimator):
 
     def _restore_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
-            module.p = module._p
-            del module._p
+            if hasattr(module, "_p"):
+                module.p = module._p
+                del module._p
 
 
 # TODO: Add in v2.1.x
