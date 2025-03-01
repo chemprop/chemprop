@@ -75,7 +75,8 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
 
 - ``V1``: Corresponds to the original configuration employed in the Chemprop V1
 - ``V2``: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
-- ``ORGANIC``: This configuration is designed specifically for use with organic molecules for drug research and development and includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.""",
+- ``ORGANIC``: This configuration is designed specifically for use with organic molecules for drug research and development and includes a subset of elements most common in organic chemistry, including H, B, C, N, O, F, Si, P, S, Cl, Br, and I.
+- ``RIGR``: Modified V2 (default) featurizer using only the resonance-invariant atom and bond features.""",
     )
     featurization_args.add_argument(
         "--keep-h",
