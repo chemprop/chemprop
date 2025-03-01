@@ -8,7 +8,6 @@ from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
 from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
-from chemprop.utils.registry import Factory
 
 
 class MulticomponentMPNN(MPNN):
