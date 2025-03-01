@@ -132,3 +132,7 @@ def test_scalers_roundtrip(tmp_path):
 def test_load_checkpoint_with_metrics(data_dir):
     MPNN.load_from_checkpoint(data_dir / "example_model_v2_regression_mol_with_metrics.ckpt")
     MPNN.load_from_checkpoint(data_dir / "example_model_v2_classification_mol_with_metrics.ckpt")
+
+
+def test_load_trained_on_cuda(data_dir):
+    MPNN.load_from_file(data_dir / "example_model_v2_trained_on_cuda.pt", map_location="cpu")

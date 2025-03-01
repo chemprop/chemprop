@@ -261,18 +261,27 @@ class MPNN(pl.LightningModule):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
+
         submodules |= {
             key: hparams[key].pop("cls")(**hparams[key])
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = Factory.build(
-                submodules["predictor"].criterion.__class__,
-                task_weights=submodules["predictor"].criterion.task_weights,
-                **submodules["predictor"].criterion.__dict__,
-            )
 
         return submodules, state_dict, hparams
 
@@ -289,19 +298,8 @@ class MPNN(pl.LightningModule):
         return state_dict
 
     @classmethod
-    def _update_old_metrics_to_torchmetrics(cls, hparams):
-        if hparams["metrics"] is not None:
-            if not hasattr(hparams["metrics"][0], "_defaults"):
-                metrics = hparams["metrics"]
-                fixed_metrics = []
-                for metric in metrics:
-                    fixed_metrics.append(
-                        Factory.build(
-                            metric.__class__, task_weights=metric.task_weights, **metric.__dict__
-                        )
-                    )
-                hparams["metrics"] = fixed_metrics
-        return hparams
+    def _rebuild_metric(cls, metric):
+        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
 
     @classmethod
     def load_from_checkpoint(
@@ -314,7 +312,6 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        hparams = cls._update_old_metrics_to_torchmetrics(hparams)
         d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
         d["hyper_parameters"] = hparams
@@ -330,7 +327,6 @@ class MPNN(pl.LightningModule):
         hparams.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        hparams = cls._update_old_metrics_to_torchmetrics(hparams)
 
         model = cls(**hparams)
         model.load_state_dict(state_dict, strict=strict)
