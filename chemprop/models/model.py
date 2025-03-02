@@ -12,6 +12,7 @@ from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBa
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+from chemprop.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -260,16 +261,27 @@ class MPNN(pl.LightningModule):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
+
         submodules |= {
             key: hparams[key].pop("cls")(**hparams[key])
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
-            )
 
         return submodules, state_dict, hparams
 
@@ -286,6 +298,10 @@ class MPNN(pl.LightningModule):
         return state_dict
 
     @classmethod
+    def _rebuild_metric(cls, metric):
+        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
+
+    @classmethod
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
@@ -298,6 +314,7 @@ class MPNN(pl.LightningModule):
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
         d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
+        d["hyper_parameters"] = hparams
         buffer = io.BytesIO()
         torch.save(d, buffer)
         buffer.seek(0)
