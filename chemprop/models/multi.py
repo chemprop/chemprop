@@ -72,6 +72,22 @@ class MulticomponentMPNN(MPNN):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
+
         hparams["message_passing"]["blocks"] = [
             block_hparams.pop("cls")(**block_hparams)
             for block_hparams in hparams["message_passing"]["blocks"]
@@ -81,10 +97,5 @@ class MulticomponentMPNN(MPNN):
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
-            )
 
         return submodules, state_dict, hparams
