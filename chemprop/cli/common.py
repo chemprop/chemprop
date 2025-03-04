@@ -28,6 +28,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
     )
+    data_args.add_argument(
+        "--canonicalize-smiles",
+        action="store_true",
+        help="Run RDKit.Chem.CanonSmiles on each input SMILES to canonicalize them",
+    )
 
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
@@ -191,7 +196,8 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    pass
+    if data_args.reaction_columns and data_args.canonicalize_smiles:
+        raise ArgumentError("SMILES canonicalization removes atom mapping and it thus incompatible with Reaction Mode.")
 
 
 def find_models(model_paths: list[Path]):
