@@ -8,14 +8,19 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
+from chemprop.data import (
+    BatchMolGraph,
+    MolAtomBondTrainingBatch,
+    MulticomponentTrainingBatch,
+    TrainingBatch,
+)
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 
 logger = logging.getLogger(__name__)
 
-BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
+BatchType: TypeAlias = TrainingBatch | MolAtomBondTrainingBatch | MulticomponentTrainingBatch
 
 
 class MPNN(pl.LightningModule):
@@ -451,7 +456,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         H = self.fingerprint(bmg, V_d, E_d, X_d)
         return [self.predictors[0](H[0]), self.predictors[1](H[1]), self.predictors[2](H[2])]
 
-    def training_step(self, batch: list[TrainingBatch], batch_idx):
+    def training_step(self, batch: list[MolAtomBondTrainingBatch], batch_idx):
         total_l = 0
         for batch_index, val in enumerate(batch):
             if val is None:
@@ -475,7 +480,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         self.predictors[1].output_transform.train()
         self.predictors[2].output_transform.train()
 
-    def validation_step(self, batch: list[TrainingBatch], batch_idx: int = 0):
+    def validation_step(self, batch: list[MolAtomBondTrainingBatch], batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
         agg_metric = 0
@@ -501,10 +506,10 @@ class MolAtomBondMPNN(pl.LightningModule):
             prog_bar=True,
         )
 
-    def test_step(self, batch: list[TrainingBatch], batch_idx: int = 0):
+    def test_step(self, batch: list[MolAtomBondTrainingBatch], batch_idx: int = 0):
         self._evaluate_batch(batch, "test")
 
-    def _evaluate_batch(self, batch: list[TrainingBatch], label: str) -> None:
+    def _evaluate_batch(self, batch: list[MolAtomBondTrainingBatch], label: str) -> None:
         for batch_index, val in enumerate(batch):
             if val is None:
                 continue
@@ -532,7 +537,7 @@ class MolAtomBondMPNN(pl.LightningModule):
                 self.log(f"{label}/{m.alias}", m, batch_size=len(batch[batch_index][0]))
 
     def predict_step(
-        self, batch: list[TrainingBatch], batch_idx: int, dataloader_idx: int = 0
+        self, batch: list[MolAtomBondTrainingBatch], batch_idx: int, dataloader_idx: int = 0
     ) -> list[Tensor]:
         """Return the predictions of the input batch
 

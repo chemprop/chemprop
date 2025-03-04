@@ -13,8 +13,8 @@ from chemprop.data import (
     BondDataset,
     MockDataset,
     MolAtomBondDataset,
-    MoleculeDatapoint,
-    MoleculeDataset,
+    MolDatapoint,
+    MolDataset,
     mixed_collate_batch,
 )
 
@@ -35,15 +35,9 @@ pytestmark = [
 def data(mixed_regression_data):
     smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
     all_data = []
-    all_data.append(
-        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, mol_Y)]
-    )
-    all_data.append(
-        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, atom_Y)]
-    )
-    all_data.append(
-        [MoleculeDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, bond_Y)]
-    )
+    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, mol_Y)])
+    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, atom_Y)])
+    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, bond_Y)])
     return all_data
 
 
@@ -51,7 +45,7 @@ def data(mixed_regression_data):
 def dataloader(data):
     dsets = []
     if data[0]:
-        dset = MoleculeDataset(data[0])
+        dset = MolDataset(data[0])
         dset.normalize_targets()
         dsets.append(dset)
     else:
