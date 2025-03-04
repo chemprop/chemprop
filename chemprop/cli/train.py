@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
 import json
@@ -53,7 +54,6 @@ from chemprop.nn.message_passing import (
     MulticomponentMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
-from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,11 @@ logger = logging.getLogger(__name__)
 _CV_REMOVAL_ERROR = (
     "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
 )
+
+_ACTIVATION_FUNCTIONS = OrderedDict(
+    {uppercase(func): func for func in sorted(nn.modules.activation.__all__)}
+)
+_ACTIVATION_FUNCTIONS.move_to_end("RELU", last=False)
 
 
 class TrainSubcommand(Subcommand):
@@ -222,13 +227,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to use the same message passing neural network for all input molecules (only relevant if ``number_of_molecules`` > 1)",
     )
     mp_args.add_argument(
-        "--activation",
-        type=uppercase,
-        default="RELU",
-        choices=list(Activation.keys()),
-        help="Activation function in message passing/FFN layers",
-    )
-    mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="norm",
@@ -243,6 +241,35 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
+    )
+
+    mp_args.add_argument(
+        "--activation",
+        type=uppercase,
+        default="RELU",
+        choices=list(_ACTIVATION_FUNCTIONS.keys()),
+        help="Activation function in message passing/FFN layers.",
+    )
+
+    def parse_argument(argument):
+        *k, s = argument.split("=", 1)
+        s = s.strip().lower()
+        if s in {"true", "false"}:
+            v = s == "true"
+        try:
+            v = int(s)
+        except ValueError:
+            try:
+                v = float(s)
+            except ValueError:
+                v = s
+        return {k[0]: v} if k else v
+
+    mp_args.add_argument(
+        "--activation-args",
+        nargs="*",
+        type=parse_argument,
+        help="Arguments for the activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
 
     # TODO: Add in v2.1
@@ -276,6 +303,19 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
         "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
+    )
+    ffn_args.add_argument(
+        "--output-activation",
+        type=uppercase,
+        default="NONE",
+        choices=["NONE", *_ACTIVATION_FUNCTIONS.keys()],
+        help="Activation function in the output layer of the FFN top model.",
+    )
+    ffn_args.add_argument(
+        "--output-activation-args",
+        nargs="*",
+        type=parse_argument,
+        help="Arguments for the output activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
     # TODO: Decide if we want to implment this in v2
     # ffn_args.add_argument(
@@ -913,6 +953,17 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
+def _get_activation(activation: str, arguments: list | None) -> nn.Module:
+    cls = _ACTIVATION_FUNCTIONS[activation]
+    posargs, kwargs = [], {}
+    if arguments is not None:
+        for item in arguments:
+            if isinstance(item, dict):
+                kwargs.update(item)
+            else:
+                posargs.append(item)
+    return getattr(nn.modules.activation, cls)(*posargs, **kwargs)
+
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
@@ -920,6 +971,8 @@ def build_model(
     input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+    activation = _get_activation(args.activation, args.activation_args)
+    logger.info(f"Message passing/FFN activation function: {repr(activation)}")
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
@@ -937,7 +990,7 @@ def build_model(
                 depth=args.depth,
                 undirected=args.undirected,
                 dropout=args.dropout,
-                activation=args.activation,
+                activation=activation,
                 V_d_transform=V_d_transforms[i],
                 graph_transform=graph_transforms[i],
             )
@@ -968,7 +1021,7 @@ def build_model(
             depth=args.depth,
             undirected=args.undirected,
             dropout=args.dropout,
-            activation=args.activation,
+            activation=activation,
             V_d_transform=V_d_transforms[0],
             graph_transform=graph_transforms[0],
         )
@@ -995,6 +1048,14 @@ def build_model(
     else:
         metrics = None
 
+    if args.output_activation == "NONE":
+        output_activation = None
+    else:
+        output_activation = _get_activation(
+            args.output_activation, args.output_activation_args
+        )
+    logger.info(f"Output activation function: {repr(output_activation)}")
+
     predictor = Factory.build(
         predictor_cls,
         input_dim=mp_block.output_dim + d_xd,
@@ -1002,10 +1063,11 @@ def build_model(
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
-        activation=args.activation,
+        activation=activation,
         criterion=criterion,
         task_weights=args.task_weights,
         n_classes=args.multiclass_num_classes,
+        output_activation=output_activation,
         output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
     )
