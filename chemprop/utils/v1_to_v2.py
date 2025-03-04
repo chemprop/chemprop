@@ -1,3 +1,4 @@
+import logging
 from os import PathLike
 
 from lightning.pytorch import __version__
@@ -10,6 +11,8 @@ from chemprop.nn.metrics import LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.utils import Factory
+
+logger = logging.getLogger(__name__)
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -185,4 +188,9 @@ def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike
 
     model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"), weights_only=False)
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
+    logger.warning(
+        "Remember to use the same featurizers which were used when training the model. The default "
+        "v1 atom featurizer is `chemprop.featurizers.atom.MultiHotAtomFeaturizer.v1()` and can be "
+        "specified from the command line with `--multi-hot-atom-featurizer-mode v1`."
+    )
     torch.save(model_v2_dict, model_v2_file)
