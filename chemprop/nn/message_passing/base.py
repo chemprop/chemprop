@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.data import BatchMolGraph
 from chemprop.exceptions import InvalidShapeError
-from chemprop.nn.message_passing.proto import MessagePassing
+from chemprop.nn.message_passing.proto import MessagePassing, MixedMessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform
 from chemprop.nn.utils import Activation, get_activation_function
 
@@ -96,7 +96,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_vd: int | None = None,
         d_ed: int | None = None,
         bias: bool = False,
-    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None, nn.Module | None]:
+    ):
         """setup the weight matrices used in the message passing update functions
 
         Parameters
@@ -224,7 +224,25 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return self.finalize(M, bmg.V, V_d)
 
 
-class BondMessagePassing(_MessagePassingBase):
+class _MixedMessagePassingBase(_MessagePassingBase, MixedMessagePassing):
+    pass
+
+
+class _BondMessagePassingMixin:
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
+
+    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
+        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            0, index_torch, H, reduce="sum", include_self=False
+        )[bmg.edge_index[0]]
+        M_rev = H[bmg.rev_edge_index]
+
+        return M_all - M_rev
+
+
+class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
     r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
 
@@ -263,20 +281,8 @@ class BondMessagePassing(_MessagePassingBase):
 
         return W_i, W_h, W_o, W_d
 
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-        M_rev = H[bmg.rev_edge_index]
-
-        return M_all - M_rev
-
-
-class MixedBondMessagePassing(BondMessagePassing):
+class MixedBondMessagePassing(_MixedMessagePassingBase, _BondMessagePassingMixin):
     def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,
@@ -344,7 +350,19 @@ class MixedBondMessagePassing(BondMessagePassing):
         return self.finalize(H, M, bmg.V, bmg.E, V_d, E_d)
 
 
-class AtomMessagePassing(_MessagePassingBase):
+class _AtomMessagePassingMixin:
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return self.W_i(bmg.V[bmg.edge_index[0]])
+
+    def message(self, H: Tensor, bmg: BatchMolGraph):
+        H = torch.cat((H, bmg.E), dim=1)
+        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
+        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            0, index_torch, H, reduce="sum", include_self=False
+        )[bmg.edge_index[0]]
+
+
+class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
     r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
 
@@ -382,18 +400,8 @@ class AtomMessagePassing(_MessagePassingBase):
 
         return W_i, W_h, W_o, W_d
 
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(bmg.V[bmg.edge_index[0]])
 
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        H = torch.cat((H, bmg.E), dim=1)
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-
-
-class MixedAtomMessagePassing(AtomMessagePassing):
+class MixedAtomMessagePassing(_MixedMessagePassingBase, _AtomMessagePassingMixin):
     def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,

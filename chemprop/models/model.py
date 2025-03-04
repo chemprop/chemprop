@@ -458,18 +458,20 @@ class MolAtomBondMPNN(pl.LightningModule):
 
     def training_step(self, batch: list[MolAtomBondTrainingBatch], batch_idx):
         total_l = 0
-        for batch_index, val in enumerate(batch):
+
+        bmg, V_d, E_d, X_d, *_ = batch[0]
+        Z = self.fingerprint(bmg, V_d, E_d, X_d)
+        for index, val in enumerate(batch):
             if val is None:
                 continue
 
-            bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch[batch_index]
+            _, _, _, _, targets, weights, lt_mask, gt_mask = batch[index]
             mask = targets.isfinite()
             targets = targets.nan_to_num(nan=0.0)
-            Z = self.fingerprint(bmg, V_d, E_d, X_d)
-            preds = self.predictors[batch_index].train_step(Z[batch_index])
-            if batch_index == 2:
+            preds = self.predictors[index].train_step(Z[index])
+            if index == 2:
                 preds = (preds[::2] + preds[1::2]) / 2
-            l = self.criterion[batch_index](preds, targets, mask, weights, lt_mask, gt_mask)
+            l = self.criterion[index](preds, targets, mask, weights, lt_mask, gt_mask)
             total_l += l
 
         return total_l
@@ -483,21 +485,23 @@ class MolAtomBondMPNN(pl.LightningModule):
     def validation_step(self, batch: list[MolAtomBondTrainingBatch], batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
+        bmg, V_d, E_d, X_d, *_ = batch[0]
+        Z = self.fingerprint(bmg, V_d, E_d, X_d)
         agg_metric = 0
-        for batch_index, val in enumerate(batch):
+        for index, val in enumerate(batch):
             if val is None:
                 continue
-            bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch[batch_index]
+
+            _, _, _, _, targets, weights, lt_mask, gt_mask = batch[index]
             mask = targets.isfinite()
             targets = targets.nan_to_num(nan=0.0)
-            Z = self.fingerprint(bmg, V_d, E_d, X_d)
-            preds = self.predictors[batch_index].train_step(Z[batch_index])
-            if batch_index == 2:
+            preds = self.predictors[index].train_step(Z[index])
+            if index == 2:
                 preds = (preds[::2] + preds[1::2]) / 2
 
-            self.metrics[batch_index][-1](preds, targets, mask, weights, lt_mask, gt_mask)
-            agg_metric += self.metrics[batch_index][-1].compute()
-            self.metrics[batch_index][-1].reset()
+            self.metrics[index][-1](preds, targets, mask, weights, lt_mask, gt_mask)
+            agg_metric += self.metrics[index][-1].compute()
+            self.metrics[index][-1].reset()
 
         self.log(
             "val_loss",
@@ -510,31 +514,31 @@ class MolAtomBondMPNN(pl.LightningModule):
         self._evaluate_batch(batch, "test")
 
     def _evaluate_batch(self, batch: list[MolAtomBondTrainingBatch], label: str) -> None:
-        for batch_index, val in enumerate(batch):
+        for index, val in enumerate(batch):
             if val is None:
                 continue
 
-            if batch_index == 0:
+            if index == 0:
                 label = "mol_" + label
-            elif batch_index == 1:
+            elif index == 1:
                 label = "atom_" + label
             else:
                 label = "bond_" + label
 
-            bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch[batch_index]
+            bmg, V_d, E_d, X_d, targets, weights, lt_mask, gt_mask = batch[index]
             mask = targets.isfinite()
             targets = targets.nan_to_num(nan=0.0)
             preds = self(bmg, V_d, E_d, X_d)
-            preds = preds[batch_index]
-            if batch_index == 2:
+            preds = preds[index]
+            if index == 2:
                 preds = (preds[::2] + preds[1::2]) / 2
             weights = torch.ones_like(weights)
-            if self.predictors[batch_index].n_targets > 1:
+            if self.predictors[index].n_targets > 1:
                 preds = preds[..., 0]
 
-            for m in self.metrics[batch_index][:-1]:
+            for m in self.metrics[index][:-1]:
                 m.update(preds, targets, mask, weights, lt_mask, gt_mask)
-                self.log(f"{label}/{m.alias}", m, batch_size=len(batch[batch_index][0]))
+                self.log(f"{label}/{m.alias}", m, batch_size=len(batch[index][0]))
 
     def predict_step(
         self, batch: list[MolAtomBondTrainingBatch], batch_idx: int, dataloader_idx: int = 0
