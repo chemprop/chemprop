@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 import torch
 
-from chemprop.data.collate import BatchMolGraph, collate_batch
-from chemprop.data.datasets import Datum
+from chemprop.data.collate import BatchMolGraph, collate_mol_atom_bond_batch
+from chemprop.data.datasets import MolAtomBondDatum
 from chemprop.data.molgraph import MolGraph
 
 
@@ -15,7 +15,7 @@ def datum_1():
         edge_index=np.array([[0, 1, 0, 2], [1, 0, 2, 0]]),
         rev_edge_index=np.array([1, 0, 3, 2]),
     )
-    return Datum(
+    return MolAtomBondDatum(
         mol_graph1,
         V_d=np.array([[1.0], [2.0], [4.0]]),
         E_d=None,
@@ -35,7 +35,7 @@ def datum_2():
         edge_index=np.array([[0, 1], [1, 0]]),
         rev_edge_index=np.array([1, 0]),
     )
-    return Datum(
+    return MolAtomBondDatum(
         mol_graph2,
         V_d=np.array([[5.0], [7.0]]),
         E_d=None,
@@ -50,7 +50,7 @@ def datum_2():
 def test_collate_batch_single_graph(datum_1):
     batch = [datum_1]
 
-    result = collate_batch(batch)
+    result = collate_mol_atom_bond_batch(batch)
     mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(result, tuple)
@@ -69,7 +69,7 @@ def test_collate_batch_single_graph(datum_1):
 def test_collate_batch_multiple_graphs(datum_1, datum_2):
     batch = [datum_1, datum_2]
 
-    result = collate_batch(batch)
+    result = collate_mol_atom_bond_batch(batch)
     mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
 
     assert isinstance(mgs, BatchMolGraph)

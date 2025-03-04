@@ -67,7 +67,7 @@ def test_overfit(dataloader, mpnn):
     with torch.inference_mode():
         errors = []
         for batch in dataloader:
-            bmg, _, _, _, targets, *_ = batch
+            bmg, _, _, targets, *_ = batch
             preds = mpnn(bmg)
             errors.append(preds - targets)
 
