@@ -317,10 +317,10 @@ def build_data_from_files(
     splits_col: str | None,
     weight_col: str | None,
     bounded: bool,
-    p_descriptors: PathLike,
-    p_atom_feats: dict[int, PathLike],
-    p_bond_feats: dict[int, PathLike],
-    p_atom_descs: dict[int, PathLike],
+    p_descriptors: PathLike | None,
+    p_atom_feats: dict[int, PathLike] | None,
+    p_bond_feats: dict[int, PathLike] | None,
+    p_atom_descs: dict[int, PathLike] | None,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
@@ -360,7 +360,7 @@ def build_data_from_files(
 
 
 def load_input_feats_and_descs(
-    paths: dict[int, PathLike] | PathLike,
+    paths: dict[int, PathLike] | PathLike | None,
     n_molecules: int | None,
     n_datapoints: int | None,
     feat_desc: str,
