@@ -75,9 +75,6 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     descriptors *after* message passing"""
 
     def __post_init__(self):
-        if self.mol is None:
-            raise ValueError("Input molecule was `None`!")
-
         NAN_TOKEN = 0
         if self.V_f is not None:
             self.V_f[np.isnan(self.V_f)] = NAN_TOKEN

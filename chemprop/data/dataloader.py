@@ -1,5 +1,4 @@
 import logging
-import warnings
 
 from torch.utils.data import DataLoader
 
@@ -79,7 +78,7 @@ def build_dataloader(
         collate_fn = collate_batch
 
     if len(dataset) % batch_size == 1:
-        warnings.warn(
+        logger.warning(
             f"Dropping last batch of size 1 to avoid issues with batch normalization \
 (dataset size = {len(dataset)}, batch_size = {batch_size})"
         )
