@@ -281,6 +281,12 @@ class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
 
         return W_i, W_h, W_o, W_d
 
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return _BondMessagePassingMixin.initialize(self, bmg)
+
+    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        return _BondMessagePassingMixin.message(self, H, bmg)
+
 
 class MixedBondMessagePassing(_MixedMessagePassingBase, _BondMessagePassingMixin):
     def setup(
@@ -349,6 +355,12 @@ class MixedBondMessagePassing(_MixedMessagePassingBase, _BondMessagePassingMixin
         )
         return self.finalize(H, M, bmg.V, bmg.E, V_d, E_d)
 
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return _BondMessagePassingMixin.initialize(self, bmg)
+
+    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        return _BondMessagePassingMixin.message(self, H, bmg)
+
 
 class _AtomMessagePassingMixin:
     def initialize(self, bmg: BatchMolGraph) -> Tensor:
@@ -399,6 +411,12 @@ class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
+
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return _AtomMessagePassingMixin.initialize(self, bmg)
+
+    def message(self, H: Tensor, bmg: BatchMolGraph):
+        return _AtomMessagePassingMixin.message(self, H, bmg)
 
 
 class MixedAtomMessagePassing(_MixedMessagePassingBase, _AtomMessagePassingMixin):
@@ -467,3 +485,9 @@ class MixedAtomMessagePassing(_MixedMessagePassingBase, _AtomMessagePassingMixin
             0, index_torch, H, reduce="sum", include_self=False
         )
         return self.finalize(H, M, bmg.V, bmg.E, V_d, E_d)
+
+    def initialize(self, bmg: BatchMolGraph) -> Tensor:
+        return _AtomMessagePassingMixin.initialize(self, bmg)
+
+    def message(self, H: Tensor, bmg: BatchMolGraph):
+        return _AtomMessagePassingMixin.message(self, H, bmg)
