@@ -64,7 +64,7 @@ jobs:
       fail-fast: false
       matrix:
         # test on all platforms with both supported versions of Python
-        os: [ubuntu-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version: [3.11, 3.12]
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +99,7 @@ jobs:
   conda-test:
     name: Execute Tests with Conda-based Install
     needs: lint
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     defaults:
       run:
         # run with a login shell (so that the conda environment is activated)
