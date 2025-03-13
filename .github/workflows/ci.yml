@@ -72,8 +72,6 @@ jobs:
       # isolated environment with the Python version we want
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Miniforge3
-          miniforge-version: latest
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
           show-channel-urls: true
