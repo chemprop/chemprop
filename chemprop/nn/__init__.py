@@ -10,6 +10,8 @@ from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
     MessagePassing,
+    MixedAtomMessagePassing,
+    MixedBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (
@@ -107,6 +109,8 @@ __all__ = [
     "MessagePassing",
     "AtomMessagePassing",
     "BondMessagePassing",
+    "MixedAtomMessagePassing",
+    "MixedBondMessagePassing",
     "MulticomponentMessagePassing",
     "Predictor",
     "PredictorRegistry",

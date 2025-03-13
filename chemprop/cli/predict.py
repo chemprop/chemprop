@@ -218,6 +218,7 @@ def make_prediction_for_models(
 ):
     model = load_model(model_paths[0], multicomponent)
     output_columns = load_output_columns(model_paths[0])
+
     bounded = any(
         isinstance(model.criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
