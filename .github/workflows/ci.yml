@@ -76,7 +76,8 @@ jobs:
           auto-update-conda: true
           show-channel-urls: true
           conda-remove-defaults: "true"
-          channels: conda-forge
+          environment-file: environment.yml
+          activate-environment: chemprop
       - name: Install dependencies
         shell: bash -l {0}
         run: |
@@ -117,7 +118,8 @@ jobs:
           auto-update-conda: true
           show-channel-urls: true
           conda-remove-defaults: "true"
-          channels: conda-forge
+          environment-file: environment.yml
+          activate-environment: chemprop
       - name: Install Testing Dependencies
         run: conda install -c conda-forge pytest>=6.2 pytest-cov
       - name: Install Chemprop

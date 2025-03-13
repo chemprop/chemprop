@@ -1,10 +1,9 @@
 name: chemprop
 channels:
-  - pytorch
   - conda-forge
 dependencies:
   - python>=3.11
-  - pytorch::pytorch>=2.1
+  - pytorch>=2.1
   - astartes
   - aimsim
   - configargparse
