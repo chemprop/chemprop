@@ -1,6 +1,6 @@
+from os import PathLike
 import pickle
 import sys
-from os import PathLike
 
 import torch
 

@@ -1,5 +1,5 @@
-from typing import Iterable
 import logging
+from typing import Iterable
 
 import torch
 from torch import Tensor
@@ -9,7 +9,6 @@ from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
 from chemprop.nn.metrics import ChempropMetric
 from chemprop.nn.transforms import ScaleTransform
-
 
 logger = logging.getLogger(__name__)
 
