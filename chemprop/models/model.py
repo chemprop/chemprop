@@ -253,7 +253,10 @@ class MPNN(pl.LightningModule):
 
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location, weights_only=False)
+        try:
+            d = torch.load(path, map_location, weights_only=False)
+        except AttributeError:
+            logger.error(f"Model loading failed! It is possible this checkpoint was generated in v2.0 and needs to be converted to v2.1. Please run 'chemprop convert --conversion v2_0_to_v2_1 -i {path}' and load the converted checkpoint.")
 
         try:
             hparams = d["hyper_parameters"]
