@@ -331,11 +331,13 @@ def make_prediction_for_models(
 def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
     unc_columns = [f"{col}_unc" for col in output_columns]
 
+    test_preds = test_preds.numpy()
+
     if isinstance(model.predictor, MulticlassClassificationFFN):
-        output_columns = output_columns + [f"{col}_prob" for col in output_columns]
+        output_columns += [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
+            lambda x: ",".join(map(str, x)), 2, test_preds
         )
         test_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
