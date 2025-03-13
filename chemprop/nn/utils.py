@@ -14,14 +14,14 @@ class Activation(EnumMapping):
     ELU = auto()
 
 
-def get_activation_function(activation: str | Activation) -> nn.Module:
+def get_activation_function(activation: str | nn.Module | Activation) -> nn.Module:
     """Gets an activation function module given the name of the activation.
 
     See :class:`~chemprop.v2.models.utils.Activation` for available activations.
 
     Parameters
     ----------
-    activation : str | Activation
+    activation : str | nn.Module | Activation
         The name of the activation function.
 
     Returns
@@ -29,6 +29,8 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
     nn.Module
         The activation function module.
     """
+    if isinstance(activation, nn.Module):
+        return activation
     match Activation.get(activation):
         case Activation.RELU:
             return nn.ReLU()
