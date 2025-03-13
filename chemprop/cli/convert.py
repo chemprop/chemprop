@@ -19,9 +19,9 @@ class ConvertSubcommand(Subcommand):
         parser.add_argument(
             "-c",
             "--conversion",
-            choices=['v1_to_v2', 'v2_0_to_v2_1'],
+            choices=["v1_to_v2", "v2_0_to_v2_1"],
             help="Conversion to perform.",
-            default='v1_to_v2',
+            default="v1_to_v2",
         )
         parser.add_argument(
             "-i",
@@ -59,7 +59,6 @@ class ConvertSubcommand(Subcommand):
             convert_model_file_v1_to_v2(args.input_path, args.output_path)
         elif args.conversion == "v2_0_to_v2_1":
             convert_model_file_v2_0_to_v2_1(args.input_path, args.output_path)
-        
 
 
 if __name__ == "__main__":
