@@ -162,28 +162,35 @@ def process_common_args(args: Namespace) -> Namespace:
         if not inds_paths:
             continue
 
-        ind_path_dict = {}
+        # If a config file is used, inds_paths looks like [["0"], ["/path/to/features_0.npz"], ...]
+        if len(inds_paths) != 1 and all(len(item) == 1 for item in inds_paths):
+            ind_path_dict = {
+                int(ind[0]): Path(path[0]) for ind, path in zip(inds_paths[::2], inds_paths[1::2])
+            }
+        # Otherwise [["0", "/path/to/features_0.npz"], ...] or ["/path/to/features_0.npz"]
+        else:
+            ind_path_dict = {}
 
-        for ind_path in inds_paths:
-            if len(ind_path) > 2:
-                raise ArgumentError(
-                    argument=None,
-                    message="Too many arguments were given for atom features/descriptors or bond features. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
-                )
+            for ind_path in inds_paths:
+                if len(ind_path) > 2:
+                    raise ArgumentError(
+                        argument=None,
+                        message="Too many arguments were given for atom features/descriptors or bond features. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
+                    )
 
-            if len(ind_path) == 1:
-                ind = 0
-                path = ind_path[0]
-            else:
-                ind, path = ind_path
+                if len(ind_path) == 1:
+                    ind = 0
+                    path = ind_path[0]
+                else:
+                    ind, path = ind_path
 
-            if ind_path_dict.get(int(ind), None):
-                raise ArgumentError(
-                    argument=None,
-                    message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",
-                )
+                if ind_path_dict.get(int(ind), None):
+                    raise ArgumentError(
+                        argument=None,
+                        message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",
+                    )
 
-            ind_path_dict[int(ind)] = Path(path)
+                ind_path_dict[int(ind)] = Path(path)
 
         setattr(args, key, ind_path_dict)
 
