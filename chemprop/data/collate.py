@@ -87,10 +87,10 @@ class MolAtomBondTrainingBatch(NamedTuple):
     V_d: Tensor | None
     E_d: Tensor | None
     X_d: Tensor | None
-    Y: Tensor | None
+    Ys: list[Tensor | None]
     w: Tensor
-    lt_mask: Tensor | None
-    gt_mask: Tensor | None
+    lt_masks: list[Tensor | None]
+    gt_masks: list[Tensor | None]
 
 
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
@@ -110,36 +110,32 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:
     mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
 
-    np_y = np.vstack(ys)
-    np_lt = np.vstack(lt_masks)
-    np_gt = np.vstack(gt_masks)
+    np_ys, np_lts, np_gts, weights_tensors = [], [], [], []
+    for dataset in zip(*ys):
+        np_ys.append(np.vstack(dataset))
+        if np_ys[-1].shape[0] == len(dataset):
+            weights_tensors.append(torch.tensor(weights, dtype=torch.float).unsqueeze(1))
+        else:
+            num_atoms = torch.tensor([y.shape[0] for y in dataset])
+            tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
+            weights_tensors.append(torch.repeat_interleave(tensor, repeats=num_atoms))
 
-    if np_y.shape[0] == len(ys):
-        weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
-    else:
-        num_atoms = torch.tensor([y.shape[0] for y in ys])
-        weights_tensor = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
-        weights_tensor = torch.repeat_interleave(weights_tensor, repeats=num_atoms)
+    for dataset in zip(*lt_masks):
+        np_lts.append(np.vstack(dataset))
+    for dataset in zip(*gt_masks):
+        np_gts.append(np.vstack(dataset))
 
+    print(lt_masks)
     return MolAtomBondTrainingBatch(
         BatchMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
         None if E_ds[0] is None else torch.from_numpy(np.concatenate(E_ds)).float(),
         None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
-        None if ys[0] is None else torch.from_numpy(np_y).float(),
-        weights_tensor,
-        None if lt_masks[0] is None else torch.from_numpy(np_lt),
-        None if gt_masks[0] is None else torch.from_numpy(np_gt),
+        [torch.from_numpy(np_y).float() for np_y in np_ys],
+        weights_tensors,
+        [None if lt_masks[0][i] is None else torch.from_numpy(np_lts[i]) for i in range(3)],
+        [None if gt_masks[0][i] is None else torch.from_numpy(np_gts[i]) for i in range(3)],
     )
-
-
-def mixed_collate_batch(
-    batches: Iterable[Iterable[MolAtomBondDatum]],
-) -> list[MolAtomBondTrainingBatch]:
-    return [
-        collate_mol_atom_bond_batch(batch) if batch[0] is not None else None
-        for batch in zip(*batches)
-    ]
 
 
 class MulticomponentTrainingBatch(NamedTuple):

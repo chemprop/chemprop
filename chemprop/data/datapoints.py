@@ -90,8 +90,13 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 
 
 @dataclass
-class MolDatapoint(MoleculeDatapoint):
+class MolAtomBondDatapoint(MoleculeDatapoint):
+    atom_y: np.ndarray | None = None
+    bond_y: np.ndarray | None = None
+    atom_gt_mask: np.ndarray | None = None
+    bond_gt_mask: np.ndarray | None = None
     E_d: np.ndarray | None = None
+
     """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
     ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
     descriptors *after* message passing"""

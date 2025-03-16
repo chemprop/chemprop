@@ -2,13 +2,7 @@ import numpy as np
 import pytest
 from rdkit import Chem
 
-from chemprop.data.datasets import (
-    AtomDataset,
-    BondDataset,
-    MolAtomBondDataset,
-    MolDatapoint,
-    MolDataset,
-)
+from chemprop.data.datasets import MolAtomBondDatapoint, MolAtomBondDataset
 from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
 from chemprop.utils import make_mol
 
@@ -79,72 +73,64 @@ def E_ds(mols):
 )
 @pytest.fixture
 def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds, slices):
-    mol_data = [
-        MolDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d, E_d=E_d)
-        for mol, target, x_d, V_f, E_f, V_d, E_d in zip(
-            mols, targets[0], X_d, V_fs, E_fs, V_ds, E_ds
-        )
-    ]
     atom_targets, bond_targets = [], []
     for i in range(len(slices[0]) - 1):
         atom_targets.append(targets[1][slices[0][i] : slices[0][i + 1]])
     for i in range(len(slices[1]) - 1):
         bond_targets.append(targets[2][slices[1][i] : slices[1][i + 1]])
-    atom_data = [
-        MolDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
-        for mol, target, x_d, V_f, E_f, V_d, E_d in zip(
-            mols, atom_targets, X_d, V_fs, E_fs, V_ds, E_ds
+    mol_data = list(zip(mols, targets[0], X_d, V_fs, E_fs, V_ds, E_ds))
+    atom_data = list(zip(mols, atom_targets, X_d, V_fs, E_fs, V_ds, E_ds))
+    bond_data = list(zip(mols, bond_targets, X_d, V_fs, E_fs, V_ds, E_ds))
+    all_data = []
+    for i in range(len(mol_data)):
+        all_data.append(
+            MolAtomBondDatapoint(
+                mol=mol_data[i][0],
+                y=mol_data[i][1],
+                atom_y=atom_data[i][1],
+                bond_y=bond_data[i][1],
+                x_d=mol_data[i][2],
+                V_f=mol_data[i][3],
+                E_f=mol_data[i][4],
+                V_d=mol_data[i][5],
+                E_d=mol_data[i][6],
+            )
         )
-    ]
-    bond_data = [
-        MolDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d, E_d=E_d)
-        for mol, target, x_d, V_f, E_f, V_d, E_d in zip(
-            mols, bond_targets, X_d, V_fs, E_fs, V_ds, E_ds
-        )
-    ]
-    return [mol_data, atom_data, bond_data]
+
+    return all_data
 
 
 @pytest.fixture
 def dataset(data):
-    extra_atom_fdim = data[0][0].V_f.shape[1] if data[0][0].V_f is not None else 0
-    extra_bond_fdim = data[0][0].E_f.shape[1] if data[0][0].E_f is not None else 0
+    extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+    extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
 
     featurizer = SimpleMoleculeMolGraphFeaturizer(
         extra_atom_fdim=extra_atom_fdim, extra_bond_fdim=extra_bond_fdim
     )
-    mol_dset = MolDataset(data[0], featurizer)
-    atom_dset = AtomDataset(data[1], featurizer)
-    bond_dset = BondDataset(data[2], featurizer)
-    dset = MolAtomBondDataset(mol_dset, atom_dset, bond_dset)
+    dset = MolAtomBondDataset(data, featurizer)
     return dset
 
 
-def test_len(data, dataset):
-    assert len(data[0]) == len(dataset)
-
-
-def test_smis(dataset, smis):
-    assert smis == dataset.mol_dataset.smiles
-
-
 def test_targets(dataset, targets):
-    np.testing.assert_array_equal(dataset.mol_dataset.Y, targets[0])
-    np.testing.assert_array_equal(dataset.atom_dataset.Y, targets[1])
-    np.testing.assert_array_equal(dataset.bond_dataset.Y, targets[2])
+    np.testing.assert_array_equal(dataset.Y, targets[0])
+    np.testing.assert_array_equal(dataset.atom_Y, targets[1])
+    np.testing.assert_array_equal(dataset.bond_Y, targets[2])
 
 
 @pytest.mark.skipif(
     not all([x is None for x in ["X_d", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
 )
-def test_aux_nones(dataset: MolDataset):
-    np.testing.assert_array_equal(dataset.mol_dataset.X_d, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.V_fs, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.E_fs, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.V_ds, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.E_ds, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.gt_mask, None)
-    np.testing.assert_array_equal(dataset.mol_dataset.lt_mask, None)
+def test_aux_nones(dataset: MolAtomBondDataset):
+    np.testing.assert_array_equal(dataset.X_d, None)
+    np.testing.assert_array_equal(dataset.V_fs, None)
+    np.testing.assert_array_equal(dataset.E_fs, None)
+    np.testing.assert_array_equal(dataset.V_ds, None)
+    np.testing.assert_array_equal(dataset.E_ds, None)
+    np.testing.assert_array_equal(dataset.atom_gt_mask, None)
+    np.testing.assert_array_equal(dataset.bond_gt_mask, None)
+    np.testing.assert_array_equal(dataset.atom_lt_mask, None)
+    np.testing.assert_array_equal(dataset.bond_lt_mask, None)
     assert dataset.mol_dataset.d_xd == 0
     assert dataset.mol_dataset.d_vf == 0
     assert dataset.mol_dataset.d_ef == 0

@@ -97,10 +97,10 @@ def mol_atom_bond_datum_1():
         V_d=np.array([[1.0], [2.0], [4.0]]),
         E_d=None,
         x_d=[3, 4],
-        y=[6, 7],
+        ys=[12, [6, 7], [3, 4, 5]],
         weight=[8.0],
-        lt_mask=[True],
-        gt_mask=[False],
+        lt_masks=[True, True, True],
+        gt_masks=[False, False, False],
     )
 
 
@@ -117,10 +117,10 @@ def mol_atom_bond_datum_2():
         V_d=np.array([[5.0], [7.0]]),
         E_d=None,
         x_d=[8, 9],
-        y=[6, 4],
+        ys=[None, [6, 4], None],
         weight=[1.0],
-        lt_mask=[False],
-        gt_mask=[True],
+        lt_masks=[False, False, False],
+        gt_masks=[True, True, True],
     )
 
 
@@ -137,10 +137,13 @@ def test_collate_mol_atom_bond_batch_single_graph(mol_atom_bond_datum_1):
     )  # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
     torch.testing.assert_close(V_ds, torch.tensor([[1.0], [2.0], [4.0]], dtype=torch.float32))
     torch.testing.assert_close(x_ds, torch.tensor([[3.0, 4.0]], dtype=torch.float32))
-    torch.testing.assert_close(ys, torch.tensor([[6.0, 7.0]], dtype=torch.float32))
-    torch.testing.assert_close(weights, torch.tensor([[[8.0]]], dtype=torch.float32))
-    torch.testing.assert_close(lt_masks, torch.tensor([[1]], dtype=torch.bool))
-    torch.testing.assert_close(gt_masks, torch.tensor([[0]], dtype=torch.bool))
+    print(ys[0])
+    torch.testing.assert_close(ys[0], torch.tensor([[12.0]], dtype=torch.float32))
+    torch.testing.assert_close(ys[1], torch.tensor([[6.0, 7.0]], dtype=torch.float32))
+    torch.testing.assert_close(ys[2], torch.tensor([[3.0, 4.0, 5.0]], dtype=torch.float32))
+    torch.testing.assert_close(weights[0], torch.tensor([[[8.0]]], dtype=torch.float32))
+    torch.testing.assert_close(lt_masks[0], torch.tensor([[1]], dtype=torch.bool))
+    torch.testing.assert_close(gt_masks[0], torch.tensor([[0]], dtype=torch.bool))
 
 
 def test_collate_mol_atom_bond_batch_multiple_graphs(mol_atom_bond_datum_1, mol_atom_bond_datum_2):

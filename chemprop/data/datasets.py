@@ -9,7 +9,7 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MolDatapoint, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
@@ -36,10 +36,10 @@ class MolAtomBondDatum(NamedTuple):
     V_d: np.ndarray | None
     E_d: np.ndarray | None
     x_d: np.ndarray | None
-    y: np.ndarray | None
+    ys: list[np.ndarray | None]
     weight: float
-    lt_mask: np.ndarray | None
-    gt_mask: np.ndarray | None
+    lt_masks: list[np.ndarray | None]
+    gt_masks: list[np.ndarray | None]
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -332,7 +332,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 
 @dataclass
-class MolDataset(MoleculeDataset, MolAtomBondGraphDataset):
+class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
     """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
 
     A :class:`MoleculeDataset` produces featurized data for input to a
@@ -350,22 +350,92 @@ class MolDataset(MoleculeDataset, MolAtomBondGraphDataset):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
-    data: list[MolDatapoint]
+    data: list[MolAtomBondDatapoint]
 
     def __getitem__(self, idx: int) -> MolAtomBondDatum:
         d = self.data[idx]
         mg = self.mg_cache[idx]
+        atom_first = self._atom_slices.index(idx)
+        atom_last = atom_first + self._atom_slices.count(idx)
+        bond_first = self._bond_slices.index(idx)
+        bond_last = bond_first + self._bond_slices.count(idx)
 
         return MolAtomBondDatum(
             mg,
             self.V_ds[idx],
             self.E_ds[idx],
             self.X_d[idx],
-            self.Y[idx],
+            [
+                self.Y[idx] if self.Y is not None else np.array([]),
+                self.atom_Y[atom_first:atom_last] if self.atom_Y is not None else np.array([]),
+                self.bond_Y[bond_first:bond_last] if self.bond_Y is not None else np.array([]),
+            ],
             d.weight,
-            d.lt_mask,
-            d.gt_mask,
+            [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
+            [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
         )
+
+    @cached_property
+    def _atom_Y(self) -> np.ndarray:
+        """the raw targets of the dataset"""
+        return np.vstack([d.atom_y for d in self.data])
+
+    @property
+    def atom_Y(self) -> np.ndarray:
+        """the (scaled) targets of the dataset"""
+        return self.__atom_Y
+
+    @atom_Y.setter
+    def atom_Y(self, atom_Y: ArrayLike):
+        self.__atom_Y = np.array(atom_Y, float)
+
+    @cached_property
+    def _bond_Y(self) -> np.ndarray:
+        """the raw targets of the dataset"""
+        return np.vstack([d.bond_y for d in self.data])
+
+    @property
+    def bond_Y(self) -> np.ndarray:
+        """the (scaled) targets of the dataset"""
+        return self.__bond_Y
+
+    @bond_Y.setter
+    def bond_Y(self, bond_Y: ArrayLike):
+        self.__bond_Y = np.array(bond_Y, float)
+
+    @cached_property
+    def _atom_slices(self) -> list[int]:
+        slice_indices = []
+        index = 0
+        for d in self.data:
+            slice_indices.extend([index] * d.mol.GetNumAtoms())
+            index += 1
+        return slice_indices
+
+    @cached_property
+    def _bond_slices(self) -> list[int]:
+        slice_indices = []
+        index = 0
+        for d in self.data:
+            slice_indices.extend([index] * d.mol.GetNumBonds())
+            index += 1
+        return slice_indices
+
+    @property
+    def atom_gt_mask(self) -> np.ndarray:
+        return np.vstack([d.atom_gt_mask for d in self.data])
+
+    @property
+    def atom_lt_mask(self) -> np.ndarray:
+        return np.vstack([d.atom_lt_mask for d in self.data])
+
+    @property
+    def bond_gt_mask(self) -> np.ndarray:
+        return np.vstack([d.bond_gt_mask for d in self.data])
+
+    @property
+    def bond_lt_mask(self) -> np.ndarray:
+        return np.vstack([d.bond_lt_mask for d in self.data])
 
     @property
     def _E_ds(self) -> list[np.ndarray]:
@@ -431,310 +501,8 @@ class MolDataset(MoleculeDataset, MolAtomBondGraphDataset):
         datapoint to their initial, unnormalized values."""
         super().reset()
         self.__E_ds = self._E_ds
-
-
-@dataclass
-class AtomDataset(MolDataset):
-    @cached_property
-    def _Y(self) -> np.ndarray:
-        return np.vstack([d.y for d in self.data])
-
-    @property
-    def Y(self) -> np.ndarray:
-        """the (scaled) targets of the dataset"""
-        return self.__Y
-
-    @Y.setter
-    def Y(self, Y: ArrayLike):
-        self.__Y = np.array(Y, float)
-
-    @cached_property
-    def _slices(self) -> list[int]:
-        slice_indices = []
-        index = 0
-        for d in self.data:
-            slice_indices.extend([index] * d.mol.GetNumAtoms())
-            index += 1
-        return slice_indices
-
-    @property
-    def gt_mask(self) -> np.ndarray:
-        return np.vstack([d.gt_mask for d in self.data])
-        # dim = self.data[0].gt_mask.shape[1]
-        # temp_gt_mask = np.empty((0, dim))
-        # for d in self.data:
-        #     temp_gt_mask = np.vstack([temp_gt_mask, np.vstack(d.gt_mask)])
-        # return temp_gt_mask
-
-    @property
-    def lt_mask(self) -> np.ndarray:
-        return np.vstack([d.lt_mask for d in self.data])
-        # dim = self.data[0].lt_mask.shape[1]
-        # temp_lt_mask = np.empty((0, dim))
-        # for d in self.data:
-        #     temp_lt_mask = np.vstack([temp_lt_mask, np.vstack(d.lt_mask)])
-        # return temp_lt_mask
-
-    def __getitem__(self, idx: int) -> MolAtomBondDatum:
-        d = self.data[idx]
-        mg = self.mg_cache[idx]
-        slices = self._slices
-        ind_first = slices.index(idx)
-        ind_last = ind_first + slices.count(idx)
-
-        return MolAtomBondDatum(
-            mg,
-            self.V_ds[idx],
-            self.E_ds[idx],
-            self.X_d[idx],
-            self.Y[ind_first:ind_last],
-            d.weight,
-            d.lt_mask,
-            d.gt_mask,
-        )
-
-    def reset(self):
-        """Reset the atom and bond features; atom and extra descriptors; and targets of each
-        datapoint to their initial, unnormalized values."""
-        super().reset()
-        self.__Y = self._Y
-
-
-@dataclass
-class BondDataset(AtomDataset):
-    @cached_property
-    def _slices(self) -> list[int]:
-        slice_indices = []
-        index = 0
-        for d in self.data:
-            slice_indices.extend([index] * d.mol.GetNumBonds())
-            index += 1
-        return slice_indices
-
-
-@dataclass
-class MockDataset(_MolGraphDatasetMixin, MolAtomBondGraphDataset):
-    """A :class:`MockDataset` serves to create a mock empty dataset that passes through all the message passing code.
-    This is used when there are no target columns for any of molecule, atom, and/or bond for mixed predictions
-    """
-
-    featurizer = SimpleMoleculeMolGraphFeaturizer
-
-    def Y(self) -> np.ndarray:
-        """the (scaled) targets of the dataset"""
-        return np.array([])
-
-    def __getitem__(self, idx: int) -> Datum:
-        return None
-
-    @property
-    def cache(self) -> bool:
-        return self.__cache
-
-    @cache.setter
-    def cache(self, cache: bool = False):
-        self.__cache = cache
-        self._init_cache()
-
-    def _init_cache(self):
-        """initialize the cache"""
-        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
-            self.mols, self.V_fs, self.E_fs, self.featurizer
-        )
-
-    @cached_property
-    def _slices(self) -> list:
-        return None
-
-    @property
-    def _V_fs(self) -> list[np.ndarray]:
-        """the raw atom features of the dataset"""
-        return np.array([])
-
-    @property
-    def V_fs(self) -> list[np.ndarray]:
-        """the (scaled) atom descriptors of the dataset"""
-        return self.__V_fs
-
-    @V_fs.setter
-    def V_fs(self, V_fs: list[np.ndarray]):
-        """the (scaled) atom features of the dataset"""
-        self._validate_attribute(V_fs, "atom features")
-
-        self.__V_fs = V_fs
-        self._init_cache()
-
-    @property
-    def _E_fs(self) -> list[np.ndarray]:
-        """the raw bond features of the dataset"""
-        return np.array([])
-
-    @property
-    def E_fs(self) -> list[np.ndarray]:
-        """the (scaled) bond features of the dataset"""
-        return self.__E_fs
-
-    @E_fs.setter
-    def E_fs(self, E_fs: list[np.ndarray]):
-        self._validate_attribute(E_fs, "bond features")
-
-        self.__E_fs = E_fs
-        self._init_cache()
-
-    @property
-    def _V_ds(self) -> list[np.ndarray]:
-        """the raw atom descriptors of the dataset"""
-        return np.array([])
-
-    @property
-    def V_ds(self) -> list[np.ndarray]:
-        """the (scaled) atom descriptors of the dataset"""
-        return self.__V_ds
-
-    @V_ds.setter
-    def V_ds(self, V_ds: list[np.ndarray]):
-        self._validate_attribute(V_ds, "atom descriptors")
-
-        self.__V_ds = V_ds
-
-    @property
-    def _E_ds(self) -> list[np.ndarray]:
-        return np.array([])
-
-    @property
-    def E_ds(self) -> list[np.ndarray]:
-        return self.__E_ds
-
-    @E_ds.setter
-    def E_ds(self, E_ds: list[np.ndarray]):
-        self._validate_attribute(E_ds, "bond descriptors")
-
-        self.__E_ds = E_ds
-
-    @property
-    def d_vf(self) -> int:
-        """the extra atom feature dimension, if any"""
-        return 0
-
-    @property
-    def d_ef(self) -> int:
-        """the extra bond feature dimension, if any"""
-        return 0
-
-    @property
-    def d_vd(self) -> int:
-        """the extra atom descriptor dimension, if any"""
-        return 0
-
-    @property
-    def d_ed(self) -> int:
-        return 0
-
-    def normalize_inputs(
-        self, key: str = "X_d", scaler: StandardScaler | None = None
-    ) -> StandardScaler:
-        scaler = StandardScaler()
-        scaler.mean_ = [0]
-        scaler.scale_ = [1]
-        return scaler
-
-    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
-        scaler = StandardScaler()
-        scaler.mean_ = [0]
-        scaler.scale_ = [1]
-        return scaler
-
-
-@dataclass(repr=False, eq=False)
-class MolAtomBondDataset(_MolGraphDatasetMixin, Dataset[list[MolAtomBondDatum]]):
-    """A :class:`MolAtomBondDataset` is a dataset class composed of a list of three datasets,
-    with the first index being :class:`MoleculeDataset`, second being :class:`AtomDataset`, and
-    third being :class:`MoleculeDataset`."""
-
-    mol_dataset: MolDataset | MockDataset
-    atom_dataset: AtomDataset | MockDataset
-    bond_dataset: BondDataset | MockDataset
-
-    def __post_init__(self):
-        self.datasets = [self.mol_dataset, self.atom_dataset, self.bond_dataset]
-
-    def __len__(self) -> int:
-        return len(self.datasets[0])
-
-    @property
-    def n_components(self) -> int:
-        return len(self.datasets)
-
-    def __getitem__(self, idx: int) -> list[MolAtomBondDatum]:
-        mixed_list = []
-        for dset in self.datasets:
-            mixed_list.append(
-                MolAtomBondDatum(
-                    dset[idx].mg,
-                    dset[idx].V_d,
-                    dset[idx].E_d,
-                    dset[idx].x_d,
-                    dset[idx].y,
-                    dset[idx].weight,
-                    dset[idx].lt_mask,
-                    dset[idx].gt_mask,
-                )
-                if dset[idx] is not None
-                else None
-            )
-
-        return mixed_list
-
-    @property
-    def smiles(self) -> list[list[str]]:
-        return list(zip(*[dset.smiles for dset in self.datasets]))
-
-    @property
-    def names(self) -> list[str]:
-        return self.datasets[0].names
-
-    @property
-    def mols(self) -> list[list[Chem.Mol]]:
-        return list(zip(*[dset.mols for dset in self.datasets]))
-
-    def normalize_targets(self, scaler: StandardScaler | None = None) -> StandardScaler:
-        return self.datasets[0].normalize_targets(scaler)
-
-    def normalize_inputs(  # CHANGE
-        self, key: str = "X_d", scaler: list[StandardScaler] | None = None
-    ) -> list[StandardScaler]:
-        match scaler:
-            case None:
-                return [dset.normalize_inputs(key) for dset in self.datasets]
-            case _:
-                assert len(scaler) == len(
-                    self.datasets
-                ), "Number of scalers must match number of datasets!"
-
-                return [dset.normalize_inputs(key, s) for dset, s in zip(self.datasets, scaler)]
-
-    def reset(self):
-        return [dset.reset() for dset in self.datasets]
-
-    @property
-    def d_xd(self) -> list[int]:
-        return self.datasets[0].d_xd
-
-    @property
-    def d_vf(self) -> list[int]:
-        return sum(dset.d_vf for dset in self.datasets)
-
-    @property
-    def d_ef(self) -> list[int]:
-        return sum(dset.d_ef for dset in self.datasets)
-
-    @property
-    def d_vd(self) -> list[int]:
-        return sum(dset.d_vd for dset in self.datasets)
-
-    @property
-    def d_ed(self) -> list[int]:
-        return sum(dset.d_ed for dset in self.datasets)
+        self.__atom_Y = self._atom_Y
+        self.__bond_Y = self._bond_Y
 
 
 @dataclass
