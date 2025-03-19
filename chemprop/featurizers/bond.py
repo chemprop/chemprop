@@ -1,7 +1,7 @@
 from typing import Sequence
 
 import numpy as np
-from rdkit.Chem.rdchem import Bond, BondType
+from rdkit.Chem.rdchem import Bond, BondType, BondStereo
 
 from chemprop.featurizers.base import VectorFeaturizer
 
@@ -47,7 +47,9 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     """
 
     def __init__(
-        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
+        self,
+        bond_types: Sequence[BondType] | None = None,
+        stereos: Sequence[int] | None = None,
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -55,7 +57,14 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             BondType.TRIPLE,
             BondType.AROMATIC,
         ]
-        self.stereo = stereos or range(6)
+        self.stereo = stereos or [
+            BondStereo.STEREONONE,
+            BondStereo.STEREOANY,
+            BondStereo.STEREOZ,
+            BondStereo.STEREOE,
+            BondStereo.STEREOCIS,
+            BondStereo.STEREOTRANS,
+        ]
 
     def __len__(self):
         return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
