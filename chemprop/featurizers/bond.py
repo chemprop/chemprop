@@ -38,7 +38,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     ----------
     bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
+    stereos : Sequence[BondStereo] | None, default=[NONE, ANY, Z, E, CIS, TRANS]
         the known bond stereochemistries. See [1]_ for more details
 
     References
@@ -49,7 +49,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     def __init__(
         self,
         bond_types: Sequence[BondType] | None = None,
-        stereos: Sequence[int] | None = None,
+        stereos: Sequence[BondStereo] | None = None,
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
