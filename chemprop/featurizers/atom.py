@@ -2,7 +2,7 @@ from enum import auto
 from typing import Sequence
 
 import numpy as np
-from rdkit.Chem.rdchem import Atom, HybridizationType
+from rdkit.Chem.rdchem import Atom, ChiralType, HybridizationType
 
 from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.utils.utils import EnumMapping
@@ -39,11 +39,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         the choices for number of bonds an atom is engaged in.
     formal_charges : Sequence[int]
         the choices for integer electronic charge assigned to an atom.
-    chiral_tags : Sequence[int]
+    chiral_tags : Sequence[ChiralType]
         the choices for an atom's chiral tag. See :class:`rdkit.Chem.rdchem.ChiralType` for possible integer values.
     num_Hs : Sequence[int]
         the choices for number of bonded hydrogen atoms.
-    hybridizations : Sequence[int]
+    hybridizations : Sequence[HybridizationType]
         the choices for an atom’s hybridization type. See :class:`rdkit.Chem.rdchem.HybridizationType` for possible integer values.
     """
 
@@ -52,15 +52,15 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         atomic_nums: Sequence[int],
         degrees: Sequence[int],
         formal_charges: Sequence[int],
-        chiral_tags: Sequence[int],
+        chiral_tags: Sequence[ChiralType],
         num_Hs: Sequence[int],
-        hybridizations: Sequence[int],
+        hybridizations: Sequence[HybridizationType],
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
-        self.degrees = {i: i for i in degrees}
+        self.degrees = {j: i for i, j in enumerate(degrees)}
         self.formal_charges = {j: i for i, j in enumerate(formal_charges)}
-        self.chiral_tags = {i: i for i in chiral_tags}
-        self.num_Hs = {i: i for i in num_Hs}
+        self.chiral_tags = {ct: i for i, ct in enumerate(chiral_tags)}
+        self.num_Hs = {j: i for i, j in enumerate(num_Hs)}
         self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
 
         self._subfeats: list[dict] = [
@@ -96,8 +96,8 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             a.GetAtomicNum(),
             a.GetTotalDegree(),
             a.GetFormalCharge(),
-            int(a.GetChiralTag()),
-            int(a.GetTotalNumHs()),
+            a.GetChiralTag(),
+            a.GetTotalNumHs(),
             a.GetHybridization(),
         ]
         i = 0
@@ -145,7 +145,12 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             atomic_nums=list(range(1, max_atomic_num + 1)),
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
-            chiral_tags=list(range(4)),
+            chiral_tags=[
+                ChiralType.CHI_UNSPECIFIED,
+                ChiralType.CHI_TETRAHEDRAL_CW,
+                ChiralType.CHI_TETRAHEDRAL_CCW,
+                ChiralType.CHI_OTHER,
+            ],
             num_Hs=list(range(5)),
             hybridizations=[
                 HybridizationType.SP,
@@ -164,7 +169,12 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             atomic_nums=list(range(1, 37)) + [53],
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
-            chiral_tags=list(range(4)),
+            chiral_tags=[
+                ChiralType.CHI_UNSPECIFIED,
+                ChiralType.CHI_TETRAHEDRAL_CW,
+                ChiralType.CHI_TETRAHEDRAL_CCW,
+                ChiralType.CHI_OTHER,
+            ],
             num_Hs=list(range(5)),
             hybridizations=[
                 HybridizationType.S,
@@ -190,7 +200,12 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             atomic_nums=[1, 5, 6, 7, 8, 9, 14, 15, 16, 17, 35, 53],
             degrees=list(range(6)),
             formal_charges=[-1, -2, 1, 2, 0],
-            chiral_tags=list(range(4)),
+            chiral_tags=[
+                ChiralType.CHI_UNSPECIFIED,
+                ChiralType.CHI_TETRAHEDRAL_CW,
+                ChiralType.CHI_TETRAHEDRAL_CCW,
+                ChiralType.CHI_OTHER,
+            ],
             num_Hs=list(range(5)),
             hybridizations=[
                 HybridizationType.S,
