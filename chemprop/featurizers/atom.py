@@ -39,11 +39,11 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         the choices for number of bonds an atom is engaged in.
     formal_charges : Sequence[int]
         the choices for integer electronic charge assigned to an atom.
-    chiral_tags : Sequence[ChiralType]
+    chiral_tags : Sequence[ChiralType | int]
         the choices for an atom's chiral tag. See :class:`rdkit.Chem.rdchem.ChiralType` for possible integer values.
     num_Hs : Sequence[int]
         the choices for number of bonded hydrogen atoms.
-    hybridizations : Sequence[HybridizationType]
+    hybridizations : Sequence[HybridizationType | int]
         the choices for an atom’s hybridization type. See :class:`rdkit.Chem.rdchem.HybridizationType` for possible integer values.
     """
 
@@ -52,16 +52,16 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         atomic_nums: Sequence[int],
         degrees: Sequence[int],
         formal_charges: Sequence[int],
-        chiral_tags: Sequence[ChiralType],
+        chiral_tags: Sequence[ChiralType | int],
         num_Hs: Sequence[int],
-        hybridizations: Sequence[HybridizationType],
+        hybridizations: Sequence[HybridizationType | int],
     ):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {j: i for i, j in enumerate(degrees)}
         self.formal_charges = {j: i for i, j in enumerate(formal_charges)}
         self.chiral_tags = {int(ct): i for i, ct in enumerate(chiral_tags)}
         self.num_Hs = {j: i for i, j in enumerate(num_Hs)}
-        self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
+        self.hybridizations = {int(ht): i for i, ht in enumerate(hybridizations)}
 
         self._subfeats: list[dict] = [
             self.atomic_nums,
@@ -98,7 +98,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             a.GetFormalCharge(),
             int(a.GetChiralTag()),
             a.GetTotalNumHs(),
-            a.GetHybridization(),
+            int(a.GetHybridization()),
         ]
         i = 0
         for feat, choices in zip(feats, self._subfeats):
