@@ -69,7 +69,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     def __len__(self):
         return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
 
-    def __call__(self, b: Bond) -> np.ndarray:
+    def __call__(self, b: Bond | None) -> np.ndarray:
         x = np.zeros(len(self), int)
 
         if b is None:
@@ -81,7 +81,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
         if bt_bit != size:
             x[i + bt_bit] = 1
-        i += size - 1
+        i += size
 
         x[i] = int(b.GetIsConjugated())
         x[i + 1] = int(b.IsInRing())
@@ -94,11 +94,11 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
 
     @classmethod
     def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
+        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs)`` if ``x`` is in ``xs``.
+        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs)``."""
         n = len(xs)
 
-        return xs.index(x) if x in xs else n, n + 1
+        return xs.index(x) if x in xs else n, n
 
 
 class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
