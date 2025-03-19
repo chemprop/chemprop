@@ -111,7 +111,7 @@ class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
     def __len__(self):
         return 2
 
-    def __call__(self, b: Bond) -> np.ndarray:
+    def __call__(self, b: Bond | None) -> np.ndarray:
         x = np.zeros(len(self), int)
 
         if b is None:
@@ -121,11 +121,3 @@ class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
         x[1] = int(b.IsInRing())
 
         return x
-
-    @classmethod
-    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
-        n = len(xs)
-
-        return xs.index(x) if x in xs else n, n + 1
