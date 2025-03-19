@@ -59,7 +59,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         self.atomic_nums = {j: i for i, j in enumerate(atomic_nums)}
         self.degrees = {j: i for i, j in enumerate(degrees)}
         self.formal_charges = {j: i for i, j in enumerate(formal_charges)}
-        self.chiral_tags = {ct: i for i, ct in enumerate(chiral_tags)}
+        self.chiral_tags = {int(ct): i for i, ct in enumerate(chiral_tags)}
         self.num_Hs = {j: i for i, j in enumerate(num_Hs)}
         self.hybridizations = {ht: i for i, ht in enumerate(hybridizations)}
 
@@ -96,7 +96,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             a.GetAtomicNum(),
             a.GetTotalDegree(),
             a.GetFormalCharge(),
-            a.GetChiralTag(),
+            int(a.GetChiralTag()),
             a.GetTotalNumHs(),
             a.GetHybridization(),
         ]
