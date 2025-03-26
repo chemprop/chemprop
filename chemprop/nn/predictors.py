@@ -132,12 +132,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
-            input_dim,
-            n_tasks * self.n_targets,
-            hidden_dim,
-            n_layers,
-            dropout,
-            activation,
+            input_dim, n_tasks * self.n_targets, hidden_dim, n_layers, dropout, activation
         )
         task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
         self.criterion = criterion or Factory.build(

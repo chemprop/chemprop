@@ -10,7 +10,6 @@ class Activation(EnumMapping):
     LEAKYRELU = auto()
     PRELU = auto()
     TANH = auto()
-    SELU = auto()
     ELU = auto()
 
 
@@ -30,6 +29,10 @@ def get_activation_function(activation: str | nn.Module | Activation) -> nn.Modu
         The activation function module.
     """
     if isinstance(activation, nn.Module):
+        if isinstance(activation, nn.modules.activation.SELU):
+            raise RuntimeError(
+                "SELU activation (intended for self-normalizing networks) is not supported."
+            )
         return activation
     match Activation.get(activation):
         case Activation.RELU:
@@ -40,8 +43,6 @@ def get_activation_function(activation: str | nn.Module | Activation) -> nn.Modu
             return nn.PReLU()
         case Activation.TANH:
             return nn.Tanh()
-        case Activation.SELU:
-            return nn.SELU()
         case Activation.ELU:
             return nn.ELU()
         case _:
