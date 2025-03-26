@@ -1,7 +1,7 @@
 from typing import Sequence
 
 import numpy as np
-from rdkit.Chem.rdchem import Bond, BondType, BondStereo
+from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
 from chemprop.featurizers.base import VectorFeaturizer
 
