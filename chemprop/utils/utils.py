@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 from enum import StrEnum
 from typing import Iterable, Iterator
 
@@ -78,3 +80,16 @@ def pretty_shape(shape: Iterable[int]) -> str:
     '10 x 4'
     """
     return " x ".join(map(str, shape))
+
+
+def pretty_multi_hot(x: np.array, sizes: Iterable[int]) -> str:
+    """Convert a multi-hot array into a human-readable string.
+
+    Example
+    --------
+    >>> pretty_multi_hot(np.array([1, 0, 0, 1, 1]), [2, 3])
+    '10 011'
+    """
+    s = "".join("1" if i else "0" for i in x)
+    cuts = list(np.cumsum(sizes))
+    return " ".join(s[a:b] for a, b in zip([0] + cuts, cuts))
