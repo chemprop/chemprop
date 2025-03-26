@@ -448,6 +448,7 @@ def parse_indices(idxs):
 
 
 def parse_activation(cls: type[nn.Module], arguments: list | None) -> nn.Module:
+    """Parse arguments and instantiate an activation function"""
     posargs, kwargs = [], {}
     if arguments is not None:
         for item in arguments:

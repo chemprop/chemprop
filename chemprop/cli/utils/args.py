@@ -35,6 +35,7 @@ def lowercase(x: str):
 
 
 def activation_function_argument(argument):
+    """Parse a command line option for an activation function argument."""
     *k, s = argument.split("=", 1)
     s = s.strip().lower()
     if s in {"true", "false"}:
