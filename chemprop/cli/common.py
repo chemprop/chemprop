@@ -24,11 +24,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Column names in the input CSV containing reaction SMILES in the format ``REACTANT>AGENT>PRODUCT``, where 'AGENT' is optional",
     )
     data_args.add_argument(
-        "--ignore-chirality",
-        action="store_true",
-        help="Ignore chirality information in the input SMILES",
-    )
-    data_args.add_argument(
         "--no-header-row",
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
@@ -90,6 +85,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     )
     featurization_args.add_argument(
         "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph"
+    )
+    data_args.add_argument(
+        "--ignore-chirality",
+        action="store_true",
+        help="Ignore chirality information in the input SMILES",
     )
     featurization_args.add_argument(
         "--molecule-featurizers",
