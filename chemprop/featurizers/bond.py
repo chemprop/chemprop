@@ -4,6 +4,7 @@ import numpy as np
 from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
 from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.utils.utils import pretty_multi_hot
 
 
 class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
@@ -41,6 +42,18 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     stereos : Sequence[BondStereo] | None, default=[NONE, ANY, Z, E, CIS, TRANS]
         the known bond stereochemistries. See [1]_ for more details
 
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = MultiHotBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetBondWithIdx(i))))
+    0 0100 1 0 1000000
+    0 1000 1 0 1000000
+    0 0001 1 1 1000000
+    0 0001 1 1 1000000
+
     References
     ----------
     .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
@@ -65,9 +78,11 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             BondStereo.STEREOCIS,
             BondStereo.STEREOTRANS,
         ]
+        self._subfeat_sizes = [1, len(self.bond_types), 1, 1, len(self.stereo) + 1]
+        self.__size = sum(self._subfeat_sizes)
 
     def __len__(self):
-        return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
+        return self.__size
 
     def __call__(self, b: Bond | None) -> np.ndarray:
         x = np.zeros(len(self), int)
@@ -99,6 +114,10 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         n = len(xs)
 
         return xs.index(x) if x in xs else n, n
+
+    def prettify(self, x: np.array) -> str:
+        """Convert the featurized bond into a human-readable string."""
+        return pretty_multi_hot(x, self._subfeat_sizes)
 
 
 class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
