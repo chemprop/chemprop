@@ -1065,6 +1065,7 @@ def build_model(
         dropout=args.dropout,
         activation=activation,
         criterion=criterion,
+        task_weights=args.task_weights,
         n_classes=args.multiclass_num_classes,
         output_activation=output_activation,
         output_transform=output_transform,
