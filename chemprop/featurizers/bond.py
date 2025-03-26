@@ -120,12 +120,29 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         return pretty_multi_hot(x, self._subfeat_sizes)
 
 
-class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
+class RIGRBondFeaturizer(MultiHotBondFeaturizer):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
     * ``null``-ity (i.e., is the bond ``None``?)
     * in ring?
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = RIGRBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetBondWithIdx(i))))
+    0 0
+    0 0
+    0 1
+    0 1
+
     """
+
+    def __init__(self):
+        super().__init__()
+        self._subfeat_sizes = [1, 1]
 
     def __len__(self):
         return 2

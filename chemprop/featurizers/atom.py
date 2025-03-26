@@ -236,7 +236,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         )
 
 
-class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
+class RIGRAtomFeaturizer(MultiHotAtomFeaturizer):
     """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
 
     The generated atom features are ordered as follows:
@@ -244,6 +244,19 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
     * degree
     * number of hydrogens
     * mass
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles("C[C@H](O)c1ccccc1")
+    >>> featurizer = RIGRAtomFeaturizer()
+    >>> for index in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetAtomWithIdx(index))))
+    00000100000000000000000000000000000000 0000100 000100 0.120
+    00000100000000000000000000000000000000 0000100 010000 0.120
+    00000001000000000000000000000000000000 0010000 010000 0.160
+    00000100000000000000000000000000000000 0001000 100000 0.120
+
     """
 
     def __init__(
@@ -257,11 +270,13 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
         self.num_Hs = {i: i for i in (num_Hs or list(range(5)))}
 
         self._subfeats: list[dict] = [self.atomic_nums, self.degrees, self.num_Hs]
-        subfeat_sizes = [1 + len(self.atomic_nums), 1 + len(self.degrees), 1 + len(self.num_Hs), 1]
-        self.__size = sum(subfeat_sizes)
-
-    def __len__(self) -> int:
-        return self.__size
+        self._subfeat_sizes = [
+            1 + len(self.atomic_nums),
+            1 + len(self.degrees),
+            1 + len(self.num_Hs),
+            1,
+        ]
+        self.__size = sum(self._subfeat_sizes)
 
     def __call__(self, a: Atom | None) -> np.ndarray:
         x = np.zeros(self.__size)
@@ -276,18 +291,6 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
             x[i + j] = 1
             i += len(choices) + 1
         x[i] = 0.01 * a.GetMass()  # scaled to about the same range as other features
-
-        return x
-
-    def num_only(self, a: Atom) -> np.ndarray:
-        """featurize the atom by setting only the atomic number bit"""
-        x = np.zeros(len(self))
-
-        if a is None:
-            return x
-
-        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
-        x[i] = 1
 
         return x
 
