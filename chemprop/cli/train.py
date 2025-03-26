@@ -972,7 +972,6 @@ def build_model(
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
     activation = _get_activation(args.activation, args.activation_args)
-    logger.info(f"Message passing/FFN activation function: {repr(activation)}")
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
@@ -1054,7 +1053,6 @@ def build_model(
         output_activation = _get_activation(
             args.output_activation, args.output_activation_args
         )
-    logger.info(f"Output activation function: {repr(output_activation)}")
 
     predictor = Factory.build(
         predictor_cls,
