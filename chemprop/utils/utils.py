@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import numpy as np
-
 from enum import StrEnum
 from typing import Iterable, Iterator
 
+import numpy as np
 from rdkit import Chem
 
 
