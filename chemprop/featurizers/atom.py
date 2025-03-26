@@ -5,7 +5,7 @@ import numpy as np
 from rdkit.Chem.rdchem import Atom, ChiralType, HybridizationType
 
 from chemprop.featurizers.base import VectorFeaturizer
-from chemprop.utils.utils import EnumMapping
+from chemprop.utils.utils import EnumMapping, pretty_multi_hot
 
 
 class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
@@ -40,11 +40,27 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
     formal_charges : Sequence[int]
         the choices for integer electronic charge assigned to an atom.
     chiral_tags : Sequence[ChiralType | int]
-        the choices for an atom's chiral tag. See :class:`rdkit.Chem.rdchem.ChiralType` for possible integer values.
+        the choices for an atom's chiral tag. See `ChiralType`_ for possible integer values.
     num_Hs : Sequence[int]
         the choices for number of bonded hydrogen atoms.
     hybridizations : Sequence[HybridizationType | int]
-        the choices for an atom’s hybridization type. See :class:`rdkit.Chem.rdchem.HybridizationType` for possible integer values.
+        the choices for an atom’s hybridization type. See `HybridizationType`_ for possible integer values.
+
+        .. _ChiralType: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.ChiralType
+        .. _HybridizationType: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.HybridizationType
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles("C[C@H](O)c1ccccc1")
+    >>> featurizer = MultiHotAtomFeaturizer.v2()
+    >>> for index in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetAtomWithIdx(index))))
+    00000100000000000000000000000000000000 0000100 000010 10000 000100 00001000 0 0.120
+    00000100000000000000000000000000000000 0000100 000010 00100 010000 00001000 0 0.120
+    00000001000000000000000000000000000000 0010000 000010 10000 010000 00001000 0 0.160
+    00000100000000000000000000000000000000 0001000 000010 10000 100000 00100000 1 0.120
+
     """
 
     def __init__(
@@ -71,7 +87,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             self.num_Hs,
             self.hybridizations,
         ]
-        subfeat_sizes = [
+        self._subfeat_sizes = [
             1 + len(self.atomic_nums),
             1 + len(self.degrees),
             1 + len(self.formal_charges),
@@ -81,7 +97,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
             1,
             1,
         ]
-        self.__size = sum(subfeat_sizes)
+        self.__size = sum(self._subfeat_sizes)
 
     def __len__(self) -> int:
         return self.__size
@@ -110,7 +126,7 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
 
         return x
 
-    def num_only(self, a: Atom) -> np.ndarray:
+    def num_only(self, a: Atom | None) -> np.ndarray:
         """featurize the atom by setting only the atomic number bit"""
         x = np.zeros(len(self))
 
@@ -121,6 +137,10 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         x[i] = 1
 
         return x
+
+    def prettify(self, x: np.array) -> str:
+        """Convert the featurized atom into a human-readable string."""
+        return f"{pretty_multi_hot(x[:-1], self._subfeat_sizes[:-1])} {x[-1]:.3f}"
 
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
