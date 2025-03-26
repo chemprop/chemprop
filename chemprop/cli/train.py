@@ -29,9 +29,11 @@ from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
+    activation_function_argument,
     build_data_from_files,
     get_column_names,
     make_dataset,
+    parse_activation,
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
@@ -251,24 +253,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Activation function in message passing/FFN layers.",
     )
 
-    def parse_argument(argument):
-        *k, s = argument.split("=", 1)
-        s = s.strip().lower()
-        if s in {"true", "false"}:
-            v = s == "true"
-        try:
-            v = int(s)
-        except ValueError:
-            try:
-                v = float(s)
-            except ValueError:
-                v = s
-        return {k[0]: v} if k else v
-
     mp_args.add_argument(
         "--activation-args",
         nargs="*",
-        type=parse_argument,
+        type=activation_function_argument,
         help="Arguments for the activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
 
@@ -314,7 +302,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     ffn_args.add_argument(
         "--output-activation-args",
         nargs="*",
-        type=parse_argument,
+        type=activation_function_argument,
         help="Arguments for the output activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
     # TODO: Decide if we want to implment this in v2
@@ -953,17 +941,6 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
-def _get_activation(activation: str, arguments: list | None) -> nn.Module:
-    cls = _ACTIVATION_FUNCTIONS[activation]
-    posargs, kwargs = [], {}
-    if arguments is not None:
-        for item in arguments:
-            if isinstance(item, dict):
-                kwargs.update(item)
-            else:
-                posargs.append(item)
-    return getattr(nn.modules.activation, cls)(*posargs, **kwargs)
-
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
@@ -971,7 +948,7 @@ def build_model(
     input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
 ) -> MPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
-    activation = _get_activation(args.activation, args.activation_args)
+    activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
 
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
@@ -1050,8 +1027,8 @@ def build_model(
     if args.output_activation == "NONE":
         output_activation = None
     else:
-        output_activation = _get_activation(
-            args.output_activation, args.output_activation_args
+        output_activation = parse_activation(
+            _ACTIVATION_FUNCTIONS[args.output_activation], args.output_activation_args
         )
 
     predictor = Factory.build(
