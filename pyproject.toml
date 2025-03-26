@@ -69,7 +69,8 @@ max_line_length = 100
 
 
 [tool.pytest.ini_options]
-addopts = "--cov chemprop"
+addopts = "--doctest-modules --cov chemprop"
+testpaths = ["chemprop", "tests"]
 
 [tool.isort]
 profile = "black"
