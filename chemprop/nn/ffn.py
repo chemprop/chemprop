@@ -39,7 +39,6 @@ class MLP(nn.Sequential, FFN):
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",
-        output_activation: str | nn.Module | None = None,
     ):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
@@ -52,9 +51,6 @@ class MLP(nn.Sequential, FFN):
                     for d1, d2 in zip(dims[1:-1], dims[2:])
                 ]
             )
-
-        if output_activation is not None:
-            blocks.append(get_activation_function(output_activation))
 
         return cls(*blocks)
 
