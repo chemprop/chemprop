@@ -366,9 +366,9 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             self.E_ds[idx],
             self.X_d[idx],
             [
-                self.Y[idx] if self.Y is not None else np.array([]),
-                self.atom_Y[atom_first:atom_last] if self.atom_Y is not None else np.array([]),
-                self.bond_Y[bond_first:bond_last] if self.bond_Y is not None else np.array([]),
+                self.Y[idx] if self.Y is not None else None,
+                self.atom_Y[atom_first:atom_last] if self.atom_Y is not None else None,
+                self.bond_Y[bond_first:bond_last] if self.bond_Y is not None else None,
             ],
             d.weight,
             [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],

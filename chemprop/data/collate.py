@@ -112,7 +112,12 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
 
     np_ys, np_lts, np_gts, weights_tensors = [], [], [], []
     for dataset in zip(*ys):
-        np_ys.append(np.vstack(dataset))
+        if dataset[0] is None:
+            np_ys.append(None)
+            weights_tensors.append(None)
+            continue
+        else:
+            np_ys.append(np.vstack(dataset))
         if np_ys[-1].shape[0] == len(dataset):
             weights_tensors.append(torch.tensor(weights, dtype=torch.float).unsqueeze(1))
         else:
@@ -125,7 +130,6 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
     for dataset in zip(*gt_masks):
         np_gts.append(np.vstack(dataset))
 
-    print(lt_masks)
     return MolAtomBondTrainingBatch(
         BatchMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
