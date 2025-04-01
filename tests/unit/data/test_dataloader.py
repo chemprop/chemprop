@@ -102,7 +102,7 @@ def mol_atom_bond_datum_1():
             np.array([6, 7]).reshape(2, 1),
             np.array([3, 4, 5]).reshape(3, 1),
         ],
-        weight=[8.0],
+        weight=8.0,
         lt_masks=[True, True, True],
         gt_masks=[False, False, False],
     )
@@ -126,7 +126,7 @@ def mol_atom_bond_datum_2():
             np.array([6, 4]).reshape(2, 1),
             np.array([np.nan, np.nan, np.nan]).reshape(3, 1),
         ],
-        weight=[1.0],
+        weight=1.0,
         lt_masks=[False, False, False],
         gt_masks=[True, True, True],
     )
@@ -150,7 +150,7 @@ def test_collate_mol_atom_bond_batch_single_graph(mol_atom_bond_datum_1):
     torch.testing.assert_close(
         ys[2], torch.tensor([[3.0, 4.0, 5.0]], dtype=torch.float32).reshape(3, 1)
     )
-    torch.testing.assert_close(weights[0], torch.tensor([[[8.0]]], dtype=torch.float32))
+    torch.testing.assert_close(weights[0], torch.tensor([8.0], dtype=torch.float32))
     torch.testing.assert_close(lt_masks[0], torch.tensor([[1]], dtype=torch.bool))
     torch.testing.assert_close(gt_masks[0], torch.tensor([[0]], dtype=torch.bool))
 
@@ -172,14 +172,6 @@ def test_collate_mol_atom_bond_batch_multiple_graphs(mol_atom_bond_datum_1, mol_
     torch.testing.assert_close(
         ys[1], torch.tensor([[6.0, 7.0, 6.0, 4.0]], dtype=torch.float32).reshape(4, 1)
     )
-    print(weights[0].shape)
-    print(lt_masks)
-    torch.testing.assert_close(
-        weights[0], torch.tensor([[[8.0]], [[1.0]]], dtype=torch.float32).reshape(2, 1).unsqueeze(1)
-    )
-    torch.testing.assert_close(
-        lt_masks[0], torch.tensor([[1], [0]], dtype=torch.bool).reshape(2, 1)
-    )
-    torch.testing.assert_close(
-        gt_masks[0], torch.tensor([[0], [1]], dtype=torch.bool).reshape(2, 1)
-    )
+    torch.testing.assert_close(weights[0], torch.tensor([8.0, 1.0], dtype=torch.float32))
+    torch.testing.assert_close(lt_masks[0], torch.tensor([[1], [0]], dtype=torch.bool))
+    torch.testing.assert_close(gt_masks[0], torch.tensor([[0], [1]], dtype=torch.bool))
