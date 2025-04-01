@@ -93,7 +93,9 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 class MolAtomBondDatapoint(MoleculeDatapoint):
     atom_y: np.ndarray | None = None
     bond_y: np.ndarray | None = None
+    atom_lt_mask: np.ndarray | None = None
     atom_gt_mask: np.ndarray | None = None
+    bond_lt_mask: np.ndarray | None = None
     bond_gt_mask: np.ndarray | None = None
     E_d: np.ndarray | None = None
 

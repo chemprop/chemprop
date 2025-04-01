@@ -9,13 +9,9 @@ from torch.utils.data import DataLoader
 
 from chemprop import nn
 from chemprop.data import (
-    AtomDataset,
-    BondDataset,
-    MockDataset,
     MolAtomBondDataset,
-    MolDatapoint,
-    MolDataset,
-    mixed_collate_batch,
+    MolAtomBondDatapoint,
+    collate_mol_atom_bond_batch,
 )
 
 pytestmark = [
@@ -32,41 +28,11 @@ pytestmark = [
 
 
 @pytest.fixture
-def data(mixed_regression_data):
+def dataloader(mixed_regression_data):
     smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
-    all_data = []
-    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, mol_Y)])
-    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, atom_Y)])
-    all_data.append([MolDatapoint.from_smi(smi, y, keep_h=True) for smi, y in zip(smis, bond_Y)])
-    return all_data
-
-
-@pytest.fixture
-def dataloader(data):
-    dsets = []
-    if data[0]:
-        dset = MolDataset(data[0])
-        dset.normalize_targets()
-        dsets.append(dset)
-    else:
-        dsets.append(MockDataset())
-
-    if data[1]:
-        dset = AtomDataset(data[1])
-        dset.normalize_targets()
-        dsets.append(dset)
-    else:
-        dsets.append(MockDataset())
-
-    if data[2]:
-        dset = BondDataset(data[2])
-        dset.normalize_targets()
-        dsets.append(dset)
-    else:
-        dsets.append(MockDataset())
-
-    dset = MolAtomBondDataset(dsets[0], dsets[1], dsets[2])
-    return DataLoader(dset, 32, collate_fn=mixed_collate_batch)
+    all_data = [MolAtomBondDatapoint.from_smi(smi, y, atom_y=atom_y, bond_y=bond_y, keep_h=True) for smi, y, atom_y, bond_y in zip(smis, mol_Y, atom_Y, bond_Y)]
+    dset = MolAtomBondDataset(all_data)
+    return DataLoader(dset, 32, collate_fn=collate_mol_atom_bond_batch)
 
 
 def test_quick(mol_atom_bond_mpnn, dataloader):
@@ -97,14 +63,12 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
 
     errors = []
     for batch in dataloader:
-        bmg, _, _, _, mol_targets, *_ = batch[0]
-        _, _, _, _, atom_targets, *_ = batch[1]
-        _, _, _, _, bond_targets, *_ = batch[2]
+        bmg, _, _, _, targets, *_ = batch
         preds = mol_atom_bond_mpnn(bmg)
-        errors.append(preds[0] - mol_targets)
-        errors.append(preds[1] - atom_targets)
+        errors.append(preds[0] - targets[0])
+        errors.append(preds[1] - targets[1])
         preds[2] = (preds[2][::2] + preds[2][1::2]) / 2
-        errors.append(preds[2] - bond_targets)
+        errors.append(preds[2] - targets[2])
 
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
