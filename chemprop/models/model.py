@@ -484,7 +484,7 @@ class MolAtomBondMPNN(pl.LightningModule):
     def validation_step(self, batch: MolAtomBondTrainingBatch, batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
-        bmg, V_d, E_d, X_d, targets, weights, lt_masks, gt_masks = batch[0]
+        bmg, V_d, E_d, X_d, targets, weights, lt_masks, gt_masks = batch
         Z = self.fingerprint(bmg, V_d, E_d, X_d)
         agg_metric = 0
         for index in range(len(targets)):
