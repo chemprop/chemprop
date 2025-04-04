@@ -64,7 +64,7 @@ jobs:
       fail-fast: false
       matrix:
         # test on all platforms with both supported versions of Python
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.11, 3.12]
     steps:
       - uses: actions/checkout@v4
@@ -93,47 +93,11 @@ jobs:
           python -m pip install matplotlib
           pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
-
-  conda-test:
-    name: Execute Tests with Conda-based Install
-    needs: lint
-    runs-on: macos-13
-    defaults:
-      run:
-        # run with a login shell (so that the conda environment is activated)
-        # and echo the commands we run as we do them (for debugging purposes)
-        shell: bash -el {0}
-    strategy:
-      # if one platform/python version fails, continue testing the others
-      fail-fast: false
-      matrix:
-        python-version: [3.11, 3.12]
-    steps:
-      - uses: actions/checkout@v4
-      # use a version of the conda virtual environment manager to set up an
-      # isolated environment with the Python version we want
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-          auto-update-conda: true
-          show-channel-urls: true
-          conda-remove-defaults: "true"
-          environment-file: environment.yml
-          activate-environment: chemprop
-      - name: Install Testing Dependencies
-        run: conda install -c conda-forge pytest>=6.2 pytest-cov
-      - name: Install Chemprop
-        run: python -m pip install . --no-deps
-      - name: Test with pytest
-        shell: bash -l {0}
-        run: |
-          pytest -v tests
-
   pypi:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
     # only run if the tests pass
-    needs: [test, conda-test]
+    needs: [test]
     # run only on pushes to main on chemprop
     if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
     steps:
@@ -169,7 +133,7 @@ jobs:
     # which is also shamelessly copied from somewhere
     runs-on: ubuntu-latest
     # only run if the tests pass
-    needs: [test, conda-test]
+    needs: [test]
     # run only on pushes to main on chemprop
     if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
     steps:
