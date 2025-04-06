@@ -30,8 +30,8 @@ def get_activation_function(activation: str | nn.Module | Activation) -> nn.Modu
     """
     if isinstance(activation, nn.Module):
         if isinstance(activation, nn.modules.activation.SELU):
-            raise RuntimeError(
-                "SELU activation (intended for self-normalizing networks) is not supported."
+            raise TypeError(
+                "Support for SELU activation (intended for self-normalizing networks) has been removed in v2.2.0"
             )
         return activation
     match Activation.get(activation):
