@@ -32,7 +32,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool=False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -42,9 +42,9 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool) -> Che
     keep_h : bool
         whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
     add_h : bool
-        whether to add hydrogens to the molecule
-    ignore_chirality : bool
-        whether to ignore chirality information
+        If True, adds hydrogens to the molecule.
+    ignore_chirality : bool, optional
+        If True, ignores chirality information when constructing the molecule. Default is False.
 
     Returns
     -------
