@@ -332,7 +332,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     unc_columns = [f"{col}_unc" for col in output_columns]
 
     if isinstance(model.predictor, MulticlassClassificationFFN):
-        output_columns += [f"{col}_prob" for col in output_columns]
+        output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
             lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
@@ -395,6 +395,8 @@ def save_individual_predictions(
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
+    print(output_columns)
+    print(test_individual_preds)
     df_test[output_columns] = test_individual_preds
 
     if args.uncertainty_method not in ["none", "classification", "ensemble"]:
