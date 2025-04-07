@@ -395,8 +395,6 @@ def save_individual_predictions(
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    print(output_columns)
-    print(test_individual_preds)
     df_test[output_columns] = test_individual_preds
 
     if args.uncertainty_method not in ["none", "classification", "ensemble"]:
