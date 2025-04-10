@@ -144,6 +144,13 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     #     "--constraints-path",
     #     help="Path to constraints applied to atomic/bond properties prediction.",
     # )
+    featurization_args.add_argument(
+        "-p",
+        "--polymer",
+        type=bool,
+        default=False,
+        help="Whether to adjust the MPNN to take polymers instead of molecules."
+    )
 
     return parser
 
