@@ -66,6 +66,47 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     return mol
 
 
+def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list) -> Chem.Mol:
+    """
+    Builds an RDKit molecule from a SMILES string.
+    
+    Parameters
+    ----------
+    smi : str
+        a SMILES string.
+    keep_h : bool
+        whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
+    add_h : bool
+        whether to add hydrogens to the molecule
+    fragment_weights: list
+        list of monomer fractions for each fragment in smiles. Only used when the input is a polymer.
+
+    Returns
+    -------
+    Chem.Mol
+        the RDKit molecule.
+    """
+    # Check the input is correct. We need the same number of fragmeeeeeents and their weights.
+    num_frags = len(smi.split("."))
+    if len(fragment_weights) != num_frags:
+        raise ValueError(f'The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})')
+    # If it all looks good, we create one molecule object per fragment, add the weight as a property of each atom and the fragments into
+    # a single molecule object
+    mols = []
+    for s, w in zip(smi.split('.'), fragment_weights):
+        m = make_mol(s, keep_h, add_h)
+        for a in m.GetAtoms():
+            a.SetDoubleProp('w_frag', float(w))
+        mols.append(m)
+    # Combine all the mols into a single mol object
+    mol = mols.pop(0)
+    while len(mols) > 0:
+        m2 = mols.pop(0)
+        mol = Chem.CombineMols(mol, m2)
+    
+    return mol
+
+
 def pretty_shape(shape: Iterable[int]) -> str:
     """Make a pretty string from an input shape
 
