@@ -9,7 +9,7 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
@@ -165,6 +165,178 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[MoleculeDatapoint]
+    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+
+    def __post_init__(self):
+        if self.data is None:
+            raise ValueError("Data cannot be None!")
+
+        self.reset()
+        self.cache = False
+
+    def __getitem__(self, idx: int) -> Datum:
+        d = self.data[idx]
+        mg = self.mg_cache[idx]
+
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+
+    @cache.setter
+    def cache(self, cache: bool = False):
+        self.__cache = cache
+        self._init_cache()
+
+    def _init_cache(self):
+        """initialize the cache"""
+        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
+            self.mols, self.V_fs, self.E_fs, self.featurizer
+        )
+
+    @property
+    def smiles(self) -> list[str]:
+        """the SMILES strings associated with the dataset"""
+        return [Chem.MolToSmiles(d.mol) for d in self.data]
+
+    @property
+    def mols(self) -> list[Chem.Mol]:
+        """the molecules associated with the dataset"""
+        return [d.mol for d in self.data]
+
+    @property
+    def _V_fs(self) -> list[np.ndarray]:
+        """the raw atom features of the dataset"""
+        return [d.V_f for d in self.data]
+
+    @property
+    def V_fs(self) -> list[np.ndarray]:
+        """the (scaled) atom descriptors of the dataset"""
+        return self.__V_fs
+
+    @V_fs.setter
+    def V_fs(self, V_fs: list[np.ndarray]):
+        """the (scaled) atom features of the dataset"""
+        self._validate_attribute(V_fs, "atom features")
+
+        self.__V_fs = V_fs
+        self._init_cache()
+
+    @property
+    def _E_fs(self) -> list[np.ndarray]:
+        """the raw bond features of the dataset"""
+        return [d.E_f for d in self.data]
+
+    @property
+    def E_fs(self) -> list[np.ndarray]:
+        """the (scaled) bond features of the dataset"""
+        return self.__E_fs
+
+    @E_fs.setter
+    def E_fs(self, E_fs: list[np.ndarray]):
+        self._validate_attribute(E_fs, "bond features")
+
+        self.__E_fs = E_fs
+        self._init_cache()
+
+    @property
+    def _V_ds(self) -> list[np.ndarray]:
+        """the raw atom descriptors of the dataset"""
+        return [d.V_d for d in self.data]
+
+    @property
+    def V_ds(self) -> list[np.ndarray]:
+        """the (scaled) atom descriptors of the dataset"""
+        return self.__V_ds
+
+    @V_ds.setter
+    def V_ds(self, V_ds: list[np.ndarray]):
+        self._validate_attribute(V_ds, "atom descriptors")
+
+        self.__V_ds = V_ds
+
+    @property
+    def d_vf(self) -> int:
+        """the extra atom feature dimension, if any"""
+        return 0 if self.V_fs[0] is None else self.V_fs[0].shape[1]
+
+    @property
+    def d_ef(self) -> int:
+        """the extra bond feature dimension, if any"""
+        return 0 if self.E_fs[0] is None else self.E_fs[0].shape[1]
+
+    @property
+    def d_vd(self) -> int:
+        """the extra atom descriptor dimension, if any"""
+        return 0 if self.V_ds[0] is None else self.V_ds[0].shape[1]
+
+    def normalize_inputs(
+        self, key: str = "X_d", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d"}
+
+        match key:
+            case "X_d":
+                X = None if self.d_xd == 0 else self.X_d
+            case "V_f":
+                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
+            case "E_f":
+                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
+            case "V_d":
+                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
+            case _:
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        if X is None:
+            return scaler
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        match key:
+            case "X_d":
+                self.X_d = scaler.transform(X)
+            case "V_f":
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
+            case "E_f":
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
+            case "V_d":
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
+            case _:
+                raise RuntimeError("unreachable code reached!")
+
+        return scaler
+
+    def reset(self):
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
+        super().reset()
+        self.__V_fs = self._V_fs
+        self.__E_fs = self._E_fs
+        self.__V_ds = self._V_ds
+
+
+@dataclass
+class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
+    """A :class:`PolymerDataset` composed of :class:`MoleculeDatapoint`\s
+
+    A :class:`PolymerDataset` produces featurized data for input to a
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``PolymerDataset.cache=True``.
+
+    Parameters
+    ----------
+    data : Iterable[PolymerDatapoint]
+        the data from which to create a dataset
+    featurizer : MoleculeFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
+    """
+
+    data: list[PolymerDatapoint]
     featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
 
     def __post_init__(self):
