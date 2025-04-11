@@ -32,7 +32,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool=False) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
