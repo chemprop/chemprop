@@ -106,11 +106,11 @@ class _PolymerDatapointMixin:
         keep_h: bool = False,
         add_h: bool = False,
         **kwargs
-    ) -> _MoleculeDatapointMixin:
+    ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
-        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights)
         edges = smi.split("<")[1:]
-
+        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights)
+        
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
         return cls(mol, frag_weights, edges, *args, **kwargs)
@@ -121,15 +121,15 @@ class PolymerDatapoint(_DatapointMixin, _PolymerDatapointMixin):
     """A :class:`PolymerDatapoint` contains a single polymer and its associated features and targets."""
 
     V_f: np.ndarray | None = None
-    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the polymer, and
     ``d_vf`` is the number of additional features that will be concatenated to atom-level features
     *before* message passing"""
     E_f: np.ndarray | None = None
-    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the polymer, and
     ``d_ef`` is the number of additional features  containing additional features that will be
     concatenated to bond-level features *before* message passing"""
     V_d: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the polymer, and
     ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
 

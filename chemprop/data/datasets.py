@@ -10,9 +10,9 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.data.datapoints import MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
-from chemprop.data.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph, PolymerGraph
 from chemprop.featurizers.base import Featurizer
-from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer, PolymerMolGraphFeaturizer
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 from chemprop.types import Rxn
 
@@ -319,7 +319,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`PolymerDataset` composed of :class:`MoleculeDatapoint`\s
+    """A :class:`PolymerDataset` composed of :class:`PolymerDatapoint`\s
 
     A :class:`PolymerDataset` produces featurized data for input to a
     :class:`MPNN` model. Typically, data featurization is performed on-the-fly
@@ -337,7 +337,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[PolymerDatapoint]
-    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+    featurizer: Featurizer[Mol, PolymerGraph] = field(default_factory=PolymerMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:
