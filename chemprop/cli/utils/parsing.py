@@ -63,6 +63,7 @@ def parse_csv(
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
 
     if bounded:
+        Y = Y.astype(str)
         lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
         gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
         Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
