@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 import numpy as np
@@ -8,6 +8,8 @@ from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 
 from chemprop.featurizers.base import VectorFeaturizer
 from chemprop.utils import ClassRegistry
+
+logger = logging.getLogger(__name__)
 
 MoleculeFeaturizerRegistry = ClassRegistry[VectorFeaturizer[Mol]]()
 
@@ -49,7 +51,7 @@ class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, VectorF
 @MoleculeFeaturizerRegistry("rdkit_2d")
 class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __init__(self):
-        warnings.warn(
+        logger.warning(
             "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
             "manually scaling them using an appropriate scaler before creating datapoints, rather "
             "than using the scikit-learn `StandardScaler` (the default in Chemprop)."
@@ -91,3 +93,12 @@ class V1RDKit2DFeaturizer(V1RDKit2DFeaturizerMixin):
 class V1RDKit2DNormalizedFeaturizer(V1RDKit2DFeaturizerMixin):
     def __init__(self):
         self.generator = rdNormalizedDescriptors.RDKit2DNormalized()
+
+
+@MoleculeFeaturizerRegistry("charge")
+class ChargeFeaturizer(VectorFeaturizer[Mol]):
+    def __call__(self, mol: Chem.Mol) -> np.ndarray:
+        return np.array([Chem.GetFormalCharge(mol)])
+
+    def __len__(self) -> int:
+        return 1

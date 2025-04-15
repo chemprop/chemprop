@@ -12,12 +12,19 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
 
     training
     predicting 
+    training_classification
     training_regression_multicomponent
     predicting_regression_multicomponent
     training_regression_reaction
     predicting_regression_reaction
+    multi_task
+    hpopting
     mpnn_fingerprints
-    convert_v1_to_v2
     active_learning
     transfer_learning
     uncertainty
+    interpreting_monte_carlo_tree_search
+    shapley_value_with_customized_featurizers
+    extra_features_descriptors
+    use_featurizer_with_other_libraries
+    convert_v1_to_v2

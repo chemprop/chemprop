@@ -3,7 +3,7 @@ from typing import Iterable
 import torch
 from torch import Tensor
 
-from chemprop.data import BatchMolGraph
+from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch
 from chemprop.models.model import MPNN
 from chemprop.nn import Aggregation, MulticomponentMessagePassing, Predictor
 from chemprop.nn.metrics import ChempropMetric
@@ -51,15 +51,42 @@ class MulticomponentMPNN(MPNN):
 
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
 
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        for block in self.message_passing.blocks:
+            block.V_d_transform.train()
+            block.graph_transform.train()
+        self.X_d_transform.train()
+        self.predictor.output_transform.train()
+
+    def get_batch_size(self, batch: MulticomponentTrainingBatch) -> int:
+        return len(batch[0][0])
+
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location)
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
             state_dict = d["state_dict"]
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
+
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
 
         hparams["message_passing"]["blocks"] = [
             block_hparams.pop("cls")(**block_hparams)
@@ -70,10 +97,5 @@ class MulticomponentMPNN(MPNN):
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
-            )
 
         return submodules, state_dict, hparams

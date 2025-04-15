@@ -10,19 +10,6 @@ from torch.utils.data import DataLoader
 from chemprop import nn
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 
-pytestmark = [
-    pytest.mark.parametrize(
-        "mpnn",
-        [
-            (nn.BondMessagePassing(), nn.MeanAggregation()),
-            (nn.AtomMessagePassing(), nn.SumAggregation()),
-            (nn.BondMessagePassing(), nn.NormAggregation()),
-        ],
-        indirect=True,
-    ),
-    pytest.mark.integration,
-]
-
 
 @pytest.fixture
 def data(mol_regression_data):
@@ -39,6 +26,16 @@ def dataloader(data):
     return DataLoader(dset, 32, collate_fn=collate_batch)
 
 
+@pytest.mark.parametrize(
+    "mpnn",
+    [
+        (nn.BondMessagePassing(), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(), nn.SumAggregation()),
+        (nn.BondMessagePassing(), nn.NormAggregation()),
+    ],
+    indirect=True,
+)
+@pytest.mark.integration
 def test_quick(mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -52,6 +49,16 @@ def test_quick(mpnn, dataloader):
     trainer.fit(mpnn, dataloader, None)
 
 
+@pytest.mark.parametrize(
+    "mpnn",
+    [
+        (nn.BondMessagePassing(), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(), nn.SumAggregation()),
+        (nn.BondMessagePassing(), nn.NormAggregation()),
+    ],
+    indirect=True,
+)
+@pytest.mark.integration
 def test_overfit(mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -75,3 +82,37 @@ def test_overfit(mpnn, dataloader):
     mse = errors.square().mean().item()
 
     assert mse <= 0.05
+
+
+@pytest.mark.parametrize(
+    "regression_mpnn_mve", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+)
+@pytest.mark.integration
+def test_mve_quick(regression_mpnn_mve, dataloader):
+    trainer = pl.Trainer(
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        accelerator="cpu",
+        devices=1,
+        fast_dev_run=True,
+    )
+    trainer.fit(regression_mpnn_mve, dataloader, None)
+
+
+@pytest.mark.parametrize(
+    "regression_mpnn_evidential", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+)
+@pytest.mark.integration
+def test_evidential_quick(regression_mpnn_evidential, dataloader):
+    trainer = pl.Trainer(
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        accelerator="cpu",
+        devices=1,
+        fast_dev_run=True,
+    )
+    trainer.fit(regression_mpnn_evidential, dataloader, None)

@@ -32,7 +32,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool, canonicalize: bool = False) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False, canonicalize: bool = False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -42,7 +42,9 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, canonicalize: bool = False) ->
     keep_h : bool
         whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
     add_h : bool
-        whether to add hydrogens to the molecule
+        If True, adds hydrogens to the molecule.
+    ignore_chirality : bool, optional
+        If True, ignores chirality information when constructing the molecule. Default is False.
     canonicalize: bool, Optional
         whether to canonicalize the SMILES before generating the mol object. Defaults to False.
 
@@ -61,7 +63,17 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, canonicalize: bool = False) ->
     else:
         mol = Chem.MolFromSmiles(smi)
 
-    return Chem.AddHs(mol) if add_h else mol
+    if mol is None:
+        raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
+
+    if add_h:
+        mol = Chem.AddHs(mol)
+
+    if ignore_chirality:
+        for atom in mol.GetAtoms():
+            atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+
+    return mol
 
 
 def pretty_shape(shape: Iterable[int]) -> str:

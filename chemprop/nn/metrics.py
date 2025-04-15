@@ -6,6 +6,7 @@ from torch import Tensor
 from torch.nn import functional as F
 import torchmetrics
 from torchmetrics.utilities.compute import auc
+from torchmetrics.utilities.data import dim_zero_cat
 
 from chemprop.utils.registry import ClassRegistry
 
@@ -173,6 +174,18 @@ class BoundedRMSE(BoundedMixin, RMSE):
 
 @MetricRegistry.register("r2")
 class R2Score(torchmetrics.R2Score):
+    def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
+        """
+        Parameters
+        ----------
+        task_weights :  ArrayLike = 1.0
+            .. important::
+                Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        """
+        super().__init__()
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
         super().update(preds[mask], targets[mask])
 
@@ -300,10 +313,10 @@ class BinaryMCCLoss(ChempropMetric):
         return TP, FP, TN, FN
 
     def compute(self):
-        TP = torch.cat(self.TP, dim=0).sum(0, keepdim=True)
-        FP = torch.cat(self.FP, dim=0).sum(0, keepdim=True)
-        TN = torch.cat(self.TN, dim=0).sum(0, keepdim=True)
-        FN = torch.cat(self.FN, dim=0).sum(0, keepdim=True)
+        TP = dim_zero_cat(self.TP).sum(0)
+        FP = dim_zero_cat(self.FP).sum(0)
+        TN = dim_zero_cat(self.TN).sum(0)
+        FN = dim_zero_cat(self.FN).sum(0)
 
         MCC = (TP * TN - FP * FN) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN) + 1e-8).sqrt()
         MCC = MCC * self.task_weights
@@ -337,8 +350,8 @@ class MulticlassMCCLoss(ChempropMetric):
 
         self.add_state("p", default=[], dist_reduce_fx="cat")
         self.add_state("t", default=[], dist_reduce_fx="cat")
-        self.add_state("c", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("s", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("c", default=[], dist_reduce_fx="cat")
+        self.add_state("s", default=[], dist_reduce_fx="cat")
 
     def update(
         self,
@@ -360,8 +373,8 @@ class MulticlassMCCLoss(ChempropMetric):
 
         self.p += [p]
         self.t += [t]
-        self.c += c
-        self.s += s
+        self.c += [c]
+        self.s += [s]
 
     def _calc_unreduced_loss(self, preds, targets, mask, weights, *args) -> Tensor:
         device = preds.device
@@ -369,27 +382,27 @@ class MulticlassMCCLoss(ChempropMetric):
         bin_targets = torch.eye(C, device=device)[targets]
         bin_preds = torch.eye(C, device=device)[preds.argmax(-1)]
         masked_data_weights = weights.unsqueeze(2) * mask.unsqueeze(2)
-        p = (bin_preds * masked_data_weights).sum(0)
-        t = (bin_targets * masked_data_weights).sum(0)
-        c = (bin_preds * bin_targets * masked_data_weights).sum()
-        s = (preds * masked_data_weights).sum()
+        p = (bin_preds * masked_data_weights).sum(0, keepdims=True)
+        t = (bin_targets * masked_data_weights).sum(0, keepdims=True)
+        c = (bin_preds * bin_targets * masked_data_weights).sum(2).sum(0, keepdims=True)
+        s = (preds * masked_data_weights).sum(2).sum(0, keepdims=True)
 
         return p, t, c, s
 
     def compute(self):
-        p = torch.stack(self.p, dim=-1).sum(-1)
-        t = torch.stack(self.t, dim=-1).sum(-1)
-        c = self.c
-        s = self.s
+        p = dim_zero_cat(self.p).sum(0)
+        t = dim_zero_cat(self.t).sum(0)
+        c = dim_zero_cat(self.c).sum(0)
+        s = dim_zero_cat(self.s).sum(0)
         s2 = s.square()
 
         # the `einsum` calls amount to calculating the batched dot product
-        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t).sum()
-        cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p).sum()
-        cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t).sum()
+        cov_ytyp = c * s - torch.einsum("ij,ij->i", p, t)
+        cov_ypyp = s2 - torch.einsum("ij,ij->i", p, p)
+        cov_ytyt = s2 - torch.einsum("ij,ij->i", t, t)
 
         x = cov_ypyp * cov_ytyt
-        MCC = torch.tensor(0.0, device=x.device) if x == 0 else cov_ytyp / x.sqrt()
+        MCC = torch.where(x == 0, torch.tensor(0.0), cov_ytyp / x.sqrt())
         MCC = MCC * self.task_weights
 
         return 1 - MCC.mean()

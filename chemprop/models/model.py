@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import io
-from typing import Iterable
-import warnings
+import logging
+from typing import Iterable, TypeAlias
 
 from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMolGraph, TrainingBatch
+from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+from chemprop.utils.registry import Factory
+
+logger = logging.getLogger(__name__)
+
+BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
 class MPNN(pl.LightningModule):
@@ -138,7 +143,8 @@ class MPNN(pl.LightningModule):
         """Generate predictions for the input molecules/reactions"""
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
-    def training_step(self, batch: TrainingBatch, batch_idx):
+    def training_step(self, batch: BatchType, batch_idx):
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -148,17 +154,21 @@ class MPNN(pl.LightningModule):
         preds = self.predictor.train_step(Z)
         l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
 
-        self.log("train_loss", self.criterion, prog_bar=True, on_epoch=True)
+        self.log("train_loss", self.criterion, batch_size=batch_size, prog_bar=True, on_epoch=True)
 
         return l
 
     def on_validation_model_eval(self) -> None:
         self.eval()
+        self.message_passing.V_d_transform.train()
+        self.message_passing.graph_transform.train()
+        self.X_d_transform.train()
         self.predictor.output_transform.train()
 
-    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
+    def validation_step(self, batch: BatchType, batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -167,12 +177,13 @@ class MPNN(pl.LightningModule):
         Z = self.fingerprint(bmg, V_d, X_d)
         preds = self.predictor.train_step(Z)
         self.metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
-        self.log("val_loss", self.metrics[-1], batch_size=len(batch[0]), prog_bar=True)
+        self.log("val_loss", self.metrics[-1], batch_size=batch_size, prog_bar=True)
 
-    def test_step(self, batch: TrainingBatch, batch_idx: int = 0):
+    def test_step(self, batch: BatchType, batch_idx: int = 0):
         self._evaluate_batch(batch, "test")
 
-    def _evaluate_batch(self, batch: TrainingBatch, label: str) -> None:
+    def _evaluate_batch(self, batch: BatchType, label: str) -> None:
+        batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
 
         mask = targets.isfinite()
@@ -185,9 +196,9 @@ class MPNN(pl.LightningModule):
 
         for m in self.metrics[:-1]:
             m.update(preds, targets, mask, weights, lt_mask, gt_mask)
-            self.log(f"{label}/{m.alias}", m, batch_size=len(batch[0]))
+            self.log(f"{label}/{m.alias}", m, batch_size=batch_size)
 
-    def predict_step(self, batch: TrainingBatch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+    def predict_step(self, batch: BatchType, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
         """Return the predictions of the input batch
 
         Parameters
@@ -221,7 +232,7 @@ class MPNN(pl.LightningModule):
         steps_per_epoch = self.trainer.num_training_batches
         warmup_steps = self.warmup_epochs * steps_per_epoch
         if self.trainer.max_epochs == -1:
-            warnings.warn(
+            logger.warning(
                 "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
             )
             cooldown_steps = 100 * warmup_steps
@@ -237,9 +248,12 @@ class MPNN(pl.LightningModule):
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
 
+    def get_batch_size(self, batch: TrainingBatch) -> int:
+        return len(batch[0])
+
     @classmethod
     def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location)
+        d = torch.load(path, map_location, weights_only=False)
 
         try:
             hparams = d["hyper_parameters"]
@@ -247,16 +261,27 @@ class MPNN(pl.LightningModule):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
+
         submodules |= {
             key: hparams[key].pop("cls")(**hparams[key])
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
-            )
 
         return submodules, state_dict, hparams
 
@@ -273,6 +298,10 @@ class MPNN(pl.LightningModule):
         return state_dict
 
     @classmethod
+    def _rebuild_metric(cls, metric):
+        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
+
+    @classmethod
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
@@ -283,8 +312,9 @@ class MPNN(pl.LightningModule):
         kwargs.update(submodules)
 
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        d = torch.load(checkpoint_path, map_location)
+        d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
+        d["hyper_parameters"] = hparams
         buffer = io.BytesIO()
         torch.save(d, buffer)
         buffer.seek(0)

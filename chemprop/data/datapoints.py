@@ -48,9 +48,15 @@ class _MoleculeDatapointMixin:
 
     @classmethod
     def from_smi(
-        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_chirality: bool = False,
+        **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h)
+        mol = make_mol(smi, keep_h, add_h, ignore_chirality)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -75,9 +81,6 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     descriptors *after* message passing"""
 
     def __post_init__(self):
-        if self.mol is None:
-            raise ValueError("Input molecule was `None`!")
-
         NAN_TOKEN = 0
         if self.V_f is not None:
             self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
@@ -106,6 +109,7 @@ class _ReactionDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
+        ignore_chirality: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -122,8 +126,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h)
-        pdt = make_mol(pdt_smi, keep_h, add_h)
+        rct = make_mol(rct_smi, keep_h, add_h, ignore_chirality)
+        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
