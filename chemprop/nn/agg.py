@@ -67,7 +67,7 @@ class MeanAggregation(Aggregation):
     r"""Average the graph-level representation:
 
     .. math::
-        \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf h_v
+        \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf w_v \mathbf h_v
     """
 
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:

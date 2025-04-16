@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.data.datapoints import MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
-from chemprop.data.molgraph import MolGraph, PolymerGraph
+from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer, PolymerMolGraphFeaturizer
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
@@ -337,7 +337,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[PolymerDatapoint]
-    featurizer: Featurizer[Mol, PolymerGraph] = field(default_factory=PolymerMolGraphFeaturizer)
+    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=PolymerMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:

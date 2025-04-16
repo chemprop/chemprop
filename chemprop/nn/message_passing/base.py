@@ -129,21 +129,22 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         return H_t
 
-    def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
+    def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None, V_w: Tensor) -> Tensor:
         r"""Finalize message passing by (1) concatenating the final message ``M`` and the original
         vertex features ``V`` and (2) if provided, further concatenating additional vertex
-        descriptors ``V_d``.
+        descriptors ``V_d`` and weighting the output by the atom weights ``V_w``.
 
         This function implements the following operation:
 
         .. math::
             H &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M)) \right) \\
             H &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H \mathbin\Vert V_d)) \right),
+            H &= \omega_{v}H,
 
         where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
         :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M` is
-        the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
-        optional vertex descriptor matrix.
+        the message matrix, :math:`V` is the original vertex feature matrix, :math:`V_d` is an
+        optional vertex descriptor matrix and :math: `\omega_{v}` is the atom weight matrix.
 
         Parameters
         ----------
@@ -153,11 +154,13 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             a tensor of shape ``V x d_v`` containing the original vertex features
         V_d : Tensor | None
             an optional tensor of shape ``V x d_vd`` containing additional vertex descriptors
+        V_w: Tensor
+            a tensor of shape ``V`` containing the weights of each vertex
 
         Returns
         -------
         Tensor
-            a tensor of shape ``V x (d_h + d_v [+ d_vd])`` containing the final hidden
+            a tensor of shape ``V x (d_h + d_v [+ d_vd]) x V_w`` containing the final hidden
             representations
 
         Raises
@@ -169,7 +172,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         H = self.W_o(torch.cat((V, M), dim=1))  # V x d_o
         H = self.tau(H)
         H = self.dropout(H)
-
+        
         if V_d is not None:
             V_d = self.V_d_transform(V_d)
             try:
@@ -179,7 +182,9 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
                 raise InvalidShapeError(
                     "V_d", V_d.shape, [len(H), self.W_d.in_features - self.W_o.out_features]
                 )
-
+        # Weight each atom feature vector by its atom weight
+        H = torch.mul(V_w.unsqueeze(1), H)
+        
         return H
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
@@ -215,7 +220,8 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
         )
-        return self.finalize(M, bmg.V, V_d)
+        
+        return self.finalize(M, bmg.V, V_d, bmg.V_w)
 
 
 class BondMessagePassing(_MessagePassingBase):
@@ -261,6 +267,7 @@ class BondMessagePassing(_MessagePassingBase):
         return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
+        H = torch.mul(bmg.E_w[bmg.edge_index[0]].unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
@@ -313,6 +320,7 @@ class AtomMessagePassing(_MessagePassingBase):
 
     def message(self, H: Tensor, bmg: BatchMolGraph):
         H = torch.cat((H, bmg.E), dim=1)
+        H = torch.mul(bmg.E_w[bmg.edge_index[0]].unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False

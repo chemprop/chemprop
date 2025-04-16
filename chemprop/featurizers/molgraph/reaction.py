@@ -117,8 +117,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
         V = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
+        V_w = np.ones((1, len(V)), dtype=np.single).flatten()
+        
         E = []
         edge_index = [[], []]
+        E_w = []
 
         n_atoms_tot = len(V)
         n_atoms_reac = reac.GetNumAtoms()
@@ -135,12 +138,14 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
                 E.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
+                E_w.extend([1., 1.]) # Edge weights of 1 for a standard molecule
 
         E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
+        E_w = np.array(E_w, float)
 
-        return MolGraph(V, E, edge_index, rev_edge_index)
+        return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, 1)
 
     def _calc_node_feature_matrix(
         self,

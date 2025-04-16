@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit.Chem import AllChem as Chem
@@ -93,9 +93,9 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 class _PolymerDatapointMixin:
     mol: Chem.Mol
     """the polymer associated with this datapoint"""
-    fragment_weights: list
+    fragment_weights: list = field(default_factory=list)
     """the fragment weights associated with each monomer"""
-    edges: str
+    edges: str = None
     """the directed edges between monomers"""
 
     @classmethod

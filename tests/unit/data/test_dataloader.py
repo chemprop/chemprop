@@ -12,8 +12,11 @@ def datum_1():
     mol_graph1 = MolGraph(
         V=np.array([[1.0], [2.0], [3.0]]),
         E=np.array([[0.5], [1.5]]),
+        V_w=np.array([[1.0], [1.0], [1.0]]),
+        E_w=np.array([[1.0], [1.0]]),
         edge_index=np.array([[0, 1, 0, 2], [1, 0, 2, 0]]),
         rev_edge_index=np.array([1, 0, 3, 2]),
+        degree_of_poly=1,
     )
     return Datum(
         mol_graph1,
@@ -31,8 +34,11 @@ def datum_2():
     mol_graph2 = MolGraph(
         V=np.array([[4.0], [5.0]]),
         E=np.array([[2.5]]),
+        V_w=np.array([[1.0], [1.0]]),
+        E_w=np.array([[1.0], [1.0]]),
         edge_index=np.array([[0, 1], [1, 0]]),
         rev_edge_index=np.array([1, 0]),
+        degree_of_poly=1,
     )
     return Datum(
         mol_graph2,
