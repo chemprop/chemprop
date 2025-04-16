@@ -1,12 +1,12 @@
 from copy import deepcopy
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 
 import numpy as np
 from collections import Counter
 from rdkit import Chem
 
+from chemprop.data.molgraph import MolGraph
 from chemprop.types import Polymer
-from chemprop.data.molgraph import PolymerGraph
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 
@@ -42,8 +42,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
     """
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
-    degree_of_polym: InitVar[int] = 1
-    polymer_info: list = []
+    degree_of_poly: InitVar[int] = 1
+    polymer_info: list = field(default_factory=list)
         
     @classmethod
     def tag_atoms_in_repeating_unit(mol):
@@ -147,13 +147,12 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         polymer: Polymer,
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
-    ) -> PolymerGraph:
+    ) -> MolGraph:
         mol = polymer[0]
-        frag_weights = polymer[1]
         rules = polymer[2]
         n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
-        self.polymer_info, self.degree_of_polym = self.parse_polymer_rules(rules)
+        self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(rules)
         # Make the molecule editable
         rwmol = Chem.rdchem.RWMol(mol)
         # tag (i) attachment atoms and (ii) atoms for which features need to be computed
@@ -166,10 +165,10 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # have the correct saturation
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
-            V_w = np.zeros((1, self.atom_fdim), dtype=np.double)
+            V_w = np.zeros((1, self.atom_fdim), dtype=np.single).flatten()
         else:
             V = np.array([self.atom_featurizer(a) for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single)
-            V_w = np.array([self.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], type=np.double)
+            V_w = np.array([self.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], type=np.single).flatten()
         # Concatenate the extra atoms features to the atom features (V)
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -186,7 +185,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
         # Initalize bond weight array
-        E_w = [[], []]
+        E_w = []
         # ---------------------------------------
         # Get bond features for separate monomers
         # ---------------------------------------
@@ -277,7 +276,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         # Convert the edge index to a numpy array of type int
         edge_index = np.array(edge_index, int)
+        E_w = np.array(E_w, float)
 
-        return PolymerGraph(V, E, V_w, E_w, edge_index, rev_edge_index)
+        return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)
             
         
