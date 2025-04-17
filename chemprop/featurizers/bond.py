@@ -1,9 +1,10 @@
 from typing import Sequence
 
 import numpy as np
-from rdkit.Chem.rdchem import Bond, BondType
+from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
 from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.utils.utils import pretty_multi_hot
 
 
 class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
@@ -38,8 +39,20 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     ----------
     bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
+    stereos : Sequence[BondStereo] | None, default=[NONE, ANY, Z, E, CIS, TRANS]
         the known bond stereochemistries. See [1]_ for more details
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = MultiHotBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetBondWithIdx(i))))
+    0 0100 1 0 1000000
+    0 1000 1 0 1000000
+    0 0001 1 1 1000000
+    0 0001 1 1 1000000
 
     References
     ----------
@@ -47,7 +60,9 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
     """
 
     def __init__(
-        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
+        self,
+        bond_types: Sequence[BondType] | None = None,
+        stereos: Sequence[BondStereo] | None = None,
     ):
         self.bond_types = bond_types or [
             BondType.SINGLE,
@@ -55,12 +70,21 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
             BondType.TRIPLE,
             BondType.AROMATIC,
         ]
-        self.stereo = stereos or range(6)
+        self.stereo = stereos or [
+            BondStereo.STEREONONE,
+            BondStereo.STEREOANY,
+            BondStereo.STEREOZ,
+            BondStereo.STEREOE,
+            BondStereo.STEREOCIS,
+            BondStereo.STEREOTRANS,
+        ]
+        self._subfeat_sizes = [1, len(self.bond_types), 1, 1, len(self.stereo) + 1]
+        self.__size = sum(self._subfeat_sizes)
 
     def __len__(self):
-        return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
+        return self.__size
 
-    def __call__(self, b: Bond) -> np.ndarray:
+    def __call__(self, b: Bond | None) -> np.ndarray:
         x = np.zeros(len(self), int)
 
         if b is None:
@@ -72,7 +96,7 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
         bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
         if bt_bit != size:
             x[i + bt_bit] = 1
-        i += size - 1
+        i += size
 
         x[i] = int(b.GetIsConjugated())
         x[i + 1] = int(b.IsInRing())
@@ -85,24 +109,45 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
 
     @classmethod
     def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
+        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs)`` if ``x`` is in ``xs``.
+        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs)``."""
         n = len(xs)
 
-        return xs.index(x) if x in xs else n, n + 1
+        return xs.index(x) if x in xs else n, n
+
+    def prettify(self, x: np.array) -> str:
+        """Convert the featurized bond into a human-readable string."""
+        return pretty_multi_hot(x, self._subfeat_sizes)
 
 
-class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
+class RIGRBondFeaturizer(MultiHotBondFeaturizer):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
     * ``null``-ity (i.e., is the bond ``None``?)
     * in ring?
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = RIGRBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.prettify(featurizer(mol.GetBondWithIdx(i))))
+    0 0
+    0 0
+    0 1
+    0 1
+
     """
+
+    def __init__(self):
+        super().__init__()
+        self._subfeat_sizes = [1, 1]
 
     def __len__(self):
         return 2
 
-    def __call__(self, b: Bond) -> np.ndarray:
+    def __call__(self, b: Bond | None) -> np.ndarray:
         x = np.zeros(len(self), int)
 
         if b is None:
@@ -112,11 +157,3 @@ class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
         x[1] = int(b.IsInRing())
 
         return x
-
-    @classmethod
-    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
-        n = len(xs)
-
-        return xs.index(x) if x in xs else n, n + 1
