@@ -108,6 +108,7 @@ class _PolymerDatapointMixin:
         **kwargs
     ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
+        frag_weights = [float(x) for x in frag_weights]
         edges = smi.split("<")[1:]
         mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights)
         

@@ -44,9 +44,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
     extra_bond_fdim: InitVar[int] = 0
     degree_of_poly: InitVar[int] = 1
     polymer_info: list = field(default_factory=list)
-        
-    @classmethod
-    def tag_atoms_in_repeating_unit(mol):
+       
+    
+    def tag_atoms_in_repeating_unit(self, mol):
         """
         Tag atoms that are part of the core units, as well as atoms serving to identify attachment points. In addition,
         create a map of bond types based on what bonds are connected to R groups in the input.
@@ -85,8 +85,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         
         return mol, r_bond_types
 
-    @classmethod
-    def remove_wildcard_atoms(rwmol):
+
+    def remove_wildcard_atoms(self, rwmol):
         """
         removes wildcard atoms from an RDKit Mol
         """
@@ -98,8 +98,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         
         return rwmol
     
-    @classmethod
-    def parse_polymer_rules(rules):
+    
+    def parse_polymer_rules(self, rules):
         """
         parses the polymer rules provided in the polymer input string
         """
@@ -134,13 +134,15 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         
         return polymer_info, 1. + np.log10(Xn)
     
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
+    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0, degree_of_poly: int = 1, polymer_info: list = []):
         super().__post_init__()
 
         self.extra_atom_fdim = extra_atom_fdim
         self.extra_bond_fdim = extra_bond_fdim
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
+        self.degree_of_poly = degree_of_poly
+        self.polymer_info = polymer_info
         
     def __call__(
         self,
@@ -148,8 +150,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
-        mol = polymer[0]
-        rules = polymer[2]
+        mol = polymer.mol
+        rules = polymer.edges
         n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
         self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(rules)
@@ -168,7 +170,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             V_w = np.zeros((1, self.atom_fdim), dtype=np.single).flatten()
         else:
             V = np.array([self.atom_featurizer(a) for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single)
-            V_w = np.array([self.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], type=np.single).flatten()
+            V_w = np.array([a.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single).flatten()
         # Concatenate the extra atoms features to the atom features (V)
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -217,7 +219,14 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # Create an editable combined Mol
         cm = Chem.CombineMols(rwmol, rwmol_copy)
         cm = Chem.RWMol(cm)
-        
+        # The combined molecule now has double the bonds, therefore we must duplicate the extra atom bond features not relating to the
+        # bonds between monomers then append the extra bond features relating to the bonds between monomers
+        if bond_features_extra is not None:
+            n_bonds = rwmol.GetNumBonds()
+            combined_bond_features_extra = np.concatenate((bond_features_extra[:n_bonds],
+                                                            bond_features_extra[:n_bonds],
+                                                            bond_features_extra[n_bonds:],
+                                                            bond_features_extra[n_bonds:]))
         # For all possible bonds between monomers:
         # add bond -> compute bond features -> add bond to list -> remove bond
         for r1, r2, w_bond12, w_bond21 in self.polymer_info:
@@ -253,7 +262,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             bond = cm.GetBondBetweenAtoms(a1, _a2)
             x_e = self.bond_featurizer(bond)
             if bond_features_extra is not None:
-                x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
+                x_e = np.concatenate((x_e, combined_bond_features_extra[bond.GetIdx()]), dtype=np.single)
             # Update the index mappings
             E[i : i + 2] = x_e
             edge_index[0].extend([a1, _a2])
