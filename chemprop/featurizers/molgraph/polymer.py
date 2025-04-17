@@ -265,8 +265,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 x_e = np.concatenate((x_e, combined_bond_features_extra[bond.GetIdx()]), dtype=np.single)
             # Update the index mappings
             E[i : i + 2] = x_e
-            edge_index[0].extend([a1, _a2])
-            edge_index[1].extend([_a2, a1])
+            edge_index[0].extend([a1, a2])
+            edge_index[1].extend([a2, a1])
             E_w.extend([w_bond12, w_bond21])
             # Increase the total number of bonds by 2
             i += 2
