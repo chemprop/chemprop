@@ -1256,6 +1256,7 @@ def main(args):
         molecule_featurizers=args.molecule_featurizers,
         keep_h=args.keep_h,
         add_h=args.add_h,
+        canonicalize=args.canonicalize_smiles,
         ignore_chirality=args.ignore_chirality,
     )
 
