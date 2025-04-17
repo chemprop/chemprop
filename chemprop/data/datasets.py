@@ -14,7 +14,7 @@ from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer, PolymerMolGraphFeaturizer
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
-from chemprop.types import Rxn
+from chemprop.types import Rxn, Polymer
 
 
 class Datum(NamedTuple):
@@ -322,7 +322,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """A :class:`PolymerDataset` composed of :class:`PolymerDatapoint`\s
 
     A :class:`PolymerDataset` produces featurized data for input to a
-    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    :class:`wMPNN` model. Typically, data featurization is performed on-the-fly
     and parallelized across multiple workers via the :class:`~torch.utils.data
     DataLoader` class. However, for small datasets, it may be more efficient to
     featurize the data in advance and cache the results. This can be done by
@@ -337,7 +337,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """
 
     data: list[PolymerDatapoint]
-    featurizer: Featurizer[Mol, MolGraph] = field(default_factory=PolymerMolGraphFeaturizer)
+    featurizer: Featurizer[Polymer, MolGraph] = field(default_factory=PolymerMolGraphFeaturizer)
 
     def __post_init__(self):
         if self.data is None:
@@ -364,7 +364,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def _init_cache(self):
         """initialize the cache"""
         self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
-            self.mols, self.V_fs, self.E_fs, self.featurizer
+            self.polymers, self.V_fs, self.E_fs, self.featurizer
         )
 
     @property
@@ -376,6 +376,11 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def mols(self) -> list[Chem.Mol]:
         """the molecules associated with the dataset"""
         return [d.mol for d in self.data]
+    
+    @property
+    def polymers(self) -> list[Polymer]:
+        """the polymers associated with the dataset"""
+        return self.data
 
     @property
     def _V_fs(self) -> list[np.ndarray]:
