@@ -60,6 +60,20 @@ def polymer_mol(polymer):
     return rwmol
 
 
+@pytest.fixture
+def polymer_V_w():
+    return np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 
+                     0.5, 0.5, 0.5, 0.5])
+
+
+@pytest.fixture
+def polymer_E_w():
+    return np.array([1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 
+                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 
+                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0.5, 0.5, 0.5, 0.5, 
+                     0.5, 0.5, 0.5])
+
+
 def test_fragment_weights(polymer, polymer_smiles):
     weights = polymer_smiles.split("|")[1:-1]
     weights = [float(x) for x in weights]
@@ -105,11 +119,19 @@ def test_V_w_shape(polymer_mol, featurized_polymer):
     assert featurized_polymer.V_w.shape == (n_a, )
     
 
+def test_V_w(featurized_polymer, polymer_V_w):
+    np.testing.assert_array_almost_equal(featurized_polymer.V_w, polymer_V_w)
+    
+
 def test_E_w_shape(polymer, polymer_mol, featurized_polymer):
     n_b = polymer_mol.GetNumBonds()
     p_b = len(polymer.edges) * 2
     
     assert featurized_polymer.E_w.shape == (2 * n_b + p_b,)
+    
+
+def test_E_w(featurized_polymer, polymer_E_w):
+    np.testing.assert_array_almost_equal(featurized_polymer.E_w, polymer_E_w)
 
 
 def test_x2y_len(polymer, polymer_mol, featurized_polymer):
