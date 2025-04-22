@@ -153,7 +153,6 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         mol = polymer.mol
         rules = polymer.edges
         n_atoms = mol.GetNumAtoms()
-        n_bonds = mol.GetNumBonds()
         self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(rules)
         # Make the molecule editable
         rwmol = Chem.rdchem.RWMol(mol)
@@ -182,9 +181,10 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
             )        
         # Remove R groups -> now atoms in the RDKit Mol object have the same order as V
-        rwmol = self.remove_wildcard_atoms(rwmol)     
+        rwmol = self.remove_wildcard_atoms(rwmol)
+        n_bonds = rwmol.GetNumBonds()
         # Initialize atom to bond mapping for each atom
-        E = np.empty((2 * n_bonds, self.bond_fdim))
+        E = np.empty((2 * n_bonds + 2 * len(self.polymer_info), self.bond_fdim))
         edge_index = [[], []]
         # Initalize bond weight array
         E_w = []
@@ -222,7 +222,6 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # The combined molecule now has double the bonds, therefore we must duplicate the extra atom bond features not relating to the
         # bonds between monomers then append the extra bond features relating to the bonds between monomers
         if bond_features_extra is not None:
-            n_bonds = rwmol.GetNumBonds()
             combined_bond_features_extra = np.concatenate((bond_features_extra[:n_bonds],
                                                             bond_features_extra[:n_bonds],
                                                             bond_features_extra[n_bonds:],
