@@ -36,11 +36,12 @@ def test_find_models(data_dir):
 
 
 @pytest.mark.parametrize(
-    "path,smiles_cols,rxn_cols,target_cols,ignore_cols,splits_col,weight_col,no_header_row,expected",
+    "path,smiles_cols,polymer_cols,rxn_cols,target_cols,ignore_cols,splits_col,weight_col,no_header_row,expected",
     [
         (
             "classification/mol.csv",
             ["smiles"],
+            None,
             None,
             ["NR-AhR", "NR-ER", "SR-ARE", "SR-MMP"],
             None,
@@ -57,11 +58,13 @@ def test_find_models(data_dir):
             None,
             None,
             None,
+            None,
             False,
             ["smiles", "NR-AhR", "NR-ER", "SR-ARE", "SR-MMP"],
         ),
         (
             "classification/mol.csv",
+            None,
             None,
             None,
             None,
@@ -71,9 +74,10 @@ def test_find_models(data_dir):
             False,
             ["smiles", "NR-ER", "SR-MMP"],
         ),
-        ("regression/mol/mol.csv", None, None, None, None, None, None, False, ["smiles", "lipo"]),
+        ("regression/mol/mol.csv", None, None, None, None, None, None, None, False, ["smiles", "lipo"]),
         (
             "regression/mol/mol.csv",
+            None,
             None,
             None,
             ["lipo"],
@@ -87,6 +91,7 @@ def test_find_models(data_dir):
             "regression/mol/mol_with_splits.csv",
             ["smiles"],
             None,
+            None,
             ["lipo"],
             None,
             "split",
@@ -96,6 +101,7 @@ def test_find_models(data_dir):
         ),
         (
             "regression/mol/mol_with_splits.csv",
+            None,
             None,
             None,
             None,
@@ -108,6 +114,7 @@ def test_find_models(data_dir):
         (
             "regression/rxn/rxn.csv",
             None,
+            None,
             ["smiles"],
             ["ea"],
             None,
@@ -119,6 +126,7 @@ def test_find_models(data_dir):
         (
             "classification/mol+mol.csv",
             ["mol a smiles", "mol b Smiles"],
+            None,
             None,
             ["synergy"],
             None,
@@ -135,16 +143,18 @@ def test_find_models(data_dir):
             None,
             None,
             None,
+            None,
             False,
             ["mol a smiles", "mol b Smiles", "synergy"],
         ),
-        ("regression/mol/mol.csv", None, None, None, None, None, None, True, ["SMILES", "pred_0"]),
+        ("regression/mol/mol.csv", None, None, None, None, None, None, None, True, ["SMILES", "pred_0"]),
     ],
 )
 def test_get_column_names(
     data_dir,
     path,
     smiles_cols,
+    polymer_cols,
     rxn_cols,
     target_cols,
     ignore_cols,
@@ -159,6 +169,7 @@ def test_get_column_names(
     input_cols, target_cols = get_column_names(
         data_dir / path,
         smiles_cols,
+        polymer_cols,
         rxn_cols,
         target_cols,
         ignore_cols,
