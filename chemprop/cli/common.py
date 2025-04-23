@@ -1,4 +1,5 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
+import argparse
 import logging
 from pathlib import Path
 
@@ -16,6 +17,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--smiles-columns",
         nargs="+",
         help="Column names in the input CSV containing SMILES strings (uses the 0th column by default)",
+    )
+    data_args.add_argument(
+        "-p",
+        "--polymer-columns",
+        nargs="+",
+        help="Column names in the input CSV containing polymer SMILES strings",
     )
     data_args.add_argument(
         "-r",
@@ -145,13 +152,14 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Path to constraints applied to atomic/bond properties prediction.",
     # )
     # TODO: Add polymer argument
-    # featurization_args.add_argument(
-    #     "-p",
-    #     "--polymer",
-    #     type=bool,
-    #     default=False,
-    #     help="Whether to adjust the MPNN to take polymers as input instead of molecules."
-    # )
+    featurization_args.add_argument(
+        "-P",
+        "--polymer",
+        action=argparse.BooleanOptionalAction,
+        type=bool,
+        default=False,
+        help="Whether to adjust the MPNN to take polymers as input instead of small molecules."
+    )
 
     return parser
 

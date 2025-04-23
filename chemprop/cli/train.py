@@ -547,6 +547,7 @@ def validate_train_args(args):
     input_cols, target_cols = get_column_names(
         args.data_path,
         args.smiles_columns,
+        args.polymer_columns,
         args.reaction_columns,
         args.target_columns,
         args.ignore_columns,
@@ -1244,6 +1245,7 @@ def main(args):
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
+        polymer_cols=args.polymer_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,

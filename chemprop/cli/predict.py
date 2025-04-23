@@ -226,6 +226,7 @@ def make_prediction_for_models(
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
+        polymer_cols=args.polymer_columns,
         rxn_cols=args.reaction_columns,
         ignore_cols=None,
         splits_col=None,
@@ -418,15 +419,23 @@ def save_individual_predictions(
 
 
 def main(args):
-    match (args.smiles_columns, args.reaction_columns):
-        case [None, None]:
+    match (args.smiles_columns, args.polymer_columns, args.reaction_columns):
+        case [None, None, None]:
             n_components = 1
-        case [_, None]:
+        case [_, None, None]:
             n_components = len(args.smiles_columns)
-        case [None, _]:
+        case [None, _, None]:
+            n_components = len(args.polymer_columns)
+        case [None, None, _]:
             n_components = len(args.reaction_columns)
-        case _:
+        case [_, _, None]:
+            n_components = len(args.smiles_columns) + len(args.polymer_columns)
+        case [_, None, _]:
             n_components = len(args.smiles_columns) + len(args.reaction_columns)
+        case [None, _, _]:
+            n_components = len(args.polymer_columns) + len(args.reaction_columns)
+        case _:
+            n_components = len(args.smiles_columns) + len(args.polymer_columns) + len(args.reaction_columns)
 
     multicomponent = n_components > 1
 
