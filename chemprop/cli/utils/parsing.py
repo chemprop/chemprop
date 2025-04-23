@@ -54,24 +54,6 @@ def parse_csv(
     if smiss is None and polyss is None and rxnss is None:
         smiss = df.iloc[:, [0]].T.values.tolist()
         input_cols.append(df.columns[0])
-        
-    # if smiles_cols is not None and rxn_cols is not None:
-    #     smiss = df[smiles_cols].T.values.tolist()
-    #     rxnss = df[rxn_cols].T.values.tolist()
-    #     input_cols = [*smiles_cols, *rxn_cols]
-    # elif smiles_cols is not None and rxn_cols is None:
-    #     smiss = df[smiles_cols].T.values.tolist()
-    #     rxnss = None
-    #     input_cols = smiles_cols
-    # elif smiles_cols is None and rxn_cols is not None:
-    #     smiss = None
-    #     rxnss = df[rxn_cols].T.values.tolist()
-    #     input_cols = rxn_cols
-    # else:
-    #     smiss = df.iloc[:, [0]].T.values.tolist()
-    #     polyss = None
-    #     rxnss = None
-    #     input_cols = [df.columns[0]]
 
     if target_cols is None:
         target_cols = list(
