@@ -91,7 +91,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 
 @dataclass
 class _PolymerDatapointMixin:
-    mol: Chem.Mol
+    mol: Chem.Mol | None
     """the polymer associated with this datapoint"""
     fragment_weights: list = field(default_factory=list)
     """the fragment weights associated with each monomer"""
@@ -108,7 +108,6 @@ class _PolymerDatapointMixin:
         **kwargs
     ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
-        frag_weights = [float(x) for x in frag_weights]
         edges = smi.split("<")[1:]
         mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights)
         

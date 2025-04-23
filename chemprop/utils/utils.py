@@ -86,10 +86,12 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
     Chem.Mol
         the RDKit molecule.
     """
-    # Check the input is correct. We need the same number of fragmeeeeeents and their weights.
+    # Check the input is correct. We need the same number of fragments and their weights.
     num_frags = len(smi.split("."))
     if len(fragment_weights) != num_frags:
         raise ValueError(f'The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})')
+    # Ensure all fragment weights are floats
+    fragment_weights = [float(x) for x in fragment_weights]
     # If it all looks good, we create one molecule object per fragment, add the weight as a property of each atom and the fragments into
     # a single molecule object
     mols = []
