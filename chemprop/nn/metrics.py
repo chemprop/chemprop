@@ -100,7 +100,7 @@ class ChempropMetric(torchmetrics.Metric):
         gt_mask: Tensor
         """
         mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
-        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        weights = torch.ones(targets.shape[0], dtype=torch.float) if weights is None else weights
         lt_mask = torch.zeros_like(targets, dtype=torch.bool) if lt_mask is None else lt_mask
         gt_mask = torch.zeros_like(targets, dtype=torch.bool) if gt_mask is None else gt_mask
 
@@ -292,7 +292,7 @@ class BinaryMCCLoss(ChempropMetric):
         *args,
     ):
         mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
-        weights = torch.ones_like(targets, dtype=torch.float) if weights is None else weights
+        weights = torch.ones(targets.shape[0], dtype=torch.float) if weights is None else weights
 
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
@@ -363,7 +363,9 @@ class MulticlassMCCLoss(ChempropMetric):
     ):
         mask = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
         weights = (
-            torch.ones_like(targets, dtype=torch.float) if weights is None else weights.view(-1, 1)
+            torch.ones((targets.shape[0], 1), dtype=torch.float)
+            if weights is None
+            else weights.view(-1, 1)
         )
 
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
