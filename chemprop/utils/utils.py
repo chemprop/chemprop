@@ -97,8 +97,6 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
     mols = []
     for s, w in zip(smi.split('.'), fragment_weights):
         m = make_mol(s, keep_h, add_h)
-        for a in m.GetAtoms():
-            a.SetDoubleProp('w_frag', float(w))
         mols.append(m)
     # Combine all the mols into a single mol object
     mol = mols.pop(0)
@@ -107,6 +105,19 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
         mol = Chem.CombineMols(mol, m2)
     
     return mol
+
+
+def remove_wildcard_atoms(rwmol):
+    """
+    removes wildcard atoms from an RDKit Mol
+    """
+    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+    while len(indicies) > 0:
+        rwmol.RemoveAtom(indicies[0])
+        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+    Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
+    
+    return rwmol
 
 
 def pretty_shape(shape: Iterable[int]) -> str:

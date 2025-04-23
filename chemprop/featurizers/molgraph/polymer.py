@@ -9,6 +9,7 @@ from chemprop.data.molgraph import MolGraph
 from chemprop.types import Polymer
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.utils import remove_wildcard_atoms
 
 
 @dataclass
@@ -84,19 +85,28 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 atom.SetProp('R', '')
         
         return mol, r_bond_types
-
-
-    def remove_wildcard_atoms(self, rwmol):
+    
+    
+    def apply_atom_weights(self, mol: Chem.Mol, fragment_weights: list[str]):
         """
-        removes wildcard atoms from an RDKit Mol
+        applies fragment weights to atoms
         """
-        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
-        while len(indicies) > 0:
-            rwmol.RemoveAtom(indicies[0])
-            indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
-        Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
+        # Convert fragment weights to floats
+        fragment_weights = [float(x) for x in fragment_weights]
+        # Split mol into its fragments
+        mols = Chem.GetMolFrags(mol, asMols=True)
+        new_mols = []
+        for s, w in zip(mols, fragment_weights):
+            for a in s.GetAtoms():
+                a.SetDoubleProp('w_frag', float(w))
+            new_mols.append(s)
+        # Recombine all the mols into a single mol object
+        mol = new_mols.pop(0)
+        while len(new_mols) > 0:
+            m2 = new_mols.pop(0)
+            mol = Chem.CombineMols(mol, m2)
         
-        return rwmol
+        return mol
     
     
     def parse_polymer_rules(self, rules):
@@ -151,9 +161,12 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         mol = polymer.mol
+        frag_weights = polymer.fragment_weights
         rules = polymer.edges
         n_atoms = mol.GetNumAtoms()
         self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(rules)
+        # We apply atom weights here rather than in make_polymer_mol to avoid key errors when caching the atom properties
+        mol = self.apply_atom_weights(mol, frag_weights)
         # Make the molecule editable
         rwmol = Chem.rdchem.RWMol(mol)
         # tag (i) attachment atoms and (ii) atoms for which features need to be computed
@@ -181,7 +194,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
             )        
         # Remove R groups -> now atoms in the RDKit Mol object have the same order as V
-        rwmol = self.remove_wildcard_atoms(rwmol)
+        rwmol = remove_wildcard_atoms(rwmol)
         n_bonds = rwmol.GetNumBonds()
         # Initialize atom to bond mapping for each atom
         E = np.empty((2 * n_bonds + 2 * len(self.polymer_info), self.bond_fdim))

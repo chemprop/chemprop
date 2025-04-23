@@ -378,7 +378,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return [d.mol for d in self.data]
     
     @property
-    def polymers(self) -> list[Polymer]:
+    def polymers(self) -> list[PolymerDatapoint]:
         """the polymers associated with the dataset"""
         return self.data
 
