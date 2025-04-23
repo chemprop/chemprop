@@ -299,8 +299,6 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "optuna",
-        "--molecule-featurizers",
-        "morgan_count",
         "--search-parameter-keywords",
         "all",
         "--polymer",

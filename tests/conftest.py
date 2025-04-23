@@ -5,10 +5,13 @@ import pandas as pd
 import pytest
 from rdkit import Chem
 
+from chemprop.data.datapoints import PolymerDatapoint
+
 _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
 _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
 _DF["smi"] = _DF["mol"].map(Chem.MolToSmiles)
+_POLY = pd.read_csv(_DATA_DIR / "test_polymer.csv")
 
 
 @pytest.fixture
@@ -25,6 +28,10 @@ def smis():
 def mols():
     return _DF.mol
 
+@pytest.fixture
+def polymers():
+    return _POLY.smiles
+
 
 @pytest.fixture
 def targets(smis):
@@ -34,6 +41,11 @@ def targets(smis):
 # @pytest.fixture
 # def mol_data(mols, targets):
 #     return [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
+
+
+# @pytest.fixture
+# def polymer_data(polymers, targets):
+#     return [PolymerDatapoint.from_smi(polymer, y) for polymer, y in zip(polymers, targets)]
 
 
 # @pytest.fixture
@@ -51,12 +63,25 @@ def mol(request):
     return request.param
 
 
+@pytest.fixture(params=_POLY.smiles.sample(5))
+def polymer(request):
+    return PolymerDatapoint.from_smi(request.param)
+
+
 @pytest.fixture
 def mol_regression_data(data_dir):
     df = pd.read_csv(data_dir / "regression/mol/mol.csv")
     smis = df["smiles"].to_list()
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
+    return smis, Y
+
+
+@pytest.fixture
+def polymer_regression_data():
+    smis = _POLY["smiles"].to_list()
+    Y = _POLY["EA vs SHE (eV)"].to_numpy().reshape(-1, 1)
+    
     return smis, Y
 
 

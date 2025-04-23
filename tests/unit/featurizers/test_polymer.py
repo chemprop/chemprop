@@ -76,8 +76,7 @@ def polymer_E_w():
 
 def test_fragment_weights(polymer, polymer_smiles):
     weights = polymer_smiles.split("|")[1:-1]
-    weights = [float(x) for x in weights]
-    
+
     assert polymer.fragment_weights == weights
 
 
