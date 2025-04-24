@@ -101,10 +101,10 @@ class MolAtomBondTrainingBatch(NamedTuple):
     V_d: Tensor | None
     E_d: Tensor | None
     X_d: Tensor | None
-    Ys: list[Tensor | None]
-    w: Tensor
-    lt_masks: list[Tensor | None]
-    gt_masks: list[Tensor | None]
+    Ys: tuple[Tensor | None, Tensor | None, Tensor | None]
+    w: tuple[Tensor | None, Tensor | None, Tensor | None]
+    lt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+    gt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
 
 
 def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:

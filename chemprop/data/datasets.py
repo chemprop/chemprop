@@ -36,10 +36,10 @@ class MolAtomBondDatum(NamedTuple):
     V_d: np.ndarray | None
     E_d: np.ndarray | None
     x_d: np.ndarray | None
-    ys: list[np.ndarray | None]
+    ys: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     weight: float
-    lt_masks: list[np.ndarray | None]
-    gt_masks: list[np.ndarray | None]
+    lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
