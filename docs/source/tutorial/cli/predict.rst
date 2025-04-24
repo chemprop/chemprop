@@ -33,6 +33,10 @@ If atom-mapped reaction SMILES are used, specify:
 
 If :code:`--reaction-mode` was specified during training, those same flags must be specified for the prediction step.
 
+If polymer string representations are used, specifiy:
+
+ * :code:`--polymer-columns` Text labels of the columns that include the polymer representation
+
 
 Uncertainty Quantification
 --------------------------
