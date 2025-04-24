@@ -31,4 +31,3 @@ split-key-molecule = 0
 num-replicates = 1
 data-seed = 0
 pytorch-seed = 0
-polymer = False
