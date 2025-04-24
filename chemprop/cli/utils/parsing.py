@@ -6,8 +6,8 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
-from chemprop.data.datasets import AtomDataset, BondDataset, MoleculeDataset, ReactionDataset
+from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datasets import MolAtomBondDataset, MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
@@ -75,7 +75,7 @@ def parse_csv(
     return smiss, rxnss, Y, weights, lt_mask, gt_mask
 
 
-def mixed_parse_csv(
+def mol_atom_bond_parse_csv(
     path: PathLike,
     smiles_cols: Sequence[str] | None,
     rxn_cols: Sequence[str] | None,
@@ -503,8 +503,8 @@ def build_mixed_data_from_files(
     p_bond_feats: dict[int, PathLike],
     p_atom_descs: dict[int, PathLike],
     **featurization_kwargs: Mapping,
-) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, mol_Y, atom_Y, bond_Y, weights, lt_mask, gt_mask, flag = mixed_parse_csv(
+):
+    smiss, rxnss, mol_Y, atom_Y, bond_Y, weights, lt_mask, gt_mask, flag = mol_atom_bond_parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,
@@ -566,6 +566,31 @@ def build_mixed_data_from_files(
         **featurization_kwargs,
     )
 
+    all_data = []
+    for i in range(len(mol_data)):
+        all_data.append(
+            [
+                MolAtomBondDatapoint(
+                    mol=mol_data[i][j].mol,
+                    y=mol_data[i][j].y,
+                    weight=mol_data[i][j].weight,
+                    gt_mask=mol_data[i][j].gt_mask,
+                    lt_mask=mol_data[i][j].lt_mask,
+                    x_d=mol_data[i][j].x_d,
+                    V_f=mol_data[i][j].V_f,
+                    E_f=mol_data[i][j].E_f,
+                    V_d=mol_data[i][j].V_d,
+                    atom_y=atom_data[i][j].y,
+                    bond_y=bond_data[i][j].y,
+                    atom_lt_mask=atom_data[i][j].lt_mask,
+                    atom_gt_mask=atom_data[i][j].gt_mask,
+                    bond_lt_mask=bond_data[i][j].lt_mask,
+                    bond_gt_mask=bond_data[i][j].gt_mask,
+                )
+                for j in range(len(mol_data[i]))
+            ]
+        )
+
     mol_cols, atom_cols, bond_cols = [], [], []
     for i in range(len(flag)):
         if flag[i] == "mol":
@@ -575,7 +600,7 @@ def build_mixed_data_from_files(
         else:
             bond_cols.append(target_cols[i])
 
-    return mol_data + atom_data + bond_data, mol_cols, atom_cols, bond_cols
+    return all_data, mol_cols, atom_cols, bond_cols
 
 
 def load_input_feats_and_descs(
@@ -618,14 +643,15 @@ def load_input_feats_and_descs(
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[ReactionDatapoint],
+    data: Sequence[MoleculeDatapoint]
+    | Sequence[MolAtomBondDatapoint]
+    | Sequence[ReactionDatapoint],
     reaction_mode: str,
     multi_hot_atom_featurizer_mode: str = "V2",
-    index: int = 0,
-) -> MoleculeDataset | AtomDataset | BondDataset | ReactionDataset:
+) -> MoleculeDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
-
-    if isinstance(data[0], MoleculeDatapoint):
+    print(data[0])
+    if isinstance(data[0], MolAtomBondDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
@@ -633,14 +659,16 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        if index == 0:
-            return MoleculeDataset(data, featurizer)
-        elif index == 1:
-            return AtomDataset(data, featurizer)
-        elif index == 2:
-            return BondDataset(data, featurizer)
-        else:
-            raise IndexError("Index flag not in list of train_data, val_data, and test_data")
+        return MolAtomBondDataset(data, featurizer)
+    elif isinstance(data[0], MoleculeDatapoint):
+        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
+        featurizer = SimpleMoleculeMolGraphFeaturizer(
+            atom_featurizer=atom_featurizer,
+            extra_atom_fdim=extra_atom_fdim,
+            extra_bond_fdim=extra_bond_fdim,
+        )
+        return MoleculeDataset(data, featurizer)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
         mode_=reaction_mode, atom_featurizer=atom_featurizer

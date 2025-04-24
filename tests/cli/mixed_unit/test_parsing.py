@@ -1,10 +1,11 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from chemprop.cli.utils import build_mixed_data_from_files, make_dataset
-from chemprop.data import MockDataset, MolAtomBondDataset
+from chemprop.data import MolAtomBondDataset
 
 _DATA_PATH = Path(__file__).parent.parent.parent / "data/regression/mixed/mixed.csv"
 
@@ -46,17 +47,14 @@ def data(data_path, format_kwargs):
 
 
 def test_dataset(data):
-    dsets = [
-        make_dataset(data[0][d], "REAC_DIFF", "V2", d) if data[d + 1] else MockDataset()
-        for d in range(len(data[0]))
-    ]
-    dset = MolAtomBondDataset(dsets[0], dsets[1], dsets[2])
-    assert dset.mol_dataset == dsets[0]
-    assert dset.atom_dataset == dsets[1]
-    assert dset.bond_dataset == dsets[2]
+    dset = [make_dataset(d, "REAC_DIFF", "V2") for d in data[0]]
+    assert isinstance(dset[0], MolAtomBondDataset)
+    print(dset)
+    assert dset[0].data[0].y == np.array([1])
+    assert (dset[0].data[0].atom_y == np.array([[1], [2]])).all()
+    assert dset[0].data[0].bond_y == np.array([[3]])
 
 
 def test_data(data_path, data):
     df = pd.read_csv(data_path)
     assert len(data[1]) + len(data[2]) + len(data[3]) == df.shape[1] - 1
-    assert len(data[0]) == 3

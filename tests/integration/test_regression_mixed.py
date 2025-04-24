@@ -8,11 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop import nn
-from chemprop.data import (
-    MolAtomBondDataset,
-    MolAtomBondDatapoint,
-    collate_mol_atom_bond_batch,
-)
+from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
 pytestmark = [
     pytest.mark.parametrize(
@@ -30,7 +26,10 @@ pytestmark = [
 @pytest.fixture
 def dataloader(mixed_regression_data):
     smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
-    all_data = [MolAtomBondDatapoint.from_smi(smi, y, atom_y=atom_y, bond_y=bond_y, keep_h=True) for smi, y, atom_y, bond_y in zip(smis, mol_Y, atom_Y, bond_Y)]
+    all_data = [
+        MolAtomBondDatapoint.from_smi(smi, y, atom_y=atom_y, bond_y=bond_y, keep_h=True)
+        for smi, y, atom_y, bond_y in zip(smis, mol_Y, atom_Y, bond_Y)
+    ]
     dset = MolAtomBondDataset(all_data)
     return DataLoader(dset, 32, collate_fn=collate_mol_atom_bond_batch)
 
