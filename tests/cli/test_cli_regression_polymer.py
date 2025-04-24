@@ -42,7 +42,6 @@ def test_train_quick(monkeypatch, data_path):
         "--show-individual-scores",
         "--polymer-columns",
         "poly_chemprop_input",
-        "--polymer",
     ]
 
     with monkeypatch.context() as m:
@@ -62,7 +61,6 @@ def test_train_config(monkeypatch, config_path, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -92,7 +90,6 @@ def test_predict_quick(monkeypatch, data_path, model_path):
             input_path,
             "--model-path",
             model_path,
-            "--polymer",
             "--polymer-columns",
             "poly_chemprop_input",
             ]
@@ -114,7 +111,6 @@ def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
         model_path,
         "--ffn-block-index",
         ffn_block_index,
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -138,7 +134,6 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
         "--save-dir",
         str(tmp_path),
         "--save-smiles-splits",
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -179,7 +174,6 @@ def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_p
         "rmse",
         "--molecule-featurizers",
         "rdkit_2d",
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -205,7 +199,6 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         "--model-path",
         model_path,
         model_path, 
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
         "--output",
@@ -234,7 +227,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
         "0",
         "--save-dir",
         str(tmp_path),
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -265,7 +257,6 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
         str(tmp_path),
         "--checkpoint",
         model_path,
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
         "--target-columns",
@@ -301,7 +292,6 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "optuna",
         "--search-parameter-keywords",
         "all",
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -322,7 +312,6 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         str(tmp_path / "best_config.toml"),
         "--save-dir",
         str(tmp_path),
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -355,7 +344,6 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "morgan_binary",
         "--search-parameter-keywords",
         "all",
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
@@ -376,7 +364,6 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         str(tmp_path / "best_config.toml"),
         "--save-dir",
         str(tmp_path),
-        "--polymer",
         "--polymer-columns",
         "poly_chemprop_input",
     ]
