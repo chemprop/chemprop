@@ -82,17 +82,6 @@ class TrainingBatch(NamedTuple):
     gt_mask: Tensor | None
 
 
-class MolAtomBondTrainingBatch(NamedTuple):
-    bmg: BatchMolGraph
-    V_d: Tensor | None
-    E_d: Tensor | None
-    X_d: Tensor | None
-    Ys: list[Tensor | None]
-    w: Tensor
-    lt_masks: list[Tensor | None]
-    gt_masks: list[Tensor | None]
-
-
 def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     mgs, V_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
 
@@ -105,6 +94,17 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
         None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
+
+
+class MolAtomBondTrainingBatch(NamedTuple):
+    bmg: BatchMolGraph
+    V_d: Tensor | None
+    E_d: Tensor | None
+    X_d: Tensor | None
+    Ys: list[Tensor | None]
+    w: Tensor
+    lt_masks: list[Tensor | None]
+    gt_masks: list[Tensor | None]
 
 
 def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:
