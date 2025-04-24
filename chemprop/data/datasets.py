@@ -338,10 +338,6 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
     def __getitem__(self, idx: int) -> MolAtomBondDatum:
         d = self.data[idx]
         mg = self.mg_cache[idx]
-        atom_first = self._atom_slices.index(idx)
-        atom_last = atom_first + self._atom_slices.count(idx)
-        bond_first = self._bond_slices.index(idx)
-        bond_last = bond_first + self._bond_slices.count(idx)
 
         return MolAtomBondDatum(
             mg,
@@ -350,59 +346,45 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             self.X_d[idx],
             [
                 self.Y[idx] if self.Y is not None else None,
-                self.atom_Y[atom_first:atom_last] if self.atom_Y is not None else None,
-                self.bond_Y[bond_first:bond_last] if self.bond_Y is not None else None,
+                self.atom_Y[idx] if self.atom_Y is not None else None,
+                self.bond_Y[idx] if self.bond_Y is not None else None,
             ],
             d.weight,
             [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
             [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
         )
 
-    @cached_property
-    def _atom_Y(self) -> np.ndarray:
-        """the raw targets of the dataset"""
-        return np.vstack([d.atom_y for d in self.data])
+    @property
+    def _atom_Y(self) -> list[np.ndarray]:
+        """the raw atom targets of the dataset"""
+        return [d.atom_y for d in self.data]
 
     @property
-    def atom_Y(self) -> np.ndarray:
-        """the (scaled) targets of the dataset"""
+    def atom_Y(self) -> list[np.ndarray]:
+        """the (scaled) atom targets of the dataset"""
         return self.__atom_Y
 
     @atom_Y.setter
-    def atom_Y(self, atom_Y: ArrayLike):
-        self.__atom_Y = np.array(atom_Y, float)
+    def atom_Y(self, atom_Y: list[np.ndarray]):
+        self._validate_attribute(atom_Y, "atom targets")
 
-    @cached_property
-    def _bond_Y(self) -> np.ndarray:
-        """the raw targets of the dataset"""
-        return np.vstack([d.bond_y for d in self.data])
+        self.__atom_Y = atom_Y
 
     @property
-    def bond_Y(self) -> np.ndarray:
-        """the (scaled) targets of the dataset"""
+    def _bond_Y(self) -> list[np.ndarray]:
+        """the raw bond targets of the dataset"""
+        return [d.bond_y for d in self.data]
+
+    @property
+    def bond_Y(self) -> list[np.ndarray]:
+        """the (scaled) bond targets of the dataset"""
         return self.__bond_Y
 
     @bond_Y.setter
-    def bond_Y(self, bond_Y: ArrayLike):
-        self.__bond_Y = np.array(bond_Y, float)
+    def bond_Y(self, bond_Y: list[np.ndarray]):
+        self._validate_attribute(bond_Y, "bond targets")
 
-    @cached_property
-    def _atom_slices(self) -> list[int]:
-        slice_indices = []
-        index = 0
-        for d in self.data:
-            slice_indices.extend([index] * d.mol.GetNumAtoms())
-            index += 1
-        return slice_indices
-
-    @cached_property
-    def _bond_slices(self) -> list[int]:
-        slice_indices = []
-        index = 0
-        for d in self.data:
-            slice_indices.extend([index] * d.mol.GetNumBonds())
-            index += 1
-        return slice_indices
+        self.__bond_Y = bond_Y
 
     @property
     def atom_gt_mask(self) -> np.ndarray:
