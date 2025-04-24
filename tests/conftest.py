@@ -45,7 +45,7 @@ def targets(smis):
 
 # @pytest.fixture
 # def polymer_data(polymers, targets):
-#     return [PolymerDatapoint.from_smi(polymer, y) for polymer, y in zip(polymers, targets)]
+#     return [PolymerDatapoint.from_smi(polymer, y=y) for polymer, y in zip(polymers, targets)]
 
 
 # @pytest.fixture
