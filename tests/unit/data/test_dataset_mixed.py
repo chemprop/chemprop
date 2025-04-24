@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from rdkit import Chem
+from sklearn.preprocessing import StandardScaler
 
 from chemprop.data.datasets import MolAtomBondDatapoint, MolAtomBondDataset
 from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
@@ -13,37 +14,22 @@ def smis(smis, request):
 
 
 @pytest.fixture
-def targets(smis):
-    num_atoms, num_bonds = 0, 0
-    for i in range(len(smis)):
-        num_atoms += make_mol(smis[i], False, False).GetNumAtoms()
-        num_bonds += make_mol(smis[i], False, False).GetNumBonds()
+def mols(smis):
+    return [make_mol(smi, False, False) for smi in smis]
+
+
+@pytest.fixture
+def targets(mols):
     return [
-        np.random.rand(len(smis), 1),
-        np.random.rand(num_atoms, 1),
-        np.random.rand(num_bonds, 1),
+        np.random.rand(len(mols), 2),
+        [np.random.rand(mol.GetNumAtoms(), 2) for mol in mols],
+        [np.random.rand(mol.GetNumBonds(), 2) for mol in mols],
     ]
 
 
 @pytest.fixture
-def slices(smis):
-    atom_slices, bond_slices = [], []
-    atom_slices.append(0)
-    bond_slices.append(0)
-    for i in range(len(smis)):
-        atom_slices.append(atom_slices[i] + make_mol(smis[i], False, False).GetNumAtoms())
-        bond_slices.append(bond_slices[i] + make_mol(smis[i], False, False).GetNumBonds())
-    return [atom_slices, bond_slices]
-
-
-@pytest.fixture
-def mols(smis):
-    return [Chem.MolFromSmiles(smi) for smi in smis]
-
-
-@pytest.fixture
 def X_d(mols):
-    return [np.random.rand(1) for _ in mols]
+    return [np.random.rand(2) for _ in mols]
 
 
 @pytest.fixture
@@ -72,32 +58,22 @@ def E_ds(mols):
     indirect=True,
 )
 @pytest.fixture
-def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds, slices):
-    atom_targets, bond_targets = [], []
-    for i in range(len(slices[0]) - 1):
-        atom_targets.append(targets[1][slices[0][i] : slices[0][i + 1]])
-    for i in range(len(slices[1]) - 1):
-        bond_targets.append(targets[2][slices[1][i] : slices[1][i + 1]])
-    mol_data = list(zip(mols, targets[0], X_d, V_fs, E_fs, V_ds, E_ds))
-    atom_data = list(zip(mols, atom_targets, X_d, V_fs, E_fs, V_ds, E_ds))
-    bond_data = list(zip(mols, bond_targets, X_d, V_fs, E_fs, V_ds, E_ds))
-    all_data = []
-    for i in range(len(mol_data)):
-        all_data.append(
-            MolAtomBondDatapoint(
-                mol=mol_data[i][0],
-                y=mol_data[i][1],
-                atom_y=atom_data[i][1],
-                bond_y=bond_data[i][1],
-                x_d=mol_data[i][2],
-                V_f=mol_data[i][3],
-                E_f=mol_data[i][4],
-                V_d=mol_data[i][5],
-                E_d=mol_data[i][6],
-            )
+def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds):
+    mol_targets, atom_targets, bond_targets = targets
+    return [
+        MolAtomBondDatapoint(
+            mol=mol,
+            y=mol_targets[i],
+            atom_y=atom_targets[i],
+            bond_y=bond_targets[i],
+            x_d=X_d[i] if X_d is not None else None,
+            V_f=V_fs[i] if V_fs is not None else None,
+            E_f=E_fs[i] if E_fs is not None else None,
+            V_d=V_ds[i] if V_ds is not None else None,
+            E_d=E_ds[i] if E_ds is not None else None,
         )
-
-    return all_data
+        for i, mol in enumerate(mols)
+    ]
 
 
 @pytest.fixture
@@ -114,8 +90,10 @@ def dataset(data):
 
 def test_targets(dataset, targets):
     np.testing.assert_array_equal(dataset.Y, targets[0])
-    np.testing.assert_array_equal(dataset.atom_Y, targets[1])
-    np.testing.assert_array_equal(dataset.bond_Y, targets[2])
+    for dset_Y, Y in zip(dataset.atom_Y, targets[1]):
+        np.testing.assert_array_almost_equal(dset_Y, Y)
+    for dset_Y, Y in zip(dataset.bond_Y, targets[2]):
+        np.testing.assert_array_almost_equal(dset_Y, Y)
 
 
 @pytest.mark.skipif(
@@ -136,3 +114,47 @@ def test_aux_nones(dataset: MolAtomBondDataset):
     assert dataset.mol_dataset.d_ef == 0
     assert dataset.mol_dataset.d_vd == 0
     assert dataset.mol_dataset.d_ed == 0
+
+
+def test_normalize_targets(dataset):
+    dset_mol_scaler = dataset.normalize_targets()
+    mol_scaler = StandardScaler()
+    mol_scaler.fit(dataset._Y)
+    Y = mol_scaler.transform(dataset._Y)
+
+    np.testing.assert_array_equal(dataset.Y, Y)
+    np.testing.assert_array_equal(dset_mol_scaler.mean_, mol_scaler.mean_)
+    np.testing.assert_array_equal(dset_mol_scaler.scale_, mol_scaler.scale_)
+
+    dset_atom_scaler = dataset.normalize_targets("atom")
+    atom_scaler = StandardScaler()
+    atom_scaler.fit(np.concatenate(dataset._atom_Y, axis=0))
+    atom_Y = [atom_scaler.transform(y) for y in dataset._atom_Y]
+
+    for dset_Y, Y in zip(dataset.atom_Y, atom_Y):
+        np.testing.assert_array_equal(dset_Y, Y)
+    np.testing.assert_array_equal(dset_atom_scaler.mean_, atom_scaler.mean_)
+    np.testing.assert_array_equal(dset_atom_scaler.scale_, atom_scaler.scale_)
+
+    dset_bond_scaler = dataset.normalize_targets("bond")
+    bond_scaler = StandardScaler()
+    bond_scaler.fit(np.concatenate(dataset._bond_Y, axis=0))
+    bond_Y = [bond_scaler.transform(y) for y in dataset._bond_Y]
+
+    for dset_Y, Y in zip(dataset.bond_Y, bond_Y):
+        np.testing.assert_array_equal(dset_Y, Y)
+    np.testing.assert_array_equal(dset_bond_scaler.mean_, bond_scaler.mean_)
+    np.testing.assert_array_equal(dset_bond_scaler.scale_, bond_scaler.scale_)
+
+
+def test_normalize_inputs(dataset):
+    dset_scaler = dataset.normalize_inputs("E_d")
+    scaler = StandardScaler()
+    Xs = dataset._E_ds
+    scaler.fit(np.concatenate(Xs, axis=0))
+    scaled_E_ds = [scaler.transform(x) for x in Xs]
+
+    for dset_X, X in zip(dataset.E_ds, scaled_E_ds):
+        np.testing.assert_array_almost_equal(dset_X, X)
+    np.testing.assert_array_equal(getattr(dset_scaler, "mean_"), scaler.mean_)
+    np.testing.assert_array_equal(getattr(dset_scaler, "scale_"), scaler.scale_)
