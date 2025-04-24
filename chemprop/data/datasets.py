@@ -30,7 +30,7 @@ class Datum(NamedTuple):
 
 
 class MolAtomBondDatum(NamedTuple):
-    """a singular training data point"""
+    """a singular training data point that supports atom and bond level targets"""
 
     mg: MolGraph
     V_d: np.ndarray | None
@@ -333,23 +333,6 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
-    """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
-
-    A :class:`MoleculeDataset` produces featurized data for input to a
-    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
-    and parallelized across multiple workers via the :class:`~torch.utils.data
-    DataLoader` class. However, for small datasets, it may be more efficient to
-    featurize the data in advance and cache the results. This can be done by
-    setting ``MoleculeDataset.cache=True``.
-
-    Parameters
-    ----------
-    data : Iterable[MoleculeDatapoint]
-        the data from which to create a dataset
-    featurizer : MoleculeFeaturizer
-        the featurizer with which to generate MolGraphs of the molecules
-    """
-
     data: list[MolAtomBondDatapoint]
 
     def __getitem__(self, idx: int) -> MolAtomBondDatum:
@@ -439,10 +422,12 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
 
     @property
     def _E_ds(self) -> list[np.ndarray]:
+        """the raw bond descriptors of the dataset"""
         return [d.E_d for d in self.data]
 
     @property
     def E_ds(self) -> list[np.ndarray]:
+        """the (scaled) bond descriptors of the dataset"""
         return self.__E_ds
 
     @E_ds.setter
@@ -453,6 +438,7 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
 
     @property
     def d_ed(self) -> int:
+        """the extra bond descriptor dimension, if any"""
         return 0 if self.E_ds[0] is None else self.E_ds[0].shape[1]
 
     def normalize_inputs(
