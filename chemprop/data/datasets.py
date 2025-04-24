@@ -423,6 +423,36 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         """the extra bond descriptor dimension, if any"""
         return 0 if self.E_ds[0] is None else self.E_ds[0].shape[1]
 
+    def normalize_targets(
+        self, key: str = "mol", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"mol", "atom", "bond"}
+
+        match key:
+            case "mol":
+                X = self._Y
+            case "atom":
+                X = np.concatenate(self._atom_Y, axis=0)
+            case "bond":
+                X = np.concatenate(self._bond_Y, axis=0)
+            case _:
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        match key:
+            case "mol":
+                self.Y = scaler.transform(X)
+            case "atom":
+                self.atom_Y = [scaler.transform(y) if y.size > 0 else y for y in self._atom_Y]
+            case "bond":
+                self.bond_Y = [scaler.transform(y) if y.size > 0 else y for y in self._bond_Y]
+            case _:
+                raise RuntimeError("unreachable code reached!")
+
+        return scaler
+
     def normalize_inputs(
         self, key: str = "X_d", scaler: StandardScaler | None = None
     ) -> StandardScaler:
