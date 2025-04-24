@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
 from chemprop.data.datasets import MolAtomBondDatapoint, MolAtomBondDataset
