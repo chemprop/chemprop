@@ -25,9 +25,10 @@ from .splitting import SplitType, make_split_indices, split_data_by_indices
 __all__ = [
     "BatchMolGraph",
     "TrainingBatch",
-    "MolAtomBondTrainingBatch",
     "collate_batch",
+    "MolAtomBondTrainingBatch",
     "collate_mol_atom_bond_batch",
+    "MulticomponentTrainingBatch",
     "collate_multicomponent",
     "build_dataloader",
     "MoleculeDatapoint",
