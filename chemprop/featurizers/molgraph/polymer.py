@@ -179,7 +179,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # have the correct saturation
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
-            V_w = np.zeros((1, self.atom_fdim), dtype=np.single).flatten()
+            V_w = np.ones((1, self.atom_fdim), dtype=np.single).flatten()
         else:
             V = np.array([self.atom_featurizer(a) for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single)
             V_w = np.array([a.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single).flatten()
