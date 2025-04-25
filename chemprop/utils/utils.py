@@ -86,6 +86,8 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
         whether to add hydrogens to the molecule
     fragment_weights: list
         list of monomer fractions for each fragment in smiles. Only used when the input is a polymer.
+    ignore_chirality : bool, optional
+        If True, ignores chirality information when constructing the molecule. Default is False.
 
     Returns
     -------
