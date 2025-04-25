@@ -143,7 +143,7 @@ def make_datapoints(
         :class:`MoleculeDatapoint`\s will be empty.
     polyss : list[list[str]] | None
         a list of ``j`` lists of ``n`` polymer SMILES strings, where ``j`` is the number of polymers per datapoint
-        and ``n`` is the number of datapoints. If ``None``, the corresponding list of :class: 
+        and ``n`` is the number of datapoints. If ``None``, the corresponding list of :class:
         `PolymerDatapoint`\s will be empty.
     rxnss : list[list[str]] | None
         a list of ``k`` lists of ``n`` reaction SMILES strings, where ``k`` is the number of
@@ -225,7 +225,7 @@ def make_datapoints(
             N = len(rxnss[0])
             smiss = []
             polyss = []
-        case [_, _, None]:  
+        case [_, _, None]:
             rxnss = []
             if len(smiss[0]) != len(polyss[0]):
                 raise ValueError(
@@ -245,7 +245,7 @@ def make_datapoints(
                 raise ValueError(
                     f"args 'polyss' and 'rxnss' must have same length! got {len(polyss[0])} and {len(rxnss[0])}"
                 )
-            N = len(rxnss[0])    
+            N = len(rxnss[0])
         case _:
             if len(smiss[0]) != len(rxnss[0]) and len(smiss[0]) != len(polyss[0]):
                 raise ValueError(
@@ -283,7 +283,7 @@ def make_datapoints(
 
     if len(smiss) == 0 and len(polyss) == 0:
         n_mols = 0
-        
+
     V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
     E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
     V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
@@ -306,7 +306,7 @@ def make_datapoints(
                 X_d = mol_descriptors
             else:
                 X_d = np.hstack([X_d, mol_descriptors])
-        
+
         if len(polyss) > 0:
             poly_descriptors = np.hstack(
                 [
@@ -357,7 +357,7 @@ def make_datapoints(
         ]
         for mol_idx, smis in enumerate(smiss)
     ]
-    
+
     poly_data = [
         [
             PolymerDatapoint(
@@ -376,7 +376,7 @@ def make_datapoints(
         ]
         for poly_idx, polys in enumerate(polyss)
     ]
-    
+
     rxn_data = [
         [
             ReactionDatapoint(
@@ -437,7 +437,7 @@ def build_data_from_files(
 
     mol_data, poly_data, rxn_data = make_datapoints(
         smiss,
-        polyss, 
+        polyss,
         rxnss,
         Y,
         weights,
@@ -518,7 +518,7 @@ def make_dataset(
             extra_bond_fdim=extra_bond_fdim,
         )
         return MoleculeDataset(data, featurizer)
-    
+
     elif isinstance(data[0], PolymerDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0

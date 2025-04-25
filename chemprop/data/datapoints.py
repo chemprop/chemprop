@@ -106,7 +106,7 @@ class _PolymerDatapointMixin:
 
     @classmethod
     def from_smi(
-        cls, 
+        cls,
         smi: str,
         *args,
         keep_h: bool = False,
@@ -117,7 +117,7 @@ class _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
         edges = smi.split("<")[1:]
         mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights, ignore_chirality=ignore_chirality)
-        
+
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
         return cls(mol, frag_weights, edges, *args, **kwargs)
@@ -153,7 +153,7 @@ class PolymerDatapoint(_DatapointMixin, _PolymerDatapointMixin):
 
     def __len__(self) -> int:
         return 1
-    
+
 
 @dataclass
 class _ReactionDatapointMixin:

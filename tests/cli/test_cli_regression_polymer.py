@@ -17,6 +17,7 @@ def data_path(data_dir):
         str(data_dir / "regression" / "polymer" / "dataset-poly_chemprop_small.csv"),
     )
 
+
 @pytest.fixture
 def model_path(data_dir):
     return str(data_dir / "regression" / "polymer" / "example_model_v2_regression_polymer.ckpt")
@@ -84,7 +85,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
 
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
-    args = ["chemprop", 
+    args = ["chemprop",
             "predict",
             "-i",
             input_path,
@@ -188,7 +189,6 @@ def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_p
     assert (tmp_path / "replicate_2" / "train_smiles.csv").exists()
 
 
-
 def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
     input_path, *_ = data_path
     args = [
@@ -198,7 +198,7 @@ def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
         input_path,
         "--model-path",
         model_path,
-        model_path, 
+        model_path,
         "--polymer-columns",
         "poly_chemprop_input",
         "--output",
@@ -239,7 +239,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
-
 
 
 def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):

@@ -33,7 +33,7 @@ class BatchMolGraph:
     """a tensor of shape ``E`` that maps from an edge index to the index of the source of the
     reverse edge in the ``edge_index`` attribute."""
     degree_of_poly: Tensor = field(init=False)
-    """a tensor of shape ``n`` thats maps the degree of polymerisation in the form 1 + log(Xn), 
+    """a tensor of shape ``n`` thats maps the degree of polymerisation in the form 1 + log(Xn),
     default 1 for a small molecule to each molecule"""
     batch: Tensor = field(init=False)
     """the index of the parent :class:`MolGraph` in the batched graph"""

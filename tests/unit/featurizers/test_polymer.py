@@ -56,21 +56,21 @@ def polymer_mol(polymer):
         rwmol.RemoveAtom(indicies[0])
         indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
     Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
-    
+
     return rwmol
 
 
 @pytest.fixture
 def polymer_V_w():
-    return np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 
+    return np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
                      0.5, 0.5, 0.5, 0.5])
 
 
 @pytest.fixture
 def polymer_E_w():
-    return np.array([1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 
-                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 
-                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0.5, 0.5, 0.5, 0.5, 
+    return np.array([1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. ,
+                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. ,
+                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0.5, 0.5, 0.5, 0.5,
                      0.5, 0.5, 0.5])
 
 
@@ -82,16 +82,16 @@ def test_fragment_weights(polymer, polymer_smiles):
 
 def test_edges(polymer, polymer_smiles):
     edges = polymer_smiles.split("<")[1:]
-    
+
     assert len(polymer.edges) == len(edges)
     assert polymer.edges == edges
-    
+
 
 def test_degree_of_polymerization(featurized_polymer, polymer_smiles):
     degree_of_poly = float(polymer_smiles.split('~')[1])
-    
+
     assert featurized_polymer.degree_of_poly == (1. + np.log10(degree_of_poly))
-    
+
 
 def test_atom_fdim(polymer_featurizer):
     assert polymer_featurizer.atom_fdim == len(polymer_featurizer.atom_featurizer)
@@ -100,7 +100,7 @@ def test_atom_fdim(polymer_featurizer):
 def test_V_shape(polymer_mol, polymer_featurizer, featurized_polymer):
     n_a = polymer_mol.GetNumAtoms()
     d_a = polymer_featurizer.atom_fdim
-    
+
     assert featurized_polymer.V.shape == (n_a, d_a)
 
 
@@ -114,20 +114,20 @@ def test_E_shape(polymer, polymer_mol, polymer_featurizer, featurized_polymer):
 
 def test_V_w_shape(polymer_mol, featurized_polymer):
     n_a = polymer_mol.GetNumAtoms()
-    
+
     assert featurized_polymer.V_w.shape == (n_a, )
-    
+
 
 def test_V_w(featurized_polymer, polymer_V_w):
     np.testing.assert_array_almost_equal(featurized_polymer.V_w, polymer_V_w)
-    
+
 
 def test_E_w_shape(polymer, polymer_mol, featurized_polymer):
     n_b = polymer_mol.GetNumBonds()
     p_b = len(polymer.edges) * 2
-    
+
     assert featurized_polymer.E_w.shape == (2 * n_b + p_b,)
-    
+
 
 def test_E_w(featurized_polymer, polymer_E_w):
     np.testing.assert_array_almost_equal(featurized_polymer.E_w, polymer_E_w)
@@ -140,7 +140,7 @@ def test_x2y_len(polymer, polymer_mol, featurized_polymer):
     assert featurized_polymer.edge_index.shape == (2, 2 * num_bonds + p_b)
     assert featurized_polymer.rev_edge_index.shape == (2 * num_bonds + p_b,)
 
-    
+
 def test_composability(polymer):
     mf1 = PolymerMolGraphFeaturizer(MultiHotAtomFeaturizer.v1(50))
     mf2 = PolymerMolGraphFeaturizer(MultiHotAtomFeaturizer.v1(100))

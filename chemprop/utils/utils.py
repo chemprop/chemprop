@@ -75,7 +75,7 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
 def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list, ignore_chirality: bool = False) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
-    
+
     Parameters
     ----------
     smi : str
@@ -111,7 +111,7 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
     while len(mols) > 0:
         m2 = mols.pop(0)
         mol = Chem.CombineMols(mol, m2)
-    
+
     return mol
 
 
@@ -124,7 +124,7 @@ def remove_wildcard_atoms(rwmol):
         rwmol.RemoveAtom(indicies[0])
         indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
     Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
-    
+
     return rwmol
 
 

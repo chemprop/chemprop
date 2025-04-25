@@ -28,6 +28,7 @@ def smis():
 def mols():
     return _DF.mol
 
+
 @pytest.fixture
 def polymers():
     return _POLY.smiles
@@ -81,7 +82,7 @@ def mol_regression_data(data_dir):
 def polymer_regression_data():
     smis = _POLY["smiles"].to_list()
     Y = _POLY["EA vs SHE (eV)"].to_numpy().reshape(-1, 1)
-    
+
     return smis, Y
 
 

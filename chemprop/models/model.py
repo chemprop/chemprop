@@ -149,7 +149,7 @@ class MPNN(pl.LightningModule):
     ) -> Tensor:
         """weights the final molecular representation by the degree of polymerization, default=1 for a small molecule"""
         return torch.mul(degree_of_poly.unsqueeze(1), H)
-    
+
     def training_step(self, batch: BatchType, batch_idx):
         batch_size = self.get_batch_size(batch)
         bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch

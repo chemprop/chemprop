@@ -172,7 +172,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         H = self.W_o(torch.cat((V, M), dim=1))  # V x d_o
         H = self.tau(H)
         H = self.dropout(H)
-        
+
         if V_d is not None:
             V_d = self.V_d_transform(V_d)
             try:
@@ -184,7 +184,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
                 )
         # Weight each atom feature vector by its atom weight
         H = torch.mul(V_w.unsqueeze(1), H)
-        
+
         return H
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
@@ -220,7 +220,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
         )
-        
+
         return self.finalize(M, bmg.V, V_d, bmg.V_w)
 
 

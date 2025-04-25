@@ -1,5 +1,4 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
-import argparse
 import logging
 from pathlib import Path
 

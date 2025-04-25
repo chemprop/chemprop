@@ -31,7 +31,6 @@ def dataloader(data):
     ],
     indirect=True,
 )
-
 @pytest.mark.integration
 def test_quick(mpnn, dataloader):
     trainer = pl.Trainer(
