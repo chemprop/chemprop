@@ -1,4 +1,8 @@
-![ChemProp Logo](docs/source/_static/images/logo/chemprop_logo.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/source/_static/images/logo/chemprop_logo_dark_mode.svg">
+  <img alt="ChemProp Logo" src="docs/source/_static/images/logo/chemprop_logo.svg">
+</picture>
+
 # Chemprop
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/chemprop)](https://badge.fury.io/py/chemprop)

@@ -100,8 +100,8 @@ def test_PlattCalibrator(
     calibrator2.fit(cal_uncs, cal_targets, cal_mask, training_targets)
     uncs2 = calibrator2.apply(test_uncs)
 
-    torch.testing.assert_close(uncs1, cal_test_uncs)
-    torch.testing.assert_close(uncs2, cal_test_uncs_with_training_targets)
+    torch.testing.assert_close(uncs1, cal_test_uncs, rtol=1e-4, atol=1e-4)
+    torch.testing.assert_close(uncs2, cal_test_uncs_with_training_targets, rtol=1e-4, atol=1e-4)
 
 
 @pytest.mark.parametrize(

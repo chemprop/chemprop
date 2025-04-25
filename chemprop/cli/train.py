@@ -1004,6 +1004,7 @@ def build_model(
         dropout=args.dropout,
         activation=args.activation,
         criterion=criterion,
+        task_weights=args.task_weights,
         n_classes=args.multiclass_num_classes,
         output_transform=output_transform,
         # spectral_activation=args.spectral_activation, TODO: Add in v2.1
@@ -1252,7 +1253,10 @@ def main(args):
     )
 
     featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers,
+        keep_h=args.keep_h,
+        add_h=args.add_h,
+        ignore_chirality=args.ignore_chirality,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
