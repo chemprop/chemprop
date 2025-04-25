@@ -72,7 +72,7 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
     return mol
 
 
-def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list) -> Chem.Mol:
+def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list, ignore_chirality: bool = False) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
     
@@ -102,7 +102,7 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
     # a single molecule object
     mols = []
     for s, w in zip(smi.split('.'), fragment_weights):
-        m = make_mol(s, keep_h, add_h)
+        m = make_mol(s, keep_h, add_h, ignore_chirality=ignore_chirality)
         mols.append(m)
     # Combine all the mols into a single mol object
     mol = mols.pop(0)
