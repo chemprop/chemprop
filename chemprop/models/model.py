@@ -487,7 +487,9 @@ class MolAtomBondMPNN(pl.LightningModule):
             preds = self.predictors[index].train_step(Z[index])
             if index == 2:
                 preds = (preds[::2] + preds[1::2]) / 2
-            l = self.criterion[index](preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index])
+            l = self.criterion[index](
+                preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index]
+            )
             total_l += l
 
         return total_l
@@ -514,16 +516,13 @@ class MolAtomBondMPNN(pl.LightningModule):
             if index == 2:
                 preds = (preds[::2] + preds[1::2]) / 2
 
-            self.metrics[index][-1](preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index])
+            self.metrics[index][-1](
+                preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index]
+            )
             agg_metric += self.metrics[index][-1].compute()
             self.metrics[index][-1].reset()
 
-        self.log(
-            "val_loss",
-            agg_metric,
-            batch_size=len(batch[0]),
-            prog_bar=True,
-        )
+        self.log("val_loss", agg_metric, batch_size=len(batch[0]), prog_bar=True)
 
     def test_step(self, batch: MolAtomBondTrainingBatch, batch_idx: int = 0):
         self._evaluate_batch(batch, "test")
@@ -552,7 +551,9 @@ class MolAtomBondMPNN(pl.LightningModule):
                 preds = preds[..., 0]
 
             for m in self.metrics[index][:-1]:
-                m.update(preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index])
+                m.update(
+                    preds, targets[index], mask, weights[index], lt_masks[index], gt_masks[index]
+                )
                 self.log(f"{label}/{m.alias}", m, batch_size=len(batch[0]))
 
     def predict_step(
