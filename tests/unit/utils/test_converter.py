@@ -19,6 +19,11 @@ def example_model_v1_path(data_dir):
 
 
 @pytest.fixture
+def example_model_v1_4_path(data_dir):
+    return data_dir / "example_model_v1_4.pt"
+
+
+@pytest.fixture
 def example_model_v1_prediction(data_dir):
     path = data_dir / "example_model_v1_regression_mol_prediction.csv"
 
@@ -40,7 +45,7 @@ def example_model_v1_prediction(data_dir):
 def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction):
     directory = tmp_path / "test_converter"
     directory.mkdir()
-    model_v2_save_path = directory / "example_model_v2_regression_mol.ckpt"
+    model_v2_save_path = directory / "example_model_v2_regression_mol.pt"
 
     convert_model_file_v1_to_v2(example_model_v1_path, model_v2_save_path)
     assert model_v2_save_path.exists()
@@ -53,3 +58,12 @@ def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction)
     predss = trainer.predict(mpnn, test_loader)
     ys_v2 = np.vstack(predss)
     assert np.allclose(ys_v2, ys_v1, atol=1e-6)
+
+
+def test_converter_v1_4(tmp_path, example_model_v1_4_path):
+    directory = tmp_path / "test_converter"
+    directory.mkdir()
+    model_v2_save_path = directory / "converted_v1_4.pt"
+
+    convert_model_file_v1_to_v2(example_model_v1_4_path, model_v2_save_path)
+    assert model_v2_save_path.exists()

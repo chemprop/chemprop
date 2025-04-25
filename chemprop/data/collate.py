@@ -107,39 +107,48 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     )
 
 
+class MolAtomBondTrainingBatch(NamedTuple):
+    bmg: BatchMolGraph
+    V_d: Tensor | None
+    E_d: Tensor | None
+    X_d: Tensor | None
+    Ys: tuple[Tensor | None, Tensor | None, Tensor | None]
+    w: tuple[Tensor | None, Tensor | None, Tensor | None]
+    lt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+    gt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+
+
 def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:
-    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = zip(*batch)
+    mgs, V_ds, E_ds, x_ds, yss, weights, lt_maskss, gt_maskss = zip(*batch)
 
-    np_ys, np_lts, np_gts, weights_tensors = [], [], [], []
-
-    for dataset in zip(*ys):
-        if dataset[0] is None:
-            np_ys.append(None)
+    weights = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
+    weights_tensors = []
+    for ys in zip(*yss):
+        if ys[0] is None:
             weights_tensors.append(None)
-            continue
         else:
-            np_ys.append(np.vstack(dataset))
-        if np_ys[-1].shape[0] == len(dataset):
-            weights_tensors.append(torch.tensor(weights, dtype=torch.float))
-        else:
-            num_atoms = torch.tensor([y.shape[0] for y in dataset])
-            tensor = torch.tensor(weights, dtype=torch.float)
-            weights_tensors.append(torch.repeat_interleave(tensor, repeats=num_atoms))
-
-    for dataset in zip(*lt_masks):
-        np_lts.append(np.vstack(dataset))
-    for dataset in zip(*gt_masks):
-        np_gts.append(np.vstack(dataset))
+            repeats = torch.tensor([y.shape[0] for y in ys])
+            weights_tensors.append(
+                weights
+                if torch.all(repeats == 1)
+                else torch.repeat_interleave(weights, repeats, dim=0)
+            )
 
     return MolAtomBondTrainingBatch(
         BatchMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
         None if E_ds[0] is None else torch.from_numpy(np.concatenate(E_ds)).float(),
         None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
-        [torch.from_numpy(np_y).float() for np_y in np_ys],
+        [None if ys[0] is None else torch.from_numpy(np.vstack(ys)).float() for ys in zip(*yss)],
         weights_tensors,
-        [None if lt_masks[0][i] is None else torch.from_numpy(np_lts[i]) for i in range(3)],
-        [None if gt_masks[0][i] is None else torch.from_numpy(np_gts[i]) for i in range(3)],
+        [
+            None if lt_masks[0] is None else torch.from_numpy(np.vstack(lt_masks))
+            for lt_masks in zip(*lt_maskss)
+        ],
+        [
+            None if gt_masks[0] is None else torch.from_numpy(np.vstack(gt_masks))
+            for gt_masks in zip(*gt_maskss)
+        ],
     )
 
 

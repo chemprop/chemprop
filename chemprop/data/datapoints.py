@@ -48,9 +48,15 @@ class _MoleculeDatapointMixin:
 
     @classmethod
     def from_smi(
-        cls, smi: str, *args, keep_h: bool = False, add_h: bool = False, **kwargs
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_chirality: bool = False,
+        **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h)
+        mol = make_mol(smi, keep_h, add_h, ignore_chirality)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -62,7 +68,7 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
 
     V_f: np.ndarray | None = None
-    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
     ``d_vf`` is the number of additional features that will be concatenated to atom-level features
     *before* message passing"""
     E_f: np.ndarray | None = None
@@ -91,23 +97,48 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 
 @dataclass
 class MolAtomBondDatapoint(MoleculeDatapoint):
-    atom_y: np.ndarray | None = None
-    bond_y: np.ndarray | None = None
-    atom_lt_mask: np.ndarray | None = None
-    atom_gt_mask: np.ndarray | None = None
-    bond_lt_mask: np.ndarray | None = None
-    bond_gt_mask: np.ndarray | None = None
     E_d: np.ndarray | None = None
-
     """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
     ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
     descriptors *after* message passing"""
+    atom_y: np.ndarray | None = None
+    """A numpy array of shape ``V x v_t``, where ``V`` is the number of atoms in the molecule, and
+    ``v_t`` is the number of atom targets. The order of atoms in the array should match the order of
+    atoms in the mol. Unknown targets are indicated by `nan`s."""
+    atom_gt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `<x`"""
+    atom_lt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `>x`"""
+    bond_y: np.ndarray | None = None
+    """A numpy array of shape ``E x e_t``, where ``V`` is the number of bonds in the molecule, and
+    ``e_t`` is the number of bond targets. The order of bonds in the array should match the order of
+    bonds in the mol. Unknown targets are indicated by `nan`s."""
+    bond_gt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `<x`"""
+    bond_lt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `>x`"""
 
     def __post_init__(self):
         super().__post_init__()
         NAN_TOKEN = 0
         if self.E_d is not None:
             self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
+
+    @classmethod
+    def from_smi(
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        reorder_atoms: bool = True,
+        **kwargs,
+    ) -> MolAtomBondDatapoint:
+        mol = make_mol(smi, keep_h, add_h, reorder_atoms=reorder_atoms)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, *args, **kwargs)
 
 
 @dataclass
@@ -124,6 +155,7 @@ class _ReactionDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
+        ignore_chirality: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -140,8 +172,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h)
-        pdt = make_mol(pdt_smi, keep_h, add_h)
+        rct = make_mol(rct_smi, keep_h, add_h, ignore_chirality)
+        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 

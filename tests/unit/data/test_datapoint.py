@@ -6,6 +6,11 @@ from chemprop.data import MoleculeDatapoint
 SMI = "c1ccccc1"
 
 
+@pytest.fixture(params=["@", "@@"])
+def chiral_smi(request):
+    return f"C[C{request.param}H](O)N"
+
+
 @pytest.fixture(params=range(1, 3))
 def targets(request):
     return np.random.rand(request.param)
@@ -35,6 +40,13 @@ def test_addh(smi, targets):
     d2 = MoleculeDatapoint.from_smi(smi, y=targets, add_h=True)
 
     assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms()
+
+
+def test_ignore_chirality(chiral_smi, targets):
+    d1 = MoleculeDatapoint.from_smi(chiral_smi, y=targets)
+    d2 = MoleculeDatapoint.from_smi(chiral_smi, y=targets, ignore_chirality=True)
+
+    assert d1.mol.GetAtomWithIdx(1).GetChiralTag() != d2.mol.GetAtomWithIdx(1).GetChiralTag()
 
 
 def test_replace_token(smi, targets, features_with_nans):
