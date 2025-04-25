@@ -124,6 +124,22 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
         if self.E_d is not None:
             self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
 
+    @classmethod
+    def from_smi(
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        reorder_atoms: bool = True,
+        **kwargs,
+    ) -> MolAtomBondDatapoint:
+        mol = make_mol(smi, keep_h, add_h, reorder_atoms=reorder_atoms)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, *args, **kwargs)
+
 
 @dataclass
 class _ReactionDatapointMixin:
