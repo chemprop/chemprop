@@ -997,7 +997,7 @@ def build_model(
 
     predictor = Factory.build(
         predictor_cls,
-        input_dim=mp_block.output_dim + d_xd,
+        input_dim=mp_block.output_dim,
         n_tasks=n_tasks,
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,

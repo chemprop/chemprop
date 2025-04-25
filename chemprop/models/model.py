@@ -19,6 +19,51 @@ logger = logging.getLogger(__name__)
 BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class CrossAttention(nn.Module):
+    def __init__(self, feature_dim, descriptor_dim, hidden_dim, num_heads,dropout):
+        super(CrossAttention, self).__init__()
+        self.feature_dim = feature_dim
+        self.descriptor_dim = descriptor_dim
+        self.hidden_dim = hidden_dim
+        self.num_heads = num_heads
+        self.dropout=dropout
+        # Linear projections to shared hidden space
+        self.q_proj = nn.Linear(feature_dim, hidden_dim)
+        self.k_proj = nn.Linear(descriptor_dim, hidden_dim)
+        self.v_proj = nn.Linear(descriptor_dim, hidden_dim)
+
+        self.dropout = nn.Dropout(dropout)
+        self.layernorm = nn.LayerNorm(hidden_dim)
+
+        # Multi-head attention
+        self.attn = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, dropout=dropout,batch_first=True)
+        # Optional feedforward layer
+        self.out_proj = nn.Linear(hidden_dim, hidden_dim)
+
+    def forward(self, V_features, X_descriptor):
+        """
+        V_features: Tensor of shape (N, d_feat)  # features like bonds
+        X_descriptor: Tensor of shape (1, d_desc)  # single global descriptor
+        Returns: updated V_features of shape (N, hidden_dim)
+        """
+        # Project into Q, K, V 
+        Q = self.q_proj(V_features).unsqueeze(0)  # (1, N, hidden_dim)
+        K = self.k_proj(X_descriptor).unsqueeze(0)  # (1, 1, hidden_dim)
+        V = self.v_proj(X_descriptor).unsqueeze(0)  # (1, 1, hidden_dim)
+
+        # Apply multi-head attention
+        attn_output, _ = self.attn(Q, K, V)  # (1, N, hidden_dim)
+        attn_output = self.layernorm(attn_output + Q)
+
+        # Residual + output projection (optional)
+        out = self.out_proj(attn_output.squeeze(0))  # (N, hidden_dim)
+        return out
+
+
 class MPNN(pl.LightningModule):
     r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
     predictor routine.
@@ -86,6 +131,7 @@ class MPNN(pl.LightningModule):
                 "predictor": predictor.hparams,
             }
         )
+        self._node_cross_attn = None
 
         self.message_passing = message_passing
         self.agg = agg
@@ -121,15 +167,36 @@ class MPNN(pl.LightningModule):
     def criterion(self) -> ChempropMetric:
         return self.predictor.criterion
 
+
+    def _init_cross_attention(self, X: Tensor, X_d: Tensor):
+        """Initialize cross attention layers if they don't exist"""
+        if self._node_cross_attn is None:
+            N, d_feat = X.shape
+            print(d_feat)
+            d_desc = X_d.shape[1]
+            
+            self._node_cross_attn = CrossAttention(
+                feature_dim=d_feat,
+                descriptor_dim=d_desc,
+                hidden_dim=d_feat,
+                num_heads=8,
+                dropout=0.2
+            )
+            
+
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
-        H_v = self.message_passing(bmg, V_d)
-        H = self.agg(H_v, bmg.batch)
+       
+        H_v = self.message_passing(bmg, V_d) 
+        if X_d is not None:
+            self._init_cross_attention(H_v, X_d)
+            H_a = self.node_cross_attn(H_v, X_d)
+        H = self.agg(H_a, bmg.batch)
         H = self.bn(H)
 
-        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
+        return H 
 
     def encoding(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None, i: int = -1
