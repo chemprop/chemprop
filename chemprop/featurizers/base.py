@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Hashable, Sized
-from typing import Callable, Generic, Sequence, TypeVar
+from typing import Any, Callable, Generic, Sequence, TypeVar
 
 import numpy as np
 
@@ -33,26 +33,25 @@ class GraphFeaturizer(Featurizer[S, MolGraph]):
 class Subfeature(Generic[S]):
     """Extract a one-hot encoding or a raw value from an Atom or Bond.
 
-    This class uses a getter function to extract an attribute from an RDKit Atom or Bond.
-    If a list of choices is provided, the attribute is converted into a one-hot encoded tuple.
-    If choices are omitted, the raw attribute value is returned inside a tuple.
-
-    Instances are callable: passing an Atom, Bond, or None returns the encoding.
+    This class uses a getter function to extract an attribute from an input object. If a list of
+    choices is provided, the attribute is converted into a one-hot encoded tuple. If choices are
+    omitted, the raw attribute value is returned as a 1-tuple.
 
     Parameters
     ----------
     getter : Callable[[S], Hashable]
-        A function that extracts the attribute to be encoded from an Atom or Bond.
+        A function that extracts the attribute to be encoded from an input object.
     choices : Sequence[Hashable], optional
-        A sequence of possible values. If provided, the attribute is one-hot encoded.
-        If None, the attribute value itself is used as the output.
+        A sequence of possible values. If provided, the attribute is one-hot encoded. If None,
+        the attribute value itself is used as the output.
     unknown_padding : bool, default=False
-        If True and choices are given, adds an extra dimension to handle unknown values.
+        If True and choices are given, adds an extra dimension to handle unknown values. This is
+        only relevant if choices are provided.
 
     Raises
     ------
     ValueError
-        If `choices` are not unique.
+        If the provided `choices` are not unique.
 
     Example
     -------
@@ -106,19 +105,20 @@ class Subfeature(Generic[S]):
             return 1
         return len(self.choices) + int(self.unknown_padding)
 
-    def __call__(self, input: S | None) -> tuple[int | float, ...]:
-        """Encode an Atom or Bond as a one-hot tuple or a raw value tuple.
+    def __call__(self, input: S | None) -> tuple[int, ...] | tuple[int | float,]:
+        """Encode an input object as a one-hot tuple or a raw value tuple.
 
         Parameters
         ----------
         input : S | None
-            The input entity. If None, returns a tuple of zeros.
+            The input object. If None, returns a tuple of zeros.
 
         Returns
         -------
-        tuple[int | float, ...]
-            One-hot encoded tuple if choices are provided;
-            otherwise, a tuple with the raw extracted value.
+        tuple[int, ...] | tuple[int | float,]
+            One-hot encoded tuple if choices are provided; otherwise, a tuple with the raw
+            extracted value.
+
         """
         if input is None:
             return (0,) * len(self)
@@ -137,19 +137,34 @@ class Subfeature(Generic[S]):
         input : S | None
             The input entity. If None, returns a string of zeros.
         decimals : int, default=3
-            Number of decimals if the value is a float (only relevant if choices are None).
+            Number of decimals (only relevant if the feature is a float value).
 
         Returns
         -------
         str
             The string encoding of the feature vector.
         """
+        if input is None:
+            return "0" * len(self)
         if self.choices is None:
             x = self(input)[0]
             if isinstance(x, float):
                 return f"{x:.{decimals}f}"
             return str(int(x))
         return "".join(map(str, self(input)))
+
+
+class NullitySubfeature(Subfeature[Any]):
+    """A subfeature that encodes whether an input is None."""
+
+    def __init__(self):
+        super().__init__(getter=lambda x: x is None)
+
+    def __call__(self, input: Any) -> tuple[int,]:
+        return (self.getter(input),)
+
+    def as_string(self, input: Any) -> str:
+        return "1" if self.getter(input) else "0"
 
 
 class MultiHotFeaturizer(VectorFeaturizer[S]):
@@ -172,38 +187,43 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
     ...     getter=lambda atom: 0.01 * atom.GetMass()
     ... )
     >>> featurizer = MultiHotFeaturizer[Chem.Atom](
-    ...     symbol_subfeature, mass_subfeature
+    ...     NullitySubfeature(), symbol_subfeature, mass_subfeature
     ... )
     >>> mol = Chem.MolFromSmiles("C(O)N")
     >>> atom = mol.GetAtomWithIdx(0)
     >>> featurizer.to_string(atom)
-    '1000 0.120'
-
+    '0 1000 0.120'
+    >>> featurizer.to_string(None)
+    '1 0000 0'
     """
 
-    def __init__(self, *subfeats: Subfeature):
+    def __init__(self, *subfeats: Subfeature, nullity_bit: bool = False):
+        if nullity_bit:
+            subfeats = (Subfeature(lambda _: 0), *subfeats)
         self.subfeats = subfeats
+        self.nullity_bit = nullity_bit
         self._subfeat_sizes = list(map(len, subfeats))
         self._size = sum(self._subfeat_sizes)
 
     def __len__(self):
         return self._size
 
-    def __call__(self, input: S) -> np.ndarray:
+    def __call__(self, input: S | None) -> np.ndarray:
         return np.concatenate([f(input) for f in self.subfeats])
 
-    def to_string(self, input: S) -> str:
+    def to_string(self, input: S | None) -> str:
         """Return a string representation of the concatenated subfeatures.
 
         Parameters
         ----------
-        input : S
-            The input entity.
+        input : S | None
+            The input object.
 
         Returns
         -------
         str
-            The string encoding of the concatenated subfeatures, with spaces separating each subfeature.
+            The string encoding of the concatenated subfeatures, with spaces separating each
+            subfeature.
 
         """
         return " ".join(f.as_string(input) for f in self.subfeats)
