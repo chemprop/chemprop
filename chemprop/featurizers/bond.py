@@ -2,7 +2,7 @@ from typing import Sequence
 
 from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
-from chemprop.featurizers.base import MultiHotFeaturizer, Subfeature
+from chemprop.featurizers.base import MultiHotFeaturizer, NullitySubfeature, Subfeature
 
 
 class BondSubfeature(Subfeature[Bond]):
@@ -39,9 +39,9 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
 
     Parameters
     ----------
-    bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
+    bond_types : Sequence[BondType], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Sequence[BondStereo] | None, default=[NONE, ANY, Z, E, CIS, TRANS]
+    stereos : Sequence[BondStereo], default=[NONE, ANY, Z, E, CIS, TRANS]
         the known bond stereochemistries. See [1]_ for more details
 
     Example
@@ -59,29 +59,30 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
     References
     ----------
     .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
+
     """
 
     def __init__(
         self,
-        bond_types: Sequence[BondType] | None = None,
-        stereos: Sequence[BondStereo] | None = None,
-    ):
-        self.bond_types = bond_types or [
+        bond_types: Sequence[BondType] = (
             BondType.SINGLE,
             BondType.DOUBLE,
             BondType.TRIPLE,
             BondType.AROMATIC,
-        ]
-        self.stereo = stereos or [
+        ),
+        stereos: Sequence[BondStereo] = (
             BondStereo.STEREONONE,
             BondStereo.STEREOANY,
             BondStereo.STEREOZ,
             BondStereo.STEREOE,
             BondStereo.STEREOCIS,
             BondStereo.STEREOTRANS,
-        ]
+        ),
+    ):
+        self.bond_types = bond_types
+        self.stereo = stereos
         super().__init__(
-            BondSubfeature(lambda b: b is None),
+            NullitySubfeature(),
             BondSubfeature(lambda b: b.GetBondType(), self.bond_types),
             BondSubfeature(lambda b: b.GetIsConjugated()),
             BondSubfeature(lambda b: b.IsInRing()),
@@ -118,6 +119,4 @@ class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
     """
 
     def __init__(self):
-        super().__init__(
-            BondSubfeature(lambda b: b is None), BondSubfeature(lambda b: b.IsInRing())
-        )
+        super().__init__(NullitySubfeature(), BondSubfeature(lambda b: b.IsInRing()))
