@@ -15,7 +15,7 @@ class Featurizer(Generic[S, T]):
     type ``T``."""
 
     @abstractmethod
-    def __call__(self, input: S, *args, **kwargs) -> T:
+    def __call__(self, input: S | None, *args, **kwargs) -> T:
         """featurize an input"""
 
 
@@ -41,7 +41,7 @@ class Subfeature(Generic[S]):
 
     Parameters
     ----------
-    getter : Callable[[Atom | Bond], Hashable]
+    getter : Callable[[S], Hashable]
         A function that extracts the attribute to be encoded from an Atom or Bond.
     choices : Sequence[Hashable], optional
         A sequence of possible values. If provided, the attribute is one-hot encoded.
@@ -106,12 +106,12 @@ class Subfeature(Generic[S]):
             return 1
         return len(self.choices) + int(self.unknown_padding)
 
-    def __call__(self, entity: S | None) -> tuple[int | float, ...]:
+    def __call__(self, input: S | None) -> tuple[int | float, ...]:
         """Encode an Atom or Bond as a one-hot tuple or a raw value tuple.
 
         Parameters
         ----------
-        entity : Atom | Bond | None
+        input : S | None
             The input entity. If None, returns a tuple of zeros.
 
         Returns
@@ -120,21 +120,21 @@ class Subfeature(Generic[S]):
             One-hot encoded tuple if choices are provided;
             otherwise, a tuple with the raw extracted value.
         """
-        if entity is None:
+        if input is None:
             return (0,) * len(self)
         if self.choices is None:
-            return (self.getter(entity),)
-        lst = [x == self.getter(entity) for x in self.choices]
+            return (self.getter(input),)
+        lst = [x == self.getter(input) for x in self.choices]
         if self.unknown_padding:
             lst.append(not any(lst))
         return tuple(map(int, lst))
 
-    def as_string(self, entity: S | None, decimals: int = 3) -> str:
+    def as_string(self, input: S | None, decimals: int = 3) -> str:
         """Return a string representation of the feature encoding.
 
         Parameters
         ----------
-        entity : Atom | Bond | None
+        input : S | None
             The input entity. If None, returns a string of zeros.
         decimals : int, default=3
             Number of decimals if the value is a float (only relevant if choices are None).
@@ -145,11 +145,11 @@ class Subfeature(Generic[S]):
             The string encoding of the feature vector.
         """
         if self.choices is None:
-            x = self(entity)[0]
+            x = self(input)[0]
             if isinstance(x, float):
                 return f"{x:.{decimals}f}"
             return str(int(x))
-        return "".join(map(str, self(entity)))
+        return "".join(map(str, self(input)))
 
 
 class MultiHotFeaturizer(VectorFeaturizer[S]):
@@ -182,7 +182,7 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
     """
 
     def __init__(self, *subfeats: Subfeature):
-        self._subfeats = subfeats
+        self.subfeats = subfeats
         self._subfeat_sizes = list(map(len, subfeats))
         self._size = sum(self._subfeat_sizes)
 
@@ -190,14 +190,14 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
         return self._size
 
     def __call__(self, input: S) -> np.ndarray:
-        return np.concatenate([f(input) for f in self._subfeats])
+        return np.concatenate([f(input) for f in self.subfeats])
 
     def to_string(self, input: S) -> str:
         """Return a string representation of the concatenated subfeatures.
 
         Parameters
         ----------
-        input : Atom | Bond
+        input : S
             The input entity.
 
         Returns
@@ -206,4 +206,4 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
             The string encoding of the concatenated subfeatures, with spaces separating each subfeature.
 
         """
-        return " ".join(f.as_string(input) for f in self._subfeats)
+        return " ".join(f.as_string(input) for f in self.subfeats)
