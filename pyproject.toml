@@ -69,7 +69,7 @@ max_line_length = 100
 
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --cov chemprop"
+addopts = "--doctest-modules --ignore=docs --cov chemprop"
 testpaths = ["chemprop", "tests"]
 
 [tool.isort]
