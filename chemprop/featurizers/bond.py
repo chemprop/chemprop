@@ -89,14 +89,6 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
             BondSubfeature(lambda b: b.GetStereo(), self.stereo, unknown_padding=True),
         )
 
-    @classmethod
-    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs)`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs)``."""
-        n = len(xs)
-
-        return xs.index(x) if x in xs else n, n
-
 
 class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
