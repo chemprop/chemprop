@@ -37,7 +37,7 @@ class Aggregation(nn.Module, HasHParams):
         self.hparams = {"dim": dim, "cls": self.__class__}
 
     @abstractmethod
-    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, H: Tensor, batch: Tensor, *args) -> Tensor:
         """Aggregate the graph-level representations of a batch of graphs into their respective
         global representations
 
@@ -70,12 +70,21 @@ class MeanAggregation(Aggregation):
         \mathbf h = \frac{1}{|V|} \sum_{v \in V} \mathbf w_v \mathbf h_v
     """
 
-    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
-        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+    def forward(self, H: Tensor, batch: Tensor, V_w: Tensor, *args) -> Tensor:
         dim_size = batch.max().int() + 1
-        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            self.dim, index_torch, H, reduce="mean", include_self=False
+        index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
+        sum_node_embeddings = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, H, reduce="sum", include_self=False
         )
+        V_w = V_w.unsqueeze(1)
+        index_weight = batch.unsqueeze(1).repeat(1, V_w.shape[1])
+        sum_of_weights = torch.zeros(dim_size, V_w.shape[1], dtype=V_w.dtype, device=V_w.device).scatter_reduce_(
+            self.dim, index_weight, V_w, reduce="sum", include_self=False
+        )
+        return torch.div(sum_node_embeddings, sum_of_weights)
+        #return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+        #    self.dim, index_torch, H, reduce="mean", include_self=False
+        #)
 
 
 @AggregationRegistry.register("sum")
@@ -87,7 +96,7 @@ class SumAggregation(Aggregation):
 
     """
 
-    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, H: Tensor, batch: Tensor, *args) -> Tensor:
         index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
         dim_size = batch.max().int() + 1
         return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
@@ -109,7 +118,7 @@ class NormAggregation(SumAggregation):
         self.norm = norm
         self.hparams["norm"] = norm
 
-    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, H: Tensor, batch: Tensor, *args) -> Tensor:
         return super().forward(H, batch) / self.norm
 
 
@@ -120,7 +129,7 @@ class AttentiveAggregation(Aggregation):
         self.hparams["output_size"] = output_size
         self.W = nn.Linear(output_size, 1)
 
-    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, H: Tensor, batch: Tensor, *args) -> Tensor:
         dim_size = batch.max().int() + 1
         attention_logits = self.W(H).exp()
         Z = torch.zeros(dim_size, 1, dtype=H.dtype, device=H.device).scatter_reduce_(
