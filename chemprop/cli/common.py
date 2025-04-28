@@ -201,8 +201,10 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    if data_args.reaction_columns and data_args.canonicalize_smiles:
-        raise ArgumentError("SMILES canonicalization removes atom mapping and it thus incompatible with Reaction Mode.")
+    if args.reaction_columns and args.canonicalize_smiles:
+        raise ArgumentError(
+            "SMILES canonicalization removes atom mapping and it thus incompatible with Reaction Mode."
+        )
 
 
 def find_models(model_paths: list[Path]):
