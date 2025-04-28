@@ -214,13 +214,19 @@ def make_datapoints(
         N = len(smiss[0])
 
     if len(smiss) > 0:
-        molss = [[make_mol(smi, keep_h, add_h, canonicalize) for smi in smis] for smis in smiss]
-        molss = [[make_mol(smi, keep_h, add_h, ignore_chirality, canonicalize) for smi in smis] for smis in smiss]
+        molss = [
+            [make_mol(smi, keep_h, add_h, ignore_chirality, canonicalize) for smi in smis]
+            for smis in smiss
+        ]
     if len(rxnss) > 0:
         rctss = [
             [
                 make_mol(
-                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, ignore_chirality, canonicalize
+                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                    keep_h,
+                    add_h,
+                    ignore_chirality,
+                    canonicalize,
                 )
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
