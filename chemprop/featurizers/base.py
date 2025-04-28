@@ -65,13 +65,13 @@ class Subfeature(Generic[S]):
     >>> atom = mol.GetAtomWithIdx(0)
     >>> symbol_subfeature(atom)
     (1, 0, 0, 0)
-    >>> symbol_subfeature.as_string(atom)
+    >>> symbol_subfeature.to_string(atom)
     '1000'
 
     >>> mass_subfeature = Subfeature[Chem.Atom](getter=lambda atom: atom.GetMass())
     >>> mass_subfeature(atom)
     (12.011,)
-    >>> mass_subfeature.as_string(atom)
+    >>> mass_subfeature.to_string(atom)
     '12.011'
 
     >>> bond = mol.GetBondWithIdx(0)
@@ -81,7 +81,7 @@ class Subfeature(Generic[S]):
     ... )
     >>> bond_type_subfeature(bond)
     (1, 0)
-    >>> bond_type_subfeature.as_string(bond)
+    >>> bond_type_subfeature.to_string(bond)
     '10'
 
     """
@@ -129,7 +129,7 @@ class Subfeature(Generic[S]):
             lst.append(not any(lst))
         return tuple(map(int, lst))
 
-    def as_string(self, input: S | None, decimals: int = 3) -> str:
+    def to_string(self, input: S | None, decimals: int = 3) -> str:
         """Return a string representation of the feature encoding.
 
         Parameters
@@ -163,7 +163,7 @@ class NullitySubfeature(Subfeature[Any]):
     def __call__(self, input: Any) -> tuple[int,]:
         return (self.getter(input),)
 
-    def as_string(self, input: Any) -> str:
+    def to_string(self, input: Any, _: int = 3) -> str:
         return "1" if self.getter(input) else "0"
 
 
@@ -211,7 +211,7 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
     def __call__(self, input: S | None) -> np.ndarray:
         return np.concatenate([f(input) for f in self.subfeats])
 
-    def to_string(self, input: S | None) -> str:
+    def to_string(self, input: S | None, decimals: int = 3) -> str:
         """Return a string representation of the concatenated subfeatures.
 
         Parameters
@@ -226,4 +226,4 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
             subfeature.
 
         """
-        return " ".join(f.as_string(input) for f in self.subfeats)
+        return " ".join(f.to_string(input, decimals) for f in self.subfeats)

@@ -1,4 +1,5 @@
 from dataclasses import InitVar, dataclass
+import itertools
 
 import numpy as np
 from rdkit import Chem
@@ -34,17 +35,17 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     >>> from rdkit import Chem
     >>> mol = Chem.MolFromSmiles("O\C=C\O")
     >>> featurizer = SimpleMoleculeMolGraphFeaturizer()
-    >>> print(featurizer.prettify(featurizer(mol)))
+    >>> print(featurizer.to_string(mol))
     0: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
     1: 00000100000000000000000000000000000000 0001000 000010 10000 010000 00100000 0 0.120
     2: 00000100000000000000000000000000000000 0001000 000010 10000 010000 00100000 0 0.120
     3: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
-    0→1: 0 1000 1 0 1000000
-    1→0: 0 1000 1 0 1000000
-    1→2: 0 0100 1 0 0001000
-    2→1: 0 0100 1 0 0001000
-    2→3: 0 1000 1 0 1000000
-    3→2: 0 1000 1 0 1000000
+    0-1: 0 1000 1 0 1000000
+    0-2: 1 0000 0 0 0000000
+    0-3: 1 0000 0 0 0000000
+    1-2: 0 0100 1 0 0001000
+    1-3: 1 0000 0 0 0000000
+    2-3: 0 1000 1 0 1000000
 
     """
 
@@ -108,13 +109,32 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
         return MolGraph(V, E, edge_index, rev_edge_index)
 
-    def prettify(self, molgraph: MolGraph) -> str:
-        """Convert the featurized molecule into a human-readable string."""
-        vertices = "\n".join(
-            f"{i}: {self.atom_featurizer.prettify(v)}" for i, v in enumerate(molgraph.V)
-        )
-        edges = "\n".join(
-            f"{i}\u2192{j}: {self.bond_featurizer.prettify(e)}"
-            for (i, j), e in zip(molgraph.edge_index.T, molgraph.E)
-        )
-        return "\n".join((vertices, edges))
+    def to_string(self, mol: Chem.Mol, decimals: int = 3) -> str:
+        """
+        Returns a string representation of the molecule featurization.
+
+        Parameters
+        ----------
+        mol : Chem.Mol
+            The RDKit molecule to featurize.
+        decimals : int, optional
+            The number of decimal places to round float-valued features to. Defaults to 3.
+
+        Returns
+        -------
+        str
+            A string representation of the molecule featurization, with each atom
+            and bond represented on a separate line. The atom lines are of the form
+            "i: <atom_features>" and the bond lines are of the form
+            "i-j: <bond_features>".
+        """
+        n = mol.GetNumAtoms()
+        digits = len(str(n))
+        lines = []
+        for i in range(n):
+            string = self.atom_featurizer.to_string(mol.GetAtomWithIdx(i), decimals)
+            lines.append(f"{i:{digits}}: {string}")
+        for i, j in itertools.combinations(range(n), 2):
+            string = self.bond_featurizer.to_string(mol.GetBondBetweenAtoms(i, j), decimals)
+            lines.append(f"{i:{digits}}-{j:{digits}}: {string}")
+        return "\n".join(lines)

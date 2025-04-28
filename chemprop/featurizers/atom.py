@@ -4,7 +4,7 @@ from typing import Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, ChiralType, HybridizationType
 
-from chemprop.featurizers.base import Subfeature, MultiHotFeaturizer
+from chemprop.featurizers.base import MultiHotFeaturizer, Subfeature
 from chemprop.utils.utils import EnumMapping
 
 
