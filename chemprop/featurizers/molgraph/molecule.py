@@ -23,6 +23,12 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
         molecule
+    backward_bond_featurizer : BondFeaturizer | None, default=None
+        the featurizer with which to compute feature representations for backward bonds in a
+        molecule. If this is ``None``, the ``bond_featurizer`` will be used for both forward and
+        backward bonds. A forward bond is defined as starting at ``bond.GetBeginAtom()`` and ending
+        at ``bond.GetEndAtom()``, while a reversed bond starts at ``bond.GetEndAtom()`` and ends at
+        ``bond.GetBeginAtom()``.
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
@@ -33,19 +39,18 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     Example
     -------
     >>> from rdkit import Chem
-    >>> mol = Chem.MolFromSmiles("O\C=C\O")
+    >>> mol = Chem.MolFromSmiles("C=CO")
     >>> featurizer = SimpleMoleculeMolGraphFeaturizer()
     >>> print(featurizer.to_string(mol))
-    0: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
+    0: 00000100000000000000000000000000000000 0001000 000010 10000 001000 00100000 0 0.120
     1: 00000100000000000000000000000000000000 0001000 000010 10000 010000 00100000 0 0.120
-    2: 00000100000000000000000000000000000000 0001000 000010 10000 010000 00100000 0 0.120
-    3: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
-    0-1: 0 1000 1 0 1000000
-    0-2: 1 0000 0 0 0000000
-    0-3: 1 0000 0 0 0000000
-    1-2: 0 0100 1 0 0001000
-    1-3: 1 0000 0 0 0000000
-    2-3: 0 1000 1 0 1000000
+    2: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
+    0→1: 0 0100 1 0 1000000
+    0←1: 0 0100 1 0 1000000
+    0→2: 1 0000 0 0 0000000
+    0←2: 1 0000 0 0 0000000
+    1→2: 0 1000 1 0 1000000
+    1←2: 0 1000 1 0 1000000
 
     """
 
@@ -92,11 +97,16 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
         i = 0
         for bond in mol.GetBonds():
-            x_e = self.bond_featurizer(bond)
-            if bond_features_extra is not None:
-                x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
-
-            E[i : i + 2] = x_e
+            x_e_forward = self.bond_featurizer(bond)
+            x_e_backward = (
+                self.backward_bond_featurizer(bond)
+                if self.backward_bond_featurizer is not None
+                else x_e_forward
+            )
+            for j, x_e in enumerate([x_e_forward, x_e_backward]):
+                if bond_features_extra is not None:
+                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
+                E[i + j] = x_e
 
             u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index[0].extend([u, v])
@@ -135,6 +145,10 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             string = self.atom_featurizer.to_string(mol.GetAtomWithIdx(i), decimals)
             lines.append(f"{i:{digits}}: {string}")
         for i, j in itertools.combinations(range(n), 2):
-            string = self.bond_featurizer.to_string(mol.GetBondBetweenAtoms(i, j), decimals)
-            lines.append(f"{i:{digits}}-{j:{digits}}: {string}")
+            bond = mol.GetBondBetweenAtoms(i, j)
+            string = self.bond_featurizer.to_string(bond, decimals)
+            lines.append(f"{i:{digits}}\u2192{j:{digits}}: {string}")
+            if self.backward_bond_featurizer is not None:
+                string = self.backward_bond_featurizer.to_string(bond, decimals)
+            lines.append(f"{i:{digits}}\u2190{j:{digits}}: {string}")
         return "\n".join(lines)
