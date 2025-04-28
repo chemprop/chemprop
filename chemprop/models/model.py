@@ -126,7 +126,7 @@ class MPNN(pl.LightningModule):
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
-        H = self.agg(H_v, bmg.batch)
+        H = self.agg(H_v, bmg.batch, bmg.V_w)
         H = self.weight(H, bmg.degree_of_poly)
         H = self.bn(H)
 
