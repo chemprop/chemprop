@@ -85,10 +85,11 @@ class ChempropMetric(torchmetrics.Metric):
         Parameters
         ----------
         preds : Tensor
-            a tensor of shape `b x t x u` (regression), `b x t` (binary classification), or
-            `b x t x c` (multiclass classification) containing the predictions, where `b` is the
-            batch size, `t` is the number of tasks to predict, `u` is the number of
-            targets to predict for each task, and `c` is the number of classes.
+            a tensor of shape `b x t x u` (regression with uncertainty), `b x t` (regression without
+            uncertainty and binary classification, except for binary dirichlet), or `b x t x c`
+            (multiclass classification and binary dirichlet) containing the predictions, where `b`
+            is the batch size, `t` is the number of tasks to predict, `u` is the number of values to
+            predict for each task, and `c` is the number of classes.
         targets : Tensor
             a float tensor of shape `b x t` containing the target values
         mask : Tensor
