@@ -31,6 +31,11 @@ def model_path(data_dir):
 
 
 @pytest.fixture
+def extra_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_mol_with_metrics.ckpt")
+
+
+@pytest.fixture
 def mve_model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mve_mol.pt")
 
@@ -143,6 +148,44 @@ def test_train_quick_features(monkeypatch, data_path):
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_ensemble_quick(monkeypatch, data_path, model_path, extra_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        extra_model_path,
+        "--uncertainty-method",
+        "ensemble",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_dropout_quick(monkeypatch, data_path, model_path, extra_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        extra_model_path,
+        "--uncertainty-method",
+        "dropout",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
