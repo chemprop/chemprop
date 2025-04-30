@@ -74,7 +74,6 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         preds = mol_atom_bond_mpnn(bmg)
         errors.append(preds[0] - targets[0])
         errors.append(preds[1] - targets[1])
-        preds[2] = (preds[2][::2] + preds[2][1::2]) / 2
         errors.append(preds[2] - targets[2])
 
     errors = torch.cat(errors)
