@@ -70,6 +70,8 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
             BondType.TRIPLE,
             BondType.AROMATIC,
         ),
+        include_is_conjugated: bool = True,
+        include_is_in_ring: bool = True,
         stereos: Sequence[BondStereo] = (
             BondStereo.STEREONONE,
             BondStereo.STEREOANY,
@@ -81,16 +83,19 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
     ):
         self.bond_types = bond_types
         self.stereo = stereos
-        super().__init__(
-            NullitySubfeature(),
-            BondSubfeature(lambda b: b.GetBondType(), self.bond_types),
-            BondSubfeature(lambda b: b.GetIsConjugated()),
-            BondSubfeature(lambda b: b.IsInRing()),
-            BondSubfeature(lambda b: b.GetStereo(), self.stereo, unknown_padding=True),
-        )
+        subfeats = []
+        if len(bond_types) > 0:
+            subfeats.append(BondSubfeature(lambda b: b.GetBondType(), bond_types))
+        if include_is_conjugated:
+            subfeats.append(BondSubfeature(lambda b: b.GetIsConjugated()))
+        if include_is_in_ring:
+            subfeats.append(BondSubfeature(lambda b: b.IsInRing()))
+        if len(stereos) > 0:
+            subfeats.append(BondSubfeature(lambda b: b.GetStereo(), stereos, unknown_padding=True))
+        super().__init__(NullitySubfeature(), *subfeats)
 
 
-class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
+class RIGRBondFeaturizer(MultiHotBondFeaturizer):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
     * ``null``-ity (i.e., is the bond ``None``?)
@@ -111,4 +116,6 @@ class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
     """
 
     def __init__(self):
-        super().__init__(NullitySubfeature(), BondSubfeature(lambda b: b.IsInRing()))
+        super().__init__(
+            bond_types=[], include_is_conjugated=False, include_is_in_ring=True, stereos=[]
+        )
