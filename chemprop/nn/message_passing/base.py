@@ -226,21 +226,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return self.finalize(M, bmg.V, V_d)
 
 
-class _BondMessagePassingMixin:
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
-
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-        M_rev = H[bmg.rev_edge_index]
-
-        return M_all - M_rev
-
-
-class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
+class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
 
@@ -279,26 +265,8 @@ class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
 
         return W_i, W_h, W_o, W_d
 
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.initialize(self, bmg)
 
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.message(self, H, bmg)
-
-
-class _AtomMessagePassingMixin:
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(bmg.V[bmg.edge_index[0]])
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        H = torch.cat((H, bmg.E), dim=1)
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-
-
-class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
+class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
 
@@ -335,9 +303,3 @@ class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
-
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _AtomMessagePassingMixin.initialize(self, bmg)
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        return _AtomMessagePassingMixin.message(self, H, bmg)
