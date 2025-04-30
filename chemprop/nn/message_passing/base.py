@@ -29,14 +29,20 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         if `True`, add a bias term to the learned weight matrices
     depth : int, default=3
         the number of message passing iterations
-    undirected : bool, default=False
-        if `True`, pass messages on undirected edges
     dropout : float, default=0.0
         the dropout probability
     activation : str, default="relu"
         the activation function to use
+    undirected : bool, default=False
+        if `True`, pass messages on undirected edges
     d_vd : int | None, default=None
-        the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
+        the dimension of additional vertex descriptors that will be concatenated to the hidden
+        features before readout
+    V_d_transform : ScaleTransform | None, default=None
+        an optional transformation to apply to the additional vertex descriptors before concatenation
+    graph_transform : GraphTransform | None, default=None
+        an optional transformation to apply to the :class:`BatchMolGraph` before message passing. It
+        is usually used to scale extra vertex and edge features.
 
     See also
     --------
@@ -61,7 +67,6 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         E_d_transform: ScaleTransform
         | None = None,  # should we change init here or localize to bond?
         graph_transform: GraphTransform | None = None,
-        # layers_per_message: int = 1,
     ):
         super().__init__()
         # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
@@ -191,23 +196,6 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return H
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        """Encode a batch of molecular graphs.
-
-        Parameters
-        ----------
-        bmg: BatchMolGraph
-            a batch of :class:`BatchMolGraph`s to encode
-        V_d : Tensor | None, default=None
-            an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
-            in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase.
-
-        Returns
-        -------
-        Tensor
-            a tensor of shape ``V x d_h`` or ``V x (d_h + d_vd)`` containing the encoding of each
-            molecule in the batch, depending on whether additional atom descriptors were provided
-        """
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 

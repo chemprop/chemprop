@@ -1,4 +1,5 @@
-from .model import MPNN, MolAtomBondMPNN
+from .model import MPNN
+from .mol_atom_bond import MolAtomBondMPNN
 from .multi import MulticomponentMPNN
 from .utils import load_model, save_model
 
