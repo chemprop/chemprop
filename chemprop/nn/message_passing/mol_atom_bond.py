@@ -7,7 +7,8 @@ from torch import Tensor, nn
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.data import BatchMolGraph
 from chemprop.exceptions import InvalidShapeError
-from chemprop.nn.message_passing.proto import MessagePassing, MixedMessagePassing
+from chemprop.nn.message_passing.mixins import _AtomMessagePassingMixin, _BondMessagePassingMixin
+from chemprop.nn.message_passing.proto import MABMessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform
 from chemprop.nn.utils import Activation, get_activation_function
 from chemprop.nn.message_passing import (

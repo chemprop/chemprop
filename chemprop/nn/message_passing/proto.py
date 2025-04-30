@@ -35,8 +35,8 @@ class MessagePassing(nn.Module, HasHParams):
         """
 
 
-class MixedMessagePassing(nn.Module, HasHParams):
-    """A :class:`MixedMessagePassing` module encodes a batch of molecular graphs
+class MABMessagePassing(nn.Module, HasHParams):
+    """A :class:`MABMessagePassing` module encodes a batch of molecular graphs
     using message passing to learn both vertex-level and edge-level hidden representations."""
 
     input_dim: int

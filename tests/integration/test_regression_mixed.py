@@ -14,8 +14,8 @@ pytestmark = [
     pytest.mark.parametrize(
         "mol_atom_bond_mpnn",
         [
-            (nn.MixedAtomMessagePassing(), nn.MeanAggregation()),
-            (nn.MixedBondMessagePassing(), nn.MeanAggregation()),
+            (nn.MABAtomMessagePassing(), nn.MeanAggregation()),
+            (nn.MABBondMessagePassing(), nn.MeanAggregation()),
         ],
         indirect=True,
     ),

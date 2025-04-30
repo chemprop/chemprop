@@ -9,9 +9,10 @@ from .agg import (
 from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
+    MABAtomMessagePassing,
+    MABBondMessagePassing,
+    MABMessagePassing,
     MessagePassing,
-    MixedAtomMessagePassing,
-    MixedBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (
@@ -109,8 +110,9 @@ __all__ = [
     "MessagePassing",
     "AtomMessagePassing",
     "BondMessagePassing",
-    "MixedAtomMessagePassing",
-    "MixedBondMessagePassing",
+    "MABAtomMessagePassing",
+    "MABBondMessagePassing",
+    "MABMessagePassing",
     "MulticomponentMessagePassing",
     "Predictor",
     "PredictorRegistry",

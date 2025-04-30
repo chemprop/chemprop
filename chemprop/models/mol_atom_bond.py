@@ -8,13 +8,8 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import (
-    BatchMolGraph,
-    MolAtomBondTrainingBatch,
-    MulticomponentTrainingBatch,
-    TrainingBatch,
-)
-from chemprop.nn import Aggregation, ChempropMetric, MixedMessagePassing, Predictor
+from chemprop.data import BatchMolGraph, MolAtomBondTrainingBatch
+from chemprop.nn import Aggregation, ChempropMetric, MABMessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 from chemprop.utils.registry import Factory
@@ -27,11 +22,11 @@ BatchType: TypeAlias = TrainingBatch | MolAtomBondTrainingBatch | Multicomponent
 class MolAtomBondMPNN(pl.LightningModule):
     def __init__(
         self,
-        message_passing: MixedMessagePassing,
-        agg: Aggregation,
-        mol_predictor: Predictor,
-        atom_predictor: Predictor,
-        bond_predictor: Predictor,
+        message_passing: MABMessagePassing,
+        agg: Aggregation | None = None,
+        mol_predictor: Predictor | None = None,
+        atom_predictor: Predictor | None = None,
+        bond_predictor: Predictor | None = None,
         batch_norm: bool = False,
         metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
