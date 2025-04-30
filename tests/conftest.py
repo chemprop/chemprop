@@ -62,16 +62,22 @@ def mol_regression_data(data_dir):
 
 
 @pytest.fixture
-def mixed_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mixed/mixed.csv")
-    smis = df["smiles"].to_list()
-    mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
-    atom_Y, bond_Y = [], []
-    for i in range(len(df)):
-        atom_Y.append(np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1, 1))
-        bond_Y.append(np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1, 1))
-
-    return smis, mol_Y, atom_Y, bond_Y
+def mol_atom_bond_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "mol_atom_bond/regression.csv")
+    columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2"]
+    smis = df.loc[:, columns[0]].values
+    mol_ys = df.loc[:, columns[1:2]].values
+    atoms_ys = df.loc[:, columns[3:4]].values
+    bonds_ys = df.loc[:, columns[5:6]].values
+    atoms_ys = [
+        np.array([ast.literal_eval(atom_y) for atom_y in atom_ys], dtype=float).T
+        for atom_ys in atoms_ys
+    ]
+    bonds_ys = [
+        np.array([ast.literal_eval(bond_y) for bond_y in bond_ys], dtype=float).T
+        for bond_ys in bonds_ys
+    ]
+    return smis, mol_ys, atoms_ys, bonds_ys
 
 
 @pytest.fixture

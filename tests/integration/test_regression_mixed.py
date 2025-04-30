@@ -24,11 +24,19 @@ pytestmark = [
 
 
 @pytest.fixture
-def dataloader(mixed_regression_data):
-    smis, mol_Y, atom_Y, bond_Y = mixed_regression_data
+def dataloader(mol_atom_bond_regression_data):
+    smis, mols_ys, atoms_ys, bonds_ys = mol_atom_bond_regression_data
     all_data = [
-        MolAtomBondDatapoint.from_smi(smi, y, atom_y=atom_y, bond_y=bond_y, keep_h=True)
-        for smi, y, atom_y, bond_y in zip(smis, mol_Y, atom_Y, bond_Y)
+        MolAtomBondDatapoint.from_smi(
+            smi,
+            keep_h=True,
+            add_h=False,
+            reorder_atoms=True,
+            y=mol_ys,
+            atom_y=atom_ys,
+            bond_y=bond_ys,
+        )
+        for smi, mol_ys, atom_ys, bond_ys in zip(smis, mols_ys, atoms_ys, bonds_ys)
     ]
     dset = MolAtomBondDataset(all_data)
     return DataLoader(dset, 32, collate_fn=collate_mol_atom_bond_batch)
