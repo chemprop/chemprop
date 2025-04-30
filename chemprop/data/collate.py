@@ -115,13 +115,11 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
     for ys in zip(*yss):
         if ys[0] is None:
             weights_tensors.append(None)
+        elif ys[0].ndim == 1:
+            weights_tensors.append(weights)
         else:
             repeats = torch.tensor([y.shape[0] for y in ys])
-            weights_tensors.append(
-                weights
-                if torch.all(repeats == 1)
-                else torch.repeat_interleave(weights, repeats, dim=0)
-            )
+            weights_tensors.append(torch.repeat_interleave(weights, repeats, dim=0))
 
     return MolAtomBondTrainingBatch(
         BatchMolGraph(mgs),
