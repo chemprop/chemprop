@@ -18,6 +18,56 @@ logger = logging.getLogger(__name__)
 
 
 class MolAtomBondMPNN(pl.LightningModule):
+    r"""An :class:`MolAtomBondMPNN` is a sequence of message passing layers, an aggregation routine,
+    and up to three predictor routines for molecule-level, atom-level, and bond-level predictions.
+
+    The first two modules calculate learned graph, node, and edge embeddings from an input molecule
+    graph, and the final modules take these learned fingerprints as input to calculate a
+    final prediction. I.e., the following operation:
+
+    .. math::
+        \mathtt{MPNN}(\mathcal{G}) =
+            \mathtt{predictor}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
+
+    The full model is trained end-to-end.
+
+    Parameters
+    ----------
+    message_passing : MABMessagePassing
+        the message passing block to use to calculate learned fingerprints
+    agg : Aggregation
+        the aggregation operation to use during molecule-level prediction
+    mol_predictor : Predictor
+        the function to use to calculate the final molecule-level prediction
+    atom_predictor : Predictor
+        the function to use to calculate the final atom-level prediction
+    bond_predictor : Predictor
+        the function to use to calculate the final bond-level prediction
+    batch_norm : bool, default=False
+        if `True`, apply batch normalization to the learned fingerprints before passing them to the
+        predictors
+    metrics : Iterable[Metric] | None, default=None
+        the metrics to use to evaluate the model during training and evaluation
+    warmup_epochs : int, default=2
+        the number of epochs to use for the learning rate warmup
+    init_lr : int, default=1e-4
+        the initial learning rate
+    max_lr : float, default=1e-3
+        the maximum learning rate
+    final_lr : float, default=1e-4
+        the final learning rate
+
+    Raises
+    ------
+    ValueError
+        if the output dimension of the message passing block does not match the input dimension of
+        the predictor functions
+    ValueError
+        if none of the predictor functions are provided
+    ValueError
+        if `mol_predictor` is provided but `agg` is not
+    """
+
     def __init__(
         self,
         message_passing: MABMessagePassing,
@@ -234,32 +284,10 @@ class MolAtomBondMPNN(pl.LightningModule):
 
     def predict_step(
         self, batch: MolAtomBondTrainingBatch, batch_idx: int, dataloader_idx: int = 0
-    ) -> list[Tensor]:
-        """Return the predictions of the input batch
+    ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
+        bmg, V_d, E_d, X_d, *_ = batch
 
-        Parameters
-        ----------
-        batch : MixedTrainingBatch
-            the input batch
-
-        Returns
-        -------
-        Tensor
-            a tensor of varying shape depending on the task type:
-
-            * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-              molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
-              per task. The final dimension is flattened, so that the targets for each task are
-              grouped. I.e., the first ``t`` elements are the first target for each task, the second
-              ``t`` elements the second target, etc.
-
-            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
-        """
-        bmg, X_vd, X_ed, X_d, *_ = batch
-
-        predss = self(bmg, X_vd, X_ed, X_d)
-        predss[2] = (predss[2][::2] + predss[2][1::2]) / 2
-        return predss
+        return self(bmg, V_d, E_d, X_d)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
