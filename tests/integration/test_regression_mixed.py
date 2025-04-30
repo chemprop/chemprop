@@ -59,11 +59,11 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
-        enable_progress_bar=True,
+        enable_progress_bar=False,
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=130,
+        max_epochs=200,
         overfit_batches=1.00,
     )
     trainer.fit(mol_atom_bond_mpnn, dataloader)
