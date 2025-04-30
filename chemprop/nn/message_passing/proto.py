@@ -41,7 +41,9 @@ class MABMessagePassing(nn.Module, HasHParams):
     output_dims: tuple[int | None, int | None]
 
     @abstractmethod
-    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> tuple[Tensor, Tensor]:
+    def forward(
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
+    ) -> tuple[Tensor | None, Tensor | None]:
         """Encode a batch of molecular graphs.
 
         Parameters
@@ -55,7 +57,7 @@ class MABMessagePassing(nn.Module, HasHParams):
 
         Returns
         -------
-        Tensors
+        tuple[Tensor | None, Tensor | None]
             Two tensors of shape `V x d_h` or `V x (d_h + d_vd)` and `E x dh` or `E x (dh + d_ed)`
             containing the hidden representation of each vertex and edge in the batch of graphs.
             The feature dimension depends on whether additional atom/bond descriptors were provided

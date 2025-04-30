@@ -101,7 +101,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_vd: int | None = None,
         d_ed: int | None = None,
         bias: bool = False,
-    ):
+    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
         """setup the weight matrices used in the message passing update functions
 
         Parameters

@@ -81,32 +81,30 @@ class MolAtomBondMPNN(pl.LightningModule):
         self.final_lr = final_lr
 
     @property
-    def output_dim(self) -> list[int]:
-        return [
-            self.predictors[0].output_dim,
-            self.predictors[1].output_dim,
-            self.predictors[2].output_dim,
-        ]
+    def output_dimss(self) -> tuple[int | None, int | None, int | None]:
+        return tuple(
+            predictor.output_dim if predictor is not None else None for predictor in self.predictors
+        )
 
     @property
-    def n_tasks(self) -> list[int]:
-        return [self.predictors[0].n_tasks, self.predictors[1].n_tasks, self.predictors[2].n_tasks]
+    def n_taskss(self) -> tuple[int | None, int | None, int | None]:
+        return tuple(
+            predictor.n_tasks if predictor is not None else None for predictor in self.predictors
+        )
 
     @property
-    def n_targets(self) -> list[int]:
-        return [
-            self.predictors[0].n_targets,
-            self.predictors[1].n_targets,
-            self.predictors[2].n_targets,
-        ]
+    def n_targetss(self) -> tuple[int | None, int | None, int | None]:
+        return tuple(
+            predictor.n_targets if predictor is not None else None for predictor in self.predictors
+        )
 
     @property
-    def criterion(self) -> list[ChempropMetric]:
-        return [
-            self.predictors[0].criterion,
-            self.predictors[1].criterion,
-            self.predictors[2].criterion,
-        ]
+    def criterions(
+        self,
+    ) -> tuple[ChempropMetric | None, ChempropMetric | None, ChempropMetric | None]:
+        return tuple(
+            predictor.criterion if predictor is not None else None for predictor in self.predictors
+        )
 
     def fingerprint(
         self,
@@ -114,7 +112,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         V_d: Tensor | None = None,
         E_d: Tensor | None = None,
         X_d: Tensor | None = None,
-    ) -> tuple[Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """the learned fingerprints for the input molecules"""
         H_v, H_b = self.message_passing(bmg, V_d, E_d)
         H_g = self.agg(H_v, bmg.batch)
@@ -131,7 +129,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         E_d: Tensor | None = None,
         X_d: Tensor | None = None,
         i: int = -1,
-    ) -> list[Tensor]:
+    ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """Calculate the :attr:`i`-th hidden representation"""
         H = self.fingerprint(bmg, V_d, E_d, X_d)
         return [
@@ -146,7 +144,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         V_d: Tensor | None = None,
         E_d: Tensor | None = None,
         X_d: Tensor | None = None,
-    ) -> list[Tensor]:
+    ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """Generate predictions for the input molecules/reactions"""
         H = self.fingerprint(bmg, V_d, E_d, X_d)
         return [self.predictors[0](H[0]), self.predictors[1](H[1]), self.predictors[2](H[2])]

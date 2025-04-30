@@ -20,7 +20,8 @@ from chemprop.nn.message_passing import (
 
 class _MixedMessagePassingBase(_MessagePassingBase, MixedMessagePassing):
     @property
-    def output_dim(self) -> tuple[int, int]:
+    def output_dims(self) -> tuple[int | None, int | None]:
+        """Returns the output dimensions of the vertex and edge embeddings."""
         return (
             self.W_d.out_features if self.W_d is not None else self.W_o.out_features,
             self.W_ed.out_features if self.W_ed is not None else self.W_o_b.out_features,
@@ -76,7 +77,7 @@ class MixedBondMessagePassing(_MixedMessagePassingBase, _BondMessagePassingMixin
 
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
-    ) -> tuple[Tensor]:
+    ) -> tuple[Tensor | None, Tensor | None]:
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 
