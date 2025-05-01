@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Iterable, Iterator
 
+import numpy as np
 from rdkit import Chem
 
 
@@ -32,36 +33,54 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
+def make_mol(
+    smi: str,
+    keep_h: bool = False,
+    add_h: bool = False,
+    ignore_chirality: bool = False,
+    reorder_atoms: bool = False,
+) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
     ----------
     smi : str
         a SMILES string.
-    keep_h : bool
-        whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
-    add_h : bool
-        whether to add hydrogens to the molecule
+    keep_h : bool, optional
+        whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps
+        them if they are specified. Default is False.
+    add_h : bool, optional
+        whether to add hydrogens to the molecule. Default is False.
+    ignore_chirality : bool, optional
+        whether to ignore chirality information when constructing the molecule. Default is False.
+    reorder_atoms : bool, optional
+        whether to reorder the atoms in the molecule by their atom map numbers. This is useful when
+        the order of atoms in the SMILES string does not match the atom mapping, e.g. '[F:2][Cl:1]'.
+        Default is False. NOTE: This does not reorder the bonds.
 
     Returns
     -------
     Chem.Mol
         the RDKit molecule.
     """
-    if keep_h:
-        mol = Chem.MolFromSmiles(smi, sanitize=False)
-        Chem.SanitizeMol(
-            mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_ADJUSTHS
-        )
-    else:
-        mol = Chem.MolFromSmiles(smi)
+    params = Chem.SmilesParserParams()
+    params.removeHs = not keep_h
+    mol = Chem.MolFromSmiles(smi, params)
 
     if mol is None:
         raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
 
     if add_h:
         mol = Chem.AddHs(mol)
+
+    if ignore_chirality:
+        for atom in mol.GetAtoms():
+            atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+
+    if reorder_atoms:
+        atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
+        new_order = np.argsort(atom_map_numbers).tolist()
+        mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
 

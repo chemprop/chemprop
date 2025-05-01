@@ -17,6 +17,7 @@ from chemprop.data import (
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
+from chemprop.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class MPNN(pl.LightningModule):
     r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
     predictor routine.
 
-    The first two modules calculate learned fingerprints from an input molecule
+    The first two modules calculate learned fingerprints from an input molecule or
     reaction graph, and the final module takes these learned fingerprints as input to calculate a
     final prediction. I.e., the following operation:
 
@@ -42,7 +43,7 @@ class MPNN(pl.LightningModule):
     message_passing : MessagePassing
         the message passing block to use to calculate learned fingerprints
     agg : Aggregation
-        the aggregation operation to use during molecule-level predictor
+        the aggregation operation to use during molecule-level prediction
     predictor : Predictor
         the function to use to calculate the final prediction
     batch_norm : bool, default=False
@@ -133,7 +134,7 @@ class MPNN(pl.LightningModule):
         H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
 
-        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), 1)
+        return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), dim=1)
 
     def encoding(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None, i: int = -1
@@ -203,29 +204,9 @@ class MPNN(pl.LightningModule):
             self.log(f"{label}/{m.alias}", m, batch_size=batch_size)
 
     def predict_step(self, batch: BatchType, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
-        """Return the predictions of the input batch
+        bmg, V_d, X_d, *_ = batch
 
-        Parameters
-        ----------
-        batch : TrainingBatch
-            the input batch
-
-        Returns
-        -------
-        Tensor
-            a tensor of varying shape depending on the task type:
-
-            * regression/binary classification: ``n x (t * s)``, where ``n`` is the number of input
-              molecules/reactions, ``t`` is the number of tasks, and ``s`` is the number of targets
-              per task. The final dimension is flattened, so that the targets for each task are
-              grouped. I.e., the first ``t`` elements are the first target for each task, the second
-              ``t`` elements the second target, etc.
-
-            * multiclass classification: ``n x t x c``, where ``c`` is the number of classes
-        """
-        bmg, X_vd, X_d, *_ = batch
-
-        return self(bmg, X_vd, X_d)
+        return self(bmg, V_d, X_d)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
@@ -265,16 +246,27 @@ class MPNN(pl.LightningModule):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
+        if hparams["metrics"] is not None:
+            hparams["metrics"] = [
+                cls._rebuild_metric(metric)
+                if not hasattr(metric, "_defaults")
+                or (not torch.cuda.is_available() and metric.device.type != "cpu")
+                else metric
+                for metric in hparams["metrics"]
+            ]
+
+        if hparams["predictor"]["criterion"] is not None:
+            metric = hparams["predictor"]["criterion"]
+            if not hasattr(metric, "_defaults") or (
+                not torch.cuda.is_available() and metric.device.type != "cpu"
+            ):
+                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
+
         submodules |= {
             key: hparams[key].pop("cls")(**hparams[key])
             for key in ("message_passing", "agg", "predictor")
             if key not in submodules
         }
-
-        if not hasattr(submodules["predictor"].criterion, "_defaults"):
-            submodules["predictor"].criterion = submodules["predictor"].criterion.__class__(
-                task_weights=submodules["predictor"].criterion.task_weights
-            )
 
         return submodules, state_dict, hparams
 
@@ -291,6 +283,10 @@ class MPNN(pl.LightningModule):
         return state_dict
 
     @classmethod
+    def _rebuild_metric(cls, metric):
+        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
+
+    @classmethod
     def load_from_checkpoint(
         cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
     ) -> MPNN:
@@ -303,6 +299,7 @@ class MPNN(pl.LightningModule):
         state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
         d = torch.load(checkpoint_path, map_location, weights_only=False)
         d["state_dict"] = state_dict
+        d["hyper_parameters"] = hparams
         buffer = io.BytesIO()
         torch.save(d, buffer)
         buffer.seek(0)

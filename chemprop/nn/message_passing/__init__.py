@@ -1,17 +1,14 @@
-from .base import (
-    AtomMessagePassing,
-    BondMessagePassing,
-    MixedAtomMessagePassing,
-    MixedBondMessagePassing,
-)
+from .base import AtomMessagePassing, BondMessagePassing
+from .mol_atom_bond import MABAtomMessagePassing, MABBondMessagePassing
 from .multi import MulticomponentMessagePassing
-from .proto import MessagePassing, MixedMessagePassing
+from .proto import MABMessagePassing, MessagePassing
 
 __all__ = [
     "MessagePassing",
-    "MixedMessagePassing" "AtomMessagePassing",
+    "MABMessagePassing",
+    "AtomMessagePassing",
     "BondMessagePassing",
-    "MixedAtomMessagePassing",
-    "MixedBondMessagePassing",
+    "MABAtomMessagePassing",
+    "MABBondMessagePassing",
     "MulticomponentMessagePassing",
 ]

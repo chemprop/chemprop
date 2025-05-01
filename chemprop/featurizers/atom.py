@@ -201,12 +201,69 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
         )
 
 
+class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
+    """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
+
+    The generated atom features are ordered as follows:
+    * atomic number
+    * degree
+    * number of hydrogens
+    * mass
+    """
+
+    def __init__(
+        self,
+        atomic_nums: Sequence[int] | None = None,
+        degrees: Sequence[int] | None = None,
+        num_Hs: Sequence[int] | None = None,
+    ):
+        self.atomic_nums = {j: i for i, j in enumerate(atomic_nums or list(range(1, 37)) + [53])}
+        self.degrees = {i: i for i in (degrees or list(range(6)))}
+        self.num_Hs = {i: i for i in (num_Hs or list(range(5)))}
+
+        self._subfeats: list[dict] = [self.atomic_nums, self.degrees, self.num_Hs]
+        subfeat_sizes = [1 + len(self.atomic_nums), 1 + len(self.degrees), 1 + len(self.num_Hs), 1]
+        self.__size = sum(subfeat_sizes)
+
+    def __len__(self) -> int:
+        return self.__size
+
+    def __call__(self, a: Atom | None) -> np.ndarray:
+        x = np.zeros(self.__size)
+
+        if a is None:
+            return x
+
+        feats = [a.GetAtomicNum(), a.GetTotalDegree(), int(a.GetTotalNumHs())]
+        i = 0
+        for feat, choices in zip(feats, self._subfeats):
+            j = choices.get(feat, len(choices))
+            x[i + j] = 1
+            i += len(choices) + 1
+        x[i] = 0.01 * a.GetMass()  # scaled to about the same range as other features
+
+        return x
+
+    def num_only(self, a: Atom) -> np.ndarray:
+        """featurize the atom by setting only the atomic number bit"""
+        x = np.zeros(len(self))
+
+        if a is None:
+            return x
+
+        i = self.atomic_nums.get(a.GetAtomicNum(), len(self.atomic_nums))
+        x[i] = 1
+
+        return x
+
+
 class AtomFeatureMode(EnumMapping):
     """The mode of an atom is used for featurization into a `MolGraph`"""
 
     V1 = auto()
     V2 = auto()
     ORGANIC = auto()
+    RIGR = auto()
 
 
 def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFeaturizer:
@@ -218,5 +275,7 @@ def get_multi_hot_atom_featurizer(mode: str | AtomFeatureMode) -> MultiHotAtomFe
             return MultiHotAtomFeaturizer.v2()
         case AtomFeatureMode.ORGANIC:
             return MultiHotAtomFeaturizer.organic()
+        case AtomFeatureMode.RIGR:
+            return RIGRAtomFeaturizer()
         case _:
             raise RuntimeError("unreachable code reached!")
