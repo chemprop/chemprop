@@ -65,30 +65,30 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
 
     def __init__(
         self,
-        bond_types: Sequence[BondType] = (
+        bond_types: Sequence[BondType] | None = None,
+        stereos: Sequence[BondStereo] | None = None,
+    ):
+        self.bond_types = bond_types or (
             BondType.SINGLE,
             BondType.DOUBLE,
             BondType.TRIPLE,
             BondType.AROMATIC,
-        ),
-        stereos: Sequence[BondStereo] = (
+        )
+        self.stereos = stereos or (
             BondStereo.STEREONONE,
             BondStereo.STEREOANY,
             BondStereo.STEREOZ,
             BondStereo.STEREOE,
             BondStereo.STEREOCIS,
             BondStereo.STEREOTRANS,
-        ),
-    ):
-        self.bond_types = bond_types
-        self.stereo = stereos
+        )
 
         super().__init__(
             NullityFeaturizer(),
-            OneHotFeaturizer(lambda b: b.GetBondType(), bond_types),
+            OneHotFeaturizer(lambda b: b.GetBondType(), self.bond_types),
             ValueFeaturizer(lambda b: b.GetIsConjugated(), int),
             ValueFeaturizer(lambda b: b.IsInRing(), int),
-            OneHotFeaturizer(lambda b: b.GetStereo(), stereos, padding=True),
+            OneHotFeaturizer(lambda b: b.GetStereo(), self.stereos, padding=True),
         )
 
 
