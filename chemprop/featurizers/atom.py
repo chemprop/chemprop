@@ -8,7 +8,7 @@ from chemprop.featurizers.base import MultiHotFeaturizer, OneHotFeaturizer, Valu
 from chemprop.utils.utils import EnumMapping
 
 
-class MultiHotAtomFeaturizer(MultiHotFeaturizer):
+class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     .. seealso::
@@ -215,7 +215,7 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer):
         )
 
 
-class RIGRAtomFeaturizer(MultiHotFeaturizer):
+class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom]):
     """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
 
     The generated atom features are ordered as follows:
