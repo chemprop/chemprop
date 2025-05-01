@@ -2,11 +2,12 @@ from typing import Sequence
 
 from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
-from chemprop.featurizers.base import MultiHotFeaturizer, NullitySubfeature, Subfeature
-
-
-class BondSubfeature(Subfeature[Bond]):
-    ...
+from chemprop.featurizers.base import (
+    MultiHotFeaturizer,
+    NullityFeaturizer,
+    OneHotFeaturizer,
+    ValueFeaturizer,
+)
 
 
 class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
@@ -70,8 +71,6 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
             BondType.TRIPLE,
             BondType.AROMATIC,
         ),
-        include_is_conjugated: bool = True,
-        include_is_in_ring: bool = True,
         stereos: Sequence[BondStereo] = (
             BondStereo.STEREONONE,
             BondStereo.STEREOANY,
@@ -83,19 +82,17 @@ class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
     ):
         self.bond_types = bond_types
         self.stereo = stereos
-        subfeats = []
-        if len(bond_types) > 0:
-            subfeats.append(BondSubfeature(lambda b: b.GetBondType(), bond_types))
-        if include_is_conjugated:
-            subfeats.append(BondSubfeature(lambda b: b.GetIsConjugated()))
-        if include_is_in_ring:
-            subfeats.append(BondSubfeature(lambda b: b.IsInRing()))
-        if len(stereos) > 0:
-            subfeats.append(BondSubfeature(lambda b: b.GetStereo(), stereos, unknown_padding=True))
-        super().__init__(NullitySubfeature(), *subfeats)
+
+        super().__init__(
+            NullityFeaturizer(),
+            OneHotFeaturizer(lambda b: b.GetBondType(), bond_types),
+            ValueFeaturizer(lambda b: b.GetIsConjugated(), int),
+            ValueFeaturizer(lambda b: b.IsInRing(), int),
+            OneHotFeaturizer(lambda b: b.GetStereo(), stereos, padding=True),
+        )
 
 
-class RIGRBondFeaturizer(MultiHotBondFeaturizer):
+class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
     * ``null``-ity (i.e., is the bond ``None``?)
@@ -116,6 +113,4 @@ class RIGRBondFeaturizer(MultiHotBondFeaturizer):
     """
 
     def __init__(self):
-        super().__init__(
-            bond_types=[], include_is_conjugated=False, include_is_in_ring=True, stereos=[]
-        )
+        super().__init__(NullityFeaturizer(), ValueFeaturizer(lambda b: b.IsInRing(), int))

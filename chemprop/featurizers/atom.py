@@ -4,15 +4,11 @@ from typing import Sequence
 import numpy as np
 from rdkit.Chem.rdchem import Atom, ChiralType, HybridizationType
 
-from chemprop.featurizers.base import MultiHotFeaturizer, Subfeature
+from chemprop.featurizers.base import MultiHotFeaturizer, OneHotFeaturizer, ValueFeaturizer
 from chemprop.utils.utils import EnumMapping
 
 
-class AtomSubfeature(Subfeature[Atom]):
-    ...
-
-
-class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
+class MultiHotAtomFeaturizer(MultiHotFeaturizer):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     .. seealso::
@@ -49,10 +45,6 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
         the choices for number of bonded hydrogen atoms.
     hybridizations : Sequence[HybridizationType | int]
         the choices for an atom’s hybridization type. See `HybridizationType`_ for possible integer values.
-    include_aromaticity : bool, optional
-        whether to include aromaticity as a feature.
-    include_mass : bool, optional
-        whether to include mass as a feature.
 
         .. _ChiralType: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.ChiralType
         .. _HybridizationType: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.HybridizationType
@@ -79,8 +71,6 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
         chiral_tags: Sequence[ChiralType | int],
         num_Hs: Sequence[int],
         hybridizations: Sequence[HybridizationType | int],
-        include_aromaticity: bool = True,
-        include_mass: bool = True,
     ):
         self.atomic_nums = atomic_nums
         self.degrees = degrees
@@ -89,26 +79,16 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
         self.num_Hs = num_Hs
         self.hybridizations = hybridizations
 
-        subfeats = [
-            AtomSubfeature(getter, choices, unknown_padding=True)
-            for getter, choices in [
-                (lambda a: a.GetAtomicNum(), atomic_nums),
-                (lambda a: a.GetTotalDegree(), degrees),
-                (lambda a: a.GetFormalCharge(), formal_charges),
-                (lambda a: a.GetChiralTag(), chiral_tags),
-                (lambda a: a.GetTotalNumHs(), num_Hs),
-                (lambda a: a.GetHybridization(), hybridizations),
-            ]
-            if len(choices) > 0
-        ] + [
-            AtomSubfeature(getter)
-            for getter, include in [
-                (lambda a: a.GetIsAromatic(), include_aromaticity),
-                (lambda a: 0.01 * a.GetMass(), include_mass),
-            ]
-            if include
-        ]
-        super().__init__(*subfeats)
+        super().__init__(
+            OneHotFeaturizer(lambda a: a.GetAtomicNum(), atomic_nums, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalDegree(), degrees, padding=True),
+            OneHotFeaturizer(lambda a: a.GetFormalCharge(), formal_charges, padding=True),
+            OneHotFeaturizer(lambda a: a.GetChiralTag(), chiral_tags, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalNumHs(), num_Hs, padding=True),
+            OneHotFeaturizer(lambda a: a.GetHybridization(), hybridizations, padding=True),
+            ValueFeaturizer(lambda a: a.GetIsAromatic(), int),
+            ValueFeaturizer(lambda a: 0.01 * a.GetMass(), float),
+        )
 
     def num_only(self, a: Atom | None) -> np.ndarray:
         """Featurize the atom by setting only the atomic number bit
@@ -235,7 +215,7 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
         )
 
 
-class RIGRAtomFeaturizer(MultiHotAtomFeaturizer):
+class RIGRAtomFeaturizer(MultiHotFeaturizer):
     """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
 
     The generated atom features are ordered as follows:
@@ -264,15 +244,15 @@ class RIGRAtomFeaturizer(MultiHotAtomFeaturizer):
         degrees: Sequence[int] = tuple(range(6)),
         num_Hs: Sequence[int] = tuple(range(5)),
     ):
+        self.atomic_nums = atomic_nums
+        self.degrees = degrees
+        self.num_Hs = num_Hs
+
         super().__init__(
-            atomic_nums=atomic_nums,
-            degrees=degrees,
-            formal_charges=[],
-            chiral_tags=[],
-            num_Hs=num_Hs,
-            hybridizations=[],
-            include_aromaticity=False,
-            include_mass=True,
+            OneHotFeaturizer(lambda a: a.GetAtomicNum(), atomic_nums, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalDegree(), degrees, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalNumHs(), num_Hs, padding=True),
+            ValueFeaturizer(lambda a: 0.01 * a.GetMass(), float),
         )
 
 

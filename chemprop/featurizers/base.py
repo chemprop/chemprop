@@ -11,12 +11,11 @@ T = TypeVar("T")
 
 
 class Featurizer(Generic[S, T]):
-    """An :class:`Featurizer` featurizes inputs type ``S`` into outputs of
-    type ``T``."""
+    """A :class:`Featurizer` featurizes inputs of type ``S`` into outputs of type ``T``."""
 
     @abstractmethod
     def __call__(self, input: S | None, *args, **kwargs) -> T:
-        """featurize an input"""
+        """Featurize an input."""
 
 
 class VectorFeaturizer(Featurizer[S, np.ndarray], Sized):
@@ -30,23 +29,20 @@ class GraphFeaturizer(Featurizer[S, MolGraph]):
         ...
 
 
-class Subfeature(Generic[S]):
-    """Extract a one-hot encoding or a raw value from an Atom or Bond.
+class OneHotFeaturizer(VectorFeaturizer[S]):
+    """Extract a one-hot encoding from an input object.
 
-    This class uses a getter function to extract an attribute from an input object. If a list of
-    choices is provided, the attribute is converted into a one-hot encoded tuple. If choices are
-    omitted, the raw attribute value is returned as a 1-tuple.
+    This class uses a getter function to extract an attribute from an input object and converts
+    the attribute into a one-hot encoded vector.
 
     Parameters
     ----------
     getter : Callable[[S], Hashable]
         A function that extracts the attribute to be encoded from an input object.
-    choices : Sequence[Hashable], optional
-        A sequence of possible values. If provided, the attribute is one-hot encoded. If None,
-        the attribute value itself is used as the output.
-    unknown_padding : bool, default=False
-        If True and choices are given, adds an extra dimension to handle unknown values. This is
-        only relevant if choices are provided.
+    choices : Sequence[Hashable]
+        A sequence of unique possible values.
+    padding : bool, default=False
+        If True, adds an extra dimension to handle unknown values.
 
     Raises
     ------
@@ -56,78 +52,139 @@ class Subfeature(Generic[S]):
     Example
     -------
     >>> from rdkit import Chem
-    >>> mol = Chem.MolFromSmiles("C(O)N")
-    >>> symbol_subfeature = Subfeature[Chem.Atom](
+    >>> symbol_featurizer = OneHotFeaturizer[Chem.Atom](
     ...     getter=lambda atom: atom.GetSymbol(),
     ...     choices=["C", "N", "O"],
-    ...     unknown_padding=True,
+    ...     padding=True,
     ... )
+    >>> mol = Chem.MolFromSmiles("C(O)N")
     >>> atom = mol.GetAtomWithIdx(0)
-    >>> symbol_subfeature(atom)
-    (1, 0, 0, 0)
-    >>> symbol_subfeature.to_string(atom)
+    >>> symbol_featurizer(atom)
+    array([1, 0, 0, 0])
+    >>> symbol_featurizer.to_string(atom)
     '1000'
 
-    >>> mass_subfeature = Subfeature[Chem.Atom](getter=lambda atom: atom.GetMass())
-    >>> mass_subfeature(atom)
-    (12.011,)
-    >>> mass_subfeature.to_string(atom)
-    '12.011'
-
-    >>> bond = mol.GetBondWithIdx(0)
-    >>> bond_type_subfeature = Subfeature[Chem.Atom](
+    >>> bond_type_featurizer = OneHotFeaturizer[Chem.Atom](
     ...     getter=lambda bond: bond.GetBondType(),
     ...     choices=[Chem.BondType.SINGLE, Chem.BondType.DOUBLE],
     ... )
-    >>> bond_type_subfeature(bond)
-    (1, 0)
-    >>> bond_type_subfeature.to_string(bond)
+    >>> bond = mol.GetBondWithIdx(0)
+    >>> bond_type_featurizer(bond)
+    array([1, 0])
+    >>> bond_type_featurizer.to_string(bond)
     '10'
 
     """
 
     def __init__(
-        self,
-        getter: Callable[[S], Hashable],
-        choices: Sequence[Hashable] | None = None,
-        unknown_padding: bool = False,
+        self, getter: Callable[[S], Hashable], choices: Sequence[Hashable], padding: bool = False
     ):
-        """Initialize the Subfeature."""
         self.getter = getter
         self.choices = choices
-        self.unknown_padding = unknown_padding
-        if self.choices is not None and len(self.choices) != len(set(self.choices)):
+        self.padding = padding
+        if len(self.choices) != len(set(self.choices)):
             raise ValueError("choices must be unique")
 
     def __len__(self) -> int:
         """Return the length of the feature vector."""
-        if self.choices is None:
-            return 1
-        return len(self.choices) + int(self.unknown_padding)
+        return len(self.choices) + int(self.padding)
 
-    def __call__(self, input: S | None) -> tuple[int, ...] | tuple[int | float,]:
-        """Encode an input object as a one-hot tuple or a raw value tuple.
+    def __call__(self, input: S | None) -> np.ndarray:
+        """Encode an input object as a one-hot vector.
 
         Parameters
         ----------
         input : S | None
-            The input object. If None, returns a tuple of zeros.
+            The input object. If None, returns a vector of zeros.
 
         Returns
         -------
-        tuple[int, ...] | tuple[int | float,]
-            One-hot encoded tuple if choices are provided; otherwise, a tuple with the raw
-            extracted value.
+        np.ndarray
+            One-hot encoded vector.
+
+        """
+        vector = np.zeros(len(self), dtype=int)
+        if input is None:
+            return vector
+        option = self.getter(input)
+        try:
+            vector[self.choices.index(option)] = 1
+        except ValueError:
+            if self.padding:
+                vector[-1] = 1
+        return vector
+
+    def to_string(self, input: S | None, _: int = 3) -> str:
+        """Return a string representation of the feature encoding.
+
+        Parameters
+        ----------
+        input : S | None
+            The input entity. If None, returns a string of zeros.
+
+        Returns
+        -------
+        str
+            The string encoding of the feature vector.
+        """
+        if input is None:
+            return "0" * len(self)
+        return "".join(map(str, self(input)))
+
+
+class ValueFeaturizer(VectorFeaturizer[S]):
+    """Extract a raw value from an input object.
+
+    This class uses a getter function to extract an attribute from an input object and converts
+    the attribute into a single-element vector.
+
+    Parameters
+    ----------
+    getter : Callable[[S], Hashable]
+        A function that extracts the attribute to be encoded from an input object.
+    dtype : type
+        The data type of the output vector.
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mass_featurizer = ValueFeaturizer[Chem.Atom](
+    ...     getter=lambda atom: atom.GetMass(), dtype=float
+    ... )
+    >>> mol = Chem.MolFromSmiles("C(O)N")
+    >>> atom = mol.GetAtomWithIdx(0)
+    >>> mass_featurizer(atom)
+    array([12.011])
+    >>> mass_featurizer.to_string(atom)
+    '12.011'
+
+    """
+
+    def __init__(self, getter: Callable[[S], Hashable], dtype: type):
+        self.getter = getter
+        self.dtype = dtype
+
+    def __len__(self) -> int:
+        """Return the length of the feature vector."""
+        return 1
+
+    def __call__(self, input: S | None) -> np.ndarray:
+        """Encode a raw value as a vector.
+
+        Parameters
+        ----------
+        input : S | None
+            The input object. If None, returns a vector with a zero value.
+
+        Returns
+        -------
+        np.ndarray
+            A vector with the raw extracted value.
 
         """
         if input is None:
-            return (0,) * len(self)
-        if self.choices is None:
-            return (self.getter(input),)
-        lst = [x == self.getter(input) for x in self.choices]
-        if self.unknown_padding:
-            lst.append(not any(lst))
-        return tuple(map(int, lst))
+            return np.zeros(1, dtype=self.dtype)
+        return np.array([self.getter(input)], dtype=self.dtype)
 
     def to_string(self, input: S | None, decimals: int = 3) -> str:
         """Return a string representation of the feature encoding.
@@ -135,7 +192,7 @@ class Subfeature(Generic[S]):
         Parameters
         ----------
         input : S | None
-            The input entity. If None, returns a string of zeros.
+            The input entity. If None, returns '0'.
         decimals : int, default=3
             Number of decimals (only relevant if the feature is a float value).
 
@@ -145,49 +202,47 @@ class Subfeature(Generic[S]):
             The string encoding of the feature vector.
         """
         if input is None:
-            return "0" * len(self)
-        if self.choices is None:
-            x = self(input)[0]
-            if isinstance(x, float):
-                return f"{x:.{decimals}f}"
-            return str(int(x))
-        return "".join(map(str, self(input)))
+            return "0"
+        x = self(input).item()
+        if isinstance(x, float):
+            return f"{x:.{decimals}f}"
+        return str(int(x))
 
 
-class NullitySubfeature(Subfeature[Any]):
-    """A subfeature that encodes whether an input is None."""
+class NullityFeaturizer(VectorFeaturizer[Any]):
+    """A subfeaturizer that encodes whether an input is None."""
 
-    def __init__(self):
-        super().__init__(getter=lambda x: x is None)
+    def __len__(self) -> int:
+        return 1
 
-    def __call__(self, input: Any) -> tuple[int,]:
-        return (self.getter(input),)
+    def __call__(self, input: Any) -> np.ndarray:
+        return np.array([int(input is None)], dtype=int)
 
     def to_string(self, input: Any, _: int = 3) -> str:
-        return "1" if self.getter(input) else "0"
+        return "1" if input is None else "0"
 
 
 class MultiHotFeaturizer(VectorFeaturizer[S]):
-    """A vector featurizer that concatenates multiple subfeatures.
+    """A vector featurizer that concatenates multiple subfeaturizers.
 
     Parameters
     ----------
-    *subfeats : Subfeature
+    *subfeats : Subfeaturizer
         The subfeatures to concatenate.
 
     Example
     -------
     >>> from rdkit import Chem
-    >>> symbol_subfeature = Subfeature[Chem.Atom](
+    >>> symbol_featurizer = OneHotFeaturizer[Chem.Atom](
     ...     getter=lambda atom: atom.GetSymbol(),
     ...     choices=["C", "N", "O"],
-    ...     unknown_padding=True,
+    ...     padding=True,
     ... )
-    >>> mass_subfeature = Subfeature[Chem.Atom](
-    ...     getter=lambda atom: 0.01 * atom.GetMass()
+    >>> mass_featurizer = ValueFeaturizer[Chem.Atom](
+    ...     getter=lambda atom: 0.01 * atom.GetMass(), dtype=float
     ... )
     >>> featurizer = MultiHotFeaturizer[Chem.Atom](
-    ...     NullitySubfeature(), symbol_subfeature, mass_subfeature
+    ...     NullityFeaturizer(), symbol_featurizer, mass_featurizer
     ... )
     >>> mol = Chem.MolFromSmiles("C(O)N")
     >>> atom = mol.GetAtomWithIdx(0)
@@ -197,11 +252,8 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
     '1 0000 0'
     """
 
-    def __init__(self, *subfeats: Subfeature, nullity_bit: bool = False):
-        if nullity_bit:
-            subfeats = (Subfeature(lambda _: 0), *subfeats)
+    def __init__(self, *subfeats: OneHotFeaturizer[S] | ValueFeaturizer[S] | NullityFeaturizer):
         self.subfeats = subfeats
-        self.nullity_bit = nullity_bit
         self._subfeat_sizes = list(map(len, subfeats))
         self._size = sum(self._subfeat_sizes)
 
