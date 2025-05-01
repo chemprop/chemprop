@@ -113,6 +113,7 @@ def mol_atom_bond_datum_1():
             np.array([False, True, False]).reshape(3, 1),
             np.array([False, False]).reshape(2, 1),
         ],
+        constraints=[np.array([1.0]), None],
     )
 
 
@@ -145,6 +146,7 @@ def mol_atom_bond_datum_2():
             np.array([True, False]).reshape(2, 1),
             np.array([False]).reshape(1, 1),
         ],
+        constraints=[np.array([2.0]), None],
     )
 
 
@@ -152,13 +154,11 @@ def test_collate_mol_atom_bond_batch_single_graph(mol_atom_bond_datum_1):
     batch = [mol_atom_bond_datum_1]
 
     result = collate_mol_atom_bond_batch(batch)
-    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks, constraints = result
 
     assert isinstance(result, tuple)
     assert isinstance(mgs, BatchMolGraph)
-    assert (
-        mgs.V.shape[0] == V_ds.shape[0]
-    )  # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
+    assert mgs.V.shape[0] == V_ds.shape[0]
     torch.testing.assert_close(V_ds, torch.tensor([[1.0], [2.0], [4.0]], dtype=torch.float32))
     torch.testing.assert_close(E_ds, torch.tensor([[0.7], [2.8]], dtype=torch.float32))
     torch.testing.assert_close(x_ds, torch.tensor([[3.0, 4.0]], dtype=torch.float32))
@@ -182,12 +182,10 @@ def test_collate_mol_atom_bond_batch_multiple_graphs(mol_atom_bond_datum_1, mol_
     batch = [mol_atom_bond_datum_1, mol_atom_bond_datum_2]
 
     result = collate_mol_atom_bond_batch(batch)
-    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks, constraints = result
 
     assert isinstance(mgs, BatchMolGraph)
-    assert (
-        mgs.V.shape[0] == V_ds.shape[0]
-    )  # V is number of atoms x number of atom features, V_ds is number of atoms x number of atom descriptors
+    assert mgs.V.shape[0] == V_ds.shape[0]
     torch.testing.assert_close(
         V_ds, torch.tensor([[1.0], [2.0], [4.0], [5.0], [7.0]], dtype=torch.float32)
     )
@@ -203,6 +201,8 @@ def test_collate_mol_atom_bond_batch_multiple_graphs(mol_atom_bond_datum_1, mol_
     torch.testing.assert_close(
         gt_masks[1], torch.tensor([[0], [1], [0], [1], [0]], dtype=torch.bool)
     )
+    torch.testing.assert_close(constraints[0], torch.tensor([[1.0], [2.0]], dtype=torch.float32))
+    assert constraints[1] is None
 
 
 @pytest.fixture
@@ -222,6 +222,7 @@ def mol_atom_bond_datum_no_mol_y():
         weight=8.0,
         lt_masks=[None, None, None],
         gt_masks=[None, None, None],
+        constraints=[None, None],
     )
 
 
@@ -229,7 +230,7 @@ def test_collate_mol_atom_bond_no_mol_y(mol_atom_bond_datum_no_mol_y):
     batch = [mol_atom_bond_datum_no_mol_y]
 
     result = collate_mol_atom_bond_batch(batch)
-    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks, constraints = result
 
     assert ys[0] is None
     assert all([lt_mask is None for lt_mask in lt_masks])
@@ -252,6 +253,7 @@ def mol_atom_bond_datum_no_atom_bond_y():
         weight=8.0,
         lt_masks=[None, None, None],
         gt_masks=[None, None, None],
+        constraints=[None, None],
     )
 
 
@@ -259,7 +261,8 @@ def test_collate_mol_atom_bond_no_atom_bond_y(mol_atom_bond_datum_no_atom_bond_y
     batch = [mol_atom_bond_datum_no_atom_bond_y]
 
     result = collate_mol_atom_bond_batch(batch)
-    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks = result
+    mgs, V_ds, E_ds, x_ds, ys, weights, lt_masks, gt_masks, constraints = result
 
     assert ys[1] is None
     assert ys[2] is None
+    assert constraints is None

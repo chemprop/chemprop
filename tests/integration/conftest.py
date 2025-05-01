@@ -23,7 +23,9 @@ def mol_atom_bond_mpnn(request):
     atom_ffn = nn.RegressionFFN()
     bond_ffn = nn.RegressionFFN(input_dim=600)
 
-    return models.MolAtomBondMPNN(message_passing, agg, mol_ffn, atom_ffn, bond_ffn, True)
+    return models.MolAtomBondMPNN(
+        message_passing, agg, mol_ffn, atom_ffn, bond_ffn, batch_norm=True
+    )
 
 
 @pytest.fixture(scope="session")

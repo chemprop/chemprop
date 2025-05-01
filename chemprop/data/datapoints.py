@@ -117,6 +117,12 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
     """Indicates whether the bond targets are an inequality regression target of the form `<x`"""
     bond_lt_mask: np.ndarray | None = None
     """Indicates whether the bond targets are an inequality regression target of the form `>x`"""
+    atom_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x v_t`` containing the values that the atom property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
+    bond_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x e_t`` containing the values that the bond property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
 
     def __post_init__(self):
         super().__post_init__()
