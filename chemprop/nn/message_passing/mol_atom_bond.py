@@ -8,12 +8,12 @@ from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_D
 from chemprop.data import BatchMolGraph
 from chemprop.exceptions import InvalidShapeError
 from chemprop.nn.message_passing.mixins import _AtomMessagePassingMixin, _BondMessagePassingMixin
-from chemprop.nn.message_passing.proto import MessagePassing
+from chemprop.nn.message_passing.proto import MABMessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform
 from chemprop.nn.utils import Activation, get_activation_function
 
 
-class _MessagePassingBase(MessagePassing, HyperparametersMixin):
+class _MABMessagePassingBase(MABMessagePassing, HyperparametersMixin):
     """The base message-passing block for atom- and bond-based message-passing schemes
 
     NOTE: this class is an abstract base class and cannot be instantiated
@@ -39,11 +39,20 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
     d_vd : int | None, default=None
         the dimension of additional vertex descriptors that will be concatenated to the hidden
         features before readout
+    d_ed : int | None, default=None
+        the dimension of additional edge descriptors that will be concatenated to the hidden
+        features before readout
     V_d_transform : ScaleTransform | None, default=None
         an optional transformation to apply to the additional vertex descriptors before concatenation
+    E_d_transform : ScaleTransform | None, default=None
+        an optional transformation to apply to the additional edge descriptors before concatenation
     graph_transform : GraphTransform | None, default=None
         an optional transformation to apply to the :class:`BatchMolGraph` before message passing. It
         is usually used to scale extra vertex and edge features.
+    return_vertex_embeddings : bool, default=True
+        whether to return the learned vertex embeddings. If `False`, None is returned.
+    return_edge_embeddings : bool, default=True
+        whether to return the learned edge embeddings. If `False`, None is returned.
 
     See also
     --------
@@ -63,28 +72,51 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
+        d_ed: int | None = None,
         V_d_transform: ScaleTransform | None = None,
+        E_d_transform: ScaleTransform | None = None,
         graph_transform: GraphTransform | None = None,
+        return_vertex_embeddings: bool = True,
+        return_edge_embeddings: bool = True,
     ):
         super().__init__()
-        # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
+        # manually add transforms to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["V_d_transform", "graph_transform"])
+        self.save_hyperparameters(ignore=["V_d_transform", "E_d_transform", "graph_transform"])
         self.hparams["V_d_transform"] = V_d_transform
+        self.hparams["E_d_transform"] = E_d_transform
         self.hparams["graph_transform"] = graph_transform
         self.hparams["cls"] = self.__class__
 
-        self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
+        self.return_vertex_embeddings = return_vertex_embeddings
+        self.return_edge_embeddings = return_edge_embeddings
+
+        self.W_i, self.W_h, self.W_vo, self.W_vd, self.W_eo, self.W_ed = self.setup(
+            d_v, d_e, d_h, d_vd, d_ed, bias
+        )
         self.depth = depth
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
         self.V_d_transform = V_d_transform if V_d_transform is not None else nn.Identity()
+        self.E_d_transform = E_d_transform if E_d_transform is not None else nn.Identity()
         self.graph_transform = graph_transform if graph_transform is not None else nn.Identity()
 
     @property
-    def output_dim(self) -> int:
-        return self.W_d.out_features if self.W_d is not None else self.W_o.out_features
+    def output_dims(self) -> tuple[int | None, int | None]:
+        """Returns the output dimensions of the vertex and edge embeddings."""
+        return (
+            None
+            if not self.return_vertex_embeddings
+            else self.W_vd.out_features
+            if self.W_vd is not None
+            else self.W_vo.out_features,
+            None
+            if not self.return_edge_embeddings
+            else self.W_ed.out_features
+            if self.W_ed is not None
+            else self.W_eo.out_features,
+        )
 
     @abstractmethod
     def setup(
@@ -93,8 +125,11 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = DEFAULT_HIDDEN_DIM,
         d_vd: int | None = None,
+        d_ed: int | None = None,
         bias: bool = False,
-    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
+    ) -> tuple[
+        nn.Module, nn.Module, nn.Module | None, nn.Module | None, nn.Module | None, nn.Module | None
+    ]:
         """setup the weight matrices used in the message passing update functions
 
         Parameters
@@ -108,12 +143,15 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_vd : int | None, default=None
             the dimension of additional vertex descriptors that will be concatenated to the hidden
             features before readout, if any
+        d_ed : int | None, default=None
+            the dimension of additional edge descriptors that will be concatenated to the hidden
+            features before readout, if any
         bias: bool, default=False
             whether to add a learned bias to the matrices
 
         Returns
         -------
-        W_i, W_h, W_o, W_d : tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
+        W_i, W_h, W_vo, W_vd, W_eo, W_ed : tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]
             the input, hidden, output, and descriptor weight matrices, respectively, used in the
             message passing update functions. The descriptor weight matrix is `None` if no vertex
             dimension is supplied
@@ -135,19 +173,19 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         return H_t
 
-    def finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
-        r"""Finalize message passing by (1) concatenating the final message ``M`` and the original
-        vertex features ``V`` and (2) if provided, further concatenating additional vertex
-        descriptors ``V_d``.
+    def vertex_finalize(self, M: Tensor, V: Tensor, V_d: Tensor | None) -> Tensor:
+        r"""Finalize message passing for vertex embeddings by (1) concatenating the final message
+        ``M`` and the original vertex features ``V`` and (2) if provided, further concatenating
+        additional vertex descriptors ``V_d``.
 
         This function implements the following operation:
 
         .. math::
-            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M)) \right) \\
-            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H \mathbin\Vert V_d)) \right),
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_vo(V \mathbin\Vert M)) \right) \\
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_vd(H \mathbin\Vert V_d)) \right),
 
         where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
-        :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M` is
+        :math:`\mathbf{W}_vo` and :math:`\mathbf{W}_vd` are learned weight matrices, :math:`M` is
         the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
         optional vertex descriptor matrix.
 
@@ -172,23 +210,80 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             if ``V_d`` is not of shape ``b x d_vd``, where ``b`` is the batch size and ``d_vd`` is
             the vertex descriptor dimension
         """
-        H = self.W_o(torch.cat((V, M), dim=1))  # V x d_o
+        H = self.W_vo(torch.cat((V, M), dim=1))  # V x d_o
         H = self.tau(H)
         H = self.dropout(H)
 
         if V_d is not None:
             V_d = self.V_d_transform(V_d)
             try:
-                H = self.W_d(torch.cat((H, V_d), dim=1))  # V x (d_o + d_vd)
+                H = self.W_vd(torch.cat((H, V_d), dim=1))  # V x (d_o + d_vd)
                 H = self.dropout(H)
             except RuntimeError:
                 raise InvalidShapeError(
-                    "V_d", V_d.shape, [len(H), self.W_d.in_features - self.W_o.out_features]
+                    "V_d", V_d.shape, [len(H), self.W_vd.in_features - self.W_vo.out_features]
                 )
 
         return H
 
-    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
+    def edge_finalize(self, H: Tensor, E: Tensor, E_d: Tensor | None) -> Tensor:
+        r"""Finalize message passing for edge embeddings by (1) concatenating the final hidden
+        directed edges ``H`` and the original edge features ``E`` and (2) if provided, further
+        concatenating additional edge descriptors ``E_d``.
+
+        This function implements the following operation:
+
+        .. math::
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_eo(E \mathbin\Vert H)) \right) \\
+            H &= \mathtt{dropout} \left( \tau(\mathbf{W}_ed(H \mathbin\Vert E_d)) \right),
+
+        where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
+        :math:`\mathbf{W}_eo` and :math:`\mathbf{W}_ed` are learned weight matrices, :math:`H` is
+        the hidden directed edge matrix, :math:`E` is the original edge feature matrix, and
+        :math:`E_d` is an optional vertex descriptor matrix.
+
+        Parameters
+        ----------
+        H : Tensor
+            a tensor of shape ``E x d_h`` containing the hidden state for each edge
+        E : Tensor
+            a tensor of shape ``E x d_e`` containing the original edge features
+        E_d : Tensor | None
+            an optional tensor of shape ``E x d_ed`` containing additional edge descriptors
+
+        Returns
+        -------
+        Tensor
+            a tensor of shape ``E x (d_h + d_e [+ d_ed])`` containing the final hidden
+            representations
+
+        Raises
+        ------
+        InvalidShapeError
+            if ``E_d`` is not of shape ``b x d_ed``, where ``b`` is the batch size and ``d_ed`` is
+            the edge descriptor dimension
+        """
+        H = self.W_eo(torch.cat((E, H), dim=1))
+        H = self.tau(H)
+        H = self.dropout(H)
+
+        if E_d is not None:
+            E_d = self.E_d_transform(E_d)
+            try:
+                H = self.W_ed(torch.cat((H, E_d), dim=1))
+                H = self.dropout(H)
+            except RuntimeError:
+                # Try E_d = np.repeat(E_d, repeats=2, axis=0), see the note in the docstring of
+                #  MABMessagePassing.forward
+                raise InvalidShapeError(
+                    "E_d", E_d.shape, [len(H), self.W_ed.in_features - self.W_eo.out_features]
+                )
+
+        return H
+
+    def forward(
+        self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
+    ) -> tuple[Tensor | None, Tensor | None]:
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 
@@ -204,12 +299,15 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
         )
-        return self.finalize(M, bmg.V, V_d)
+
+        H_v = self.vertex_finalize(M, bmg.V, V_d) if self.return_vertex_embeddings else None
+        H_e = self.edge_finalize(H, bmg.E, E_d) if self.return_edge_embeddings else None
+        return H_v, H_e
 
 
-class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
-    r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
-    directed bonds.
+class MABBondMessagePassing(_BondMessagePassingMixin, _MABMessagePassingBase):
+    r"""A :class:`MABBondMessagePassing` encodes a batch of molecular graphs by passing messages
+    along directed bonds.
 
     It implements the following operation:
 
@@ -236,19 +334,22 @@ class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
         d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = DEFAULT_HIDDEN_DIM,
         d_vd: int | None = None,
+        d_ed: int | None = None,
         bias: bool = False,
     ):
         W_i = nn.Linear(d_v + d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
-        W_o = nn.Linear(d_v + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
+        W_vo = nn.Linear(d_v + d_h, d_h) if self.return_vertex_embeddings else None
+        W_eo = nn.Linear(d_e + d_h, d_h) if self.return_edge_embeddings else None
+        W_vd = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
+        W_ed = nn.Linear(d_h + d_ed, d_h + d_ed) if d_ed else None
 
-        return W_i, W_h, W_o, W_d
+        return W_i, W_h, W_vo, W_vd, W_eo, W_ed
 
 
-class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
-    r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
-    atoms.
+class MABAtomMessagePassing(_AtomMessagePassingMixin, _MABMessagePassingBase):
+    r"""A :class:`MABAtomMessagePassing` encodes a batch of molecular graphs by passing messages
+    along atoms.
 
     It implements the following operation:
 
@@ -279,7 +380,9 @@ class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
     ):
         W_i = nn.Linear(d_v, d_h, bias)
         W_h = nn.Linear(d_e + d_h, d_h, bias)
-        W_o = nn.Linear(d_v + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
+        W_vo = nn.Linear(d_v + d_h, d_h) if self.return_vertex_embeddings else None
+        W_eo = nn.Linear(d_e + d_h, d_h) if self.return_edge_embeddings else None
+        W_vd = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
+        W_ed = nn.Linear(d_h + d_ed, d_h + d_ed) if d_ed else None
 
-        return W_i, W_h, W_o, W_d
+        return W_i, W_h, W_vo, W_vd, W_eo, W_ed
