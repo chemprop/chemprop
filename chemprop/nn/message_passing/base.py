@@ -63,30 +63,23 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         activation: str | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
-        d_ed: int | None = None,
         V_d_transform: ScaleTransform | None = None,
-        E_d_transform: ScaleTransform
-        | None = None,  # should we change init here or localize to bond?
         graph_transform: GraphTransform | None = None,
     ):
         super().__init__()
         # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["V_d_transform", "E_d_transform", "graph_transform"])
+        self.save_hyperparameters(ignore=["V_d_transform", "graph_transform"])
         self.hparams["V_d_transform"] = V_d_transform
-        self.hparams["E_d_transform"] = E_d_transform
         self.hparams["graph_transform"] = graph_transform
         self.hparams["cls"] = self.__class__
 
-        self.W_i, self.W_h, self.W_o, self.W_d, *end = self.setup(d_v, d_e, d_h, d_vd, d_ed, bias)
-        self.W_o_b = end[0] if len(end) > 0 else None
-        self.W_ed = end[1] if len(end) > 0 else None
+        self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
         self.depth = depth
         self.undirected = undirected
         self.dropout = nn.Dropout(dropout)
         self.tau = get_activation_function(activation)
         self.V_d_transform = V_d_transform if V_d_transform is not None else nn.Identity()
-        self.E_d_transform = E_d_transform if E_d_transform is not None else nn.Identity()
         self.graph_transform = graph_transform if graph_transform is not None else nn.Identity()
 
     @property
@@ -100,9 +93,8 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = DEFAULT_HIDDEN_DIM,
         d_vd: int | None = None,
-        d_ed: int | None = None,
         bias: bool = False,
-    ):
+    ) -> tuple[nn.Module, nn.Module, nn.Module, nn.Module | None]:
         """setup the weight matrices used in the message passing update functions
 
         Parameters
@@ -244,7 +236,6 @@ class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
         d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = DEFAULT_HIDDEN_DIM,
         d_vd: int | None = None,
-        d_ed: int | None = None,
         bias: bool = False,
     ):
         W_i = nn.Linear(d_v + d_e, d_h, bias)

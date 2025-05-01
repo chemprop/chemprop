@@ -13,8 +13,6 @@ from .message_passing import (
     MABBondMessagePassing,
     MABMessagePassing,
     MessagePassing,
-    MixedAtomMessagePassing,
-    MixedBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (
