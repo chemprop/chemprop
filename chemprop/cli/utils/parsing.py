@@ -650,6 +650,7 @@ def make_dataset(
     multi_hot_atom_featurizer_mode: str = "V2",
 ) -> MoleculeDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
+    print("hi")
     print(data[0])
     if isinstance(data[0], MolAtomBondDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

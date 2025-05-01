@@ -464,22 +464,24 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             case "mol":
                 X = self._Y
             case "atom":
-                X = np.concatenate(self._atom_Y, axis=0)
+                X = self._atom_Y
             case "bond":
-                X = np.concatenate(self._bond_Y, axis=0)
+                X = self._bond_Y
             case _:
                 raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
         if scaler is None:
+            print("hello")
+            print(X)
             scaler = StandardScaler().fit(X)
 
         match key:
             case "mol":
                 self.Y = scaler.transform(X)
             case "atom":
-                self.atom_Y = [scaler.transform(y) if y.size > 0 else y for y in self._atom_Y]
+                self.atom_Y = scaler.transform(self._atom_Y)
             case "bond":
-                self.bond_Y = [scaler.transform(y) if y.size > 0 else y for y in self._bond_Y]
+                self.bond_Y = scaler.transform(self._bond_Y)
             case _:
                 raise RuntimeError("unreachable code reached!")
 

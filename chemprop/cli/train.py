@@ -950,10 +950,10 @@ def build_datasets(args, train_data, val_data, test_data):
         else:
             test_dset = None
     elif args.is_mixed:
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        train_dset = make_dataset(train_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        val_dset = make_dataset(val_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         if len(test_data[0]) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(test_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         else:
             test_dset = None
     else:
@@ -1361,30 +1361,30 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         test_dset = test_loader.dataset
         if index == 0:
             targets = test_dset.Y
-            lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask is not None else None
-            gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask is not None else None
+            lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None else None
+            gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None else None
         elif index == 1:
             targets = test_dset.atom_Y
             lt_mask = (
                 torch.from_numpy(test_dset.atom_lt_mask)
-                if test_dset.atom_lt_mask is not None
+                if test_dset.atom_lt_mask[0] is not None and test_dset.atom_lt_mask[0][0] is not None
                 else None
             )
             gt_mask = (
                 torch.from_numpy(test_dset.atom_gt_mask)
-                if test_dset.atom_gt_mask is not None
+                if test_dset.atom_gt_mask[0] is not None and test_dset.atom_gt_mask[0][0] is not None
                 else None
             )
         else:
             targets = test_dset.bond_Y
             lt_mask = (
                 torch.from_numpy(test_dset.bond_lt_mask)
-                if test_dset.bond_lt_mask is not None
+                if test_dset.bond_lt_mask[0] is not None and test_dset.bond_lt_mask[0][0] is not None
                 else None
             )
             gt_mask = (
                 torch.from_numpy(test_dset.bond_gt_mask)
-                if test_dset.bond_gt_mask is not None
+                if test_dset.bond_gt_mask[0] is not None and test_dset.bond_gt_mask[0][0] is not None
                 else None
             )
     else:

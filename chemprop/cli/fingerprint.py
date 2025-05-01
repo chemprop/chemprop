@@ -58,9 +58,12 @@ class FingerprintSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
+        print(args.is_mixed)
         args = process_common_args(args)
         validate_common_args(args)
+        print(args.is_mixed)
         args = process_fingerprint_args(args)
+        print(args.is_mixed)
         main(args)
 
 
@@ -81,6 +84,7 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
+    print(args.is_mixed)
     if args.is_mixed:
         model = load_mixed_model(model_path)
     else:
@@ -119,12 +123,14 @@ def make_fingerprint_for_model(
     )
     logger.info(f"test size: {len(test_data[0])}")
 
+    test_dsets = [
+        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+    ]
+
     if multicomponent:
-        test_dset = data.MulticomponentDataset(
-            [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data]
-        )
+        test_dset = data.MulticomponentDataset(test_dsets)
     else:
-        test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        test_dset = test_dsets[0]
 
     test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
 
@@ -138,6 +144,7 @@ def make_fingerprint_for_model(
             ]
             H = torch.cat(encodings, 0).numpy()
         elif args.is_mixed:
+            print(args.is_mixed)
             encodings = [
                 model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
@@ -191,6 +198,7 @@ def make_fingerprint_for_model(
 
 
 def main(args):
+    print(args.is_mixed)
     match (args.smiles_columns, args.reaction_columns):
         case [None, None]:
             n_components = 1
