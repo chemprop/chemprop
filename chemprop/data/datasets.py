@@ -40,6 +40,7 @@ class MolAtomBondDatum(NamedTuple):
     weight: float
     lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    constraints: tuple[np.ndarray | None, np.ndarray | None]
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -352,6 +353,7 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             d.weight,
             [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
             [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
+            [d.atom_constraint, d.bond_constraint],
         )
 
     @property
@@ -371,6 +373,10 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         self.__atom_Y = atom_Y
 
     @property
+    def atom_constraints(self) -> np.ndarray:
+        return np.array([d.atom_constraint for d in self.data], float)
+
+    @property
     def _bond_Y(self) -> list[np.ndarray]:
         """the raw bond targets of the dataset"""
         return [d.bond_y for d in self.data]
@@ -385,6 +391,10 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         self._validate_attribute(bond_Y, "bond targets")
 
         self.__bond_Y = bond_Y
+
+    @property
+    def bond_constraints(self) -> np.ndarray:
+        return np.array([d.bond_constraint for d in self.data], float)
 
     @property
     def atom_gt_mask(self) -> np.ndarray:

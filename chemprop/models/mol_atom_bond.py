@@ -8,8 +8,8 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMolGraph, MolAtomBondTrainingBatch
-from chemprop.nn import Aggregation, ChempropMetric, MABMessagePassing, Predictor
+from chemprop.data import BatchMABMolGraph, BatchMolGraph, MolAtomBondTrainingBatch
+from chemprop.nn import Aggregation, ChempropMetric, Constrainer, MABMessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 from chemprop.utils.registry import Factory
@@ -75,6 +75,8 @@ class MolAtomBondMPNN(pl.LightningModule):
         mol_predictor: Predictor | None = None,
         atom_predictor: Predictor | None = None,
         bond_predictor: Predictor | None = None,
+        atom_constrainer: Constrainer | None = None,
+        bond_constrainer: Constrainer | None = None,
         batch_norm: bool = False,
         metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,
@@ -101,6 +103,8 @@ class MolAtomBondMPNN(pl.LightningModule):
                 "mol_predictor",
                 "atom_predictor",
                 "bond_predictor",
+                "atom_constrainer",
+                "bond_constrainer",
             ]
         )
         self.hparams["X_d_transform"] = X_d_transform
@@ -111,6 +115,12 @@ class MolAtomBondMPNN(pl.LightningModule):
                 "mol_predictor": mol_predictor.hparams if mol_predictor is not None else None,
                 "atom_predictor": atom_predictor.hparams if atom_predictor is not None else None,
                 "bond_predictor": bond_predictor.hparams if bond_predictor is not None else None,
+                "atom_constrainer": atom_constrainer.hparams
+                if atom_constrainer is not None
+                else None,
+                "bond_constrainer": bond_constrainer.hparams
+                if bond_constrainer is not None
+                else None,
             }
         )
 
@@ -118,31 +128,29 @@ class MolAtomBondMPNN(pl.LightningModule):
         self.agg = agg
         self.mol_predictor = mol_predictor
         self.atom_predictor = atom_predictor
+        self.atom_constrainer = atom_constrainer
 
         if bond_predictor is not None:
+
+            def wrapped_bond_fn(m, fn):
+                def _wrapped_fn(*args, **kwargs):
+                    preds = getattr(m, f"_{fn}")(*args, **kwargs)
+                    preds = (preds[::2] + preds[1::2]) / 2
+                    return preds
+
+                return _wrapped_fn
+
             bond_predictor._forward = bond_predictor.forward
             bond_predictor._train_step = bond_predictor.train_step
+            bond_predictor.forward = wrapped_bond_fn(bond_predictor, "forward")
+            bond_predictor.train_step = wrapped_bond_fn(bond_predictor, "train_step")
 
-            def _forward(m):  # Might not need double nested function.
-                def _wrapped_forward(*args, **kwargs):
-                    preds = m._forward(*args, **kwargs)
-                    preds = (preds[::2] + preds[1::2]) / 2
-                    return preds
-
-                return _wrapped_forward
-
-            def _train_step(m):
-                def _wrapped_train_step(*args, **kwargs):
-                    preds = m._train_step(*args, **kwargs)
-                    preds = (preds[::2] + preds[1::2]) / 2
-                    return preds
-
-                return _wrapped_train_step
-
-            bond_predictor.forward = _forward(bond_predictor)
-            bond_predictor.train_step = _train_step(bond_predictor)
+            if bond_constrainer is not None:
+                bond_constrainer.ffn._forward = bond_constrainer.ffn.forward
+                bond_constrainer.ffn.forward = wrapped_bond_fn(bond_constrainer.ffn, "forward")
 
         self.bond_predictor = bond_predictor
+        self.bond_constrainer = bond_constrainer
         self.predictors = [self.mol_predictor, self.atom_predictor, self.bond_predictor]
 
         fp_dims = [self.message_passing.output_dims[0]] * 2 + [self.message_passing.output_dims[1]]
@@ -241,32 +249,76 @@ class MolAtomBondMPNN(pl.LightningModule):
 
     def forward(
         self,
-        bmg: BatchMolGraph,
+        bmg: BatchMABMolGraph,
         V_d: Tensor | None = None,
         E_d: Tensor | None = None,
         X_d: Tensor | None = None,
+        constraints: tuple[Tensor | None, Tensor | None] | None = None,
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """Generate predictions for the input molecules/reactions"""
-        Hs = self.fingerprint(bmg, V_d, E_d, X_d)
-        return tuple(
-            predictor(H) if predictor is not None else None
-            for H, predictor in zip(Hs, self.predictors)
-        )
+        fps = self.fingerprint(bmg, V_d, E_d, X_d)
+        predss = [
+            predictor(fp) if predictor is not None else None
+            for fp, predictor in zip(fps, self.predictors)
+        ]
+
+        if constraints is not None:
+            constrained_predss = []
+            for constrainer, fp, preds, batch, constraint_tensor in zip(
+                [None, self.atom_constrainer, self.bond_constrainer],
+                fps,
+                predss,
+                [None, bmg.batch, bmg.bond_batch[::2]],
+                [None] + constraints,
+            ):
+                if constrainer is None:
+                    constrained_predss.append(preds)
+                else:
+                    if preds.ndim > 2:
+                        preds[..., 0] = constrainer(fp, preds[..., 0], batch, constraint_tensor)
+                    else:
+                        preds = constrainer(fp, preds, batch, constraint_tensor)
+                    constrained_predss.append(preds)
+            predss = constrained_predss
+
+        return predss
 
     def training_step(self, batch: MolAtomBondTrainingBatch, batch_idx):
-        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks = batch
+        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks, constraints = batch
         fps = self.fingerprint(bmg, V_d, E_d, X_d)
+        predss = [
+            predictor.train_step(fp) if predictor is not None else None
+            for fp, predictor in zip(fps, self.predictors)
+        ]
+
+        if constraints is not None:
+            constrained_predss = []
+            for constrainer, fp, preds, batch, constraint_tensor in zip(
+                [None, self.atom_constrainer, self.bond_constrainer],
+                fps,
+                predss,
+                [None, bmg.batch, bmg.bond_batch[::2]],
+                [None] + constraints,
+            ):
+                if constrainer is None:
+                    constrained_predss.append(preds)
+                else:
+                    if preds.ndim > 2:
+                        preds[..., 0] = constrainer(fp, preds[..., 0], batch, constraint_tensor)
+                    else:
+                        preds = constrainer(fp, preds, batch, constraint_tensor)
+                    constrained_predss.append(preds)
+            predss = constrained_predss
 
         total_l = 0
-        for fp, predictor, targets, weights, lt_mask, gt_mask, kind in zip(
-            fps, self.predictors, targetss, weightss, lt_masks, gt_masks, ["mol", "atom", "bond"]
+        for predictor, preds, targets, weights, lt_mask, gt_mask, kind in zip(
+            self.predictors, predss, targetss, weightss, lt_masks, gt_masks, ["mol", "atom", "bond"]
         ):
             if predictor is None:
                 continue
 
             mask = targets.isfinite()
             targets = targets.nan_to_num(nan=0.0)
-            preds = predictor.train_step(fp)
             l = predictor.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
             total_l += l
             self.log(
@@ -296,13 +348,36 @@ class MolAtomBondMPNN(pl.LightningModule):
     def validation_step(self, batch: MolAtomBondTrainingBatch, batch_idx: int = 0):
         self._evaluate_batch(batch, "val")
 
-        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks = batch
+        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks, constraints = batch
         fps = self.fingerprint(bmg, V_d, E_d, X_d)
+        predss = [
+            predictor.train_step(fp) if predictor is not None else None
+            for fp, predictor in zip(fps, self.predictors)
+        ]
+
+        if constraints is not None:
+            constrained_predss = []
+            for constrainer, fp, preds, batch, constraint_tensor in zip(
+                [None, self.atom_constrainer, self.bond_constrainer],
+                fps,
+                predss,
+                [None, bmg.batch, bmg.bond_batch[::2]],
+                [None] + constraints,
+            ):
+                if constrainer is None:
+                    constrained_predss.append(preds)
+                else:
+                    if preds.ndim > 2:
+                        preds[..., 0] = constrainer(fp, preds[..., 0], batch, constraint_tensor)
+                    else:
+                        preds = constrainer(fp, preds, batch, constraint_tensor)
+                    constrained_predss.append(preds)
+            predss = constrained_predss
 
         total_vl = 0
-        for fp, predictor, targets, weights, lt_mask, gt_mask, kind, metrics in zip(
-            fps,
+        for predictor, preds, targets, weights, lt_mask, gt_mask, kind, metrics in zip(
             self.predictors,
+            predss,
             targetss,
             weightss,
             lt_masks,
@@ -315,7 +390,6 @@ class MolAtomBondMPNN(pl.LightningModule):
 
             mask = targets.isfinite()
             targets = targets.nan_to_num(nan=0.0)
-            preds = predictor.train_step(fp)
             vl = metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
             total_vl += vl
             self.log(f"{kind}_val_loss", metrics[-1], batch_size=targets.shape[0], prog_bar=True)
@@ -327,8 +401,8 @@ class MolAtomBondMPNN(pl.LightningModule):
         self._evaluate_batch(batch, "test")
 
     def _evaluate_batch(self, batch: MolAtomBondTrainingBatch, label: str) -> None:
-        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks = batch
-        predss = self(bmg, V_d, E_d, X_d)
+        bmg, V_d, E_d, X_d, targetss, weightss, lt_masks, gt_masks, constraints = batch
+        predss = self(bmg, V_d, E_d, X_d, constraints)
 
         for preds, predictor, targets, weights, lt_mask, gt_mask, kind, metrics in zip(
             predss,
@@ -356,9 +430,9 @@ class MolAtomBondMPNN(pl.LightningModule):
     def predict_step(
         self, batch: MolAtomBondTrainingBatch, batch_idx: int, dataloader_idx: int = 0
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
-        bmg, V_d, E_d, X_d, *_ = batch
+        bmg, V_d, E_d, X_d, *_, constraints = batch
 
-        return self(bmg, V_d, E_d, X_d)
+        return self(bmg, V_d, E_d, X_d, constraints)
 
     def configure_optimizers(self):
         opt = optim.Adam(self.parameters(), self.init_lr)
@@ -435,6 +509,8 @@ class MolAtomBondMPNN(pl.LightningModule):
                 "mol_predictor",
                 "atom_predictor",
                 "bond_predictor",
+                "atom_constrainer",
+                "bond_constrainer",
             )
             if key not in submodules and hparams[key] is not None
         }
@@ -452,7 +528,16 @@ class MolAtomBondMPNN(pl.LightningModule):
         submodules = {
             k: v
             for k, v in kwargs.items()
-            if k in ["message_passing", "agg", "mol_predictor", "atom_predictor", "bond_predictor"]
+            if k
+            in [
+                "message_passing",
+                "agg",
+                "mol_predictor",
+                "atom_predictor",
+                "bond_predictor",
+                "atom_constrainer",
+                "bond_constrainer",
+            ]
         }
         submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
         kwargs.update(submodules)
