@@ -35,14 +35,18 @@ class MolAtomBondMPNN(pl.LightningModule):
     ----------
     message_passing : MABMessagePassing
         the message passing block to use to calculate learned fingerprints
-    agg : Aggregation
+    agg : Aggregation | None, default=None
         the aggregation operation to use during molecule-level prediction
-    mol_predictor : Predictor
+    mol_predictor : Predictor | None, default=None
         the function to use to calculate the final molecule-level prediction
-    atom_predictor : Predictor
+    atom_predictor : Predictor | None, default=None
         the function to use to calculate the final atom-level prediction
-    bond_predictor : Predictor
+    bond_predictor : Predictor | None, default=None
         the function to use to calculate the final bond-level prediction
+    atom_constrainer : Constrainer | None, default=None
+        the constrainer to use to constrain the atom-level predictions
+    bond_constrainer : Constrainer | None, default=None
+        the constrainer to use to constrain the bond-level predictions
     batch_norm : bool, default=False
         if `True`, apply batch normalization to the learned fingerprints before passing them to the
         predictors
