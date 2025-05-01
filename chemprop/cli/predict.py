@@ -16,11 +16,18 @@ from chemprop.cli.common import (
     process_common_args,
     validate_common_args,
 )
-from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
-from chemprop.models.utils import load_model, load_output_columns
+from chemprop.cli.utils import (
+    LookupAction,
+    Subcommand,
+    build_data_from_files,
+    build_mixed_data_from_files,
+    make_dataset,
+)
+from chemprop.models.utils import load_mixed_model, load_model, load_output_columns
 from chemprop.nn.metrics import LossFunctionRegistry
 from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
+    MixedNoUncertaintyEstimator,
     MVEWeightingCalibrator,
     NoUncertaintyEstimator,
     RegressionCalibrator,
@@ -196,19 +203,33 @@ def prepare_data_loader(
     featurization_kwargs = dict(
         molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
+    if args.is_mixed:
+        datas, mol_cols, atom_cols, bond_cols = build_mixed_data_from_files(
+            data_path,
+            **format_kwargs,
+            p_descriptors=descriptors_path,
+            p_atom_feats=atom_feats_path,
+            p_bond_feats=bond_feats_path,
+            p_atom_descs=atom_descs_path,
+            **featurization_kwargs,
+        )
+        args.mixed_columns = [mol_cols, atom_cols, bond_cols]
+    else:
+        datas = build_data_from_files(
+            data_path,
+            **format_kwargs,
+            p_descriptors=descriptors_path,
+            p_atom_feats=atom_feats_path,
+            p_bond_feats=bond_feats_path,
+            p_atom_descs=atom_descs_path,
+            **featurization_kwargs,
+        )
 
-    datas = build_data_from_files(
-        data_path,
-        **format_kwargs,
-        p_descriptors=descriptors_path,
-        p_atom_feats=atom_feats_path,
-        p_bond_feats=bond_feats_path,
-        p_atom_descs=atom_descs_path,
-        **featurization_kwargs,
-    )
-
-    dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
-    dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
+    if multicomponent:
+        dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
+        dset = data.MulticomponentDataset(dsets)
+    else:
+        dset = make_dataset(datas, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
 
     return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
 
@@ -216,11 +237,14 @@ def prepare_data_loader(
 def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_paths[0], multicomponent)
-    output_columns = load_output_columns(model_paths[0])
-
+    if args.is_mixed:
+        models = [load_mixed_model(model_path) for model_path in model_paths]
+        args.uncertainty_method = "mixed_" + args.uncertainty_method
+    else:
+        models = [load_model(model_path, multicomponent) for model_path in model_paths]
+    output_columns, mixed_columns = load_output_columns(model_paths[0])
     bounded = any(
-        isinstance(model.criterion, LossFunctionRegistry[loss_function])
+        isinstance(models[0].criterion, LossFunctionRegistry[loss_function])
         for loss_function in LossFunctionRegistry.keys()
         if "bounded" in loss_function
     )
@@ -235,6 +259,7 @@ def make_prediction_for_models(
     )
     format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
     test_loader = prepare_data_loader(args, multicomponent, False, format_kwargs)
+
     logger.info(f"test size: {len(test_loader.dataset)}")
     if args.cal_path is not None:
         format_kwargs["target_cols"] = output_columns
@@ -245,94 +270,135 @@ def make_prediction_for_models(
         UncertaintyEstimatorRegistry[args.uncertainty_method],
         ensemble_size=args.dropout_sampling_size,
         dropout=args.uncertainty_dropout_p,
-    )
+    )  # make is_mixed one if args.is_mixed is true.
 
-    models = [load_model(model_path, multicomponent) for model_path in model_paths]
+    print(uncertainty_estimator)
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
     test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
     )
-    test_preds = torch.mean(test_individual_preds, dim=0)
-    if not isinstance(uncertainty_estimator, NoUncertaintyEstimator):
-        test_uncs = torch.mean(test_individual_uncs, dim=0)
-    else:
-        test_uncs = None
+    if not args.is_mixed:
+        test_individual_preds = [test_individual_preds]
+        test_individual_uncs = [test_individual_uncs]
+    test_preds = []
+    test_uncs = []
 
-    if args.calibration_method is not None:
-        uncertainty_calibrator = Factory.build(
-            UncertaintyCalibratorRegistry[args.calibration_method],
-            p=args.calibration_interval_percentile / 100,
-            alpha=args.conformal_alpha,
-        )
-        cal_targets = cal_loader.dataset.Y
-        cal_mask = torch.from_numpy(np.isfinite(cal_targets))
-        cal_targets = np.nan_to_num(cal_targets, nan=0.0)
-        cal_targets = torch.from_numpy(cal_targets)
-        cal_individual_preds, cal_individual_uncs = uncertainty_estimator(
-            cal_loader, models, trainer
-        )
-        cal_preds = torch.mean(cal_individual_preds, dim=0)
-        cal_uncs = torch.mean(cal_individual_uncs, dim=0)
-        if isinstance(uncertainty_calibrator, MVEWeightingCalibrator):
-            uncertainty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
-            test_uncs = uncertainty_calibrator.apply(cal_individual_uncs)
+    for idx, individual_pred in enumerate(test_individual_preds):
+        test_preds.append(torch.mean(individual_pred, dim=0))
+
+        if not isinstance(uncertainty_estimator, NoUncertaintyEstimator) and not isinstance(
+            uncertainty_estimator, MixedNoUncertaintyEstimator
+        ):
+            test_uncs.append(torch.mean(test_individual_uncs[idx], dim=0))
         else:
-            if isinstance(uncertainty_calibrator, RegressionCalibrator):
-                uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+            test_uncs = None
+
+        if args.calibration_method is not None:
+            uncertainty_calibrator = Factory.build(
+                UncertaintyCalibratorRegistry[args.calibration_method],
+                p=args.calibration_interval_percentile / 100,
+                alpha=args.conformal_alpha,
+            )
+            cal_targets = cal_loader.dataset.Y
+            cal_mask = torch.from_numpy(np.isfinite(cal_targets))
+            cal_targets = np.nan_to_num(cal_targets, nan=0.0)
+            cal_targets = torch.from_numpy(cal_targets)
+            cal_individual_preds, cal_individual_uncs = uncertainty_estimator(
+                cal_loader, models, trainer
+            )
+            cal_preds = torch.mean(cal_individual_preds, dim=0)
+            cal_uncs = torch.mean(cal_individual_uncs, dim=0)
+            if isinstance(uncertainty_calibrator, MVEWeightingCalibrator):
+                uncertainty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
+                test_uncs = uncertainty_calibrator.apply(cal_individual_uncs)
             else:
-                uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
-            test_uncs = uncertainty_calibrator.apply(test_uncs)
-            for i in range(test_individual_uncs.shape[0]):
-                test_individual_uncs[i] = uncertainty_calibrator.apply(test_individual_uncs[i])
+                if isinstance(uncertainty_calibrator, RegressionCalibrator):
+                    uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+                else:
+                    uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
+                print(args.uncertainty_method)
+                test_uncs[idx] = uncertainty_calibrator.apply(test_uncs[idx])
+                for i in range(test_individual_uncs[idx].shape[0]):
+                    test_individual_uncs[idx][i] = uncertainty_calibrator.apply(
+                        test_individual_uncs[idx][i]
+                    )
 
-    if args.evaluation_methods is not None:
-        uncertainty_evaluators = [
-            Factory.build(UncertaintyEvaluatorRegistry[method])
-            for method in args.evaluation_methods
-        ]
-        logger.info("Uncertainty evaluation metric:")
-        for evaluator in uncertainty_evaluators:
-            test_targets = test_loader.dataset.Y
-            test_mask = torch.from_numpy(np.isfinite(test_targets))
-            test_targets = np.nan_to_num(test_targets, nan=0.0)
-            test_targets = torch.from_numpy(test_targets)
-            if isinstance(evaluator, RegressionEvaluator):
-                metric_value = evaluator.evaluate(test_preds, test_uncs, test_targets, test_mask)
-            else:
-                metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
-            logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
+        if args.evaluation_methods is not None:
+            uncertainty_evaluators = [
+                Factory.build(UncertaintyEvaluatorRegistry[method])
+                for method in args.evaluation_methods
+            ]
+            logger.info("Uncertainty evaluation metric:")
+            for evaluator in uncertainty_evaluators:
+                test_targets = test_loader.dataset.Y
+                test_mask = torch.from_numpy(np.isfinite(test_targets))
+                test_targets = np.nan_to_num(test_targets, nan=0.0)
+                test_targets = torch.from_numpy(test_targets)
+                if isinstance(evaluator, RegressionEvaluator):
+                    metric_value = evaluator.evaluate(
+                        test_preds[idx], test_uncs[idx], test_targets, test_mask
+                    )
+                else:
+                    metric_value = evaluator.evaluate(test_uncs[idx], test_targets, test_mask)
+                logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
-    if args.uncertainty_method == "none" and (
-        isinstance(model.predictor, MveFFN) or isinstance(model.predictor, EvidentialFFN)
-    ):
-        test_preds = test_preds[..., 0]
-        test_individual_preds = test_individual_preds[..., 0]
+        if args.uncertainty_method == "none":
+            if args.is_mixed and (
+                isinstance(models[0].predictors[0], MveFFN)
+                or isinstance(models[0].predictors[0], EvidentialFFN)
+            ):
+                test_preds[idx] = test_preds[idx][..., 0]
+                test_individual_preds[idx] = test_individual_preds[idx][..., 0]
+            elif isinstance(models[0].predictor, MveFFN) or isinstance(
+                models[0].predictor, EvidentialFFN
+            ):
+                test_preds[idx] = test_preds[idx][..., 0]
+                test_individual_preds[idx] = test_individual_preds[idx][..., 0]
 
-    if output_columns is None:
-        output_columns = [
-            f"pred_{i}" for i in range(test_preds.shape[1])
-        ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
+        if output_columns is None:
+            print(test_preds[idx])
+            output_columns = [
+                f"pred_{i}" for i in range(test_preds[idx].shape[1])
+            ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
 
-    save_predictions(args, model, output_columns, test_preds, test_uncs, output_path)
+    test_preds = test_preds[0] if not args.is_mixed and test_preds is not None else test_preds
+    test_uncs = test_uncs[0] if not args.is_mixed and test_uncs is not None else test_uncs
+
+    save_predictions(
+        args,
+        models[0],
+        output_columns,
+        mixed_columns,
+        test_preds,
+        test_uncs,
+        output_path,
+        test_loader,
+    )
 
     if len(model_paths) > 1:
         save_individual_predictions(
             args,
-            model,
+            models[0],
             model_paths,
             output_columns,
+            mixed_columns,
             test_individual_preds,
             test_individual_uncs,
             output_path,
+            test_loader,
         )
 
 
-def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
+def save_predictions(
+    args, model, output_columns, mixed_columns, test_preds, test_uncs, output_path, test_loader
+):
     unc_columns = [f"{col}_unc" for col in output_columns]
 
-    if isinstance(model.predictor, MulticlassClassificationFFN):
+    if (args.is_mixed and isinstance(model.predictors[0], MulticlassClassificationFFN)) or (
+        not args.is_mixed and isinstance(model.predictor, MulticlassClassificationFFN)
+    ):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
@@ -345,9 +411,36 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    df_test[output_columns] = test_preds
 
-    if args.uncertainty_method not in ["none", "classification"]:
+    if args.is_mixed:
+        mol_cols = mixed_columns[0]
+        atom_cols = mixed_columns[1]
+        bond_cols = mixed_columns[2]
+
+        df_test.loc[:, mol_cols] = test_preds[0].tolist()
+
+        for i in range(len(df_test)):
+            atom_slices = test_loader.dataset._atom_slices
+            if atom_slices is not None:
+                first_atom = atom_slices.index(i)
+                last_atom = first_atom + atom_slices.count(i)
+                atom_preds = test_preds[1][first_atom:last_atom]
+                df_test.loc[i, atom_cols] = [
+                    str(atom_preds[:, j].tolist()) for j in range(len(atom_cols))
+                ]
+
+            bond_slices = test_loader.dataset._bond_slices
+            if bond_slices is not None:
+                first_bond = bond_slices.index(i)
+                last_bond = first_bond + bond_slices.count(i)
+                bond_preds = test_preds[2][first_bond:last_bond]
+                df_test.loc[i, bond_cols] = [
+                    str(bond_preds[:, j].tolist()) for j in range(len(bond_cols))
+                ]
+    else:
+        df_test[output_columns] = test_preds[0]
+
+    if args.uncertainty_method not in ["none", "mixed_none", "classification"]:
         df_test[unc_columns] = np.round(test_uncs, 6)
 
     if output_path.suffix == ".pkl":
@@ -363,15 +456,19 @@ def save_individual_predictions(
     model,
     model_paths,
     output_columns,
+    mixed_columns,
     test_individual_preds,
     test_individual_uncs,
     output_path,
+    test_loader,
 ):
     unc_columns = [
         f"{col}_unc_model_{i}" for i in range(len(model_paths)) for col in output_columns
     ]
 
-    if isinstance(model.predictor, MulticlassClassificationFFN):
+    if (args.is_mixed and isinstance(model.predictors[0], MulticlassClassificationFFN)) or (
+        not args.is_mixed and isinstance(model.predictor, MulticlassClassificationFFN)
+    ):
         output_columns = [
             item
             for i in range(len(model_paths))
@@ -379,29 +476,64 @@ def save_individual_predictions(
             for item in (f"{col}_model_{i}", f"{col}_prob_model_{i}")
         ]
 
-        predicted_class_labels = test_individual_preds.argmax(axis=-1)
+        predicted_class_labels = test_individual_preds[0].argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 3, test_individual_preds
+            lambda x: ",".join(map(str, x)), 3, test_individual_preds[0]
         )
-        test_individual_preds = np.concatenate(
-            (predicted_class_labels, formatted_probability_strings), axis=-1
-        )
+        test_individual_preds = [
+            np.concatenate((predicted_class_labels, formatted_probability_strings), axis=-1)
+        ]
     else:
         output_columns = [
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in output_columns
         ]
 
-    m, n, t = test_individual_preds.shape
-    test_individual_preds = np.transpose(test_individual_preds, (1, 0, 2)).reshape(n, m * t)
+    m, n, t = test_individual_preds[0].shape
+    test_individual_preds[0] = np.transpose(test_individual_preds[0], (1, 0, 2)).reshape(
+        n, m * t
+    )  # TODO: edit for atoms/bonds
     df_test = pd.read_csv(
         args.test_path, header=None if args.no_header_row else "infer", index_col=False
     )
-    df_test[output_columns] = test_individual_preds
 
-    if args.uncertainty_method not in ["none", "classification", "ensemble"]:
-        m, n, t = test_individual_uncs.shape
-        test_individual_uncs = np.transpose(test_individual_uncs, (1, 0, 2)).reshape(n, m * t)
-        df_test[unc_columns] = np.round(test_individual_uncs, 6)
+    if args.is_mixed:
+        mol_cols = [f"{col}_model_{i}" for i in range(len(model_paths)) for col in mixed_columns[0]]
+        atom_cols = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in mixed_columns[1]
+        ]
+        bond_cols = [
+            f"{col}_model_{i}" for i in range(len(model_paths)) for col in mixed_columns[2]
+        ]
+
+        print(test_individual_preds[0].shape)
+        print(mol_cols)
+        df_test.loc[:, mol_cols] = test_individual_preds[0].tolist()
+
+        for i in range(len(df_test)):
+            atom_slices = test_loader.dataset._atom_slices
+            if atom_slices is not None:
+                first_atom = atom_slices.index(i)
+                last_atom = first_atom + atom_slices.count(i)
+                atom_preds = test_individual_preds[1][first_atom:last_atom]
+                df_test.loc[i, atom_cols] = [
+                    str(atom_preds[:, j].tolist()) for j in range(len(atom_cols))
+                ]
+
+            bond_slices = test_loader.dataset._bond_slices
+            if bond_slices is not None:
+                first_bond = bond_slices.index(i)
+                last_bond = first_bond + bond_slices.count(i)
+                bond_preds = test_individual_preds[2][first_bond:last_bond]
+                df_test.loc[i, bond_cols] = [
+                    str(bond_preds[:, j].tolist()) for j in range(len(bond_cols))
+                ]
+    else:
+        df_test[output_columns] = test_individual_preds[0]
+
+    if args.uncertainty_method not in ["none", "mixed_none", "classification"]:
+        m, n, t = test_individual_uncs[0].shape
+        test_individual_uncs[0] = np.transpose(test_individual_uncs[0], (1, 0, 2)).reshape(n, m * t)
+        df_test[unc_columns] = np.round(test_individual_uncs[0], 6)
 
     output_path = output_path.parent / Path(
         str(args.output.stem) + "_individual" + str(output_path.suffix)

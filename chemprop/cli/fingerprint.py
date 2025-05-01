@@ -11,7 +11,7 @@ from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.predict import find_models
 from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
-from chemprop.models import load_model
+from chemprop.models import load_mixed_model, load_model
 from chemprop.nn.metrics import LossFunctionRegistry
 
 logger = logging.getLogger(__name__)
@@ -81,11 +81,14 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent)
+    if args.is_mixed:
+        model = load_mixed_model(model_path)
+    else:
+        model = load_model(model_path, multicomponent)
     model.eval()
 
     bounded = any(
-        isinstance(model.criterion, LossFunctionRegistry[loss_function])
+        isinstance(model.criterion, LossFunctionRegistry[loss_function])  # maybe fix for mixed?
         for loss_function in LossFunctionRegistry.keys()
         if "bounded" in loss_function
     )
@@ -115,14 +118,13 @@ def make_fingerprint_for_model(
         **featurization_kwargs,
     )
     logger.info(f"test size: {len(test_data[0])}")
-    test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
-    ]
 
     if multicomponent:
-        test_dset = data.MulticomponentDataset(test_dsets)
+        test_dset = data.MulticomponentDataset(
+            [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data]
+        )
     else:
-        test_dset = test_dsets[0]
+        test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
 
     test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
 
@@ -134,12 +136,46 @@ def make_fingerprint_for_model(
                 model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
             ]
+            H = torch.cat(encodings, 0).numpy()
+        elif args.is_mixed:
+            encodings = [
+                model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
+                for batch in test_loader
+            ]
+            H = [torch.cat(encoding, 0).numpy() for encoding in zip(*encodings)]
+            if output_path.suffix in [".npz"]:
+                np.savez(output_path.with_stem(output_path.stem + "_mol_fingerprints"), H=H[0])
+                np.savez(output_path.with_stem(output_path.stem + "_atom_fingerprints"), H=H[1])
+                np.savez(output_path.with_stem(output_path.stem + "_bond_fingerprints"), H=H[2])
+            elif output_path.suffix == ".csv":
+                fingerprint_columns = [f"fp_{i}" for i in range(H[0].shape[1])]
+                df_fingerprints = pd.DataFrame(H[0], columns=fingerprint_columns)
+                df_fingerprints.to_csv(
+                    output_path.with_stem(output_path.stem + "_mol_fingerprints"), index=False
+                )
+                fingerprint_columns = [f"fp_{i}" for i in range(H[1].shape[1])]
+                df_fingerprints = pd.DataFrame(H[1], columns=fingerprint_columns)
+                df_fingerprints.to_csv(
+                    output_path.with_stem(output_path.stem + "_atom_fingerprints"), index=False
+                )
+                fingerprint_columns = [f"fp_{i}" for i in range(H[2].shape[1])]
+                df_fingerprints = pd.DataFrame(H[2], columns=fingerprint_columns)
+                df_fingerprints.to_csv(
+                    output_path.with_stem(output_path.stem + "_bond_fingerprints"), index=False
+                )
+            else:
+                raise ArgumentError(
+                    argument=None, message=f"Output must be a CSV or npz file. Got {args.output}."
+                )
+            logger.info(f"Fingerprints saved to '{output_path}'")
+
+            return
         else:
             encodings = [
                 model.encoding(batch.bmg, batch.V_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
             ]
-        H = torch.cat(encodings, 0).numpy()
+            H = torch.cat(encodings, 0).numpy()
 
     if output_path.suffix in [".npz"]:
         np.savez(output_path, H=H)

@@ -369,6 +369,7 @@ class MolAtomBondMPNN(pl.LightningModule):
 
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
 
+        print(self.criterion)
         self.metrics = nn.ModuleList(
             [
                 nn.ModuleList([*metrics, self.criterion[i].clone()])
@@ -424,6 +425,8 @@ class MolAtomBondMPNN(pl.LightningModule):
         H_v, H_b = self.message_passing(bmg, V_d, E_d)
         H_g = self.agg(H_v, bmg.batch)
         H_g = self.bn(H_g)
+        print("hello")
+        print(H_g.shape)
         H_g = H_g if X_d is None else torch.cat((H_g, self.X_d_transform(X_d)), 1)
 
         H_b = torch.cat([H_b, H_b[bmg.rev_edge_index]], 1)
