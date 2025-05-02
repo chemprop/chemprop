@@ -12,7 +12,7 @@ from chemprop.utils import make_mol
 
 def build_MAB_data_from_files(
     p_data: PathLike,
-    smiles_cols: Sequence[str],
+    smiles_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     atom_target_cols: Sequence[str] | None,
     bond_target_cols: Sequence[str] | None,
@@ -23,15 +23,17 @@ def build_MAB_data_from_files(
     p_bond_feats: dict[int, PathLike] | None,
     p_atom_descs: dict[int, PathLike] | None,
     p_bond_descs: dict[int, PathLike] | None,
+    p_constraints: PathLike | None,
+    constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
     smis = df[smiles_cols[0]].values
     mols = [make_mol(smi, **make_mol_kwargs) for smi in smis]
-    weights = df[weight_col].values if weight_col is not None else None
-
     n_datapoints = len(mols)
+
+    weights = df[weight_col].values if weight_col is not None else [None] * n_datapoints
 
     X_ds = np.load(p_descriptors)["arr_0"] if p_descriptors else [None] * n_datapoints
     V_fs = (
@@ -137,6 +139,51 @@ def build_MAB_data_from_files(
                 for bond_ys in bonds_ys
             ]
 
+    if p_constraints:
+        df_constraints = pd.read_csv(p_constraints, index_col=False)
+        n_mols = len(df_constraints)
+
+        if constraints_cols_to_target_cols is None:
+            raise ValueError(
+                "If using constraints, you must indicate which constraint column corresponds to "
+                "which atom or bond target column. This is done by passing a sequence of strings "
+                "with the `--constraints-cols-to-target-cols` flag. The order of the strings "
+                "matches the order of the constraint columns. The strings must look like "
+                "'atom_target_col_{i}' or 'bond_target_col_{i}', where i is the index of the "
+                "atom or bond target column. The index of the atom and bond target columns is "
+                "determined by the order they were passed using `--atom-target-cols` and "
+                "`--bond-target-cols`."
+            )
+
+        atom_constraint_cols = [
+            constraints_cols_to_target_cols.get(f"atom_target_col_{col}", None)
+            for col in range(atoms_ys[0].shape[1])
+        ]
+        atom_constraints = np.hstack(
+            [
+                df_constraints.iloc[:, col].values.reshape(-1, 1)
+                if col is not None
+                else np.full((n_mols, 1), np.nan)
+                for col in atom_constraint_cols
+            ]
+        )
+
+        bond_constraint_cols = [
+            constraints_cols_to_target_cols.get(f"bond_target_col_{col}", None)
+            for col in range(bonds_ys[0].shape[1])
+        ]
+        bond_constraints = np.hstack(
+            [
+                df_constraints.iloc[:, col].values.reshape(-1, 1)
+                if col is not None
+                else np.full((n_mols, 1), np.nan)
+                for col in bond_constraint_cols
+            ]
+        )
+    else:
+        atom_constraints = [None] * n_datapoints
+        bond_constraints = [None] * n_datapoints
+
     datapoints = [
         MolAtomBondDatapoint(
             mol=mols[i],
@@ -156,6 +203,8 @@ def build_MAB_data_from_files(
             atom_gt_mask=atom_gt_masks[i],
             bond_lt_mask=bond_lt_masks[i],
             bond_gt_mask=bond_gt_masks[i],
+            atom_constraint=atom_constraints[i],
+            bond_constraint=bond_constraints[i],
         )
         for i in range(n_datapoints)
     ]
