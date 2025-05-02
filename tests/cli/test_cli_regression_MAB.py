@@ -7,56 +7,159 @@ import pytest
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
-from chemprop.models.model import MolAtomBondMPNN
+from chemprop.models import MolAtomBondMPNN
 
 pytestmark = pytest.mark.CLI
 
 
 @pytest.fixture
-def data_path(data_dir):
+def regression_data_path(data_dir):
     return (
-        str(data_dir / "regression" / "mixed" / "mixed.csv"),
-        str(data_dir / "regression" / "mol" / "descriptors.npz"),
-        str(data_dir / "regression" / "mol" / "atom_features.npz"),
-        str(data_dir / "regression" / "mol" / "bond_features.npz"),
-        str(data_dir / "regression" / "mol" / "atom_descriptors.npz"),
+        str(data_dir / "mol_atom_bond" / "regression.csv"),
+        "smiles",
+        ["mol_y1", "mol_y2"],
+        ["atom_y1", "atom_y2"],
+        ["bond_y1", "bond_y2"],
+        "weight",
     )
 
 
 @pytest.fixture
-def model_path(data_dir):
-    return str(data_dir / "example_model_v2_regression_mol_mixed.pt")
-
-
-# @pytest.fixture
-# def mve_model_path(data_dir):
-#     return str(data_dir / "example_model_v2_regression_mve_mol.pt")  # fix
-
-
-# @pytest.fixture
-# def evidential_model_path(data_dir):
-#     return str(data_dir / "example_model_v2_regression_evidential_mol.pt")  # fix
+def bounded_data_path(data_dir):
+    return (
+        str(data_dir / "mol_atom_bond" / "bounded.csv"),
+        "smiles",
+        ["mol_y1", "mol_y2"],
+        ["atom_y1", "atom_y2"],
+        ["bond_y1", "bond_y2"],
+        "weight",
+    )
 
 
 @pytest.fixture
-def config_path(data_dir):
-    return str(data_dir / "regression" / "mixed" / "config.toml")
+def classification_data_path(data_dir):
+    return (
+        str(data_dir / "mol_atom_bond" / "classification.csv"),
+        "smiles",
+        ["mol_y1", "mol_y2"],
+        ["atom_y1", "atom_y2"],
+        ["bond_y1", "bond_y2"],
+        "weight",
+    )
 
 
-def test_train_quick(monkeypatch, data_path):
-    input_path, *_ = data_path
+@pytest.fixture
+def multiclass_data_path(data_dir):
+    return (
+        str(data_dir / "mol_atom_bond" / "multiclass.csv"),
+        "smiles",
+        ["mol_y1", "mol_y2"],
+        ["atom_y1", "atom_y2"],
+        ["bond_y1", "bond_y2"],
+        "weight",
+    )
+
+
+@pytest.fixture
+def constrained_data_path(data_dir):
+    return (
+        str(data_dir / "mol_atom_bond" / "constrained_regression.csv"),
+        str(data_dir / "mol_atom_bond" / "constrained_regression_constraints.csv"),
+        ["atom_target_0", "atom_target_1", "bond_target_1"],
+        "smiles",
+        ["mol_y1"],
+        ["atom_y1", "atom_y2"],
+        ["bond_y1", "bond_y2"],
+    )
+
+
+@pytest.fixture
+def extras_paths(data_dir):
+    return (
+        str(data_dir / "mol_atom_bond" / "descriptors.npz"),
+        str(data_dir / "mol_atom_bond" / "atom_features_descriptors.npz"),
+        str(data_dir / "mol_atom_bond" / "bond_features_descriptors.npz"),
+        str(data_dir / "mol_atom_bond" / "atom_features_descriptors.npz"),
+        str(data_dir / "mol_atom_bond" / "bond_features_descriptors.npz"),
+    )
+
+
+@pytest.fixture
+def model_dir(data_dir):
+    return data_dir / "mol_atom_bond" / "example_models"
+
+
+@pytest.fixture
+def regression_model_path(model_dir):
+    return str(model_dir / "regression.pt")
+
+
+@pytest.fixture
+def regression_no_mol_model_path(model_dir):
+    return str(model_dir / "regression_no_mol.pt")
+
+
+@pytest.fixture
+def regression_no_atom_model_path(model_dir):
+    return str(model_dir / "regression_no_atom.pt")
+
+
+@pytest.fixture
+def regression_no_bond_model_path(model_dir):
+    return str(model_dir / "regression_no_bond.pt")
+
+
+@pytest.fixture
+def regression_only_atom_model_path(model_dir):
+    return str(model_dir / "regression_only_atom.pt")
+
+
+@pytest.fixture
+def regression_only_bond_model_path(model_dir):
+    return str(model_dir / "regression_only_bond.pt")
+
+
+@pytest.fixture
+def classification_model_model_path(model_dir):
+    return str(model_dir / "classification.pt")
+
+
+@pytest.fixture
+def multiclass_model_path(model_dir):
+    return str(model_dir / "multiclass.pt")
+
+
+@pytest.fixture
+def constrained_model_path(model_dir):
+    return str(model_dir / "regression_constrained.pt")
+
+
+@pytest.fixture
+def mve_model_path(model_dir):
+    return str(model_dir / "regression_mve.pt")
+
+
+def test_train_regression_quick(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
         "train",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--weight-column",
+        weight,
         "--epochs",
         "3",
-        "--num-workers",
-        "0",
         "--show-individual-scores",
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
@@ -64,24 +167,31 @@ def test_train_quick(monkeypatch, data_path):
         main()
 
 
-def test_train_quick_features(monkeypatch, data_path):
+def test_train_regression_quick_features(monkeypatch, regression_data_path, extras_paths):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
     (
-        input_path,
         descriptors_path,
         atom_features_path,
         bond_features_path,
         atom_descriptors_path,
-    ) = data_path
+        bond_descriptors_path,
+    ) = extras_paths
 
-    base_args = [
+    args = [
         "chemprop",
         "train",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
         "--epochs",
         "3",
-        "--num-workers",
-        "0",
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
@@ -90,201 +200,36 @@ def test_train_quick_features(monkeypatch, data_path):
         bond_features_path,
         "--atom-descriptors-path",
         atom_descriptors_path,
-        "--is-mixed",
+        "--bond-descriptors-path",
+        bond_descriptors_path,
     ]
 
-    task_types = ["", "regression-mve", "regression-evidential", "regression-quantile"]
 
-    for task_type in task_types:
-        args = base_args.copy()
-
-        if task_type:
-            args += ["--task-type", task_type]
-
-        if task_type == "regression-evidential":
-            args += ["--evidential-regularization", "0.2"]
-
-        with monkeypatch.context() as m:
-            m.setattr("sys.argv", args)
-            main()
-
-
-def test_predict_quick(monkeypatch, data_path, model_path):
-    input_path, *_ = data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path, "--is-mixed"]
+def test_predict_regression_quick(monkeypatch, regression_data_path, regression_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_model_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
 
-# def test_predict_mve_quick(monkeypatch, data_path, mve_model_path):
-#     input_path, *_ = data_path
-#     args = [
-#         "chemprop",
-#         "predict",
-#         "-i",
-#         input_path,
-#         "--model-path",
-#         mve_model_path,
-#         "--cal-path",
-#         input_path,
-#         "--uncertainty-method",
-#         "mve",
-#         "--calibration-method",
-#         "zscaling",
-#         "--evaluation-methods",
-#         "nll-regression",
-#         "miscalibration_area",
-#         "ence",
-#         "spearman",
-#         "--is-mixed",
-#     ]
-
-#     with monkeypatch.context() as m:
-#         m.setattr("sys.argv", args)
-#         main()
-
-
-# def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path):
-#     input_path, *_ = data_path
-#     args = [
-#         "chemprop",
-#         "predict",
-#         "-i",
-#         input_path,
-#         "--model-path",
-#         evidential_model_path,
-#         "--cal-path",
-#         input_path,
-#         "--uncertainty-method",
-#         "evidential-total",
-#         "--calibration-method",
-#         "zscaling",
-#         "--evaluation-methods",
-#         "nll-regression",
-#         "miscalibration_area",
-#         "ence",
-#         "spearman",
-#         "--is-mixed",
-#     ]
-
-#     with monkeypatch.context() as m:
-#         m.setattr("sys.argv", args)
-#         main()
-
-
-@pytest.mark.parametrize("ffn_block_index", ["0", "1"])
-def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
-    input_path, *_ = data_path
-    args = [
-        "chemprop",
-        "fingerprint",
-        "-i",
-        input_path,
-        "--model-path",
-        model_path,
-        "--ffn-block-index",
-        ffn_block_index,
-        "--is-mixed",
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-
-def test_train_output_structure(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--epochs",
-        "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--save-smiles-splits",
-        "--is-mixed",
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-    assert (tmp_path / "model_0" / "best.pt").exists()
-    assert (tmp_path / "model_0" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
-    assert (tmp_path / "train_smiles.csv").exists()
-    assert (tmp_path / "model_0" / "test_predictions.csv").exists()
-
-
-def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--epochs",
-        "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--save-smiles-splits",
-        "--split-type",
-        "random",
-        "--num-replicates",
-        "3",
-        "--ensemble-size",
-        "2",
-        "--metrics",
-        "mse",
-        "rmse",
-        "--molecule-featurizers",
-        "rdkit_2d",
-        "--is-mixed",
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-    assert (tmp_path / "replicate_2" / "model_1" / "best.pt").exists()
-    assert (tmp_path / "replicate_2" / "model_1" / "checkpoints" / "last.ckpt").exists()
-    assert (tmp_path / "replicate_2" / "model_1" / "trainer_logs" / "version_0").exists()
-    assert (tmp_path / "replicate_2" / "train_smiles.csv").exists()
-
-
-def test_train_splits_file(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
-    splits_file = str(tmp_path / "splits.json")
-    splits = [
-        {"train": [1, 2], "val": "3-5", "test": "6,7"},
-        {"val": [1, 2], "test": "3-5", "train": "6,7"},
-    ]
-
-    with open(splits_file, "w") as f:
-        json.dump(splits, f)
+def test_train_regression_no_mol(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
         "train",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
         "--epochs",
         "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--splits-file",
-        splits_file,
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
@@ -292,168 +237,383 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
         main()
 
 
-def test_predict_output_structure(monkeypatch, data_path, model_path, tmp_path):
-    input_path, *_ = data_path
+def test_predict_regression_no_mol(monkeypatch, regression_data_path, regression_no_mol_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_mol_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_regresssion_no_atom(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_no_atom(
+    monkeypatch, regression_data_path, regression_no_atom_model_path
+):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_atom_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_regression_no_bond(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_no_bond(
+    monkeypatch, regression_data_path, regression_no_bond_model_path
+):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_bond_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+# The test for only_mol is just the normal regression CLI tests
+
+
+def test_train_regression_only_atom(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--atom-target-columns",
+        *atom_targets,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_only_atom(
+    monkeypatch, regression_data_path, regression_only_atom_model_path
+):
+    input_path, *_ = regression_data_path
     args = [
         "chemprop",
         "predict",
         "-i",
         input_path,
         "--model-path",
-        model_path,
-        model_path,
-        "--output",
-        str(tmp_path / "preds.csv"),
-        "--is-mixed",
+        regression_only_atom_model_path,
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    assert (tmp_path / "preds.csv").exists()
-    assert (tmp_path / "preds_individual.csv").exists()
+
+def test_train_regression_only_bond(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_only_bond(
+    monkeypatch, regression_data_path, regression_only_bond_model_path
+):
+    input_path, *_ = regression_data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_only_bond_model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_bounded_quick(monkeypatch, bounded_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = bounded_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--loss-function",
+        "bounded-mse",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_classification_quick(monkeypatch, classification_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = classification_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--task-type",
+        "classification",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_classification_quick(monkeypatch, regression_data_path, classification_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", classification_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = multiclass_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--task-type",
+        "multiclass",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_multiclass_quick(monkeypatch, regression_data_path, multiclass_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", multiclass_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_mve_quick(monkeypatch, regression_data_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--task-type",
+        "regression-mve",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_mve_quick(monkeypatch, regression_data_path, mve_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_regression_constrained(monkeypatch, constrained_data_path):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--constraints-path",
+        constraints_path,
+        "--constraints-to-targets",
+        *constraints_to_targets,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_constrained(monkeypatch, regression_data_path, constrained_model_path):
+    input_path, *_ = regression_data_path
+    args = ["chemprop", "predict", "-i", input_path, "--model-path", constrained_model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
 
 
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
-def test_fingerprint_output_structure(
-    monkeypatch, data_path, model_path, tmp_path, ffn_block_index
+def test_fingerprint_quick(
+    monkeypatch, regression_data_path, regression_model_path, ffn_block_index
 ):
-    input_path, *_ = data_path
+    input_path, *_ = regression_data_path
     args = [
         "chemprop",
         "fingerprint",
         "-i",
         input_path,
         "--model-path",
-        model_path,
-        "--output",
-        str(tmp_path / "fps.csv"),
+        regression_model_path,
         "--ffn-block-index",
         ffn_block_index,
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
-
-    assert (tmp_path / "fps_0_mol_fingerprints.csv").exists()
-    assert (tmp_path / "fps_0_atom_fingerprints.csv").exists()
-    assert (tmp_path / "fps_0_bond_fingerprints.csv").exists()
-
-
-def test_train_outputs(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
-
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--epochs",
-        "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--is-mixed",
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
-
-    model = MolAtomBondMPNN.load_from_checkpoint(checkpoint_path)
-    assert model is not None
-
-
-# def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
-#     input_path, *_ = data_path
-#     args = [
-#         "chemprop",
-#         "train",
-#         "-i",
-#         input_path,
-#         "--epochs",
-#         "3",
-#         "--num-workers",
-#         "0",
-#         "--save-dir",
-#         str(tmp_path),
-#         "--checkpoint",
-#         model_path,
-#         "--freeze-encoder",
-#         "--frzn-ffn-layers",
-#         "1",
-#         "--is-mixed",
-#     ]
-
-#     with monkeypatch.context() as m:
-#         m.setattr("sys.argv", args)
-#         main()
-
-#     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
-
-#     trained_model = MolAtomBondMPNN.load_from_checkpoint(checkpoint_path)
-#     frzn_model = MolAtomBondMPNN.load_from_file(model_path)
-
-#     assert torch.equal(
-#         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
-#     )
-#     assert torch.equal(
-#         trained_model.message_passing.W_o_b.weight, frzn_model.message_passing.W_o_b.weight
-#     )
-#     assert torch.equal(
-#         trained_model.mol_predictor.ffn[0][0].weight, frzn_model.mol_predictor.ffn[0][0].weight
-#     )
-#     assert torch.equal(
-#         trained_model.atom_predictor.ffn[0][0].weight, frzn_model.atom_predictor.ffn[0][0].weight
-#     )
-#     assert torch.equal(
-#         trained_model.bond_predictor.ffn[0][0].weight, frzn_model.bond_predictor.ffn[0][0].weight
-#     )
-
-
-def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
-    input_path, *_ = data_path
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        "--epochs",
-        "3",
-        "--num-workers",
-        "0",
-        "--save-dir",
-        str(tmp_path),
-        "--checkpoint",
-        model_path,
-        "--is-mixed",
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-    checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
-
-    model = MolAtomBondMPNN.load_from_checkpoint(checkpoint_path)
-    assert model is not None
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
-def test_optuna_quick(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
+def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
         "hpopt",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
         "--epochs",
         "6",
         "--hpopt-save-dir",
@@ -462,13 +622,10 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "optuna",
-        "--molecule-featurizers",
-        "morgan_count",
         "--search-parameter-keywords",
         "all",
         "--accelerator",
         "cpu",
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
@@ -498,14 +655,22 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
-def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
+def test_hyperopt_quick(monkeypatch, regression_data_path, tmp_path):
+    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
         "hpopt",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
+        "--target-columns",
+        *targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
         "--epochs",
         "6",
         "--hpopt-save-dir",
@@ -514,11 +679,8 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "2",
         "--raytune-search-algorithm",
         "hyperopt",
-        "--molecule-featurizers",
-        "morgan_binary",
         "--search-parameter-keywords",
         "all",
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
