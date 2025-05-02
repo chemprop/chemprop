@@ -96,8 +96,28 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     )
 
 
+@dataclass(repr=False, eq=False, slots=True)
+class BatchMABMolGraph(BatchMolGraph):
+    bond_batch: Tensor = field(init=False)
+    """A tensor of indices that show which :class:`MolGraph` each bond belongs to in the batch"""
+
+    def __post_init__(self, mgs: Sequence[MolGraph]):
+        # inheriting a dataclass with slots=True requires explicit arguments to super
+        super(BatchMABMolGraph, self).__post_init__(mgs)
+
+        bond_batch_indexes = []
+        for i, mg in enumerate(mgs):
+            bond_batch_indexes.append([i] * len(mg.E))
+
+        self.bond_batch = torch.tensor(np.concatenate(bond_batch_indexes)).long()
+
+    def to(self, device):
+        super(BatchMABMolGraph, self).to(device)
+        self.bond_batch = self.bond_batch.to(device)
+
+
 class MolAtomBondTrainingBatch(NamedTuple):
-    bmg: BatchMolGraph
+    bmg: BatchMABMolGraph
     V_d: Tensor | None
     E_d: Tensor | None
     X_d: Tensor | None
@@ -105,10 +125,11 @@ class MolAtomBondTrainingBatch(NamedTuple):
     w: tuple[Tensor | None, Tensor | None, Tensor | None]
     lt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
     gt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+    constraints: tuple[Tensor | None, Tensor | None]
 
 
 def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:
-    mgs, V_ds, E_ds, x_ds, yss, weights, lt_maskss, gt_maskss = zip(*batch)
+    mgs, V_ds, E_ds, x_ds, yss, weights, lt_maskss, gt_maskss, constraintss = zip(*batch)
 
     weights = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
     weights_tensors = []
@@ -121,8 +142,16 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
             repeats = torch.tensor([y.shape[0] for y in ys])
             weights_tensors.append(torch.repeat_interleave(weights, repeats, dim=0))
 
+    if constraintss[0][0] is None and constraintss[0][1] is None:
+        constraintss = None
+    else:
+        constraintss = [
+            None if constraints[0] is None else torch.from_numpy(np.array(constraints)).float()
+            for constraints in zip(*constraintss)
+        ]
+
     return MolAtomBondTrainingBatch(
-        BatchMolGraph(mgs),
+        BatchMABMolGraph(mgs),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
         None if E_ds[0] is None else torch.from_numpy(np.concatenate(E_ds)).float(),
         None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
@@ -136,6 +165,7 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
             None if gt_masks[0] is None else torch.from_numpy(np.vstack(gt_masks))
             for gt_masks in zip(*gt_maskss)
         ],
+        constraintss,
     )
 
 
