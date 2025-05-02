@@ -225,9 +225,7 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
 
-    dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas
-    ]
+    dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
     dset = dsets[0]
     if multicomponent:
         dset = data.MulticomponentDataset(dsets)

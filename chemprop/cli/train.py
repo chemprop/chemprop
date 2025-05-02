@@ -586,7 +586,7 @@ def normalize_inputs(train_dset, val_dset, args):
     d_vf = train_dset.d_vf
     d_ef = train_dset.d_ef
     d_vd = train_dset.d_vd
-    d_ed = train_dset.d_ed
+    d_ed = train_dset.d_ed if args.is_mixed else 0
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
@@ -733,8 +733,8 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
 
     if mixed and isinstance(_model.predictors[0].output_transform, UnscaleTransform):
         scaler = _model.predictors[0].output_transform.to_standard_scaler()
-        train_dset.normalize_targets(scaler)
-        val_dset.normalize_targets(scaler)
+        train_dset.normalize_targets("mol", scaler)
+        val_dset.normalize_targets("mol", scaler)
     elif not mixed and isinstance(_model.predictor.output_transform, UnscaleTransform):
         scaler = _model.predictor.output_transform.to_standard_scaler()
         train_dset.normalize_targets(scaler)
@@ -953,7 +953,9 @@ def build_datasets(args, train_data, val_data, test_data):
         train_dset = make_dataset(train_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         val_dset = make_dataset(val_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
         if len(test_data[0]) > 0:
-            test_dset = make_dataset(test_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(
+                test_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode
+            )
         else:
             test_dset = None
     else:
@@ -1002,11 +1004,7 @@ def build_model(
                     if isinstance(train_dset.datasets[i], MoleculeDataset)
                     else 0
                 ),
-                d_ed=(
-                    train_dset.datasets[i].d_ed
-                    if isinstance(train_dset.datasets[i], MoleculeDataset)
-                    else 0
-                ),
+                d_ed=0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
@@ -1059,7 +1057,7 @@ def build_model(
             train_dset.featurizer.bond_fdim,
             d_h=args.message_hidden_dim,
             d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
-            d_ed=train_dset.d_ed if isinstance(train_dset, MoleculeDataset) else 0,
+            d_ed=0,
             bias=args.message_bias,
             depth=args.depth,
             undirected=args.undirected,
@@ -1361,30 +1359,42 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         test_dset = test_loader.dataset
         if index == 0:
             targets = test_dset.Y
-            lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None else None
-            gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None else None
+            lt_mask = (
+                torch.from_numpy(test_dset.lt_mask)
+                if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None
+                else None
+            )
+            gt_mask = (
+                torch.from_numpy(test_dset.gt_mask)
+                if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None
+                else None
+            )
         elif index == 1:
             targets = test_dset.atom_Y
             lt_mask = (
                 torch.from_numpy(test_dset.atom_lt_mask)
-                if test_dset.atom_lt_mask[0] is not None and test_dset.atom_lt_mask[0][0] is not None
+                if test_dset.atom_lt_mask[0] is not None
+                and test_dset.atom_lt_mask[0][0] is not None
                 else None
             )
             gt_mask = (
                 torch.from_numpy(test_dset.atom_gt_mask)
-                if test_dset.atom_gt_mask[0] is not None and test_dset.atom_gt_mask[0][0] is not None
+                if test_dset.atom_gt_mask[0] is not None
+                and test_dset.atom_gt_mask[0][0] is not None
                 else None
             )
         else:
             targets = test_dset.bond_Y
             lt_mask = (
                 torch.from_numpy(test_dset.bond_lt_mask)
-                if test_dset.bond_lt_mask[0] is not None and test_dset.bond_lt_mask[0][0] is not None
+                if test_dset.bond_lt_mask[0] is not None
+                and test_dset.bond_lt_mask[0][0] is not None
                 else None
             )
             gt_mask = (
                 torch.from_numpy(test_dset.bond_gt_mask)
-                if test_dset.bond_gt_mask[0] is not None and test_dset.bond_gt_mask[0][0] is not None
+                if test_dset.bond_gt_mask[0] is not None
+                and test_dset.bond_gt_mask[0][0] is not None
                 else None
             )
     else:

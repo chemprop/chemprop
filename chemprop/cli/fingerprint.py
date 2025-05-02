@@ -10,7 +10,12 @@ import torch
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.predict import find_models
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.cli.utils import (
+    Subcommand,
+    build_data_from_files,
+    build_mixed_data_from_files,
+    make_dataset,
+)
 from chemprop.models import load_mixed_model, load_model
 from chemprop.nn.metrics import LossFunctionRegistry
 
@@ -58,12 +63,9 @@ class FingerprintSubcommand(Subcommand):
 
     @classmethod
     def func(cls, args: Namespace):
-        print(args.is_mixed)
         args = process_common_args(args)
         validate_common_args(args)
-        print(args.is_mixed)
         args = process_fingerprint_args(args)
-        print(args.is_mixed)
         main(args)
 
 
@@ -84,7 +86,6 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
 ):
-    print(args.is_mixed)
     if args.is_mixed:
         model = load_mixed_model(model_path)
     else:
@@ -112,15 +113,26 @@ def make_fingerprint_for_model(
         molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
     )
 
-    test_data = build_data_from_files(
-        args.test_path,
-        **format_kwargs,
-        p_descriptors=args.descriptors_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **featurization_kwargs,
-    )
+    if args.is_mixed:
+        test_data, *_ = build_mixed_data_from_files(
+            args.test_path,
+            **format_kwargs,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            **featurization_kwargs,
+        )
+    else:
+        test_data = build_data_from_files(
+            args.test_path,
+            **format_kwargs,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            **featurization_kwargs,
+        )
     logger.info(f"test size: {len(test_data[0])}")
 
     test_dsets = [
@@ -144,7 +156,6 @@ def make_fingerprint_for_model(
             ]
             H = torch.cat(encodings, 0).numpy()
         elif args.is_mixed:
-            print(args.is_mixed)
             encodings = [
                 model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
@@ -198,7 +209,6 @@ def make_fingerprint_for_model(
 
 
 def main(args):
-    print(args.is_mixed)
     match (args.smiles_columns, args.reaction_columns):
         case [None, None]:
             n_components = 1
