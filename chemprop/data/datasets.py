@@ -12,9 +12,13 @@ from torch.utils.data import Dataset
 from chemprop.data.datapoints import MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
-from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer, PolymerMolGraphFeaturizer
+from chemprop.featurizers.molgraph import (
+    CGRFeaturizer,
+    PolymerMolGraphFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
+)
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
-from chemprop.types import Rxn, Polymer
+from chemprop.types import Polymer, Rxn
 
 
 class Datum(NamedTuple):

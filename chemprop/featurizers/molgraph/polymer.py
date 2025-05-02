@@ -1,14 +1,14 @@
+from collections import Counter
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 
 import numpy as np
-from collections import Counter
 from rdkit import Chem
 
 from chemprop.data.molgraph import MolGraph
-from chemprop.types import Polymer
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.types import Polymer
 from chemprop.utils import remove_wildcard_atoms
 
 
@@ -41,6 +41,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
     .. [1] A graph representation of molecular ensembles for polymer property prediction (Chem. Sci. 2022,13, 10486-10498)
            https://pubs.rsc.org/en/content/articlelanding/2022/SC/D2SC02839E
     """
+
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
     degree_of_poly: InitVar[int] = 1
@@ -66,22 +67,22 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 r_tag = atom.GetSmarts().strip("[]").replace(":", "")  # *1, *2, ...
                 neighbor_map[r_tag] = neighbor_idx
                 # Tag it as non-core atom
-                atom.SetBoolProp('core', False)
+                atom.SetBoolProp("core", False)
                 # Create a map R --> bond type
                 bond = mol.GetBondBetweenAtoms(atom.GetIdx(), neighbor_idx)
                 r_bond_types[r_tag] = bond.GetBondType()
             # If not R atom
             else:
                 # Tag it as a core atom
-                atom.SetBoolProp('core', True)
+                atom.SetBoolProp("core", True)
 
         # Use the map created to tag attachment points
         for atom in atoms:
             if atom.GetIdx() in neighbor_map.values():
                 r_tags = [k for k, v in neighbor_map.items() if v == atom.GetIdx()]
-                atom.SetProp('R', ''.join(r_tags))
+                atom.SetProp("R", "".join(r_tags))
             else:
-                atom.SetProp('R', '')
+                atom.SetProp("R", "")
 
         return mol, r_bond_types
 
@@ -96,7 +97,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         new_mols = []
         for s, w in zip(mols, fragment_weights):
             for a in s.GetAtoms():
-                a.SetDoubleProp('w_frag', float(w))
+                a.SetDoubleProp("w_frag", float(w))
             new_mols.append(s)
         # Recombine all the mols into a single mol object
         mol = new_mols.pop(0)
@@ -114,9 +115,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         counter = Counter()  # Used for validating the input
 
         # Check if the degree of polymerisation is provided
-        if '~' in rules[-1]:
-            Xn = float(rules[-1].split('~')[1])
-            rules[-1] = rules[-1].split('~')[0]
+        if "~" in rules[-1]:
+            Xn = float(rules[-1].split("~")[1])
+            rules[-1] = rules[-1].split("~")[0]
         else:
             Xn = 1
 
@@ -127,9 +128,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             # QC of the input string
             if len(rule.split(":")) != 3:
                 raise ValueError(f"Incorrect format for input information {rule}")
-            idx1, idx2 = rule.split(':')[0].split('-')
-            w12 = float(rule.split(':')[1])  # Weight for bond R_idx1 -> R_idx2
-            w21 = float(rule.split(':')[2])  # Weight for bond R_idx2 -> R_idx1
+            idx1, idx2 = rule.split(":")[0].split("-")
+            w12 = float(rule.split(":")[1])  # Weight for bond R_idx1 -> R_idx2
+            w21 = float(rule.split(":")[2])  # Weight for bond R_idx2 -> R_idx1
             polymer_info.append((idx1, idx2, w12, w21))
             counter[idx1] += float(w21)
             counter[idx2] += float(w12)
@@ -137,11 +138,19 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # Validate input: sum of the incoming weights should be 1 for each vertex
         for k, v in counter.items():
             if np.isclose(v, 1.0) is False:
-                raise ValueError(f"Sum of weights of incoming stochastic edges should be 1 -- found {v} for [*:{k}]")
+                raise ValueError(
+                    f"Sum of weights of incoming stochastic edges should be 1 -- found {v} for [*:{k}]"
+                )
 
-        return polymer_info, 1. + np.log10(Xn)
+        return polymer_info, 1.0 + np.log10(Xn)
 
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0, degree_of_poly: int = 1, polymer_info: list = []):
+    def __post_init__(
+        self,
+        extra_atom_fdim: int = 0,
+        extra_bond_fdim: int = 0,
+        degree_of_poly: int = 1,
+        polymer_info: list = [],
+    ):
         super().__post_init__()
 
         self.extra_atom_fdim = extra_atom_fdim
@@ -169,7 +178,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # also get the map of R groups to bond types, e.g. r_bond_types[*1] -> SINGLE
         rwmol, r_bond_types = self.tag_atoms_in_repeating_unit(rwmol)
         rwmol, V, V_w = self._get_atoms(rwmol, atom_features_extra)
-        rwmol, E, E_w, edge_index, rev_edge_index = self._get_bonds(rwmol, r_bond_types, bond_features_extra)
+        rwmol, E, E_w, edge_index, rev_edge_index = self._get_bonds(
+            rwmol, r_bond_types, bond_features_extra
+        )
 
         return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)
 
@@ -184,8 +195,22 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
             V_w = np.ones((1, self.atom_fdim), dtype=np.single).flatten()
         else:
-            V = np.array([self.atom_featurizer(a) for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single)
-            V_w = np.array([a.GetDoubleProp('w_frag') for a in rwmol.GetAtoms() if a.GetBoolProp('core') is True], dtype=np.single).flatten()
+            V = np.array(
+                [
+                    self.atom_featurizer(a)
+                    for a in rwmol.GetAtoms()
+                    if a.GetBoolProp("core") is True
+                ],
+                dtype=np.single,
+            )
+            V_w = np.array(
+                [
+                    a.GetDoubleProp("w_frag")
+                    for a in rwmol.GetAtoms()
+                    if a.GetBoolProp("core") is True
+                ],
+                dtype=np.single,
+            ).flatten()
         # Concatenate the extra atoms features to the atom features (V)
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -201,7 +226,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
 
         return rwmol, V, V_w
 
-    def _get_bonds(self, rwmol: Chem.Mol, r_bond_types: list[str], bond_features_extra: np.ndarray | None):
+    def _get_bonds(
+        self, rwmol: Chem.Mol, r_bond_types: list[str], bond_features_extra: np.ndarray | None
+    ):
         n_bonds = rwmol.GetNumBonds()
         # Initialize atom to bond mapping for each atom
         E = np.empty((2 * n_bonds + 2 * len(self.polymer_info), self.bond_fdim))
@@ -234,18 +261,22 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # (ii) collect the correct bond features, e.g., for bonds that would otherwise be considered in a ring when they are not,
         # when e.g. creating a bond between two atoms in the same ring.
         rwmol_copy = deepcopy(rwmol)
-        _ = [a.SetBoolProp('OriginalMol', True) for a in rwmol.GetAtoms()]
-        _ = [a.SetBoolProp('OriginalMol', False) for a in rwmol_copy.GetAtoms()]
+        _ = [a.SetBoolProp("OriginalMol", True) for a in rwmol.GetAtoms()]
+        _ = [a.SetBoolProp("OriginalMol", False) for a in rwmol_copy.GetAtoms()]
         # Create an editable combined Mol
         cm = Chem.CombineMols(rwmol, rwmol_copy)
         cm = Chem.RWMol(cm)
         # The combined molecule now has double the bonds, therefore we must duplicate the extra atom bond features not relating to the
         # bonds between monomers then append the extra bond features relating to the bonds between monomers
         if bond_features_extra is not None:
-            combined_bond_features_extra = np.concatenate((bond_features_extra[:n_bonds],
-                                                           bond_features_extra[:n_bonds],
-                                                           bond_features_extra[n_bonds:],
-                                                           bond_features_extra[n_bonds:]))
+            combined_bond_features_extra = np.concatenate(
+                (
+                    bond_features_extra[:n_bonds],
+                    bond_features_extra[:n_bonds],
+                    bond_features_extra[n_bonds:],
+                    bond_features_extra[n_bonds:],
+                )
+            )
         # For all possible bonds between monomers:
         # add bond -> compute bond features -> add bond to list -> remove bond
         for r1, r2, w_bond12, w_bond21 in self.polymer_info:
@@ -255,13 +286,13 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             _a2 = None  # The index of atom 1 in cm -> to be used by RDKit
             for atom in cm.GetAtoms():
                 # Take a1 from the fragement in the original molecule object
-                if f"*{r1}" in atom.GetProp('R') and atom.GetBoolProp('OriginalMol') is True:
+                if f"*{r1}" in atom.GetProp("R") and atom.GetBoolProp("OriginalMol") is True:
                     a1 = atom.GetIdx()
                 # take _a2 from a fragment in the copied molecule object, but a2 from the original
-                if f"*{r2}" in atom.GetProp('R'):
-                    if atom.GetBoolProp('OriginalMol') is True:
+                if f"*{r2}" in atom.GetProp("R"):
+                    if atom.GetBoolProp("OriginalMol") is True:
                         a2 = atom.GetIdx()
-                    elif atom.GetBoolProp('OriginalMol') is False:
+                    elif atom.GetBoolProp("OriginalMol") is False:
                         _a2 = atom.GetIdx()
             # Check to ensure bond definitions are valid
             if a1 is None:
@@ -270,10 +301,12 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 raise ValueError(f"Cannot find atom attached to [*:{r2}]")
 
             # Create a bond
-            bond_order1 = r_bond_types[f'*{r1}']
-            bond_order2 = r_bond_types[f'*{r2}']
+            bond_order1 = r_bond_types[f"*{r1}"]
+            bond_order2 = r_bond_types[f"*{r2}"]
             if bond_order1 != bond_order2:
-                raise ValueError(f"Two atoms are trying to be bonded with different bond types: {bond_order1} vs {bond_order2}")
+                raise ValueError(
+                    f"Two atoms are trying to be bonded with different bond types: {bond_order1} vs {bond_order2}"
+                )
             cm.AddBond(a1, _a2, order=bond_order1)
             Chem.SanitizeMol(cm, Chem.SanitizeFlags.SANITIZE_ALL)
 
@@ -281,7 +314,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             bond = cm.GetBondBetweenAtoms(a1, _a2)
             x_e = self.bond_featurizer(bond)
             if bond_features_extra is not None:
-                x_e = np.concatenate((x_e, combined_bond_features_extra[bond.GetIdx()]), dtype=np.single)
+                x_e = np.concatenate(
+                    (x_e, combined_bond_features_extra[bond.GetIdx()]), dtype=np.single
+                )
             # Update the index mappings
             E[i : i + 2] = x_e
             edge_index[0].extend([a1, a2])

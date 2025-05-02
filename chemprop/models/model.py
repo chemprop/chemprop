@@ -144,9 +144,7 @@ class MPNN(pl.LightningModule):
         """Generate predictions for the input molecules/reactions"""
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
 
-    def weight(
-        self, H: Tensor, degree_of_poly: Tensor
-    ) -> Tensor:
+    def weight(self, H: Tensor, degree_of_poly: Tensor) -> Tensor:
         """weights the final molecular representation by the degree of polymerization, default=1 for a small molecule"""
         return torch.mul(degree_of_poly.unsqueeze(1), H)
 

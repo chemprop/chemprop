@@ -86,7 +86,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index[0].extend([u, v])
             edge_index[1].extend([v, u])
-            E_w.extend([1., 1.])  # Edge weights of 1 for a standard molecule
+            E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
             i += 2
 
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()

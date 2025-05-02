@@ -438,7 +438,9 @@ def main(args):
         case [None, _, _]:
             n_components = len(args.polymer_columns) + len(args.reaction_columns)
         case _:
-            n_components = len(args.smiles_columns) + len(args.polymer_columns) + len(args.reaction_columns)
+            n_components = (
+                len(args.smiles_columns) + len(args.polymer_columns) + len(args.reaction_columns)
+            )
 
     multicomponent = n_components > 1
 

@@ -72,7 +72,9 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
     return mol
 
 
-def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list, ignore_chirality: bool = False) -> Chem.Mol:
+def make_polymer_mol(
+    smi: str, keep_h: bool, add_h: bool, fragment_weights: list, ignore_chirality: bool = False
+) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
 
@@ -97,13 +99,15 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, fragment_weights: list
     # Check the input is correct. We need the same number of fragments and their weights.
     num_frags = len(smi.split("."))
     if len(fragment_weights) != num_frags:
-        raise ValueError(f'The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})')
+        raise ValueError(
+            f"The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})"
+        )
     # Ensure all fragment weights are floats
     fragment_weights = [float(x) for x in fragment_weights]
     # If it all looks good, we create one molecule object per fragment and combine the fragments into
     # a single molecule object
     mols = []
-    for s, w in zip(smi.split('.'), fragment_weights):
+    for s, w in zip(smi.split("."), fragment_weights):
         m = make_mol(s, keep_h, add_h, ignore_chirality=ignore_chirality)
         mols.append(m)
     # Combine all the mols into a single mol object
@@ -119,10 +123,10 @@ def remove_wildcard_atoms(rwmol):
     """
     removes wildcard atoms from an RDKit Mol
     """
-    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     while len(indicies) > 0:
         rwmol.RemoveAtom(indicies[0])
-        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
 
     return rwmol

@@ -13,9 +13,7 @@ pytestmark = pytest.mark.CLI
 
 @pytest.fixture
 def data_path(data_dir):
-    return (
-        str(data_dir / "regression" / "polymer" / "dataset-poly_chemprop_small.csv"),
-    )
+    return (str(data_dir / "regression" / "polymer" / "dataset-poly_chemprop_small.csv"),)
 
 
 @pytest.fixture
@@ -85,15 +83,16 @@ def test_train_config(monkeypatch, config_path, tmp_path):
 
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
-    args = ["chemprop",
-            "predict",
-            "-i",
-            input_path,
-            "--model-path",
-            model_path,
-            "--polymer-columns",
-            "poly_chemprop_input",
-            ]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--polymer-columns",
+        "poly_chemprop_input",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -259,7 +258,7 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
         "--polymer-columns",
         "poly_chemprop_input",
         "--target-columns",
-        "EA vs SHE (eV)"
+        "EA vs SHE (eV)",
     ]
 
     with monkeypatch.context() as m:

@@ -69,7 +69,9 @@ class BatchMolGraph:
 
         self.V = torch.from_numpy(np.concatenate(Vs)).float()
         self.E = torch.from_numpy(np.concatenate(Es)).float()
-        self.V_w = torch.from_numpy(np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)).float()
+        self.V_w = torch.from_numpy(
+            np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)
+        ).float()
         self.E_w = torch.from_numpy(np.concatenate(Ew)).float()
         self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
         self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
