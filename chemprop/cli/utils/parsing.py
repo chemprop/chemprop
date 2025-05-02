@@ -1,4 +1,3 @@
-import ast
 import logging
 from os import PathLike
 from typing import Literal, Mapping, Sequence
@@ -62,7 +61,6 @@ def parse_csv(
         )
 
     Y = df[target_cols]
-
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
 
     if bounded:
@@ -76,133 +74,6 @@ def parse_csv(
         gt_mask = None
 
     return smiss, rxnss, Y, weights, lt_mask, gt_mask
-
-
-def mol_atom_bond_parse_csv(
-    path: PathLike,
-    smiles_cols: Sequence[str] | None,
-    rxn_cols: Sequence[str] | None,
-    target_cols: Sequence[str] | None,
-    ignore_cols: Sequence[str] | None,
-    splits_col: str | None,
-    weight_col: str | None,
-    bounded: bool = False,
-    no_header_row: bool = False,
-):
-    df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
-
-    if smiles_cols is not None and rxn_cols is not None:
-        smiss = df[smiles_cols].T.values.tolist()
-        rxnss = df[rxn_cols].T.values.tolist()
-        input_cols = [*smiles_cols, *rxn_cols]
-    elif smiles_cols is not None and rxn_cols is None:
-        smiss = df[smiles_cols].T.values.tolist()
-        rxnss = None
-        input_cols = smiles_cols
-    elif smiles_cols is None and rxn_cols is not None:
-        smiss = None
-        rxnss = df[rxn_cols].T.values.tolist()
-        input_cols = rxn_cols
-    else:
-        smiss = df.iloc[:, [0]].T.values.tolist()
-        rxnss = None
-        input_cols = [df.columns[0]]
-
-    if target_cols is None:
-        target_cols = list(
-            column
-            for column in df.columns
-            if column
-            not in set(  # if splits or weight is None, df.columns will never have None
-                input_cols + (ignore_cols or []) + [splits_col] + [weight_col]
-            )
-        )
-
-    flag, mol_Y, atom_Y, bond_Y = [], [], [], []
-    for column in target_cols:
-        index = 0
-        column_type = df.iloc[index][column]
-        if isinstance(column_type, float):
-            flag.append("mol")
-        else:
-            column_mol = make_mol(df.iloc[index][input_cols[0]], False, False)
-            column_type = ast.literal_eval(column_type)
-            while index < len(df) and column_mol.GetNumAtoms() == column_mol.GetNumBonds():
-                index += 1
-                column_mol = make_mol(df.iloc[index][input_cols[0]], False, False)
-            column_type = ast.literal_eval(df.iloc[index][column])
-            flag.append("atom") if len(column_type) == column_mol.GetNumAtoms() else flag.append(
-                "bond"
-            )
-
-    mol_list = []
-    for i in range(len(flag)):
-        if flag[i] == "mol":
-            mol_list.append(target_cols[i])
-    mol_Y = df[mol_list]
-
-    for molecule in range(len(df)):
-        atom_list_props = []
-        bond_list_props = []
-        for prop in range(len(target_cols)):
-            if flag[prop] == "mol":
-                continue
-            np_prop = np.array(ast.literal_eval(df.iloc[molecule][target_cols[prop]]))
-            np_prop = np.expand_dims(np_prop, axis=1)
-            atom_list_props.append(np_prop) if flag[prop] == "atom" else bond_list_props.append(
-                np_prop
-            )
-        if len(atom_list_props) > 0:
-            atom_Y.append(np.hstack(atom_list_props))
-        else:
-            atom_Y = df[[]]
-            atom_Y = atom_Y.to_numpy()
-        if len(bond_list_props) > 0:
-            bond_Y.append(np.hstack(bond_list_props))
-        else:
-            bond_Y = df[[]]
-            bond_Y = bond_Y.to_numpy()
-
-    weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
-    lt_mask = []
-    gt_mask = []
-    if bounded:
-        mol_lt_mask = mol_Y.applymap(lambda x: "<" in x).to_numpy()
-        mol_gt_mask = mol_Y.applymap(lambda x: ">" in x).to_numpy()
-        lt_mask.append(mol_lt_mask)
-        gt_mask.append(mol_gt_mask)
-
-        atom_dim = atom_Y[0].shape[1]
-        atom_lt_mask, atom_gt_mask = np.empty((0, atom_dim)), np.empty((0, atom_dim))
-        for i in range(len(atom_Y)):
-            atom_lt_mask = np.vstack(
-                [atom_lt_mask, atom_Y[i].applymap(lambda x: "<" in x).to_numpy()]
-            )
-            atom_gt_mask = np.vstack(
-                [atom_gt_mask, atom_Y[i].applymap(lambda x: ">" in x).to_numpy()]
-            )
-            atom_Y[i] = atom_Y[i].applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
-        lt_mask.append(atom_lt_mask)
-        gt_mask.append(atom_gt_mask)
-
-        bond_dim = bond_Y[0].shape[1]
-        bond_lt_mask, bond_gt_mask = np.empty((0, bond_dim)), np.empty((0, bond_dim))
-        for i in range(len(bond_Y)):
-            bond_lt_mask = np.vstack(
-                [bond_lt_mask, bond_Y[i].applymap(lambda x: "<" in x).to_numpy()]
-            )
-            bond_gt_mask = np.vstack(
-                [bond_gt_mask, bond_Y[i].applymap(lambda x: ">" in x).to_numpy()]
-            )
-            bond_Y[i] = bond_Y[i].applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
-        lt_mask.append(bond_lt_mask)
-        gt_mask.append(bond_gt_mask)
-    else:
-        mol_Y = np.array(mol_Y)
-        lt_mask = None
-        gt_mask = None
-
-    return smiss, rxnss, mol_Y, atom_Y, bond_Y, weights, lt_mask, gt_mask, flag
 
 
 def get_column_names(
@@ -241,7 +112,7 @@ def get_column_names(
 def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
-    Y: np.ndarray | list[np.ndarray],
+    Y: np.ndarray,
     weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
     gt_mask: np.ndarray | None,
@@ -484,7 +355,7 @@ def build_data_from_files(
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
 
-    mol_data, mol_rxn_data = make_datapoints(
+    mol_data, rxn_data = make_datapoints(
         smiss,
         rxnss,
         Y,
@@ -498,122 +369,7 @@ def build_data_from_files(
         **featurization_kwargs,
     )
 
-    return mol_data + mol_rxn_data
-
-
-def build_mixed_data_from_files(
-    p_data: PathLike,
-    no_header_row: bool,
-    smiles_cols: Sequence[str] | None,
-    rxn_cols: Sequence[str] | None,
-    target_cols: Sequence[str] | None,
-    ignore_cols: Sequence[str] | None,
-    splits_col: str | None,
-    weight_col: str | None,
-    bounded: bool,
-    p_descriptors: PathLike,
-    p_atom_feats: dict[int, PathLike],
-    p_bond_feats: dict[int, PathLike],
-    p_atom_descs: dict[int, PathLike],
-    **featurization_kwargs: Mapping,
-):
-    smiss, rxnss, mol_Y, atom_Y, bond_Y, weights, lt_mask, gt_mask, flag = mol_atom_bond_parse_csv(
-        p_data,
-        smiles_cols,
-        rxn_cols,
-        target_cols,
-        ignore_cols,
-        splits_col,
-        weight_col,
-        bounded,
-        no_header_row,
-    )
-
-    n_molecules = len(smiss) if smiss is not None else 0
-    n_datapoints = len(mol_Y)
-
-    X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
-    V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
-    E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
-    V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
-
-    mol_data, mol_rxn_data = make_datapoints(
-        smiss,
-        rxnss,
-        mol_Y,
-        weights,
-        lt_mask if lt_mask is None else lt_mask[0],
-        gt_mask if gt_mask is None else gt_mask[0],
-        X_ds,
-        V_fss,
-        E_fss,
-        V_dss,
-        **featurization_kwargs,
-    )
-
-    atom_data, atom_rxn_data = make_datapoints(
-        smiss,
-        rxnss,
-        atom_Y,
-        weights,
-        lt_mask if lt_mask is None else lt_mask[1],
-        gt_mask if gt_mask is None else gt_mask[1],
-        X_ds,
-        V_fss,
-        E_fss,
-        V_dss,
-        **featurization_kwargs,
-    )
-
-    bond_data, bond_rxn_data = make_datapoints(
-        smiss,
-        rxnss,
-        bond_Y,
-        weights,
-        lt_mask if lt_mask is None else lt_mask[2],
-        gt_mask if gt_mask is None else gt_mask[2],
-        X_ds,
-        V_fss,
-        E_fss,
-        V_dss,
-        **featurization_kwargs,
-    )
-
-    all_data = []
-    for i in range(len(mol_data)):
-        all_data.append(
-            [
-                MolAtomBondDatapoint(
-                    mol=mol_data[i][j].mol,
-                    y=mol_data[i][j].y,
-                    weight=mol_data[i][j].weight,
-                    gt_mask=mol_data[i][j].gt_mask,
-                    lt_mask=mol_data[i][j].lt_mask,
-                    x_d=mol_data[i][j].x_d,
-                    V_f=mol_data[i][j].V_f,
-                    E_f=mol_data[i][j].E_f,
-                    V_d=mol_data[i][j].V_d,
-                    atom_y=atom_data[i][j].y,
-                    bond_y=bond_data[i][j].y,
-                    atom_lt_mask=atom_data[i][j].lt_mask,
-                    atom_gt_mask=atom_data[i][j].gt_mask,
-                    bond_lt_mask=bond_data[i][j].lt_mask,
-                    bond_gt_mask=bond_data[i][j].gt_mask,
-                )
-                for j in range(len(mol_data[i]))
-            ]
-        )
-
-    mol_cols, atom_cols, bond_cols = [], [], []
-    for i in range(len(flag)):
-        if flag[i] == "mol":
-            mol_cols.append(target_cols[i])
-        elif flag[i] == "atom":
-            atom_cols.append(target_cols[i])
-        else:
-            bond_cols.append(target_cols[i])
-
-    return all_data, mol_cols, atom_cols, bond_cols
+    return mol_data + rxn_data
 
 
 def load_input_feats_and_descs(

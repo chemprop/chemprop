@@ -4,7 +4,6 @@ from .args import bounded
 from .command import Subcommand
 from .parsing import (
     build_data_from_files,
-    build_mixed_data_from_files,
     get_column_names,
     make_datapoints,
     make_dataset,
