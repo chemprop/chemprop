@@ -5,7 +5,8 @@ from .proto import MABMessagePassing, MessagePassing
 
 __all__ = [
     "MessagePassing",
-    "MABMessagePassing" "AtomMessagePassing",
+    "MABMessagePassing",
+    "AtomMessagePassing",
     "BondMessagePassing",
     "MABAtomMessagePassing",
     "MABBondMessagePassing",

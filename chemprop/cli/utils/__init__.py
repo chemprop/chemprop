@@ -1,3 +1,4 @@
+from .MAB_parsing import build_MAB_data_from_files
 from .actions import LookupAction
 from .args import bounded
 from .command import Subcommand
@@ -15,6 +16,7 @@ __all__ = [
     "LookupAction",
     "Subcommand",
     "build_data_from_files",
+    "build_MAB_data_from_files",
     "make_datapoints",
     "make_dataset",
     "get_column_names",
