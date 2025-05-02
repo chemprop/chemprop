@@ -7,12 +7,14 @@ from .agg import (
     NormAggregation,
     SumAggregation,
 )
+from .ffn import Constrainer
 from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
+    MABAtomMessagePassing,
+    MABBondMessagePassing,
+    MABMessagePassing,
     MessagePassing,
-    MixedAtomMessagePassing,
-    MixedBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from .metrics import (
@@ -71,6 +73,7 @@ __all__ = [
     "SumAggregation",
     "NormAggregation",
     "AttentiveAggregation",
+    "Constrainer",
     "ChempropMetric",
     "ClassificationMixin",
     "LossFunctionRegistry",
@@ -111,9 +114,10 @@ __all__ = [
     "QuantileLoss",
     "MessagePassing",
     "AtomMessagePassing",
-    "MixedAtomMessagePassing",
     "BondMessagePassing",
-    "MixedBondMessagePassing",
+    "MABAtomMessagePassing",
+    "MABBondMessagePassing",
+    "MABMessagePassing",
     "MulticomponentMessagePassing",
     "Predictor",
     "PredictorRegistry",

@@ -1,7 +1,7 @@
 import ast
 import logging
 from os import PathLike
-from typing import Mapping, Sequence
+from typing import Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -9,9 +9,11 @@ import pandas as pd
 from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MolAtomBondDataset, MoleculeDataset, ReactionDataset
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
+from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
+    RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.utils import make_mol
@@ -64,6 +66,7 @@ def parse_csv(
     weights = None if weight_col is None else df[weight_col].to_numpy(np.single)
 
     if bounded:
+        Y = Y.astype(str)
         lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
         gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
         Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
@@ -249,6 +252,7 @@ def make_datapoints(
     molecule_featurizers: list[str] | None,
     keep_h: bool,
     add_h: bool,
+    ignore_chirality: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
@@ -301,7 +305,11 @@ def make_datapoints(
         RDKit :class:`~rdkit.Chem.Mol` objects, reactant(s) and product(s). Each
         ``molecule_featurizer`` will be applied to both of these objects.
     keep_h : bool
+        whether to keep hydrogen atoms
     add_h : bool
+        whether to add hydrogen atoms
+    ignore_chirality : bool
+        whether to ignore chirality information
 
     Returns
     -------
@@ -334,17 +342,22 @@ def make_datapoints(
         N = len(smiss[0])
 
     if len(smiss) > 0:
-        molss = [[make_mol(smi, keep_h, add_h) for smi in smis] for smis in smiss]
+        molss = [[make_mol(smi, keep_h, add_h, ignore_chirality) for smi in smis] for smis in smiss]
     if len(rxnss) > 0:
         rctss = [
             [
-                make_mol(f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h)
+                make_mol(
+                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, ignore_chirality
+                )
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss
         ]
         pdtss = [
-            [make_mol(pdt_smi, keep_h, add_h) for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)]
+            [
+                make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
+                for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
+            ]
             for rxns in rxnss
         ]
 
@@ -646,33 +659,44 @@ def make_dataset(
     data: Sequence[MoleculeDatapoint]
     | Sequence[MolAtomBondDatapoint]
     | Sequence[ReactionDatapoint],
-    reaction_mode: str,
-    multi_hot_atom_featurizer_mode: str = "V2",
+    reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
+    multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
 ) -> MoleculeDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
-    print("hi")
-    print(data[0])
+    match multi_hot_atom_featurizer_mode:
+        case "RIGR":
+            bond_featurizer = RIGRBondFeaturizer()
+        case "V1" | "V2" | "ORGANIC":
+            bond_featurizer = MultiHotBondFeaturizer()
+        case _:
+            raise TypeError(
+                f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!"
+            )
+
     if isinstance(data[0], MolAtomBondDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
             atom_featurizer=atom_featurizer,
+            bond_featurizer=bond_featurizer,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
         return MolAtomBondDataset(data, featurizer)
+
     elif isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
             atom_featurizer=atom_featurizer,
+            bond_featurizer=bond_featurizer,
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
         return MoleculeDataset(data, featurizer)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
-        mode_=reaction_mode, atom_featurizer=atom_featurizer
+        mode_=reaction_mode, atom_featurizer=atom_featurizer, bond_featurizer=bond_featurizer
     )
 
     return ReactionDataset(data, featurizer)

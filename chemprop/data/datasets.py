@@ -30,16 +30,28 @@ class Datum(NamedTuple):
 
 
 class MolAtomBondDatum(NamedTuple):
+<<<<<<< HEAD
     """a singular training data point"""
+=======
+    """a singular training data point that supports atom and bond level targets"""
+>>>>>>> atom-bond-predictions
 
     mg: MolGraph
     V_d: np.ndarray | None
     E_d: np.ndarray | None
     x_d: np.ndarray | None
+<<<<<<< HEAD
     ys: list[np.ndarray | None]
     weight: float
     lt_masks: list[np.ndarray | None]
     gt_masks: list[np.ndarray | None]
+=======
+    ys: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    weight: float
+    lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    constraints: tuple[np.ndarray | None, np.ndarray | None]
+>>>>>>> atom-bond-predictions
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -333,6 +345,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
+<<<<<<< HEAD
     """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
 
     A :class:`MoleculeDataset` produces featurized data for input to a
@@ -350,15 +363,20 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
+=======
+>>>>>>> atom-bond-predictions
     data: list[MolAtomBondDatapoint]
 
     def __getitem__(self, idx: int) -> MolAtomBondDatum:
         d = self.data[idx]
         mg = self.mg_cache[idx]
+<<<<<<< HEAD
         atom_first = self._atom_slices.index(idx)
         atom_last = atom_first + self._atom_slices.count(idx)
         bond_first = self._bond_slices.index(idx)
         bond_last = bond_first + self._bond_slices.count(idx)
+=======
+>>>>>>> atom-bond-predictions
 
         return MolAtomBondDatum(
             mg,
@@ -367,12 +385,18 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             self.X_d[idx],
             [
                 self.Y[idx] if self.Y is not None else None,
+<<<<<<< HEAD
                 self.atom_Y[atom_first:atom_last] if self.atom_Y is not None else None,
                 self.bond_Y[bond_first:bond_last] if self.bond_Y is not None else None,
+=======
+                self.atom_Y[idx] if self.atom_Y is not None else None,
+                self.bond_Y[idx] if self.bond_Y is not None else None,
+>>>>>>> atom-bond-predictions
             ],
             d.weight,
             [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
             [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
+<<<<<<< HEAD
         )
 
     @cached_property
@@ -420,6 +444,50 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             slice_indices.extend([index] * d.mol.GetNumBonds())
             index += 1
         return slice_indices
+=======
+            [d.atom_constraint, d.bond_constraint],
+        )
+
+    @property
+    def _atom_Y(self) -> list[np.ndarray]:
+        """the raw atom targets of the dataset"""
+        return [d.atom_y for d in self.data]
+
+    @property
+    def atom_Y(self) -> list[np.ndarray]:
+        """the (scaled) atom targets of the dataset"""
+        return self.__atom_Y
+
+    @atom_Y.setter
+    def atom_Y(self, atom_Y: list[np.ndarray]):
+        self._validate_attribute(atom_Y, "atom targets")
+
+        self.__atom_Y = atom_Y
+
+    @property
+    def atom_constraints(self) -> np.ndarray:
+        return np.array([d.atom_constraint for d in self.data], float)
+
+    @property
+    def _bond_Y(self) -> list[np.ndarray]:
+        """the raw bond targets of the dataset"""
+        return [d.bond_y for d in self.data]
+
+    @property
+    def bond_Y(self) -> list[np.ndarray]:
+        """the (scaled) bond targets of the dataset"""
+        return self.__bond_Y
+
+    @bond_Y.setter
+    def bond_Y(self, bond_Y: list[np.ndarray]):
+        self._validate_attribute(bond_Y, "bond targets")
+
+        self.__bond_Y = bond_Y
+
+    @property
+    def bond_constraints(self) -> np.ndarray:
+        return np.array([d.bond_constraint for d in self.data], float)
+>>>>>>> atom-bond-predictions
 
     @property
     def atom_gt_mask(self) -> np.ndarray:
@@ -439,10 +507,18 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
 
     @property
     def _E_ds(self) -> list[np.ndarray]:
+<<<<<<< HEAD
+=======
+        """the raw bond descriptors of the dataset"""
+>>>>>>> atom-bond-predictions
         return [d.E_d for d in self.data]
 
     @property
     def E_ds(self) -> list[np.ndarray]:
+<<<<<<< HEAD
+=======
+        """the (scaled) bond descriptors of the dataset"""
+>>>>>>> atom-bond-predictions
         return self.__E_ds
 
     @E_ds.setter
@@ -453,6 +529,10 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
 
     @property
     def d_ed(self) -> int:
+<<<<<<< HEAD
+=======
+        """the extra bond descriptor dimension, if any"""
+>>>>>>> atom-bond-predictions
         return 0 if self.E_ds[0] is None else self.E_ds[0].shape[1]
 
     def normalize_targets(
@@ -464,24 +544,39 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             case "mol":
                 X = self._Y
             case "atom":
+<<<<<<< HEAD
                 X = self._atom_Y
             case "bond":
                 X = self._bond_Y
+=======
+                X = np.concatenate(self._atom_Y, axis=0)
+            case "bond":
+                X = np.concatenate(self._bond_Y, axis=0)
+>>>>>>> atom-bond-predictions
             case _:
                 raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
         if scaler is None:
+<<<<<<< HEAD
             print("hello")
             print(X)
+=======
+>>>>>>> atom-bond-predictions
             scaler = StandardScaler().fit(X)
 
         match key:
             case "mol":
                 self.Y = scaler.transform(X)
             case "atom":
+<<<<<<< HEAD
                 self.atom_Y = scaler.transform(self._atom_Y)
             case "bond":
                 self.bond_Y = scaler.transform(self._bond_Y)
+=======
+                self.atom_Y = [scaler.transform(y) if y.size > 0 else y for y in self._atom_Y]
+            case "bond":
+                self.bond_Y = [scaler.transform(y) if y.size > 0 else y for y in self._bond_Y]
+>>>>>>> atom-bond-predictions
             case _:
                 raise RuntimeError("unreachable code reached!")
 

@@ -201,7 +201,10 @@ def prepare_data_loader(
     )
 
     featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers,
+        keep_h=args.keep_h,
+        add_h=args.add_h,
+        ignore_chirality=args.ignore_chirality,
     )
     if args.is_mixed:
         datas, mol_cols, atom_cols, bond_cols = build_mixed_data_from_files(
@@ -401,7 +404,7 @@ def save_predictions(
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, test_preds
+            lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
         )
         test_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
@@ -477,7 +480,7 @@ def save_individual_predictions(
 
         predicted_class_labels = test_individual_preds[0].argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 3, test_individual_preds[0]
+            lambda x: ",".join(map(str, x)), 3, test_individual_preds[0].numpy()
         )
         test_individual_preds = [
             np.concatenate((predicted_class_labels, formatted_probability_strings), axis=-1)

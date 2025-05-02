@@ -972,6 +972,7 @@ def build_datasets(args, train_data, val_data, test_data):
         for dataset, label in zip(
             [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
         ):
+            # This won't summarize the atom and bond targets if present. Maybe we'll add that in the future.
             column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
             output = build_table(column_headers, table_rows, f"Summary of {label} Data")
             logger.info("\n" + output)
@@ -1112,6 +1113,7 @@ def build_model(
             dropout=args.dropout,
             activation=args.activation,
             criterion=criterion,
+            task_weights=args.task_weights,
             n_classes=args.multiclass_num_classes,
             output_transform=output_transform[i],
             # spectral_activation=args.spectral_activation, TODO: Add in v2.1
@@ -1483,7 +1485,10 @@ def main(args):
     )
 
     featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers,
+        keep_h=args.keep_h,
+        add_h=args.add_h,
+        ignore_chirality=args.ignore_chirality,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)

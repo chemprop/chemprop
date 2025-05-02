@@ -249,7 +249,7 @@ class DropoutEstimator(UncertaintyEstimator):
                 individual_preds.append(preds)
 
             stacked_preds = torch.stack(individual_preds, dim=0).float()
-            means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
+            means = torch.mean(stacked_preds, dim=0)
             vars = torch.var(stacked_preds, dim=0, correction=0)
             self._restore_model(model)
             meanss.append(means)
@@ -285,8 +285,9 @@ class DropoutEstimator(UncertaintyEstimator):
 
     def _restore_dropout(self, module):
         if isinstance(module, torch.nn.Dropout):
-            module.p = module._p
-            del module._p
+            if hasattr(module, "_p"):
+                module.p = module._p
+                del module._p
 
 
 # TODO: Add in v2.1.x

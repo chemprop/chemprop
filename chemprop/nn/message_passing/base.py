@@ -7,7 +7,8 @@ from torch import Tensor, nn
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.data import BatchMolGraph
 from chemprop.exceptions import InvalidShapeError
-from chemprop.nn.message_passing.proto import MessagePassing, MixedMessagePassing
+from chemprop.nn.message_passing.mixins import _AtomMessagePassingMixin, _BondMessagePassingMixin
+from chemprop.nn.message_passing.proto import MessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform
 from chemprop.nn.utils import Activation, get_activation_function
 
@@ -29,14 +30,20 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         if `True`, add a bias term to the learned weight matrices
     depth : int, default=3
         the number of message passing iterations
-    undirected : bool, default=False
-        if `True`, pass messages on undirected edges
     dropout : float, default=0.0
         the dropout probability
     activation : str, default="relu"
         the activation function to use
+    undirected : bool, default=False
+        if `True`, pass messages on undirected edges
     d_vd : int | None, default=None
-        the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
+        the dimension of additional vertex descriptors that will be concatenated to the hidden
+        features before readout
+    V_d_transform : ScaleTransform | None, default=None
+        an optional transformation to apply to the additional vertex descriptors before concatenation
+    graph_transform : GraphTransform | None, default=None
+        an optional transformation to apply to the :class:`BatchMolGraph` before message passing. It
+        is usually used to scale extra vertex and edge features.
 
     See also
     --------
@@ -61,7 +68,6 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         E_d_transform: ScaleTransform
         | None = None,  # should we change init here or localize to bond?
         graph_transform: GraphTransform | None = None,
-        # layers_per_message: int = 1,
     ):
         super().__init__()
         # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
@@ -185,29 +191,12 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
                 H = self.dropout(H)
             except RuntimeError:
                 raise InvalidShapeError(
-                    "V_d", V_d.shape, [len(H), self.W_d.in_features - M.shape[1]]
+                    "V_d", V_d.shape, [len(H), self.W_d.in_features - self.W_o.out_features]
                 )
 
         return H
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        """Encode a batch of molecular graphs.
-
-        Parameters
-        ----------
-        bmg: BatchMolGraph
-            a batch of :class:`BatchMolGraph`s to encode
-        V_d : Tensor | None, default=None
-            an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
-            in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase.
-
-        Returns
-        -------
-        Tensor
-            a tensor of shape ``V x d_h`` or ``V x (d_h + d_vd)`` containing the encoding of each
-            molecule in the batch, depending on whether additional atom descriptors were provided
-        """
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 
@@ -226,25 +215,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return self.finalize(M, bmg.V, V_d)
 
 
-class _MixedMessagePassingBase(_MessagePassingBase, MixedMessagePassing):
-    pass
-
-
-class _BondMessagePassingMixin:
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
-
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-        M_rev = H[bmg.rev_edge_index]
-
-        return M_all - M_rev
-
-
-class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
+class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
 
@@ -283,107 +254,8 @@ class BondMessagePassing(_MessagePassingBase, _BondMessagePassingMixin):
 
         return W_i, W_h, W_o, W_d
 
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.initialize(self, bmg)
 
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.message(self, H, bmg)
-
-
-class MixedBondMessagePassing(_MixedMessagePassingBase, _BondMessagePassingMixin):
-    def setup(
-        self,
-        d_v: int = DEFAULT_ATOM_FDIM,
-        d_e: int = DEFAULT_BOND_FDIM,
-        d_h: int = DEFAULT_HIDDEN_DIM,
-        d_vd: int | None = None,
-        d_ed: int | None = None,
-        bias: bool = False,
-    ):
-        W_i = nn.Linear(d_v + d_e, d_h, bias)
-        W_h = nn.Linear(d_h, d_h, bias)
-        W_o = nn.Linear(d_v + d_h, d_h)
-        W_o_b = nn.Linear(d_e + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
-        W_ed = nn.Linear(d_h + d_ed, d_h + d_ed) if d_ed else None
-        print("d_vd")
-        print(d_vd)
-        return W_i, W_h, W_o, W_d, W_o_b, W_ed
-
-    def finalize(
-        self, H: Tensor, M: Tensor, V: Tensor, E: Tensor, V_d: Tensor | None, E_d: Tensor | None
-    ) -> tuple[Tensor]:
-        H_v = self.W_o(torch.cat((V, M), dim=1))
-        H_v = self.tau(H_v)
-        H_v = self.dropout(H_v)
-        H_b = self.W_o_b(torch.cat((E, H), dim=1))
-        H_b = self.tau(H_b)
-        H_b = self.dropout(H_b)
-
-        if V_d is not None:
-            V_d = self.V_d_transform(V_d)
-            print(H_v.shape)
-            print(V_d)
-            try:
-                H_v = self.W_d(torch.cat((H_v, V_d), dim=1))  # V x (d_o + d_vd)
-                H_v = self.dropout(H_v)
-            except RuntimeError:
-                raise InvalidShapeError(
-                    "V_d", V_d.shape, [len(H_v), self.W_d.in_features - M.shape[1]]
-                )  # replace with len(H_v).shape[1]
-
-        if E_d is not None:
-            E_d = self.E_d_transform(E_d)
-            try:
-                H_b = self.W_ed(torch.cat((H_b, E_d), dim=1))
-                H_b = self.dropout(H_b)
-            except RuntimeError:
-                raise InvalidShapeError(
-                    "E_d", E_d.shape, [len(H_b), self.W_ed.in_features - M.shape[1]]
-                )
-
-        return H_v, H_b
-
-    def forward(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
-    ) -> tuple[Tensor]:
-        bmg = self.graph_transform(bmg)
-        H_0 = self.initialize(bmg)
-
-        H = self.tau(H_0)
-        for _ in range(1, self.depth):
-            if self.undirected:
-                H = (H + H[bmg.rev_edge_index]) / 2
-
-            M = self.message(H, bmg)
-            H = self.update(M, H_0)
-
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )
-        return self.finalize(H, M, bmg.V, bmg.E, V_d, E_d)
-
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.initialize(self, bmg)
-
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        return _BondMessagePassingMixin.message(self, H, bmg)
-
-
-class _AtomMessagePassingMixin:
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(bmg.V[bmg.edge_index[0]])
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        H = torch.cat((H, bmg.E), dim=1)
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-
-
-class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
+class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
 
@@ -420,87 +292,3 @@ class AtomMessagePassing(_MessagePassingBase, _AtomMessagePassingMixin):
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
-
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _AtomMessagePassingMixin.initialize(self, bmg)
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        return _AtomMessagePassingMixin.message(self, H, bmg)
-
-
-class MixedAtomMessagePassing(_MixedMessagePassingBase, _AtomMessagePassingMixin):
-    def setup(
-        self,
-        d_v: int = DEFAULT_ATOM_FDIM,
-        d_e: int = DEFAULT_BOND_FDIM,
-        d_h: int = DEFAULT_HIDDEN_DIM,
-        d_vd: int | None = None,
-        d_ed: int | None = None,
-        bias: bool = False,
-    ):
-        W_i = nn.Linear(d_v, d_h, bias)
-        W_h = nn.Linear(d_e + d_h, d_h, bias)
-        W_o = nn.Linear(d_v + d_h, d_h)
-        W_o_b = nn.Linear(d_e + d_h, d_h)
-        W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
-        W_ed = nn.Linear(d_h + d_ed, d_h + d_ed) if d_ed else None
-
-        return W_i, W_h, W_o, W_d, W_o_b, W_ed
-
-    def finalize(
-        self, H: Tensor, M: Tensor, V: Tensor, E: Tensor, V_d: Tensor | None, E_d: Tensor | None
-    ) -> tuple[Tensor]:
-        H_v = self.W_o(torch.cat((V, M), dim=1))
-        H_v = self.tau(H_v)
-        H_v = self.dropout(H_v)
-        H_b = self.W_o_b(torch.cat((E, H), dim=1))
-        H_b = self.tau(H_b)
-        H_b = self.dropout(H_b)
-
-        if V_d is not None:
-            V_d = self.V_d_transform(V_d)
-            try:
-                H_v = self.W_d(torch.cat((H_v, V_d), dim=1))  # V x (d_o + d_vd)
-                H_v = self.dropout(H_v)
-            except RuntimeError:
-                raise InvalidShapeError(
-                    "V_d", V_d.shape, [len(H_v), self.W_d.in_features - M.shape[1]]
-                )
-
-        if E_d is not None:
-            E_d = self.E_d_transform(E_d)
-            try:
-                H_b = self.W_ed(torch.cat((H_b, V_d), dim=1))
-                H_b = self.dropout(H_b)
-            except RuntimeError:
-                raise InvalidShapeError(
-                    "E_d", E_d.shape, [len(H_b), self.W_ed.in_features - M.shape[1]]
-                )
-
-        return H_v, H_b
-
-    def forward(
-        self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
-    ) -> tuple[Tensor]:
-        bmg = self.graph_transform(bmg)
-        H_0 = self.initialize(bmg)
-
-        H = self.tau(H_0)
-        for _ in range(1, self.depth):
-            if self.undirected:
-                H = (H + H[bmg.rev_edge_index]) / 2
-
-            M = self.message(H, bmg)
-            H = self.update(M, H_0)
-
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )
-        return self.finalize(H, M, bmg.V, bmg.E, V_d, E_d)
-
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return _AtomMessagePassingMixin.initialize(self, bmg)
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        return _AtomMessagePassingMixin.message(self, H, bmg)

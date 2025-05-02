@@ -62,44 +62,22 @@ def mol_regression_data(data_dir):
 
 
 @pytest.fixture
-def mixed_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/mixed/mixed.csv")
-    smis = df["smiles"].to_list()
-    mol_Y = df["molecule"].to_numpy().reshape(-1, 1)
-
-    atom_Y, bond_Y = np.empty((0, 1)), np.empty((0, 1))
-    atom_slices, bond_slices = [], []
-    atom_slices.append(0)
-    atom_sum = 0
-    bond_slices.append(0)
-    bond_sum = 0
-    for i in range(len(df)):
-        atom_Y = np.vstack((atom_Y, np.array(ast.literal_eval(df.loc[i, "atom"])).reshape(-1, 1)))
-        atom_sum += len(ast.literal_eval(df.loc[i, "atom"]))
-        atom_slices.append(atom_sum)
-        bond_Y = np.vstack((bond_Y, np.array(ast.literal_eval(df.loc[i, "bond"])).reshape(-1, 1)))
-        bond_sum += len(ast.literal_eval(df.loc[i, "bond"]))
-        bond_slices.append(bond_sum)
-
-    return smis, mol_Y, atom_Y, bond_Y, atom_slices, bond_slices
-
-
-@pytest.fixture
-def atom_regression_data(data_dir):
-    df = pd.read_csv(data_dir / "regression/atoms.csv")
-    smis = df.loc[:, "smiles"].values
-    target_columns = ["charges"]
-    ys = df.loc[:, target_columns]
-    Y = []
-    for molecule in range(len(ys)):
-        list_props = []
-        for prop in target_columns:
-            np_prop = np.array(ast.literal_eval(ys.iloc[molecule][prop]))
-            np_prop = np.expand_dims(np_prop, axis=1)
-            list_props.append(np_prop)
-        Y.append(np.hstack(list_props))
-
-    return smis, Y
+def mol_atom_bond_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "mol_atom_bond/regression.csv")
+    columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2"]
+    smis = df.loc[:, columns[0]].values
+    mol_ys = df.loc[:, columns[1:2]].values
+    atoms_ys = df.loc[:, columns[3:4]].values
+    bonds_ys = df.loc[:, columns[5:6]].values
+    atoms_ys = [
+        np.array([ast.literal_eval(atom_y) for atom_y in atom_ys], dtype=float).T
+        for atom_ys in atoms_ys
+    ]
+    bonds_ys = [
+        np.array([ast.literal_eval(bond_y) for bond_y in bond_ys], dtype=float).T
+        for bond_ys in bonds_ys
+    ]
+    return smis, mol_ys, atoms_ys, bonds_ys
 
 
 @pytest.fixture

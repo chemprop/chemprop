@@ -127,7 +127,7 @@ class FFNMockPredictor(Predictor, HyperparametersMixin):
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
     """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
-    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output.
+    underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 
     _T_default_criterion: ChempropMetric
@@ -336,7 +336,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         return self.output_dim // (self.n_targets * self.n_classes)
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.train_step(Z).softmax(-1)
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes).softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
