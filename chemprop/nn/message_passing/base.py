@@ -216,6 +216,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             M = self.message(H, bmg)
             H = self.update(M, H_0)
 
+        H = torch.mul(bmg.E_w[bmg.edge_index[0]].unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
@@ -233,14 +234,16 @@ class BondMessagePassing(_MessagePassingBase):
     .. math::
 
         h_{vw}^{(0)} &= \tau \left( \mathbf W_i(e_{vw}) \right) \\
-        m_{vw}^{(t)} &= \sum_{u \in \mathcal N(v)\setminus w} h_{uv}^{(t-1)} \\
+        m_{vw}^{(t)} &= \sum_{u \in \mathcal N(v)\setminus w} w_{uv} h_{uv}^{(t-1)} \\
         h_{vw}^{(t)} &= \tau \left(h_v^{(0)} + \mathbf W_h m_{vw}^{(t-1)} \right) \\
-        m_v^{(T)} &= \sum_{w \in \mathcal N(v)} h_w^{(T-1)} \\
+        m_v^{(T)} &= \sum_{w \in \mathcal N(v)} w_{wv} h_w^{(T-1)} \\
         h_v^{(T)} &= \tau \left (\mathbf W_o \left( x_v \mathbin\Vert m_{v}^{(T)} \right) \right),
 
     where :math:`\tau` is the activation function; :math:`\mathbf W_i`, :math:`\mathbf W_h`, and
     :math:`\mathbf W_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
+    :math:`w_{uv}` is the bond weight of the bond :math:`u \rightarrow v`;
+    :math:`w_{wv}` are the weights of the incoming edges;
     :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at
     iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v
     \to w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of
@@ -320,7 +323,6 @@ class AtomMessagePassing(_MessagePassingBase):
 
     def message(self, H: Tensor, bmg: BatchMolGraph):
         H = torch.cat((H, bmg.E), dim=1)
-        H = torch.mul(bmg.E_w[bmg.edge_index[0]].unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
