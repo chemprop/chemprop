@@ -13,7 +13,7 @@ from chemprop.cli.predict import find_models
 from chemprop.cli.utils import (
     Subcommand,
     build_data_from_files,
-    build_mixed_data_from_files,
+    build_MAB_data_from_files,
     make_dataset,
 )
 from chemprop.models import load_mixed_model, load_model
@@ -117,7 +117,7 @@ def make_fingerprint_for_model(
     )
 
     if args.is_mixed:
-        test_data, *_ = build_mixed_data_from_files(
+        test_data, *_ = build_MAB_data_from_files(
             args.test_path,
             **format_kwargs,
             p_descriptors=args.descriptors_path,

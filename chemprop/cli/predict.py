@@ -20,7 +20,7 @@ from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
     build_data_from_files,
-    build_mixed_data_from_files,
+    build_MAB_data_from_files,
     make_dataset,
 )
 from chemprop.models.utils import load_mixed_model, load_model, load_output_columns
@@ -207,7 +207,7 @@ def prepare_data_loader(
         ignore_chirality=args.ignore_chirality,
     )
     if args.is_mixed:
-        datas, mol_cols, atom_cols, bond_cols = build_mixed_data_from_files(
+        datas, mol_cols, atom_cols, bond_cols = build_MAB_data_from_files(
             data_path,
             **format_kwargs,
             p_descriptors=descriptors_path,
@@ -229,9 +229,7 @@ def prepare_data_loader(
         )
 
     dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
-    dset = dsets[0]
-    if multicomponent:
-        dset = data.MulticomponentDataset(dsets)
+    dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
     return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
 

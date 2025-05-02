@@ -3,7 +3,6 @@ from .agg import (
     AggregationRegistry,
     AttentiveAggregation,
     MeanAggregation,
-    NoAggregation,
     NormAggregation,
     SumAggregation,
 )
@@ -52,7 +51,6 @@ from .predictors import (
     BinaryClassificationFFNBase,
     BinaryDirichletFFN,
     EvidentialFFN,
-    FFNMockPredictor,
     MulticlassClassificationFFN,
     MulticlassDirichletFFN,
     MveFFN,
@@ -68,7 +66,6 @@ from .utils import Activation
 __all__ = [
     "Aggregation",
     "AggregationRegistry",
-    "NoAggregation",
     "MeanAggregation",
     "SumAggregation",
     "NormAggregation",
@@ -126,7 +123,6 @@ __all__ = [
     "MveFFN",
     "DirichletLoss",
     "EvidentialFFN",
-    "FFNMockPredictor",
     "BinaryClassificationFFNBase",
     "BinaryClassificationFFN",
     "BinaryDirichletFFN",

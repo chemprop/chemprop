@@ -29,7 +29,7 @@ from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
     build_data_from_files,
-    build_mixed_data_from_files,
+    build_MAB_data_from_files,
     get_column_names,
     make_dataset,
     parse_indices,
@@ -48,18 +48,12 @@ from chemprop.data import (
 )
 from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
-from chemprop.nn import (
-    AggregationRegistry,
-    FFNMockPredictor,
-    LossFunctionRegistry,
-    MetricRegistry,
-    PredictorRegistry,
-)
+from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
-    MixedAtomMessagePassing,
-    MixedBondMessagePassing,
+    MABAtomMessagePassing,
+    MABBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
@@ -784,7 +778,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     logger.info(f"Pulling data from file: {args.data_path}")
     mol_cols, atom_cols, bond_cols = [], [], []
     if args.is_mixed:
-        all_data, mol_cols, atom_cols, bond_cols = build_mixed_data_from_files(
+        all_data, mol_cols, atom_cols, bond_cols = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
             p_atom_feats=args.atom_features_path,
@@ -826,11 +820,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         splitting_data = all_data[args.split_key_molecule]
         if isinstance(splitting_data[0], ReactionDatapoint):
             splitting_mols = [datapoint.rct for datapoint in splitting_data]
-        else:  # works for is_mixed too since all_data[0] is coincidentally what we want
+        else:
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
+
     train_data, val_data, test_data = split_data_by_indices(
         all_data, train_indices, val_indices, test_indices
     )
@@ -852,8 +847,6 @@ def summarize(
     ]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
-        elif isinstance(dataset, MolAtomBondDataset):
-            y = dataset.Y
         else:
             y = dataset.Y
         y_mean = np.nanmean(y, axis=0)
@@ -928,7 +921,7 @@ def build_table(column_headers: list[str], table_rows: list[str], title: str | N
 
 def build_datasets(args, train_data, val_data, test_data):
     """build the train/val/test datasets, where :attr:`test_data` may be None"""
-    multicomponent = len(train_data) > 1 and not args.is_mixed
+    multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [
             make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
@@ -946,15 +939,6 @@ def build_datasets(args, train_data, val_data, test_data):
                 for data in test_data
             ]
             test_dset = MulticomponentDataset(test_dsets)
-        else:
-            test_dset = None
-    elif args.is_mixed:
-        train_dset = make_dataset(train_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        if len(test_data[0]) > 0:
-            test_dset = make_dataset(
-                test_data[0], args.rxn_mode, args.multi_hot_atom_featurizer_mode
-            )
         else:
             test_dset = None
     else:
@@ -988,7 +972,7 @@ def build_model(
     ],
 ) -> MPNN | MulticomponentMPNN:
     if args.is_mixed:
-        mp_cls = MixedAtomMessagePassing if args.atom_messages else MixedBondMessagePassing
+        mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
@@ -1227,7 +1211,7 @@ def train_model(
                 T_tracking_metric = model.criterion.__class__
         else:
             T_tracking_metric = MetricRegistry[args.tracking_metric]
-            args.tracking_metric = "val/" + args.tracking_metric
+            tracking_metric = "val/" + args.tracking_metric
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
@@ -1238,13 +1222,13 @@ def train_model(
             checkpoint_dir = model_output_dir
 
         checkpoint_filename = (
-            f"best-epoch={{epoch}}-{args.tracking_metric.replace('/', '_')}="
-            f"{{{args.tracking_metric}:.2f}}"
+            f"best-epoch={{epoch}}-{tracking_metric.replace('/', '_')}="
+            f"{{{tracking_metric}:.2f}}"
         )
         checkpointing = ModelCheckpoint(
             checkpoint_dir / "checkpoints",
             checkpoint_filename,
-            args.tracking_metric,
+            tracking_metric,
             mode=monitor_mode,
             save_last=True,
             auto_insert_metric_name=False,
@@ -1252,9 +1236,7 @@ def train_model(
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping(
-                args.tracking_metric, patience=patience, mode=monitor_mode
-            )
+            early_stopping = EarlyStopping(tracking_metric, patience=patience, mode=monitor_mode)
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
