@@ -1,14 +1,11 @@
 import ast
-from pathlib import Path
 
 from lightning import pytorch as pl
-from lightning.pytorch.callbacks import ModelCheckpoint
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 
-from chemprop import data, featurizers, models, nn
+from chemprop import data, models, nn
 
 columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2", "weight"]
 
@@ -17,13 +14,13 @@ columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_
 def mab_data_dir(data_dir):
     return data_dir / "mol_atom_bond"
 
+
 def make_dataloader(path):
     df_input = pd.read_csv(path)
     smis = df_input.loc[:, columns[0]].values
     mol_ys = df_input.loc[:, columns[1:3]].values
     atoms_ys = df_input.loc[:, columns[3:5]].values
     bonds_ys = df_input.loc[:, columns[5:7]].values
-    weights = df_input.loc[:, columns[7]].values
 
     atoms_ys = [
         np.array([ast.literal_eval(atom_y) for atom_y in atom_ys], dtype=float).T
@@ -86,7 +83,7 @@ def test_multiclass_overfit(mab_data_dir):
     mol_predictor = nn.MulticlassClassificationFFN(n_tasks=2, n_classes=3)
     atom_predictor = nn.MulticlassClassificationFFN(n_tasks=2, n_classes=3)
     bond_predictor = nn.MulticlassClassificationFFN(input_dim=600, n_tasks=2, n_classes=3)
-    model =  models.MolAtomBondMPNN(
+    model = models.MolAtomBondMPNN(
         message_passing=mp,
         agg=agg,
         mol_predictor=mol_predictor,
