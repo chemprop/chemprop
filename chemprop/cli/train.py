@@ -854,7 +854,6 @@ def summarize(
             y = dataset.datasets[0].Y
         elif isinstance(dataset, MolAtomBondDataset):
             y = dataset.Y
-            print(y)
         else:
             y = dataset.Y
         y_mean = np.nanmean(y, axis=0)

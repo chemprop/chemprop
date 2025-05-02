@@ -274,7 +274,6 @@ def make_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )  # make is_mixed one if args.is_mixed is true.
 
-    print(uncertainty_estimator)
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
@@ -320,7 +319,6 @@ def make_prediction_for_models(
                     uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
                 else:
                     uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
-                print(args.uncertainty_method)
                 test_uncs[idx] = uncertainty_calibrator.apply(test_uncs[idx])
                 for i in range(test_individual_uncs[idx].shape[0]):
                     test_individual_uncs[idx][i] = uncertainty_calibrator.apply(
@@ -360,7 +358,6 @@ def make_prediction_for_models(
                 test_individual_preds[idx] = test_individual_preds[idx][..., 0]
 
         if output_columns is None:
-            print(test_preds[idx])
             output_columns = [
                 f"pred_{i}" for i in range(test_preds[idx].shape[1])
             ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
@@ -507,8 +504,6 @@ def save_individual_predictions(
             f"{col}_model_{i}" for i in range(len(model_paths)) for col in mixed_columns[2]
         ]
 
-        print(test_individual_preds[0].shape)
-        print(mol_cols)
         df_test.loc[:, mol_cols] = test_individual_preds[0].tolist()
 
         for i in range(len(df_test)):

@@ -28,7 +28,6 @@ __all__ = [
     "Predictor",
     "PredictorRegistry",
     "RegressionFFN",
-    "FFNMockPredictor",
     "MveFFN",
     "EvidentialFFN",
     "BinaryClassificationFFNBase",
@@ -96,33 +95,6 @@ class Predictor(nn.Module, HasHParams):
 
 
 PredictorRegistry = ClassRegistry[Predictor]()
-
-
-class FFNMockPredictor(Predictor, HyperparametersMixin):
-    _T_default_criterion = MSE
-    _T_default_metric = MSE
-    output_transform = nn.Identity()
-    criterion = MSE()
-
-    @property
-    def input_dim(self) -> int:
-        return 0
-
-    @property
-    def output_dim(self) -> int:
-        return 0
-
-    @property
-    def n_tasks(self) -> int:
-        return 0
-
-    def forward(self, Z: Tensor) -> Tensor:
-        return torch.tensor([], device=Z.device)
-
-    def encode(self, Z: Tensor, i: int) -> Tensor:
-        return torch.tensor([], device=Z.device)
-
-    train_step = forward
 
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):

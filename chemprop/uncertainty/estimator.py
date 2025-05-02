@@ -58,7 +58,6 @@ class NoUncertaintyEstimator(UncertaintyEstimator):
     def __call__(
         self, dataloader: DataLoader, models: Iterable[MPNN], trainer: pl.Trainer
     ) -> tuple[Tensor, Tensor]:
-        print("hi")
         predss = []
         for model in models:
             preds = torch.concat(trainer.predict(model, dataloader), 0)
