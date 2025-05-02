@@ -1,11 +1,10 @@
-import pytest
 import numpy as np
-
+import pytest
 from rdkit import Chem
 
 from chemprop.data.datapoints import PolymerDatapoint
-from chemprop.featurizers.molgraph import PolymerMolGraphFeaturizer
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
+from chemprop.featurizers.molgraph import PolymerMolGraphFeaturizer
 
 
 @pytest.fixture(params=[0, 10, 100])
@@ -51,10 +50,10 @@ def featurized_polymer(polymer, polymer_featurizer):
 @pytest.fixture
 def polymer_mol(polymer):
     rwmol = Chem.rdchem.RWMol(polymer.mol)
-    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     while len(indicies) > 0:
         rwmol.RemoveAtom(indicies[0])
-        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
 
     return rwmol
@@ -62,16 +61,59 @@ def polymer_mol(polymer):
 
 @pytest.fixture
 def polymer_V_w():
-    return np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-                     0.5, 0.5, 0.5, 0.5])
+    return np.array(
+        [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    )
 
 
 @pytest.fixture
 def polymer_E_w():
-    return np.array([1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. ,
-                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. ,
-                     1. , 1. , 1. , 1. , 1. , 1. , 1. , 1. , 0.5, 0.5, 0.5, 0.5, 0.5,
-                     0.5, 0.5, 0.5])
+    return np.array(
+        [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+        ]
+    )
 
 
 def test_fragment_weights(polymer, polymer_smiles):
@@ -88,9 +130,9 @@ def test_edges(polymer, polymer_smiles):
 
 
 def test_degree_of_polymerization(featurized_polymer, polymer_smiles):
-    degree_of_poly = float(polymer_smiles.split('~')[1])
+    degree_of_poly = float(polymer_smiles.split("~")[1])
 
-    assert featurized_polymer.degree_of_poly == (1. + np.log10(degree_of_poly))
+    assert featurized_polymer.degree_of_poly == (1.0 + np.log10(degree_of_poly))
 
 
 def test_atom_fdim(polymer_featurizer):
@@ -115,7 +157,7 @@ def test_E_shape(polymer, polymer_mol, polymer_featurizer, featurized_polymer):
 def test_V_w_shape(polymer_mol, featurized_polymer):
     n_a = polymer_mol.GetNumAtoms()
 
-    assert featurized_polymer.V_w.shape == (n_a, )
+    assert featurized_polymer.V_w.shape == (n_a,)
 
 
 def test_V_w(featurized_polymer, polymer_V_w):
@@ -185,4 +227,7 @@ def test_atom_bond_extra(polymer, polymer_mol, extra, atom_features_extra, bond_
     mf = PolymerMolGraphFeaturizer(extra_atom_fdim=extra, extra_bond_fdim=extra)
     mg = mf(polymer, atom_features_extra, bond_features_extra)
 
-    assert mg.E.shape == (2 * polymer_mol.GetNumBonds() + 2 * len(polymer.edges), len(mf.bond_featurizer) + extra)
+    assert mg.E.shape == (
+        2 * polymer_mol.GetNumBonds() + 2 * len(polymer.edges),
+        len(mf.bond_featurizer) + extra,
+    )

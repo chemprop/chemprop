@@ -73,14 +73,14 @@ class MeanAggregation(Aggregation):
     def forward(self, H: Tensor, batch: Tensor, V_w: Tensor, *args) -> Tensor:
         dim_size = batch.max().int() + 1
         index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
-        sum_node_embeddings = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            self.dim, index_torch, H, reduce="sum", include_self=False
-        )
+        sum_node_embeddings = torch.zeros(
+            dim_size, H.shape[1], dtype=H.dtype, device=H.device
+        ).scatter_reduce_(self.dim, index_torch, H, reduce="sum", include_self=False)
         V_w = V_w.unsqueeze(1)
         index_weight = batch.unsqueeze(1).repeat(1, V_w.shape[1])
-        sum_of_weights = torch.zeros(dim_size, V_w.shape[1], dtype=V_w.dtype, device=V_w.device).scatter_reduce_(
-            self.dim, index_weight, V_w, reduce="sum", include_self=False
-        )
+        sum_of_weights = torch.zeros(
+            dim_size, V_w.shape[1], dtype=V_w.dtype, device=V_w.device
+        ).scatter_reduce_(self.dim, index_weight, V_w, reduce="sum", include_self=False)
         return torch.div(sum_node_embeddings, sum_of_weights)
 
 

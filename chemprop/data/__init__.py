@@ -11,8 +11,8 @@ from .datasets import (
     Datum,
     MoleculeDataset,
     MolGraphDataset,
-    PolymerDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from .molgraph import MolGraph

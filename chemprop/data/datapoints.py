@@ -112,7 +112,7 @@ class _PolymerDatapointMixin:
         keep_h: bool = False,
         add_h: bool = False,
         ignore_chirality: bool = False,
-        **kwargs
+        **kwargs,
     ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
         edges = smi.split("<")[1:]

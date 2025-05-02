@@ -33,8 +33,8 @@ class BatchMolGraph:
     """a tensor of shape ``E`` that maps from an edge index to the index of the source of the
     reverse edge in the ``edge_index`` attribute."""
     degree_of_poly: Tensor = field(init=False)
-    """a tensor of shape ``n`` thats maps the degree of polymerisation in the form 1 + log(Xn),
-    default 1 for a small molecule, to each molecule"""
+    """the degree of polymerisation in the form 1 + log(Xn),
+    default 1 for a small molecule, matrix"""
     batch: Tensor = field(init=False)
     """the index of the parent :class:`MolGraph` in the batched graph"""
 
@@ -69,7 +69,9 @@ class BatchMolGraph:
 
         self.V = torch.from_numpy(np.concatenate(Vs)).float()
         self.E = torch.from_numpy(np.concatenate(Es)).float()
-        self.V_w = torch.from_numpy(np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)).float()
+        self.V_w = torch.from_numpy(
+            np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)
+        ).float()
         self.E_w = torch.from_numpy(np.concatenate(Ew)).float()
         self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
         self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()

@@ -138,7 +138,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
                 E.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
-                E_w.extend([1., 1.])  # Edge weights of 1 for a standard molecule
+                E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
 
         E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()

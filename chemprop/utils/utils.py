@@ -72,7 +72,9 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
     return mol
 
 
-def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False) -> Chem.Mol:
+def make_polymer_mol(
+    smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
+) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
 
@@ -95,7 +97,7 @@ def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool
     # Create one molecule object per fragment and combine the fragments into
     # a single molecule object
     mols = []
-    for s in smi.split('.'):
+    for s in smi.split("."):
         m = make_mol(s, keep_h, add_h, ignore_chirality=ignore_chirality)
         mols.append(m)
     # Combine all the mols into a single mol object
@@ -111,10 +113,10 @@ def remove_wildcard_atoms(rwmol):
     """
     removes wildcard atoms from an RDKit Mol
     """
-    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     while len(indicies) > 0:
         rwmol.RemoveAtom(indicies[0])
-        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if '*' in a.GetSmarts()]
+        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
     Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
 
     return rwmol

@@ -3,7 +3,12 @@ import logging
 from torch.utils.data import DataLoader
 
 from chemprop.data.collate import collate_batch, collate_multicomponent
-from chemprop.data.datasets import MoleculeDataset, MulticomponentDataset, ReactionDataset, PolymerDataset
+from chemprop.data.datasets import (
+    MoleculeDataset,
+    MulticomponentDataset,
+    PolymerDataset,
+    ReactionDataset,
+)
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 logger = logging.getLogger(__name__)

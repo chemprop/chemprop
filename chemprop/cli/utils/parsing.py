@@ -13,8 +13,8 @@ from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
-    SimpleMoleculeMolGraphFeaturizer,
     PolymerMolGraphFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.utils import make_mol, make_polymer_mol, remove_wildcard_atoms
 
@@ -131,7 +131,9 @@ def make_datapoints(
     keep_h: bool,
     add_h: bool,
     ignore_chirality: bool,
-) -> tuple[list[list[MoleculeDatapoint]], list[list[PolymerDatapoint]], list[list[ReactionDatapoint]]]:
+) -> tuple[
+    list[list[MoleculeDatapoint]], list[list[PolymerDatapoint]], list[list[ReactionDatapoint]]
+]:
     """Make the :class:`MoleculeDatapoint`s, :class: `PolymerDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
 
@@ -257,7 +259,15 @@ def make_datapoints(
         molss = [[make_mol(smi, keep_h, add_h, ignore_chirality) for smi in smis] for smis in smiss]
         n_mols = len(smiss)
     if len(polyss) > 0:
-        poly_molss = [[make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_chirality=ignore_chirality) for smi in smis] for smis in polyss]
+        poly_molss = [
+            [
+                make_polymer_mol(
+                    smi.split("|")[0], keep_h, add_h, ignore_chirality=ignore_chirality
+                )
+                for smi in smis
+            ]
+            for smis in polyss
+        ]
         n_mols = len(polyss)
     if len(rxnss) > 0:
         rctss = [
@@ -310,7 +320,17 @@ def make_datapoints(
         if len(polyss) > 0:
             poly_descriptors = np.hstack(
                 [
-                    np.vstack([np.hstack([mf(remove_wildcard_atoms(RWMol(poly))) for mf in molecule_featurizers]) for poly in poly_mols])
+                    np.vstack(
+                        [
+                            np.hstack(
+                                [
+                                    mf(remove_wildcard_atoms(RWMol(poly)))
+                                    for mf in molecule_featurizers
+                                ]
+                            )
+                            for poly in poly_mols
+                        ]
+                    )
                     for poly_mols in poly_molss
                 ]
             )
