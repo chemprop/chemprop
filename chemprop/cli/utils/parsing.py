@@ -257,7 +257,7 @@ def make_datapoints(
         molss = [[make_mol(smi, keep_h, add_h, ignore_chirality) for smi in smis] for smis in smiss]
         n_mols = len(smiss)
     if len(polyss) > 0:
-        poly_molss = [[make_polymer_mol(smi.split("|")[0], keep_h, add_h, smi.split("|")[1:-1], ignore_chirality=ignore_chirality) for smi in smis] for smis in polyss]
+        poly_molss = [[make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_chirality=ignore_chirality) for smi in smis] for smis in polyss]
         n_mols = len(polyss)
     if len(rxnss) > 0:
         rctss = [

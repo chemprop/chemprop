@@ -13,7 +13,7 @@ MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
 
 @dataclass(slots=True)
 class _DatapointMixin:
-    """A mixin class for both molecule- and reaction- and multicomponent-type data"""
+    """A mixin class for both molecule-, polymer-, reaction- and multicomponent-type data"""
 
     y: np.ndarray | None = None
     """the targets for the molecule with unknown targets indicated by `nan`s"""
@@ -116,7 +116,7 @@ class _PolymerDatapointMixin:
     ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
         edges = smi.split("<")[1:]
-        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, fragment_weights=frag_weights, ignore_chirality=ignore_chirality)
+        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_chirality=ignore_chirality)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 

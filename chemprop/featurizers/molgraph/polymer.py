@@ -87,12 +87,16 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
 
     def apply_atom_weights(self, mol: Chem.Mol, fragment_weights: list[str]):
         """
-        applies fragment weights to atoms
+        applies fragment weights to atoms in each monomer
         """
         # Convert fragment weights to floats
         fragment_weights = [float(x) for x in fragment_weights]
         # Split mol into its fragments
         mols = Chem.GetMolFrags(mol, asMols=True)
+        # Check the input is correct. We need the same number of fragments and their weights.
+        num_frags = len(mols)
+        if len(fragment_weights) != num_frags:
+            raise ValueError(f'The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})')
         new_mols = []
         for s, w in zip(mols, fragment_weights):
             for a in s.GetAtoms():
