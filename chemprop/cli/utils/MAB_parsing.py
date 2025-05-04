@@ -55,7 +55,10 @@ def build_MAB_data_from_files(
         else [None] * n_datapoints
     )
     E_ds = (
-        [np.repeat(np.load(p_bond_descs[0])[f"arr_{i}"], repeats=2, axis=0) for i in range(n_datapoints)]
+        [
+            np.repeat(np.load(p_bond_descs[0])[f"arr_{i}"], repeats=2, axis=0)
+            for i in range(n_datapoints)
+        ]
         if p_bond_descs
         else [None] * n_datapoints
     )
