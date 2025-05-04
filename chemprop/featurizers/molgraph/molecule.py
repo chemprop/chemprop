@@ -47,8 +47,6 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     2: 00000001000000000000000000000000000000 0010000 000010 10000 010000 00100000 0 0.160
     0→1: 0 0100 1 0 1000000
     0←1: 0 0100 1 0 1000000
-    0→2: 1 0000 0 0 0000000
-    0←2: 1 0000 0 0 0000000
     1→2: 0 1000 1 0 1000000
     1←2: 0 1000 1 0 1000000
 
@@ -146,9 +144,10 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             lines.append(f"{i:{digits}}: {string}")
         for i, j in itertools.combinations(range(n), 2):
             bond = mol.GetBondBetweenAtoms(i, j)
-            string = self.bond_featurizer.to_string(bond, decimals)
-            lines.append(f"{i:{digits}}\u2192{j:{digits}}: {string}")
-            if self.backward_bond_featurizer is not None:
-                string = self.backward_bond_featurizer.to_string(bond, decimals)
-            lines.append(f"{i:{digits}}\u2190{j:{digits}}: {string}")
+            if bond is not None:
+                string = self.bond_featurizer.to_string(bond, decimals)
+                lines.append(f"{i:{digits}}\u2192{j:{digits}}: {string}")
+                if self.backward_bond_featurizer is not None:
+                    string = self.backward_bond_featurizer.to_string(bond, decimals)
+                lines.append(f"{i:{digits}}\u2190{j:{digits}}: {string}")
         return "\n".join(lines)
