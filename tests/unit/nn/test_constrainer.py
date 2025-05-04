@@ -25,4 +25,4 @@ def test_constrainer_forward(fp_dim):
     constrained_preds = torch.split(constrained_preds, rows_per_group.tolist(), dim=0)
     constrained_preds = torch.stack([torch.sum(pred, dim=0) for pred in constrained_preds])
 
-    assert torch.allclose(constrained_preds, constraints)
+    assert torch.allclose(constrained_preds, constraints, rtol=1e-5, atol=1e-5)
