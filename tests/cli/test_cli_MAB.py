@@ -1,13 +1,10 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
-import json
-
 import pytest
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
-from chemprop.models import MolAtomBondMPNN
 
 pytestmark = pytest.mark.CLI
 
@@ -67,7 +64,7 @@ def constrained_data_path(data_dir):
         str(data_dir / "mol_atom_bond" / "constrained_regression_constraints.csv"),
         ["atom_target_0", "atom_target_1", "bond_target_1"],
         "smiles",
-        ["mol_y1"],
+        ["mol_y"],
         ["atom_y1", "atom_y2"],
         ["bond_y1", "bond_y2"],
     )
@@ -120,7 +117,7 @@ def regression_only_bond_model_path(model_dir):
 
 
 @pytest.fixture
-def classification_model_model_path(model_dir):
+def classification_model_path(model_dir):
     return str(model_dir / "classification.pt")
 
 
@@ -140,7 +137,7 @@ def mve_model_path(model_dir):
 
 
 def test_train_regression_quick(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -149,8 +146,8 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -160,6 +157,9 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
         "--epochs",
         "3",
         "--show-individual-scores",
+        "--keep-h",
+        "--reorder-atoms",
+        "-qq",
     ]
 
     with monkeypatch.context() as m:
@@ -168,7 +168,7 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
 
 
 def test_train_regression_quick_features(monkeypatch, regression_data_path, extras_paths):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
     (
         descriptors_path,
         atom_features_path,
@@ -184,8 +184,8 @@ def test_train_regression_quick_features(monkeypatch, regression_data_path, extr
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -202,12 +202,27 @@ def test_train_regression_quick_features(monkeypatch, regression_data_path, extr
         atom_descriptors_path,
         "--bond-descriptors-path",
         bond_descriptors_path,
+        "--keep-h",
+        "--reorder-atoms",
     ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
 
 
 def test_predict_regression_quick(monkeypatch, regression_data_path, regression_model_path):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -215,7 +230,7 @@ def test_predict_regression_quick(monkeypatch, regression_data_path, regression_
 
 
 def test_train_regression_no_mol(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -230,6 +245,8 @@ def test_train_regression_no_mol(monkeypatch, regression_data_path):
         *bond_targets,
         "--epochs",
         "3",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -239,7 +256,16 @@ def test_train_regression_no_mol(monkeypatch, regression_data_path):
 
 def test_predict_regression_no_mol(monkeypatch, regression_data_path, regression_no_mol_model_path):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_mol_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_no_mol_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -247,7 +273,7 @@ def test_predict_regression_no_mol(monkeypatch, regression_data_path, regression
 
 
 def test_train_regresssion_no_atom(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -256,12 +282,14 @@ def test_train_regresssion_no_atom(monkeypatch, regression_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--bond-target-columns",
         *bond_targets,
         "--epochs",
         "3",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -273,7 +301,16 @@ def test_predict_regression_no_atom(
     monkeypatch, regression_data_path, regression_no_atom_model_path
 ):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_atom_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_no_atom_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -281,7 +318,7 @@ def test_predict_regression_no_atom(
 
 
 def test_train_regression_no_bond(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -290,12 +327,14 @@ def test_train_regression_no_bond(monkeypatch, regression_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--epochs",
         "3",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -307,7 +346,16 @@ def test_predict_regression_no_bond(
     monkeypatch, regression_data_path, regression_no_bond_model_path
 ):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", regression_no_bond_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_no_bond_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -318,7 +366,7 @@ def test_predict_regression_no_bond(
 
 
 def test_train_regression_only_atom(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -331,6 +379,8 @@ def test_train_regression_only_atom(monkeypatch, regression_data_path):
         *atom_targets,
         "--epochs",
         "3",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -349,6 +399,8 @@ def test_predict_regression_only_atom(
         input_path,
         "--model-path",
         regression_only_atom_model_path,
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -357,7 +409,7 @@ def test_predict_regression_only_atom(
 
 
 def test_train_regression_only_bond(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -370,6 +422,8 @@ def test_train_regression_only_bond(monkeypatch, regression_data_path):
         *bond_targets,
         "--epochs",
         "3",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -388,6 +442,8 @@ def test_predict_regression_only_bond(
         input_path,
         "--model-path",
         regression_only_bond_model_path,
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -396,7 +452,7 @@ def test_predict_regression_only_bond(
 
 
 def test_train_bounded_quick(monkeypatch, bounded_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = bounded_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = bounded_data_path
 
     args = [
         "chemprop",
@@ -405,8 +461,8 @@ def test_train_bounded_quick(monkeypatch, bounded_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -415,6 +471,8 @@ def test_train_bounded_quick(monkeypatch, bounded_data_path):
         "3",
         "--loss-function",
         "bounded-mse",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -423,7 +481,7 @@ def test_train_bounded_quick(monkeypatch, bounded_data_path):
 
 
 def test_train_classification_quick(monkeypatch, classification_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = classification_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = classification_data_path
 
     args = [
         "chemprop",
@@ -432,8 +490,8 @@ def test_train_classification_quick(monkeypatch, classification_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -442,6 +500,8 @@ def test_train_classification_quick(monkeypatch, classification_data_path):
         "3",
         "--task-type",
         "classification",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -451,7 +511,16 @@ def test_train_classification_quick(monkeypatch, classification_data_path):
 
 def test_predict_classification_quick(monkeypatch, regression_data_path, classification_model_path):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", classification_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        classification_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -459,7 +528,7 @@ def test_predict_classification_quick(monkeypatch, regression_data_path, classif
 
 
 def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = multiclass_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = multiclass_data_path
 
     args = [
         "chemprop",
@@ -468,8 +537,8 @@ def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -478,6 +547,8 @@ def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
         "3",
         "--task-type",
         "multiclass",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -487,7 +558,16 @@ def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
 
 def test_predict_multiclass_quick(monkeypatch, regression_data_path, multiclass_model_path):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", multiclass_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        multiclass_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -495,7 +575,7 @@ def test_predict_multiclass_quick(monkeypatch, regression_data_path, multiclass_
 
 
 def test_train_mve_quick(monkeypatch, regression_data_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -504,8 +584,8 @@ def test_train_mve_quick(monkeypatch, regression_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -514,6 +594,8 @@ def test_train_mve_quick(monkeypatch, regression_data_path):
         "3",
         "--task-type",
         "regression-mve",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -522,8 +604,31 @@ def test_train_mve_quick(monkeypatch, regression_data_path):
 
 
 def test_predict_mve_quick(monkeypatch, regression_data_path, mve_model_path):
-    input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", mve_model_path]
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        mve_model_path,
+        "--cal-path",
+        input_path,
+        "--mol-target-columns",
+        *mol_targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--uncertainty-method",
+        "mve",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -536,7 +641,7 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         constraints_path,
         constraints_to_targets,
         smiles,
-        targets,
+        mol_targets,
         atom_targets,
         bond_targets,
     ) = constrained_data_path
@@ -548,8 +653,8 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -560,6 +665,8 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         constraints_path,
         "--constraints-to-targets",
         *constraints_to_targets,
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -569,7 +676,16 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
 
 def test_predict_regression_constrained(monkeypatch, regression_data_path, constrained_model_path):
     input_path, *_ = regression_data_path
-    args = ["chemprop", "predict", "-i", input_path, "--model-path", constrained_model_path]
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        constrained_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -590,6 +706,8 @@ def test_fingerprint_quick(
         regression_model_path,
         "--ffn-block-index",
         ffn_block_index,
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -599,7 +717,7 @@ def test_fingerprint_quick(
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
 def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [
         "chemprop",
@@ -608,8 +726,8 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
@@ -626,6 +744,8 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         "all",
         "--accelerator",
         "cpu",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -644,7 +764,6 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         str(tmp_path / "best_config.toml"),
         "--save-dir",
         str(tmp_path),
-        "--is-mixed",
     ]
 
     with monkeypatch.context() as m:
@@ -655,8 +774,16 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
-def test_hyperopt_quick(monkeypatch, regression_data_path, tmp_path):
-    input_path, smiles, targets, atom_targets, bond_targets, weight = regression_data_path
+def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        mol_targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
 
     args = [
         "chemprop",
@@ -665,12 +792,16 @@ def test_hyperopt_quick(monkeypatch, regression_data_path, tmp_path):
         input_path,
         "--smiles-columns",
         smiles,
-        "--target-columns",
-        *targets,
+        "--mol-target-columns",
+        *mol_targets,
         "--atom-target-columns",
         *atom_targets,
         "--bond-target-columns",
         *bond_targets,
+        "--constraints-path",
+        constraints_path,
+        "--constraints-to-targets",
+        *constraints_to_targets,
         "--epochs",
         "6",
         "--hpopt-save-dir",
@@ -681,6 +812,8 @@ def test_hyperopt_quick(monkeypatch, regression_data_path, tmp_path):
         "hyperopt",
         "--search-parameter-keywords",
         "all",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:
@@ -699,7 +832,8 @@ def test_hyperopt_quick(monkeypatch, regression_data_path, tmp_path):
         str(tmp_path / "best_config.toml"),
         "--save-dir",
         str(tmp_path),
-        "--is-mixed",
+        "--keep-h",
+        "--reorder-atoms",
     ]
 
     with monkeypatch.context() as m:

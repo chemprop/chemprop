@@ -16,7 +16,7 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     make_dataset,
 )
-from chemprop.models import load_mixed_model, load_model
+from chemprop.models import load_MAB_model, load_model
 from chemprop.nn.metrics import LossFunctionRegistry
 
 logger = logging.getLogger(__name__)
@@ -84,19 +84,27 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 
 
 def make_fingerprint_for_model(
-    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
+    args: Namespace, model_path: Path, multicomponent: bool, mol_atom_bond: bool, output_path: Path
 ):
-    if args.is_mixed:
-        model = load_mixed_model(model_path)
+    if mol_atom_bond:
+        model = load_MAB_model(model_path)
+        bounded = any(
+            isinstance(
+                next(c for c in model.criterions if c is not None),
+                LossFunctionRegistry[loss_function],
+            )
+            for loss_function in LossFunctionRegistry.keys()
+            if "bounded" in loss_function
+        )
     else:
         model = load_model(model_path, multicomponent)
-    model.eval()
+        bounded = any(
+            isinstance(model.criterion, LossFunctionRegistry[loss_function])  # maybe fix for mixed?
+            for loss_function in LossFunctionRegistry.keys()
+            if "bounded" in loss_function
+        )
 
-    bounded = any(
-        isinstance(model.criterion, LossFunctionRegistry[loss_function])  # maybe fix for mixed?
-        for loss_function in LossFunctionRegistry.keys()
-        if "bounded" in loss_function
-    )
+    model.eval()
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -114,16 +122,25 @@ def make_fingerprint_for_model(
         keep_h=args.keep_h,
         add_h=args.add_h,
         ignore_chirality=args.ignore_chirality,
+        reorder_atoms=args.reorder_atoms,
     )
 
-    if args.is_mixed:
-        test_data, *_ = build_MAB_data_from_files(
+    if mol_atom_bond:
+        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+            format_kwargs.pop(key, None)
+        test_data = build_MAB_data_from_files(
             args.test_path,
             **format_kwargs,
+            mol_target_cols=None,
+            atom_target_cols=None,
+            bond_target_cols=None,
             p_descriptors=args.descriptors_path,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
+            p_bond_descs=args.bond_descriptors_path,
+            p_constraints=None,
+            constraints_cols_to_target_cols=None,
             **featurization_kwargs,
         )
     else:
@@ -158,7 +175,7 @@ def make_fingerprint_for_model(
                 for batch in test_loader
             ]
             H = torch.cat(encodings, 0).numpy()
-        elif args.is_mixed:
+        elif mol_atom_bond:
             encodings = [
                 model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
@@ -224,10 +241,15 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_paths)):
+    model_paths = find_models(args.model_paths)
+
+    model_file = torch.load(model_paths[0], map_location=torch.device("cpu"), weights_only=False)
+    mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
+
+    for i, model_path in enumerate(model_paths):
         logger.info(f"Fingerprints with model {i} at '{model_path}'")
         output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
-        make_fingerprint_for_model(args, model_path, multicomponent, output_path)
+        make_fingerprint_for_model(args, model_path, multicomponent, mol_atom_bond, output_path)
 
 
 if __name__ == "__main__":

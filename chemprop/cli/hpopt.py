@@ -15,6 +15,7 @@ from chemprop.cli.train import (
     TrainSubcommand,
     add_train_args,
     build_datasets,
+    build_MAB_model,
     build_model,
     build_splits,
     normalize_inputs,
@@ -23,7 +24,7 @@ from chemprop.cli.train import (
     validate_train_args,
 )
 from chemprop.cli.utils.command import Subcommand
-from chemprop.data import build_dataloader
+from chemprop.data import MolAtomBondDataset, build_dataloader
 from chemprop.nn import AggregationRegistry, MetricRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
@@ -37,7 +38,15 @@ DEFAULT_SEARCH_SPACE = {
     "depth": None,
     "dropout": None,
     "ffn_hidden_dim": None,
+    "atom_ffn_hidden_dim": None,
+    "atom_constrainer_ffn_hidden_dim": None,
+    "bond_ffn_hidden_dim": None,
+    "bond_constrainer_ffn_hidden_dim": None,
     "ffn_num_layers": None,
+    "atom_ffn_num_layers": None,
+    "atom_constrainer_ffn_num_layers": None,
+    "bond_ffn_num_layers": None,
+    "bond_constrainer_ffn_num_layers": None,
     "final_lr_ratio": None,
     "message_hidden_dim": None,
     "init_lr_ratio": None,
@@ -66,7 +75,15 @@ try:
         "depth": tune.qrandint(lower=2, upper=6, q=1),
         "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "atom_ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "atom_constrainer_ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "bond_ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "bond_constrainer_ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
         "ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
+        "atom_ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
+        "atom_constrainer_ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
+        "bond_ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
+        "bond_constrainer_ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
         "final_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
         "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
         "init_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
@@ -312,12 +329,15 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
 
     torch.manual_seed(seed)
 
-    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+    if isinstance(train_loader.dataset, MolAtomBondDataset):
+        model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
+    else:
+        model = build_model(args, train_loader.dataset, output_transform[0], input_transforms)
     logger.info(model)
 
     if args.tracking_metric == "val_loss":
-        if args.is_mixed:
-            T_tracking_metric = model.criterion[0].__class__
+        if isinstance(train_loader.dataset, MolAtomBondDataset):
+            T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
         else:
             T_tracking_metric = model.criterion.__class__
     else:
@@ -478,50 +498,83 @@ def main(args: Namespace):
         keep_h=args.keep_h,
         add_h=args.add_h,
         ignore_chirality=args.ignore_chirality,
+        reorder_atoms=args.reorder_atoms,
     )
+
+    if any(
+        cols is not None
+        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+    ):
+        SEARCH_PARAM_KEYWORDS_MAP["basic"].extend(
+            [
+                "atom_ffn_hidden_dim",
+                "atom_ffn_num_layers",
+                "bond_ffn_hidden_dim",
+                "bond_ffn_num_layers",
+            ]
+        )
+    else:
+        print(SEARCH_PARAM_KEYWORDS_MAP["all"])
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_hidden_dim")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_num_layers")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_ffn_hidden_dim")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_ffn_num_layers")
+
+    if args.constraints_path is not None:
+        SEARCH_PARAM_KEYWORDS_MAP["basic"].extend(
+            [
+                "atom_constrainer_ffn_hidden_dim",
+                "atom_constrainer_ffn_num_layers",
+                "bond_constrainer_ffn_hidden_dim",
+                "bond_constrainer_ffn_num_layers",
+            ]
+        )
+    else:
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_constrainer_ffn_hidden_dim")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_constrainer_ffn_num_layers")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_constrainer_ffn_hidden_dim")
+        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_constrainer_ffn_num_layers")
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
 
     input_transforms = normalize_inputs(train_dset, val_dset, args)
 
-    if args.is_mixed and "regression" in args.task_type:
-        output_transform = []
-        mol_output_scaler = train_dset.normalize_targets("mol")
-        val_dset.normalize_targets("mol", mol_output_scaler)
-        output_transform.append(UnscaleTransform.from_standard_scaler(mol_output_scaler))
-        atom_output_scaler = train_dset.normalize_targets("atom")
-        val_dset.normalize_targets("atom", atom_output_scaler)
-        output_transform.append(UnscaleTransform.from_standard_scaler(atom_output_scaler))
-        bond_output_scaler = train_dset.normalize_targets("bond")
-        val_dset.normalize_targets("bond", bond_output_scaler)
-        output_transform.append(UnscaleTransform.from_standard_scaler(bond_output_scaler))
-        logger.info(
-            f"Train data: mean = {mol_output_scaler.mean_} | std = {mol_output_scaler.scale_}"
-        )
-        logger.info(
-            f"Train data: mean = {atom_output_scaler.mean_} | std = {atom_output_scaler.scale_}"
-        )
-        logger.info(
-            f"Train data: mean = {bond_output_scaler.mean_} | std = {bond_output_scaler.scale_}"
-        )
-    elif args.is_mixed:
-        output_transform = [None, None, None]
-    elif "regression" in args.task_type:
-        output_scaler = train_dset.normalize_targets()
-        val_dset.normalize_targets(output_scaler)
-        logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
-        output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
-    else:
-        output_transform = [None]
+    output_transform = [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else [None]
+    if "regression" in args.task_type:
+        if isinstance(train_dset, MolAtomBondDataset):
+            output_transform = []
+            for kind, cols in zip(
+                ["mol", "atom", "bond"],
+                [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns],
+            ):
+                if cols is not None:
+                    output_scaler = train_dset.normalize_targets(kind)
+                    val_dset.normalize_targets(kind, output_scaler)
+                    logger.info(
+                        f"Train data ({kind}): mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+                    )
+                    output_transform.append(UnscaleTransform.from_standard_scaler(output_scaler))
+                else:
+                    output_transform.append(None)
+        else:
+            output_scaler = train_dset.normalize_targets()
+            val_dset.normalize_targets(output_scaler)
+            logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
+            output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
-    model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-    if args.is_mixed:
-        monitor_mode = "max" if model.metrics[0][0].higher_is_better else "min"
+    if isinstance(train_loader.dataset, MolAtomBondDataset):
+        model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
+    else:
+        model = build_model(args, train_loader.dataset, output_transform[0], input_transforms)
+    if isinstance(train_dset, MolAtomBondDataset):
+        monitor_mode = (
+            "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
+        )
     else:
         monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 

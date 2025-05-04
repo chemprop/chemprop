@@ -346,7 +346,7 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             self.E_ds[idx],
             self.X_d[idx],
             [
-                self.Y[idx] if self.Y is not None else None,
+                self.Y[idx] if isinstance(self.Y[idx], np.ndarray) else None,
                 self.atom_Y[idx] if self.atom_Y is not None else None,
                 self.bond_Y[idx] if self.bond_Y is not None else None,
             ],
@@ -375,7 +375,7 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
     @cached_property
     def _atom_constraints(self) -> np.ndarray:
         return np.array([d.atom_constraint for d in self.data])
-    
+
     @property
     def atom_constraints(self) -> np.ndarray:
         return self.__atom_constraints
@@ -404,11 +404,11 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
     @cached_property
     def _bond_constraints(self) -> np.ndarray:
         return np.array([d.bond_constraint for d in self.data])
-    
+
     @property
     def bond_constraints(self) -> np.ndarray:
         return self.__bond_constraints
-    
+
     @bond_constraints.setter
     def bond_constraints(self, bond_constraints: ArrayLike):
         self._validate_attribute(bond_constraints, "bond constraints")
@@ -476,13 +476,19 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
                 self.atom_Y = [scaler.transform(y) if y.size > 0 else y for y in self._atom_Y]
                 if self.atom_constraints[0] is not None:
                     atoms_per_mol = [len(d.atom_y) for d in self.data]
-                    scaled_atom_constraints = [(row - n * scaler.mean_) / scaler.scale_ for row, n in zip(self._atom_constraints, atoms_per_mol)]
+                    scaled_atom_constraints = [
+                        (row - n * scaler.mean_) / scaler.scale_
+                        for row, n in zip(self._atom_constraints, atoms_per_mol)
+                    ]
                     self.atom_constraints = np.array(scaled_atom_constraints)
             case "bond":
                 self.bond_Y = [scaler.transform(y) if y.size > 0 else y for y in self._bond_Y]
                 if self.bond_constraints[0] is not None:
                     bonds_per_mol = [len(d.bond_y) for d in self.data]
-                    scaled_bond_constraints = [(row - n * scaler.mean_) / scaler.scale_ for row, n in zip(self._bond_constraints, bonds_per_mol)]
+                    scaled_bond_constraints = [
+                        (row - n * scaler.mean_) / scaler.scale_
+                        for row, n in zip(self._bond_constraints, bonds_per_mol)
+                    ]
                     self.bond_constraints = np.array(scaled_bond_constraints)
             case _:
                 raise RuntimeError("unreachable code reached!")
