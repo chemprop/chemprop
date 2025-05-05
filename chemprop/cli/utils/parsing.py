@@ -124,6 +124,7 @@ def make_datapoints(
     keep_h: bool,
     add_h: bool,
     ignore_chirality: bool,
+    reorder_atoms: bool,
 ) -> tuple[list[list[MoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
@@ -213,12 +214,19 @@ def make_datapoints(
         N = len(smiss[0])
 
     if len(smiss) > 0:
-        molss = [[make_mol(smi, keep_h, add_h, ignore_chirality) for smi in smis] for smis in smiss]
+        molss = [
+            [make_mol(smi, keep_h, add_h, ignore_chirality, reorder_atoms) for smi in smis]
+            for smis in smiss
+        ]
     if len(rxnss) > 0:
         rctss = [
             [
                 make_mol(
-                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, ignore_chirality
+                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                    keep_h,
+                    add_h,
+                    ignore_chirality,
+                    reorder_atoms,
                 )
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
@@ -226,7 +234,7 @@ def make_datapoints(
         ]
         pdtss = [
             [
-                make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
+                make_mol(pdt_smi, keep_h, add_h, ignore_chirality, reorder_atoms)
                 for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss

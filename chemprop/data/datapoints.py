@@ -54,9 +54,10 @@ class _MoleculeDatapointMixin:
         keep_h: bool = False,
         add_h: bool = False,
         ignore_chirality: bool = False,
+        reorder_atoms: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_chirality)
+        mol = make_mol(smi, keep_h, add_h, ignore_chirality, reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -137,10 +138,11 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
         *args,
         keep_h: bool = False,
         add_h: bool = False,
+        ignore_chirality: bool = False,
         reorder_atoms: bool = True,
         **kwargs,
     ) -> MolAtomBondDatapoint:
-        mol = make_mol(smi, keep_h, add_h, reorder_atoms=reorder_atoms)
+        mol = make_mol(smi, keep_h, add_h, ignore_chirality, reorder_atoms=reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 

@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from typing import Literal
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -29,12 +30,14 @@ from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
     build_data_from_files,
+    build_MAB_data_from_files,
     get_column_names,
     make_dataset,
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
 from chemprop.data import (
+    MolAtomBondDataset,
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
@@ -45,11 +48,14 @@ from chemprop.data import (
     split_data_by_indices,
 )
 from chemprop.data.datasets import _MolGraphDatasetMixin
-from chemprop.models import MPNN, MulticomponentMPNN, save_model
+from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
+from chemprop.nn.ffn import Constrainer
 from chemprop.nn.message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
+    MABAtomMessagePassing,
+    MABBondMessagePassing,
     MulticomponentMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
@@ -274,7 +280,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     ffn_args.add_argument(
         "--ffn-hidden-dim", type=int, default=300, help="Hidden dimension in the FFN top model"
     )
-    ffn_args.add_argument(  # TODO: the default in v1 was 2. (see weights_ffn_num_layers option) Do we really want the default to now be 1?
+    ffn_args.add_argument(
         "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
     )
     # TODO: Decide if we want to implment this in v2
@@ -302,6 +308,80 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     help="Indicates which function to use in task_type spectra training to constrain outputs to be positive.",
     # )
 
+    atom_ffn_args = parser.add_argument_group("Atom FFN args")
+    atom_ffn_args.add_argument(
+        "--atom-task-weights",
+        nargs="+",
+        type=float,
+        help="Weights to apply for all atom tasks in the loss function",
+    )
+    atom_ffn_args.add_argument(
+        "--atom-ffn-hidden-dim",
+        type=int,
+        default=300,
+        help="Hidden dimension in the atom FFN top model",
+    )
+    atom_ffn_args.add_argument(
+        "--atom-ffn-num-layers", type=int, default=1, help="Number of layers in atom FFN top model"
+    )
+    atom_ffn_args = parser.add_argument(
+        "--atom-multiclass-num-classes",
+        type=int,
+        default=3,
+        help="Number of classes for atom targets when running multiclass classification",
+    )
+
+    bond_ffn_args = parser.add_argument_group("Bond FFN args")
+    bond_ffn_args.add_argument(
+        "--bond-task-weights",
+        nargs="+",
+        type=float,
+        help="Weights to apply for all bond tasks in the loss function",
+    )
+    bond_ffn_args.add_argument(
+        "--bond-ffn-hidden-dim",
+        type=int,
+        default=300,
+        help="Hidden dimension in the bond FFN top model",
+    )
+    bond_ffn_args.add_argument(
+        "--bond-ffn-num-layers", type=int, default=1, help="Number of layers in bond FFN top model"
+    )
+    bond_ffn_args = parser.add_argument(
+        "--bond-multiclass-num-classes",
+        type=int,
+        default=3,
+        help="Number of classes for bond targets when running multiclass classification",
+    )
+
+    atom_constrain_ffn_args = parser.add_argument_group("Atom constrainer FFN args")
+    atom_constrain_ffn_args.add_argument(
+        "--atom-constrainer-ffn-hidden-dim",
+        type=int,
+        default=300,
+        help="Hidden dimension in the atom constrainer FFN top model",
+    )
+    atom_constrain_ffn_args.add_argument(
+        "--atom-constrainer-ffn-num-layers",
+        type=int,
+        default=1,
+        help="Number of layers in atom constrainer FFN top model",
+    )
+
+    bond_constrain_ffn_args = parser.add_argument_group("Bond constrainer FFN args")
+    bond_constrain_ffn_args.add_argument(
+        "--bond-constrainer-ffn-hidden-dim",
+        type=int,
+        default=300,
+        help="Hidden dimension in the bond constrainer FFN top model",
+    )
+    bond_constrain_ffn_args.add_argument(
+        "--bond-constrainer-ffn-num-layers",
+        type=int,
+        default=1,
+        help="Number of layers in bond constrainer FFN top model",
+    )
+
     train_data_args = parser.add_argument_group("training input data args")
     train_data_args.add_argument(
         "-w",
@@ -312,6 +392,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--target-columns",
         nargs="+",
         help="Name of the columns containing target values (by default, uses all columns except the SMILES column and the ``ignore_columns``)",
+    )
+    train_data_args.add_argument(
+        "--mol-target-columns",
+        nargs="+",
+        help="Names of the columns containing mol target values. (When training on mol and atom/bond targets simultaneously.)",
+    )
+    train_data_args.add_argument(
+        "--atom-target-columns",
+        nargs="+",
+        help="Names of the columns containing atom target values.",
+    )
+    train_data_args.add_argument(
+        "--bond-target-columns",
+        nargs="+",
+        help="Names of the columns containing bond target values.",
     )
     train_data_args.add_argument(
         "--ignore-columns",
@@ -569,12 +664,14 @@ def normalize_inputs(train_dset, val_dset, args):
     V_f_transforms = [nn.Identity()] * num_components
     E_f_transforms = [nn.Identity()] * num_components
     V_d_transforms = [None] * num_components
+    E_d_transforms = [None] * num_components
     graph_transforms = []
 
     d_xd = train_dset.d_xd
     d_vf = train_dset.d_vf
     d_ef = train_dset.d_ef
     d_vd = train_dset.d_vd
+    d_ed = getattr(train_dset, "d_ed", 0)
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
@@ -646,7 +743,22 @@ def normalize_inputs(train_dset, val_dset, args):
             )
             V_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
 
-    return X_d_transform, graph_transforms, V_d_transforms
+    if d_ed > 0 and not args.no_bond_descriptor_scaling:
+        scaler = train_dset.normalize_inputs("E_d")
+        val_dset.normalize_inputs("E_d", scaler)
+
+        scalers = [scaler] if not isinstance(scaler, list) else scaler
+
+        for i, scaler in enumerate(scalers):
+            if scaler is None:
+                continue
+
+            logger.info(
+                f"Bond descriptors for mol {i}: loc = {np.array2string(scaler.mean_, precision=3)}, scale = {np.array2string(scaler.scale_, precision=3)}"
+            )
+            E_d_transforms[i] = ScaleTransform.from_standard_scaler(scaler)
+
+    return X_d_transform, graph_transforms, V_d_transforms, E_d_transforms
 
 
 def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
@@ -656,7 +768,8 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
         train_dsets = train_dset.datasets
         val_dsets = val_dset.datasets
     else:
-        _model = MPNN.load_from_file(model_path)
+        mpnn_cls = MolAtomBondMPNN if isinstance(train_dset, MolAtomBondDataset) else MPNN
+        _model = mpnn_cls.load_from_file(model_path)
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
         val_dsets = [val_dset]
@@ -692,7 +805,20 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
             train_dsets[i].normalize_inputs("V_d", scaler)
             val_dsets[i].normalize_inputs("V_d", scaler)
 
-    if isinstance(_model.predictor.output_transform, UnscaleTransform):
+        if hasattr(blocks[i], "E_d_transform") and isinstance(
+            blocks[i].E_d_transform, ScaleTransform
+        ):
+            scaler = blocks[i].E_d_transform.to_standard_scaler()
+            train_dsets[i].normalize_inputs("E_d", scaler)
+            val_dsets[i].normalize_inputs("E_d", scaler)
+
+    if isinstance(train_dset, MolAtomBondDataset):
+        for kind, predictor in zip(["mol", "atom", "bond"], _model.predictors):
+            if isinstance(predictor.output_transform, UnscaleTransform):
+                scaler = predictor.output_transform.to_standard_scaler()
+                train_dset.normalize_targets(kind, scaler)
+                val_dset.normalize_targets(kind, scaler)
+    elif isinstance(_model.predictor.output_transform, UnscaleTransform):
         scaler = _model.predictor.output_transform.to_standard_scaler()
         train_dset.normalize_targets(scaler)
         val_dset.normalize_targets(scaler)
@@ -739,15 +865,41 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
-    all_data = build_data_from_files(
-        args.data_path,
-        p_descriptors=args.descriptors_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **format_kwargs,
-        **featurization_kwargs,
-    )
+    if any(
+        cols is not None
+        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+    ):
+        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+            format_kwargs.pop(key, None)
+        all_data = build_MAB_data_from_files(
+            args.data_path,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            p_bond_descs=args.bond_descriptors_path,
+            **format_kwargs,
+            mol_target_cols=args.mol_target_columns,
+            atom_target_cols=args.atom_target_columns,
+            bond_target_cols=args.bond_target_columns,
+            p_constraints=args.constraints_path,
+            constraints_cols_to_target_cols={
+                col: i for i, col in enumerate(args.constraints_to_targets)
+            }
+            if args.constraints_to_targets is not None
+            else None,
+            **featurization_kwargs,
+        )
+    else:
+        all_data = build_data_from_files(
+            args.data_path,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            **format_kwargs,
+            **featurization_kwargs,
+        )
 
     if args.splits_column is not None:
         df = pd.read_csv(
@@ -765,7 +917,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
         test_indices = [parse_indices(d["test"]) for d in split_idxss]
-        args.num_replicates = len(split_idxss)
 
     else:
         splitting_data = all_data[args.split_key_molecule]
@@ -788,7 +939,10 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
 
 def summarize(
-    target_cols: list[str], task_type: str, dataset: _MolGraphDatasetMixin
+    target_cols: list[str],
+    task_type: str,
+    dataset: _MolGraphDatasetMixin,
+    mol_atom_or_bond: Literal["Mol", "Atom", "Bond"] | None = None,
 ) -> tuple[list, list]:
     if task_type in [
         "regression",
@@ -798,6 +952,10 @@ def summarize(
     ]:
         if isinstance(dataset, MulticomponentDataset):
             y = dataset.datasets[0].Y
+        elif mol_atom_or_bond == "Atom":
+            y = np.concatenate(dataset.atom_Y, axis=0)
+        elif mol_atom_or_bond == "Bond":
+            y = np.concatenate(dataset.bond_Y, axis=0)
         else:
             y = dataset.Y
         y_mean = np.nanmean(y, axis=0)
@@ -903,13 +1061,30 @@ def build_datasets(args, train_data, val_data, test_data):
         else:
             test_dset = None
     if args.task_type != "spectral":
-        for dataset, label in zip(
-            [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
-        ):
-            # This won't summarize the atom and bond targets if present. Maybe we'll add that in the future.
-            column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-            output = build_table(column_headers, table_rows, f"Summary of {label} Data")
-            logger.info("\n" + output)
+        if isinstance(train_dset, MolAtomBondDataset):
+            for dataset, label in zip(
+                [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+            ):
+                for kind, cols in zip(
+                    ["Mol", "Atom", "Bond"],
+                    [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns],
+                ):
+                    if cols is None:
+                        continue
+                    column_headers, table_rows = summarize(
+                        cols, args.task_type, dataset, mol_atom_or_bond=kind
+                    )
+                    output = build_table(
+                        column_headers, table_rows, f"Summary of {kind} {label} Data"
+                    )
+                    logger.info("\n" + output)
+        else:
+            for dataset, label in zip(
+                [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
+            ):
+                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
+                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
 
@@ -917,12 +1092,17 @@ def build_datasets(args, train_data, val_data, test_data):
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
-    output_transform: UnscaleTransform,
-    input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
-) -> MPNN:
+    output_transform: UnscaleTransform | None,
+    input_transforms: tuple[
+        ScaleTransform | None,
+        list[GraphTransform],
+        list[ScaleTransform | None],
+        list[ScaleTransform | None],
+    ],
+) -> MPNN | MulticomponentMPNN:
     mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
 
-    X_d_transform, graph_transforms, V_d_transforms = input_transforms
+    X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
         mp_blocks = [
             mp_cls(
@@ -1030,6 +1210,170 @@ def build_model(
     )
 
 
+def build_MAB_model(
+    args,
+    train_dset: MolAtomBondDataset,
+    output_transform: list[UnscaleTransform | None],
+    input_transforms: tuple[
+        ScaleTransform | None,
+        list[GraphTransform],
+        list[ScaleTransform | None],
+        list[ScaleTransform | None],
+    ],
+) -> MolAtomBondMPNN:
+    mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
+
+    X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
+    mp = mp_cls(
+        train_dset.featurizer.atom_fdim,
+        train_dset.featurizer.bond_fdim,
+        d_h=args.message_hidden_dim,
+        d_vd=train_dset.d_vd,
+        d_ed=train_dset.d_ed,
+        bias=args.message_bias,
+        depth=args.depth,
+        undirected=args.undirected,
+        dropout=args.dropout,
+        activation=args.activation,
+        V_d_transform=V_d_transforms[0] if V_d_transforms is not None else None,
+        E_d_transform=E_d_transforms[0] if E_d_transforms is not None else None,
+        graph_transform=graph_transforms[0],
+        return_vertex_embeddings=(
+            args.mol_target_columns is not None or args.atom_target_columns is not None
+        ),
+        return_edge_embeddings=(args.bond_target_columns is not None),
+    )
+    agg = (
+        Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
+        if args.mol_target_columns is not None
+        else None
+    )
+    predictor_cls = PredictorRegistry[args.task_type]
+    n_taskss = [
+        train_dset.Y.shape[1] if args.mol_target_columns is not None else None,
+        train_dset.atom_Y[0].shape[1] if args.atom_target_columns is not None else None,
+        train_dset.bond_Y[0].shape[1] if args.bond_target_columns is not None else None,
+    ]
+    if args.loss_function is not None:
+        criterions = []
+        for task_weights, n_tasks in zip(
+            [args.task_weights, args.atom_task_weights, args.bond_task_weights], n_taskss
+        ):
+            if n_tasks is None:
+                criterions.append(None)
+                continue
+            task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
+            criterions.append(
+                Factory.build(
+                    LossFunctionRegistry[args.loss_function],
+                    task_weights=task_weights,
+                    v_kl=args.v_kl,
+                    eps=args.eps,
+                    alpha=args.alpha,
+                )
+            )
+    else:
+        criterions = [None, None, None]
+    if args.metrics is not None:
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+    else:
+        metrics = None
+
+    mol_predictor = (
+        Factory.build(
+            predictor_cls,
+            input_dim=mp.output_dims[0] + train_dset.d_xd,
+            n_tasks=n_taskss[0],
+            hidden_dim=args.ffn_hidden_dim,
+            n_layers=args.ffn_num_layers,
+            dropout=args.dropout,
+            activation=args.activation,
+            criterion=criterions[0],
+            task_weights=args.task_weights,
+            n_classes=args.multiclass_num_classes,
+        )
+        if args.mol_target_columns is not None
+        else None
+    )
+
+    atom_predictor = (
+        Factory.build(
+            predictor_cls,
+            input_dim=mp.output_dims[0],
+            n_tasks=n_taskss[1],
+            hidden_dim=args.atom_ffn_hidden_dim,
+            n_layers=args.atom_ffn_num_layers,
+            dropout=args.dropout,
+            activation=args.activation,
+            criterion=criterions[1],
+            task_weights=args.atom_task_weights,
+            n_classes=args.atom_multiclass_num_classes,
+        )
+        if args.atom_target_columns is not None
+        else None
+    )
+
+    bond_predictor = (
+        Factory.build(
+            predictor_cls,
+            input_dim=(mp.output_dims[1] * 2),
+            n_tasks=n_taskss[2],
+            hidden_dim=args.bond_ffn_hidden_dim,
+            n_layers=args.bond_ffn_num_layers,
+            dropout=args.dropout,
+            activation=args.activation,
+            criterion=criterions[2],
+            task_weights=args.bond_task_weights,
+            n_classes=args.bond_multiclass_num_classes,
+        )
+        if args.bond_target_columns is not None
+        else None
+    )
+
+    atom_constrainer, bond_constrainer = None, None
+    if args.constraints_path is not None:
+        if any("atom" in col for col in args.constraints_to_targets):
+            atom_constrainer = Constrainer(
+                n_constraints=sum([c.count("atom") for c in args.constraints_to_targets]),
+                fp_dim=mp.output_dims[0],
+                hidden_dim=args.bond_constrainer_ffn_hidden_dim,
+                n_layers=args.bond_constrainer_ffn_num_layers,
+                dropout=args.dropout,
+                activation=args.activation,
+            )
+
+        if any("bond" in col for col in args.constraints_to_targets):
+            bond_constrainer = Constrainer(
+                n_constraints=sum([c.count("bond") for c in args.constraints_to_targets]),
+                fp_dim=(mp.output_dims[1] * 2),
+                hidden_dim=args.bond_constrainer_ffn_hidden_dim,
+                n_layers=args.bond_constrainer_ffn_num_layers,
+                dropout=args.dropout,
+                activation=args.activation,
+            )
+
+    if args.loss_function is None:
+        logger.info(
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
+        )
+    return MolAtomBondMPNN(
+        mp,
+        agg,
+        mol_predictor,
+        atom_predictor,
+        bond_predictor,
+        atom_constrainer,
+        bond_constrainer,
+        args.batch_norm,
+        metrics,
+        args.warmup_epochs,
+        args.init_lr,
+        args.max_lr,
+        args.final_lr,
+        X_d_transform=X_d_transform,
+    )
+
+
 def train_model(
     args, train_loader, val_loader, test_loader, output_dir, output_transform, input_transforms
 ):
@@ -1055,11 +1399,13 @@ def train_model(
         torch.manual_seed(seed)
 
         if args.checkpoint or args.model_frzn is not None:
-            mpnn_cls = (
-                MulticomponentMPNN
-                if isinstance(train_loader.dataset, MulticomponentDataset)
-                else MPNN
-            )
+            if isinstance(train_loader.dataset, MulticomponentDataset):
+                mpnn_cls = MulticomponentMPNN
+            elif isinstance(train_loader.dataset, MolAtomBondDataset):
+                mpnn_cls = MolAtomBondMPNN
+            else:
+                mpnn_cls = MPNN
+
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
             model = mpnn_cls.load_from_file(model_path)
 
@@ -1080,7 +1426,14 @@ def train_model(
                     model.predictor.ffn[idx].requires_grad_(False)
                     model.predictor.ffn[idx + 1].eval()
         else:
-            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+            if isinstance(train_loader.dataset, MolAtomBondDataset):
+                model = build_MAB_model(
+                    args, train_loader.dataset, output_transform, input_transforms
+                )
+            else:
+                model = build_model(
+                    args, train_loader.dataset, output_transform[0], input_transforms
+                )
         logger.info(model)
 
         try:
@@ -1094,12 +1447,14 @@ def train_model(
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
         if args.tracking_metric == "val_loss":
-            T_tracking_metric = model.criterion.__class__
             tracking_metric = args.tracking_metric
+            if isinstance(train_loader.dataset, MolAtomBondDataset):
+                T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
+            else:
+                T_tracking_metric = model.criterion.__class__
         else:
             T_tracking_metric = MetricRegistry[args.tracking_metric]
             tracking_metric = "val/" + args.tracking_metric
-
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
@@ -1157,19 +1512,53 @@ def train_model(
             else:
                 predss = trainer.predict(dataloaders=test_loader)
 
-            preds = torch.concat(predss, 0)
-            if model.predictor.n_targets > 1:
-                preds = preds[..., 0]
-            preds = preds.numpy()
+            if isinstance(train_loader.dataset, MolAtomBondDataset):
+                mol_preds, atom_preds, bond_preds = (
+                    torch.concat(tensors) if tensors[0] is not None else None
+                    for tensors in zip(*predss)
+                )
+                if next(p.n_targets for p in model.predictors if p is not None) > 1:
+                    mol_preds = mol_preds[..., 0] if mol_preds is not None else None
+                    atom_preds = atom_preds[..., 0] if atom_preds is not None else None
+                    bond_preds = bond_preds[..., 0] if bond_preds is not None else None
 
-            evaluate_and_save_predictions(
-                preds, test_loader, model.metrics[:-1], model_output_dir, args
-            )
+                mol_preds = mol_preds.numpy() if mol_preds is not None else None
+                atom_preds = atom_preds.numpy() if atom_preds is not None else None
+                bond_preds = bond_preds.numpy() if bond_preds is not None else None
+
+                evaluate_and_save_MAB_predictions(
+                    mol_preds,
+                    atom_preds,
+                    bond_preds,
+                    test_loader,
+                    next(metrics[:-1] for metrics in model.metricss if metrics is not None),
+                    model_output_dir,
+                    args,
+                )
+            else:
+                preds = torch.concat(predss, 0)
+                if model.predictor.n_targets > 1:
+                    preds = preds[..., 0]
+                preds = preds.numpy()
+
+                evaluate_and_save_predictions(
+                    preds, test_loader, model.metrics[:-1], model_output_dir, args
+                )
 
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        save_model(p_model, model, args.target_columns)
+        output_columns = [
+            col
+            for cols in [
+                args.mol_target_columns,
+                args.atom_target_columns,
+                args.bond_target_columns,
+            ]
+            if cols is not None
+            for col in cols
+        ]
+        save_model(p_model, model, output_columns)
         logger.info(f"Best model saved to '{p_model}'")
 
         if args.remove_checkpoints:
@@ -1185,8 +1574,16 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
-    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
-    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+    lt_mask = (
+        torch.from_numpy(test_dset.lt_mask)
+        if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None
+        else None
+    )
+    gt_mask = (
+        torch.from_numpy(test_dset.gt_mask)
+        if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None
+        else None
+    )
 
     individual_scores = dict()
     for metric in metrics:
@@ -1238,6 +1635,196 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
         )
     else:
         df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+
+    df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
+
+
+def evaluate_and_save_MAB_predictions(
+    mol_preds, atom_preds, bond_preds, test_loader, metrics, model_output_dir, args
+):
+    test_dset = test_loader.dataset
+
+    for targets, lt_mask, gt_mask, preds, cols, kind in zip(
+        [test_dset.Y, test_dset.atom_Y, test_dset.bond_Y],
+        [test_dset.lt_mask, test_dset.atom_lt_mask, test_dset.bond_lt_mask],
+        [test_dset.gt_mask, test_dset.atom_gt_mask, test_dset.bond_gt_mask],
+        [mol_preds, atom_preds, bond_preds],
+        [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns],
+        ["mol", "atom", "bond"],
+    ):
+        if preds is None:
+            continue
+        if isinstance(targets, list):
+            targets = np.concatenate(targets, axis=0)
+        mask = torch.from_numpy(np.isfinite(targets))
+        targets = np.nan_to_num(targets, nan=0.0)
+        weights = torch.ones(targets.shape[0])
+        lt_mask = (
+            torch.from_numpy(test_dset.lt_mask)
+            if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None
+            else None
+        )
+        gt_mask = (
+            torch.from_numpy(test_dset.gt_mask)
+            if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None
+            else None
+        )
+
+        individual_scores = dict()
+        for metric in metrics:
+            individual_scores[metric.alias] = []
+            for i in range(targets.shape[1]):
+                if "multiclass" in args.task_type:
+                    preds_slice = torch.from_numpy(preds[:, i : i + 1, :])
+                    targets_slice = torch.from_numpy(targets[:, i : i + 1])
+                else:
+                    preds_slice = torch.from_numpy(preds[:, i : i + 1])
+                    targets_slice = torch.from_numpy(targets[:, i : i + 1])
+                preds_loss = metric(
+                    preds_slice,
+                    targets_slice,
+                    mask[:, i : i + 1],
+                    weights,
+                    lt_mask[:, i] if lt_mask is not None else None,
+                    gt_mask[:, i] if gt_mask is not None else None,
+                )
+                individual_scores[metric.alias].append(preds_loss)
+
+        logger.info("Test Set results:")
+        for metric in metrics:
+            avg_loss = sum(individual_scores[metric.alias]) / len(individual_scores[metric.alias])
+            logger.info(f"test/{kind}/{metric.alias}: {avg_loss}")
+
+        if args.show_individual_scores:
+            logger.info("Entire Test Set individual results:")
+            for metric in metrics:
+                for i, col in enumerate(cols):
+                    logger.info(f"test/{col}/{metric.alias}: {individual_scores[metric.alias][i]}")
+
+    names = test_dset.names
+
+    output_columns = [
+        col
+        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+        if cols is not None
+        for col in cols
+    ]
+    columns = args.input_columns + output_columns
+
+    atoms_per_molecule = [d.mol.GetNumAtoms() for d in test_dset.data]
+    atom_split_indices = np.cumsum(atoms_per_molecule)[:-1]
+    bonds_per_molecule = [d.mol.GetNumBonds() for d in test_dset.data]
+    bond_split_indices = np.cumsum(bonds_per_molecule)[:-1]
+
+    if "multiclass" in args.task_type:
+        columns = columns + [f"{col}_prob" for col in output_columns]
+        mols_class_probs = (
+            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
+            if mol_preds is not None
+            else [None] * len(names)
+        )
+        atomss_class_probs = (
+            np.split(
+                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
+                atom_split_indices,
+            )
+            if atom_preds is not None
+            else [None] * len(names)
+        )
+        bondss_class_probs = (
+            np.split(
+                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
+                bond_split_indices,
+            )
+            if bond_preds is not None
+            else [None] * len(names)
+        )
+
+        mols_class_preds = (
+            mol_preds.argmax(axis=-1) if mol_preds is not None else [None] * len(names)
+        )
+        atomss_class_preds = (
+            np.split(atom_preds.argmax(axis=-1), atom_split_indices)
+            if atom_preds is not None
+            else [None] * len(names)
+        )
+        bondss_class_preds = (
+            np.split(bond_preds.argmax(axis=-1), bond_split_indices)
+            if bond_preds is not None
+            else [None] * len(names)
+        )
+
+        outputs = [
+            (
+                name,
+                *(mol_class_preds.tolist() if mol_class_preds is not None else []),
+                *(
+                    [list(atoms_class_pred) for atoms_class_pred in atoms_class_preds.T]
+                    if atoms_class_preds is not None
+                    else []
+                ),
+                *(
+                    [list(bonds_class_pred) for bonds_class_pred in bonds_class_preds.T]
+                    if bonds_class_preds is not None
+                    else []
+                ),
+                *(mol_class_probs.tolist() if mol_class_probs is not None else []),
+                *(
+                    [list(atoms_class_prob) for atoms_class_prob in atoms_class_probs.T]
+                    if atomss_class_probs is not None
+                    else []
+                ),
+                *(
+                    [list(bonds_class_prob) for bonds_class_prob in bonds_class_probs.T]
+                    if bondss_class_probs is not None
+                    else []
+                ),
+            )
+            for name, mol_class_preds, atoms_class_preds, bonds_class_preds, mol_class_probs, atoms_class_probs, bonds_class_probs in zip(
+                names,
+                mols_class_preds,
+                atomss_class_preds,
+                bondss_class_preds,
+                mols_class_probs,
+                atomss_class_probs,
+                bondss_class_probs,
+            )
+        ]
+        df_preds = pd.DataFrame(outputs, columns=columns)
+    else:
+        mols_preds = mol_preds if mol_preds is not None else [None] * len(names)
+        atomss_preds = (
+            np.split(atom_preds, atom_split_indices)
+            if atom_preds is not None
+            else [None] * len(names)
+        )
+        bondss_preds = (
+            np.split(bond_preds, bond_split_indices)
+            if bond_preds is not None
+            else [None] * len(names)
+        )
+
+        outputs = [
+            (
+                name,
+                *(mol_preds.tolist() if mol_preds is not None else []),
+                *(
+                    [list(atoms_pred) for atoms_pred in atoms_preds.T]
+                    if atoms_preds is not None
+                    else []
+                ),
+                *(
+                    [list(bonds_pred) for bonds_pred in bonds_preds.T]
+                    if bonds_preds is not None
+                    else []
+                ),
+            )
+            for name, mol_preds, atoms_preds, bonds_preds in zip(
+                names, mols_preds, atomss_preds, bondss_preds
+            )
+        ]
+        df_preds = pd.DataFrame(outputs, columns=columns)
+
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
 
@@ -1258,6 +1845,7 @@ def main(args):
         keep_h=args.keep_h,
         add_h=args.add_h,
         ignore_chirality=args.ignore_chirality,
+        reorder_atoms=args.reorder_atoms,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
@@ -1275,6 +1863,10 @@ def main(args):
         if args.save_smiles_splits:
             save_smiles_splits(args, output_dir, train_dset, val_dset, test_dset)
 
+        input_transforms = (None, None, None, None)
+        output_transform = (
+            [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else [None]
+        )
         if args.checkpoint or args.model_frzn is not None:
             model_paths = find_models(args.checkpoint)
             if len(model_paths) > 1:
@@ -1285,20 +1877,38 @@ def main(args):
                 )
             model_path = model_paths[0] if args.checkpoint else args.model_frzn
             load_and_use_pretrained_model_scalers(model_path, train_dset, val_dset)
-            input_transforms = (None, None, None)
-            output_transform = None
         else:
             input_transforms = normalize_inputs(train_dset, val_dset, args)
 
             if "regression" in args.task_type:
-                output_scaler = train_dset.normalize_targets()
-                val_dset.normalize_targets(output_scaler)
-                logger.info(
-                    f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
-                )
-                output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
-            else:
-                output_transform = None
+                if isinstance(train_dset, MolAtomBondDataset):
+                    output_transform = []
+                    for kind, cols in zip(
+                        ["mol", "atom", "bond"],
+                        [
+                            args.mol_target_columns,
+                            args.atom_target_columns,
+                            args.bond_target_columns,
+                        ],
+                    ):
+                        if cols is not None:
+                            output_scaler = train_dset.normalize_targets(kind)
+                            val_dset.normalize_targets(kind, output_scaler)
+                            logger.info(
+                                f"Train data ({kind}): mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+                            )
+                            output_transform.append(
+                                UnscaleTransform.from_standard_scaler(output_scaler)
+                            )
+                        else:
+                            output_transform.append(None)
+                else:
+                    output_scaler = train_dset.normalize_targets()
+                    val_dset.normalize_targets(output_scaler)
+                    logger.info(
+                        f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
+                    )
+                    output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
 
         if not args.no_cache:
             train_dset.cache = True

@@ -123,7 +123,7 @@ def test_MAB_parsing_constrained(data_dir):
     dp = data[0]
     assert isinstance(dp, MolAtomBondDatapoint)
     assert dp.y is not None
-    assert dp.weight is None
+    assert dp.weight is not None
     assert dp.name is not None
     assert dp.mol is not None
     assert dp.atom_y is not None
