@@ -111,7 +111,21 @@ logger = logging.getLogger(__name__)
 SEARCH_SPACE = DEFAULT_SEARCH_SPACE
 
 SEARCH_PARAM_KEYWORDS_MAP = {
-    "basic": ["depth", "ffn_num_layers", "dropout", "ffn_hidden_dim", "message_hidden_dim"],
+    "basic": [
+        "depth",
+        "ffn_num_layers",
+        "dropout",
+        "ffn_hidden_dim",
+        "message_hidden_dim",
+        "atom_ffn_hidden_dim",
+        "atom_ffn_num_layers",
+        "bond_ffn_hidden_dim",
+        "bond_ffn_num_layers",
+        "atom_constrainer_ffn_hidden_dim",
+        "atom_constrainer_ffn_num_layers",
+        "bond_constrainer_ffn_hidden_dim",
+        "bond_constrainer_ffn_num_layers",
+    ],
     "learning_rate": ["max_lr", "init_lr_ratio", "final_lr_ratio", "warmup_epochs"],
     "all": list(DEFAULT_SEARCH_SPACE.keys()),
     "init_lr": ["init_lr_ratio"],
@@ -280,6 +294,27 @@ def process_hpopt_args(args: Namespace) -> Namespace:
             if keyword in SEARCH_PARAM_KEYWORDS_MAP
             else [keyword]
         )
+
+    if all(
+        cols is None
+        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+    ):
+        for param in [
+            "atom_ffn_hidden_dim",
+            "atom_ffn_num_layers",
+            "bond_ffn_hidden_dim",
+            "bond_ffn_num_layers",
+        ]:
+            search_parameters.discard(param)
+
+    if args.constraints_path is None:
+        for param in [
+            "atom_constrainer_ffn_hidden_dim",
+            "atom_constrainer_ffn_num_layers",
+            "bond_constrainer_ffn_hidden_dim",
+            "bond_constrainer_ffn_num_layers",
+        ]:
+            search_parameters.discard(param)
 
     args.search_parameter_keywords = list(search_parameters)
 
@@ -500,39 +535,6 @@ def main(args: Namespace):
         ignore_chirality=args.ignore_chirality,
         reorder_atoms=args.reorder_atoms,
     )
-
-    if any(
-        cols is not None
-        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
-    ):
-        SEARCH_PARAM_KEYWORDS_MAP["basic"].extend(
-            [
-                "atom_ffn_hidden_dim",
-                "atom_ffn_num_layers",
-                "bond_ffn_hidden_dim",
-                "bond_ffn_num_layers",
-            ]
-        )
-    else:
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_hidden_dim")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_num_layers")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_ffn_hidden_dim")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_ffn_num_layers")
-
-    if args.constraints_path is not None:
-        SEARCH_PARAM_KEYWORDS_MAP["basic"].extend(
-            [
-                "atom_constrainer_ffn_hidden_dim",
-                "atom_constrainer_ffn_num_layers",
-                "bond_constrainer_ffn_hidden_dim",
-                "bond_constrainer_ffn_num_layers",
-            ]
-        )
-    else:
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_constrainer_ffn_hidden_dim")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_constrainer_ffn_num_layers")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_constrainer_ffn_hidden_dim")
-        SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_constrainer_ffn_num_layers")
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
     train_dset, val_dset, test_dset = build_datasets(args, train_data[0], val_data[0], test_data[0])
