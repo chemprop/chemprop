@@ -140,9 +140,9 @@ class ValueFeaturizer(VectorFeaturizer[S]):
 
     Parameters
     ----------
-    getter : Callable[[S], Hashable]
+    getter : Callable[[S], bool | int | float]
         A function that extracts the attribute to be encoded from an input object.
-    dtype : type
+    dtype : bool | int | float
         The data type of the output vector.
 
     Example
@@ -160,7 +160,7 @@ class ValueFeaturizer(VectorFeaturizer[S]):
 
     """
 
-    def __init__(self, getter: Callable[[S], Hashable], dtype: type):
+    def __init__(self, getter: Callable[[S], bool | int | float], dtype: bool | int | float):
         self.getter = getter
         self.dtype = dtype
 
