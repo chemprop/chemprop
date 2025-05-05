@@ -36,13 +36,13 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
     atomic_nums : Sequence[int]
         the choices for atom type denoted by atomic number. Ex: ``[4, 5, 6]`` for C, N and O.
     degrees : Sequence[int]
-        the choices for number of bonds an atom is engaged in.
+        the choices for the total number of bonds an atom is engaged in.
     formal_charges : Sequence[int]
         the choices for integer electronic charge assigned to an atom.
     chiral_tags : Sequence[ChiralType | int]
         the choices for an atom's chiral tag. See `ChiralType`_ for possible integer values.
     num_Hs : Sequence[int]
-        the choices for number of bonded hydrogen atoms.
+        the choices for the total number of bonded hydrogen atoms (explicit and implicit).
     hybridizations : Sequence[HybridizationType | int]
         the choices for an atom’s hybridization type. See `HybridizationType`_ for possible integer values.
 
@@ -224,6 +224,15 @@ class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom]):
     * number of hydrogens
     * mass
 
+    Parameters
+    ----------
+    atomic_nums : Sequence[int]
+        the choices for atom type denoted by atomic number. Ex: ``[4, 5, 6]`` for C, N and O.
+    degrees : Sequence[int]
+        the choices for the total number of bonds an atom is engaged in.
+    num_Hs : Sequence[int]
+        the choices for the total number of bonded hydrogen atoms (explicit and implicit).
+
     Example
     -------
     >>> from rdkit import Chem
@@ -240,13 +249,13 @@ class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom]):
 
     def __init__(
         self,
-        atomic_nums: Sequence[int] = (*range(1, 37), 53),
-        degrees: Sequence[int] = tuple(range(6)),
-        num_Hs: Sequence[int] = tuple(range(5)),
+        atomic_nums: Sequence[int] | None = None,
+        degrees: Sequence[int] | None = None,
+        num_Hs: Sequence[int] | None = None,
     ):
-        self.atomic_nums = atomic_nums
-        self.degrees = degrees
-        self.num_Hs = num_Hs
+        self.atomic_nums = atomic_nums or (*range(1, 37), 53)
+        self.degrees = degrees or tuple(range(6))
+        self.num_Hs = num_Hs or tuple(range(5))
 
         super().__init__(
             OneHotFeaturizer(lambda a: a.GetAtomicNum(), atomic_nums, padding=True),
