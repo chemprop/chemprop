@@ -258,9 +258,9 @@ class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom]):
         self.num_Hs = num_Hs or tuple(range(5))
 
         super().__init__(
-            OneHotFeaturizer(lambda a: a.GetAtomicNum(), atomic_nums, padding=True),
-            OneHotFeaturizer(lambda a: a.GetTotalDegree(), degrees, padding=True),
-            OneHotFeaturizer(lambda a: a.GetTotalNumHs(), num_Hs, padding=True),
+            OneHotFeaturizer(lambda a: a.GetAtomicNum(), self.atomic_nums, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalDegree(), self.degrees, padding=True),
+            OneHotFeaturizer(lambda a: a.GetTotalNumHs(), self.num_Hs, padding=True),
             ValueFeaturizer(lambda a: 0.01 * a.GetMass(), float),
         )
 
