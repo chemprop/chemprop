@@ -661,7 +661,13 @@ def save_MAB_predictions(
     unc_columns = [f"{col}_unc" for col in output_columns]
 
     mol_preds, atom_preds, bond_preds = test_predss
+    mol_preds = mol_preds.numpy() if mol_preds is not None else None
+    atom_preds = atom_preds.numpy() if atom_preds is not None else None
+    bond_preds = bond_preds.numpy() if bond_preds is not None else None
     mol_uncs, atom_uncs, bond_uncs = test_uncss
+    mol_uncs = mol_uncs.numpy() if mol_uncs is not None else None
+    atom_uncs = atom_uncs.numpy() if atom_uncs is not None else None
+    bond_uncs = bond_uncs.numpy() if bond_uncs is not None else None
 
     if isinstance(next(p for p in model.predictors if p is not None), MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]

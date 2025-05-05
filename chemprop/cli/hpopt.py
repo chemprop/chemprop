@@ -514,7 +514,6 @@ def main(args: Namespace):
             ]
         )
     else:
-        print(SEARCH_PARAM_KEYWORDS_MAP["all"])
         SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_hidden_dim")
         SEARCH_PARAM_KEYWORDS_MAP["all"].remove("atom_ffn_num_layers")
         SEARCH_PARAM_KEYWORDS_MAP["all"].remove("bond_ffn_hidden_dim")
