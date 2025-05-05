@@ -367,7 +367,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     if isinstance(train_loader.dataset, MolAtomBondDataset):
         model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
     else:
-        model = build_model(args, train_loader.dataset, output_transform[0], input_transforms)
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
     logger.info(model)
 
     if args.tracking_metric == "val_loss":
@@ -541,7 +541,7 @@ def main(args: Namespace):
 
     input_transforms = normalize_inputs(train_dset, val_dset, args)
 
-    output_transform = [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else [None]
+    output_transform = [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else None
     if "regression" in args.task_type:
         if isinstance(train_dset, MolAtomBondDataset):
             output_transform = []
@@ -562,7 +562,7 @@ def main(args: Namespace):
             output_scaler = train_dset.normalize_targets()
             val_dset.normalize_targets(output_scaler)
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
-            output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
+            output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
@@ -570,13 +570,11 @@ def main(args: Namespace):
 
     if isinstance(train_loader.dataset, MolAtomBondDataset):
         model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-    else:
-        model = build_model(args, train_loader.dataset, output_transform[0], input_transforms)
-    if isinstance(train_dset, MolAtomBondDataset):
         monitor_mode = (
             "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
         )
     else:
+        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(

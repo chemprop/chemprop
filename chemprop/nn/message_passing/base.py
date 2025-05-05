@@ -274,7 +274,6 @@ class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
         d_e: int = DEFAULT_BOND_FDIM,
         d_h: int = DEFAULT_HIDDEN_DIM,
         d_vd: int | None = None,
-        d_ed: int | None = None,
         bias: bool = False,
     ):
         W_i = nn.Linear(d_v, d_h, bias)

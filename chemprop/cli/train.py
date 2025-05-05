@@ -917,6 +917,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
         test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        args.num_replicates = len(train_indices)
 
     else:
         splitting_data = all_data[args.split_key_molecule]
@@ -1431,9 +1432,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args, train_loader.dataset, output_transform[0], input_transforms
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:
@@ -1455,6 +1454,7 @@ def train_model(
         else:
             T_tracking_metric = MetricRegistry[args.tracking_metric]
             tracking_metric = "val/" + args.tracking_metric
+
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
@@ -1551,6 +1551,7 @@ def train_model(
         output_columns = [
             col
             for cols in [
+                args.target_columns,
                 args.mol_target_columns,
                 args.atom_target_columns,
                 args.bond_target_columns,
@@ -1574,16 +1575,8 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
-    lt_mask = (
-        torch.from_numpy(test_dset.lt_mask)
-        if test_dset.lt_mask[0] is not None and test_dset.lt_mask[0][0] is not None
-        else None
-    )
-    gt_mask = (
-        torch.from_numpy(test_dset.gt_mask)
-        if test_dset.gt_mask[0] is not None and test_dset.gt_mask[0][0] is not None
-        else None
-    )
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
 
     individual_scores = dict()
     for metric in metrics:
@@ -1865,7 +1858,7 @@ def main(args):
 
         input_transforms = (None, None, None, None)
         output_transform = (
-            [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else [None]
+            [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else None
         )
         if args.checkpoint or args.model_frzn is not None:
             model_paths = find_models(args.checkpoint)
@@ -1908,7 +1901,7 @@ def main(args):
                     logger.info(
                         f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
                     )
-                    output_transform = [UnscaleTransform.from_standard_scaler(output_scaler)]
+                    output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
             train_dset.cache = True

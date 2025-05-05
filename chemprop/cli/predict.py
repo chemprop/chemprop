@@ -314,7 +314,6 @@ def make_prediction_for_models(
     )
     format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
     test_loader = prepare_data_loader(args, multicomponent, mol_atom_bond, False, format_kwargs)
-
     logger.info(f"test size: {len(test_loader.dataset)}")
     if args.cal_path is not None:
         format_kwargs["target_cols"] = output_columns
@@ -330,7 +329,6 @@ def make_prediction_for_models(
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
-
     test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
     )

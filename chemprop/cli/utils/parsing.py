@@ -354,7 +354,6 @@ def build_data_from_files(
         bounded,
         no_header_row,
     )
-
     n_molecules = len(smiss) if smiss is not None else 0
     n_datapoints = len(Y)
 
@@ -448,7 +447,7 @@ def make_dataset(
         )
         return MolAtomBondDataset(data, featurizer)
 
-    elif isinstance(data[0], MoleculeDatapoint):
+    if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(

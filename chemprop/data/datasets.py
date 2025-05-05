@@ -606,10 +606,6 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     def d_vd(self) -> int:
         return 0
 
-    @property
-    def d_ed(self) -> int:
-        return 0
-
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
@@ -691,7 +687,3 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     @property
     def d_vd(self) -> list[int]:
         return sum(dset.d_vd for dset in self.datasets)
-
-    @property
-    def d_ed(self) -> list[int]:
-        return sum(dset.d_ed for dset in self.datasets)
