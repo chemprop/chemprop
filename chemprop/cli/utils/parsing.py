@@ -140,7 +140,7 @@ def make_datapoints(
     Y : np.ndarray
         the target values of shape ``n x m``, where ``m`` is the number of targets
     weights : np.ndarray | None
-        the weights of the datapoints to use in the loss function of shape ``n x m``. If ``None``,
+        the weights of the datapoints to use in the loss function of shape ``n``. If ``None``,
         the weights all default to 1.
     lt_mask : np.ndarray | None
         a boolean mask of shape ``n x m`` indicating whether the targets are less than inequality
