@@ -225,7 +225,7 @@ class DropoutEstimator(UncertaintyEstimator):
                 individual_preds.append(preds)
 
             stacked_preds = torch.stack(individual_preds, dim=0).float()
-            means = torch.mean(stacked_preds, dim=0).unsqueeze(0)
+            means = torch.mean(stacked_preds, dim=0)
             vars = torch.var(stacked_preds, dim=0, correction=0)
             self._restore_model(model)
             meanss.append(means)
