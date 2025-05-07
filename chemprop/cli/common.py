@@ -207,7 +207,7 @@ def process_common_args(args: Namespace) -> Namespace:
             else:
                 ind, path = ind_path
 
-            if ind_path_dict.get(int(ind), None):
+            if ind_path_dict.get(int(ind)):
                 raise ArgumentError(
                     argument=None,
                     message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",

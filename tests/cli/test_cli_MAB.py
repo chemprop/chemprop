@@ -1,10 +1,12 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
+import numpy as np
 import pytest
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
+from chemprop.cli.utils.MAB_parsing import build_MAB_data_from_files
 
 pytestmark = pytest.mark.CLI
 
@@ -92,6 +94,11 @@ def regression_model_path(model_dir):
 
 
 @pytest.fixture
+def regression_extras_model_path(model_dir):
+    return str(model_dir / "regression_with_extras.pt")
+
+
+@pytest.fixture
 def regression_no_mol_model_path(model_dir):
     return str(model_dir / "regression_no_mol.pt")
 
@@ -104,6 +111,11 @@ def regression_no_atom_model_path(model_dir):
 @pytest.fixture
 def regression_no_bond_model_path(model_dir):
     return str(model_dir / "regression_no_bond.pt")
+
+
+@pytest.fixture
+def regression_only_mol_model_path(model_dir):
+    return str(model_dir / "regression_only_mol.pt")
 
 
 @pytest.fixture
@@ -192,6 +204,44 @@ def test_train_regression_quick_features(monkeypatch, regression_data_path, extr
         *bond_targets,
         "--epochs",
         "3",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+        "--bond-descriptors-path",
+        bond_descriptors_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_quick_features(
+    monkeypatch, regression_data_path, extras_paths, regression_extras_model_path
+):
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
+    (
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+        bond_descriptors_path,
+    ) = extras_paths
+
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_extras_model_path,
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
@@ -362,7 +412,47 @@ def test_predict_regression_no_bond(
         main()
 
 
-# The test for only_mol is just the normal regression CLI tests
+def test_train_regression_only_mol(monkeypatch, regression_data_path):
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--epochs",
+        "3",
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_regression_only_mol(
+    monkeypatch, regression_data_path, regression_only_mol_model_path
+):
+    input_path, *_ = regression_data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        regression_only_mol_model_path,
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
 
 
 def test_train_regression_only_atom(monkeypatch, regression_data_path):
@@ -841,3 +931,155 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
         main()
 
     assert (tmp_path / "model_0" / "best.pt").exists()
+
+
+def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
+    constraint_cols = [
+        "atom_target_0",
+        "atom_target_1",
+        "atom_target_2",
+        "atom_target_3",
+        "atom_target_4",
+        "atom_target_5",
+        "atom_target_6",
+    ]
+    args = [
+        "chemprop",
+        "predict",
+        "--model-path",
+        str(data_dir / "mol_atom_bond" / "example_models" / "QM_descriptors.pt"),
+        "-i",
+        str(data_dir / "mol_atom_bond" / "atomic_bond_regression.csv"),
+        "--constraints-to-targets",
+        *constraint_cols,
+        "--constraints-path",
+        str(data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv"),
+        "-o",
+        str(tmpdir / "preds.csv"),
+        "--add-h",
+    ]
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    old_data = build_MAB_data_from_files(
+        p_data=data_dir / "mol_atom_bond" / "atomic_bond_regression_preds.csv",
+        smiles_cols=["smiles"],
+        mol_target_cols=["homo.1", "lumo.1"],
+        atom_target_cols=[
+            "hirshfeld_charges.1",
+            "hirshfeld_charges_plus1.1",
+            "hirshfeld_charges_minus1.1",
+            "hirshfeld_spin_density_plus1.1",
+            "hirshfeld_spin_density_minus1.1",
+            "hirshfeld_charges_fukui_neu.1",
+            "hirshfeld_charges_fukui_elec.1",
+            "NMR.1",
+        ],
+        bond_target_cols=["bond_length_matrix.1", "bond_index_matrix.1"],
+        weight_col=None,
+        bounded=False,
+        p_descriptors=None,
+        p_atom_feats=None,
+        p_bond_feats=None,
+        p_atom_descs=None,
+        p_bond_descs=None,
+        p_constraints=data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv",
+        constraints_cols_to_target_cols={col: i for i, col in enumerate(constraint_cols)},
+        molecule_featurizers=None,
+        add_h=True,
+    )
+    new_data = build_MAB_data_from_files(
+        p_data=tmpdir / "preds.csv",
+        smiles_cols=["smiles"],
+        mol_target_cols=["homo.1", "lumo.1"],
+        atom_target_cols=[
+            "hirshfeld_charges.1",
+            "hirshfeld_charges_plus1.1",
+            "hirshfeld_charges_minus1.1",
+            "hirshfeld_spin_density_plus1.1",
+            "hirshfeld_spin_density_minus1.1",
+            "hirshfeld_charges_fukui_neu.1",
+            "hirshfeld_charges_fukui_elec.1",
+            "NMR.1",
+        ],
+        bond_target_cols=["bond_length_matrix.1", "bond_index_matrix.1"],
+        weight_col=None,
+        bounded=False,
+        p_descriptors=None,
+        p_atom_feats=None,
+        p_bond_feats=None,
+        p_atom_descs=None,
+        p_bond_descs=None,
+        p_constraints=data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv",
+        constraints_cols_to_target_cols={col: i for i, col in enumerate(constraint_cols)},
+        molecule_featurizers=None,
+        add_h=True,
+    )
+    old_data, new_data = old_data[0], new_data[0]
+
+    for i in range(len(old_data)):
+        np.testing.assert_allclose(old_data[i].y, new_data[i].y, atol=1e-6)
+        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-6)
+        np.testing.assert_allclose(old_data[i].bond_y, new_data[i].bond_y, atol=1e-6)
+
+
+def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
+    args = [
+        "chemprop",
+        "predict",
+        "--model-path",
+        str(data_dir / "mol_atom_bond" / "example_models" / "atomic_regression_atom_mapped.pt"),
+        "-i",
+        str(data_dir / "mol_atom_bond" / "atomic_regression_atom_mapped.csv"),
+        "-o",
+        str(tmpdir / "preds.csv"),
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    old_data = build_MAB_data_from_files(
+        p_data=data_dir / "mol_atom_bond" / "atomic_regression_atom_mapped_preds.csv",
+        smiles_cols=["smiles"],
+        mol_target_cols=None,
+        atom_target_cols=["charges"],
+        bond_target_cols=None,
+        weight_col=None,
+        bounded=False,
+        p_descriptors=None,
+        p_atom_feats=None,
+        p_bond_feats=None,
+        p_atom_descs=None,
+        p_bond_descs=None,
+        p_constraints=None,
+        constraints_cols_to_target_cols=None,
+        molecule_featurizers=None,
+        keep_h=True,
+        reorder_atoms=True,
+    )
+    new_data = build_MAB_data_from_files(
+        p_data=tmpdir / "preds.csv",
+        smiles_cols=["smiles"],
+        mol_target_cols=None,
+        atom_target_cols=["charges"],
+        bond_target_cols=None,
+        weight_col=None,
+        bounded=False,
+        p_descriptors=None,
+        p_atom_feats=None,
+        p_bond_feats=None,
+        p_atom_descs=None,
+        p_bond_descs=None,
+        p_constraints=None,
+        constraints_cols_to_target_cols=None,
+        molecule_featurizers=None,
+        keep_h=True,
+        reorder_atoms=True,
+    )
+    old_data, new_data = old_data[0], new_data[0]
+
+    for i in range(len(old_data)):
+        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-6)

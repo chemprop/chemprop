@@ -1,7 +1,7 @@
 [flake8]
 ignore = E203, E266, E501, F403, E741, W503, W605
 max-line-length = 100
-max-complexity = 30
+max-complexity = 24
 per-file-ignores =
     __init__.py: F401
     chemprop/nn/predictors.py: F405
