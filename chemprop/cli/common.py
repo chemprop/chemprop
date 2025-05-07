@@ -157,11 +157,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--bond-descriptors-path",
         nargs="+",
         action="append",
-        help="Path to additional bond descriptors to use with the learned bond representations after message passing.",
+        help="Path to additional bond descriptors to use with the learned bond representations after message passing. The file follows the same format as `--atom-descriptors-path`, i.e. the file is created using `np.savez('atom_descriptors.npz', *E_ds)` where `E_ds` is a list of 2D numpy arrays with shape `n_atoms x n_descriptors`.",
     )
     parser.add_argument(
         "--constraints-path",
-        help="Path to constraints applied to atomic/bond properties prediction.",
+        help="Path to a CSV file containing the constraints for atomic/bond properties prediction. The file should have one column for each property being constrained with no SMILES column. The order of the rows should match the order of the SMILES in the input CSV. See also `--constraints-to-targets` for how to specify which constraint applies to which prediction.",
     )
     parser.add_argument(
         "--constraints-to-targets",
