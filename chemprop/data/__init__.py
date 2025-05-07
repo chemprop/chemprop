@@ -1,5 +1,5 @@
 from .collate import (
-    BatchMABMolGraph,
+    BatchMolAtomBondGraph,
     BatchMolGraph,
     MolAtomBondTrainingBatch,
     MulticomponentTrainingBatch,
@@ -24,7 +24,7 @@ from .samplers import ClassBalanceSampler, SeededSampler
 from .splitting import SplitType, make_split_indices, split_data_by_indices
 
 __all__ = [
-    "BatchMABMolGraph",
+    "BatchMolAtomBondGraph",
     "BatchMolGraph",
     "TrainingBatch",
     "collate_batch",

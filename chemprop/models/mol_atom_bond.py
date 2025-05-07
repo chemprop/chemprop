@@ -8,7 +8,7 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.data import BatchMABMolGraph, BatchMolGraph, MolAtomBondTrainingBatch
+from chemprop.data import BatchMolAtomBondGraph, BatchMolGraph, MolAtomBondTrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, Constrainer, MABMessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
@@ -253,7 +253,7 @@ class MolAtomBondMPNN(pl.LightningModule):
 
     def forward(
         self,
-        bmg: BatchMABMolGraph,
+        bmg: BatchMolAtomBondGraph,
         V_d: Tensor | None = None,
         E_d: Tensor | None = None,
         X_d: Tensor | None = None,
