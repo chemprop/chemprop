@@ -1292,6 +1292,7 @@ def build_MAB_model(
             criterion=criterions[0],
             task_weights=args.task_weights,
             n_classes=args.multiclass_num_classes,
+            output_transform=output_transform[0],
         )
         if args.mol_target_columns is not None
         else None
@@ -1309,6 +1310,7 @@ def build_MAB_model(
             criterion=criterions[1],
             task_weights=args.atom_task_weights,
             n_classes=args.atom_multiclass_num_classes,
+            output_transform=output_transform[1],
         )
         if args.atom_target_columns is not None
         else None
@@ -1326,6 +1328,7 @@ def build_MAB_model(
             criterion=criterions[2],
             task_weights=args.bond_task_weights,
             n_classes=args.bond_multiclass_num_classes,
+            output_transform=output_transform[2],
         )
         if args.bond_target_columns is not None
         else None
