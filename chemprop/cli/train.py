@@ -1751,27 +1751,11 @@ def evaluate_and_save_MAB_predictions(
             (
                 name,
                 *(mol_class_preds.tolist() if mol_class_preds is not None else []),
-                *(
-                    [list(atoms_class_pred) for atoms_class_pred in atoms_class_preds.T]
-                    if atoms_class_preds is not None
-                    else []
-                ),
-                *(
-                    [list(bonds_class_pred) for bonds_class_pred in bonds_class_preds.T]
-                    if bonds_class_preds is not None
-                    else []
-                ),
+                *(atoms_class_preds.T.tolist() if atoms_class_preds is not None else []),
+                *(bonds_class_preds.T.tolist() if bonds_class_preds is not None else []),
                 *(mol_class_probs.tolist() if mol_class_probs is not None else []),
-                *(
-                    [list(atoms_class_prob) for atoms_class_prob in atoms_class_probs.T]
-                    if atomss_class_probs is not None
-                    else []
-                ),
-                *(
-                    [list(bonds_class_prob) for bonds_class_prob in bonds_class_probs.T]
-                    if bondss_class_probs is not None
-                    else []
-                ),
+                *(atoms_class_probs.T.tolist() if atoms_class_probs is not None else []),
+                *(bonds_class_probs.T.tolist() if bonds_class_probs is not None else []),
             )
             for name, mol_class_preds, atoms_class_preds, bonds_class_preds, mol_class_probs, atoms_class_probs, bonds_class_probs in zip(
                 names,
@@ -1801,16 +1785,8 @@ def evaluate_and_save_MAB_predictions(
             (
                 name,
                 *(mol_preds.tolist() if mol_preds is not None else []),
-                *(
-                    [list(atoms_pred) for atoms_pred in atoms_preds.T]
-                    if atoms_preds is not None
-                    else []
-                ),
-                *(
-                    [list(bonds_pred) for bonds_pred in bonds_preds.T]
-                    if bonds_preds is not None
-                    else []
-                ),
+                *(atoms_preds.T.tolist() if atoms_preds is not None else []),
+                *(bonds_preds.T.tolist() if bonds_preds is not None else []),
             )
             for name, mol_preds, atoms_preds, bonds_preds in zip(
                 names, mols_preds, atomss_preds, bondss_preds
