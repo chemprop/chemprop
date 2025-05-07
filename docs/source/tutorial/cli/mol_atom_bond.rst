@@ -5,7 +5,7 @@ Atom and Bond Properties
 
 In addition to fitting MPNN models to predict molecule-level properties, Chemprop can also fit to atom and bond properties by passing the learned node and edge embeddings from message passing through separate FFNs.
 
-To train a model on atom and bond properties, use the flags :code:`--mol-target-columns`, :code:`--atom-target-columns`, and :code:`--bond-target-columns` instead of :code:`--target-columns.
+To train a model on atom and bond properties, use the flags :code:`--mol-target-columns`, :code:`--atom-target-columns`, and :code:`--bond-target-columns` instead of :code:`--target-columns`.
 
 
 Input Data
@@ -45,6 +45,7 @@ Constrained Prediction
 ----------------------
 
 Some atom and bond properties must sum to a molecule-level value, such as partial charges sum to molecular charge. These constraints are given as a csv file with the following format:
+
 .. code-block::
 
     smiles,constraint
@@ -58,4 +59,4 @@ If using constraints, you must indicate which constraint column corresponds to w
 Extra Bond Descriptors
 ---------------------------------
 
-Extra bond descriptors can be used, analogous to the extra atom descriptors. Relavent flags include :code:`--bond-descriptors-path`, :code:`--cal-bond-descriptors-path`, and :code:`--no-bond-descriptor-scaling`.
+Extra bond descriptors can be used, analogous to the extra atom descriptors. Relevant flags include :code:`--bond-descriptors-path`, :code:`--cal-bond-descriptors-path`, and :code:`--no-bond-descriptor-scaling`.
