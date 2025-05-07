@@ -1,16 +1,18 @@
 from .actions import LookupAction
-from .args import bounded
+from .args import activation_function_argument, bounded
 from .command import Subcommand
 from .parsing import (
     build_data_from_files,
     get_column_names,
     make_datapoints,
     make_dataset,
+    parse_activation,
     parse_indices,
 )
 from .utils import _pop_attr, _pop_attr_d, pop_attr
 
 __all__ = [
+    "activation_function_argument",
     "bounded",
     "LookupAction",
     "Subcommand",
@@ -18,6 +20,7 @@ __all__ = [
     "make_datapoints",
     "make_dataset",
     "get_column_names",
+    "parse_activation",
     "parse_indices",
     "actions",
     "args",
