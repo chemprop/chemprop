@@ -530,15 +530,15 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
-    if args.output_dir is None:
-        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path.stem / NOW
-
     return args
 
 
 def validate_train_args(args):
     if args.config_path is None and args.data_path is None:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
+
+    if args.output_dir is None:
+        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path.stem / NOW
 
     if args.num_folds is not None:  # i.e. user-specified
         raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
