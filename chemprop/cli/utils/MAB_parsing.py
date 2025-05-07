@@ -26,6 +26,8 @@ def build_MAB_data_from_files(
     p_constraints: PathLike | None,
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
+    n_atom_preds: int = 0,
+    n_bond_preds: int = 0,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
@@ -174,6 +176,9 @@ def build_MAB_data_from_files(
         else:
             bonds_ys = [None] * n_datapoints
 
+    atom_constraints = [None] * n_datapoints
+    bond_constraints = [None] * n_datapoints
+
     if p_constraints:
         df_constraints = pd.read_csv(p_constraints, index_col=False)
         n_mols = len(df_constraints)
@@ -190,33 +195,32 @@ def build_MAB_data_from_files(
             )
 
         atom_constraint_cols = [
-            constraints_cols_to_target_cols.get(f"atom_target_{col}", None)
-            for col in range(atoms_ys[0].shape[1])
+            constraints_cols_to_target_cols.get(f"atom_target_{col}")
+            for col in range(atoms_ys[0].shape[1] if atoms_ys[0] is not None else n_atom_preds)
         ]
-        atom_constraints = np.hstack(
-            [
-                df_constraints.iloc[:, col].values.reshape(-1, 1)
-                if col is not None
-                else np.full((n_mols, 1), np.nan)
-                for col in atom_constraint_cols
-            ]
-        )
+        if atom_constraint_cols:
+            atom_constraints = np.hstack(
+                [
+                    df_constraints.iloc[:, col].values.reshape(-1, 1)
+                    if col is not None
+                    else np.full((n_mols, 1), np.nan)
+                    for col in atom_constraint_cols
+                ]
+            )
 
         bond_constraint_cols = [
-            constraints_cols_to_target_cols.get(f"bond_target_{col}", None)
-            for col in range(bonds_ys[0].shape[1])
+            constraints_cols_to_target_cols.get(f"bond_target_{col}")
+            for col in range(bonds_ys[0].shape[1] if bonds_ys[0] is not None else n_bond_preds)
         ]
-        bond_constraints = np.hstack(
-            [
-                df_constraints.iloc[:, col].values.reshape(-1, 1)
-                if col is not None
-                else np.full((n_mols, 1), np.nan)
-                for col in bond_constraint_cols
-            ]
-        )
-    else:
-        atom_constraints = [None] * n_datapoints
-        bond_constraints = [None] * n_datapoints
+        if bond_constraint_cols:
+            bond_constraints = np.hstack(
+                [
+                    df_constraints.iloc[:, col].values.reshape(-1, 1)
+                    if col is not None
+                    else np.full((n_mols, 1), np.nan)
+                    for col in bond_constraint_cols
+                ]
+            )
 
     datapoints = [
         MolAtomBondDatapoint(

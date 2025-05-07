@@ -1548,17 +1548,11 @@ def train_model(
         best_model_path = checkpointing.best_model_path
         model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
-        output_columns = [
-            col
-            for cols in [
-                args.target_columns,
-                args.mol_target_columns,
-                args.atom_target_columns,
-                args.bond_target_columns,
-            ]
-            if cols is not None
-            for col in cols
-        ]
+        output_columns = (
+            [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+            if isinstance(train_loader.dataset, MolAtomBondDataset)
+            else args.target_columns
+        )
         save_model(p_model, model, output_columns)
         logger.info(f"Best model saved to '{p_model}'")
 

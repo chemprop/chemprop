@@ -10,7 +10,9 @@ from chemprop.models.multi import MulticomponentMPNN
 def save_model(
     path: PathLike,
     model: MPNN | MolAtomBondMPNN | MulticomponentMPNN,
-    output_columns: list[str] = None,
+    output_columns: list[str]
+    | tuple[list[str] | None, list[str] | None, list[str] | None]
+    | None = None,
 ) -> None:
     torch.save(
         {
@@ -36,7 +38,9 @@ def load_MAB_model(path: PathLike) -> MolAtomBondMPNN:
     return model
 
 
-def load_output_columns(path: PathLike) -> list[str] | None:
+def load_output_columns(
+    path: PathLike,
+) -> list[str] | tuple[list[str] | None, list[str] | None, list[str] | None] | None:
     model_file = torch.load(path, map_location=torch.device("cpu"), weights_only=False)
 
     return model_file.get("output_columns")

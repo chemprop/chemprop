@@ -240,8 +240,6 @@ def prepare_data_loader(
         reorder_atoms=args.reorder_atoms,
     )
     if mol_atom_bond:
-        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
-            format_kwargs.pop(key, None)
         datas = build_MAB_data_from_files(
             data_path,
             **format_kwargs,
@@ -279,29 +277,15 @@ def prepare_data_loader(
 
 
 def make_prediction_for_models(
-    args: Namespace,
-    model_paths: Iterator[Path],
-    multicomponent: bool,
-    mol_atom_bond: bool,
-    output_path: Path,
+    args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
-    if mol_atom_bond:
-        models = [load_MAB_model(model_path) for model_path in model_paths]
-        bounded = any(
-            isinstance(
-                next(c for c in models[0].criterions if c is not None),
-                LossFunctionRegistry[loss_function],
-            )
-            for loss_function in LossFunctionRegistry.keys()
-            if "bounded" in loss_function
-        )
-    else:
-        models = [load_model(model_path, multicomponent) for model_path in model_paths]
-        bounded = any(
-            isinstance(models[0].criterion, LossFunctionRegistry[loss_function])
-            for loss_function in LossFunctionRegistry.keys()
-            if "bounded" in loss_function
-        )
+    mol_atom_bond = False
+    models = [load_model(model_path, multicomponent) for model_path in model_paths]
+    bounded = any(
+        isinstance(models[0].criterion, LossFunctionRegistry[loss_function])
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
     output_columns = load_output_columns(model_paths[0])
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -411,148 +395,6 @@ def make_prediction_for_models(
                 output_path,
             )
 
-    else:
-        test_individual_predss = test_individual_preds
-        test_individual_uncss = test_individual_uncs
-        test_predss = [
-            torch.mean(test_individual_preds, dim=0) if test_individual_preds is not None else None
-            for test_individual_preds in test_individual_predss
-        ]
-
-        test_uncss = []
-        cal_test_individual_uncss = []
-        if args.calibration_method is not None:
-            cal_individual_predss, cal_individual_uncss = uncertainty_estimator(
-                cal_loader, models, trainer
-            )
-            cal_targetss = [
-                cal_loader.dataset.Y,
-                np.concatenate(cal_loader.dataset.atom_Y, axis=0),
-                np.concatenate(cal_loader.dataset.bond_Y, axis=0),
-            ]
-            for test_individual_uncs, cal_individual_preds, cal_targets, cal_individual_uncs in zip(
-                test_individual_uncss, cal_individual_predss, cal_targetss, cal_individual_uncss
-            ):
-                if test_individual_uncs is None:
-                    continue
-                cal_mask = torch.from_numpy(np.isfinite(cal_targets))
-                cal_targets = np.nan_to_num(cal_targets, nan=0.0)
-                cal_targets = torch.from_numpy(cal_targets)
-                cal_preds = torch.mean(cal_individual_preds, dim=0)
-                cal_uncs = torch.mean(cal_individual_uncs, dim=0)
-
-                uncertainty_calibrator = Factory.build(
-                    UncertaintyCalibratorRegistry[args.calibration_method],
-                    p=args.calibration_interval_percentile / 100,
-                    alpha=args.conformal_alpha,
-                )
-
-                if isinstance(uncertainty_calibrator, MVEWeightingCalibrator):
-                    uncertainty_calibrator.fit(
-                        cal_preds, cal_individual_uncs, cal_targets, cal_mask
-                    )
-                    test_uncs.append(uncertainty_calibrator.apply(test_individual_uncs))
-                else:
-                    if isinstance(uncertainty_calibrator, RegressionCalibrator):
-                        uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
-                    else:
-                        uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
-                    for i in range(test_individual_uncs.shape[0]):
-                        test_individual_uncs[i] = uncertainty_calibrator.apply(
-                            test_individual_uncs[i]
-                        )
-                    cal_test_individual_uncss.append(test_individual_uncs)
-                    test_uncss.append(torch.mean(test_individual_uncs, dim=0))
-            test_individual_uncss = cal_test_individual_uncss
-        else:
-            test_uncss = [
-                torch.mean(test_individual_uncs, dim=0)
-                if test_individual_uncs is not None
-                else None
-                for test_individual_uncs in test_individual_uncss
-            ]
-
-        if args.evaluation_methods is not None:
-            uncertainty_evaluators = [
-                Factory.build(UncertaintyEvaluatorRegistry[method])
-                for method in args.evaluation_methods
-            ]
-            test_targetss = [
-                test_loader.dataset.Y,
-                np.concatenate(test_loader.dataset.atom_Y, axis=0),
-                np.concatenate(test_loader.dataset.bond_Y, axis=0),
-            ]
-            test_maskss = [
-                torch.from_numpy(np.isfinite(test_targets)) for test_targets in test_targetss
-            ]
-            test_targetss = [np.nan_to_num(test_targets, nan=0.0) for test_targets in test_targetss]
-            test_targetss = [torch.from_numpy(test_targets) for test_targets in test_targetss]
-            logger.info("Uncertainty evaluation metric:")
-            for evaluator in uncertainty_evaluators:
-                for test_preds, test_uncs, test_targets, test_mask, kind in zip(
-                    test_predss, test_uncss, test_targetss, test_maskss, ["mol", "atom", "bond"]
-                ):
-                    if test_preds is None:
-                        continue
-                    if isinstance(evaluator, RegressionEvaluator):
-                        metric_value = evaluator.evaluate(
-                            test_preds, test_uncs, test_targets, test_mask
-                        )
-                    else:
-                        metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
-                    logger.info(f"{evaluator.alias} ({kind}): {metric_value.tolist()}")
-
-        if args.uncertainty_method == "none" and (
-            isinstance(next(p for p in models[0].predictors if p is not None), MveFFN)
-            or isinstance(next(p for p in models[0].predictors if p is not None), EvidentialFFN)
-        ):
-            test_predss = [
-                test_preds[..., 0] if test_preds is not None else None for test_preds in test_predss
-            ]
-            test_individual_predss = [
-                test_individual_preds[..., 0] if test_individual_preds is not None else None
-                for test_individual_preds in test_individual_predss
-            ]
-
-        if output_columns is None:
-            output_columns = [
-                f"pred_{i}"
-                for i in range(
-                    sum(test_preds.shape[1] for test_preds in test_predss if test_preds is not None)
-                )
-            ]  # TODO: need to improve this for cases like multi-task MVE and multi-task multiclass
-
-        atoms_per_molecule = [d.mol.GetNumAtoms() for d in test_loader.dataset.data]
-        atom_split_indices = np.cumsum(atoms_per_molecule)[:-1]
-        bonds_per_molecule = [d.mol.GetNumBonds() for d in test_loader.dataset.data]
-        bond_split_indices = np.cumsum(bonds_per_molecule)[:-1]
-        save_MAB_predictions(
-            args,
-            atom_split_indices,
-            bond_split_indices,
-            models[0],
-            output_columns,
-            test_predss,
-            test_uncss,
-            output_path,
-        )
-
-        if len(model_paths) > 1:
-            for i in range(test_individual_predss[0].shape[0]):
-                individual_output_path = output_path.with_name(
-                    output_path.stem + f"_model_{i}" + output_path.suffix
-                )
-                save_MAB_predictions(
-                    args,
-                    atom_split_indices,
-                    bond_split_indices,
-                    models[0],
-                    output_columns,
-                    test_individual_predss[i],
-                    test_individual_uncss[i],
-                    individual_output_path,
-                )
-
 
 def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
     unc_columns = [f"{col}_unc" for col in output_columns]
@@ -641,6 +483,190 @@ def save_individual_predictions(
         logger.info(
             f"Results from model path {model_path} are saved under the column name ending with 'model_{i}'"
         )
+
+
+def make_MAB_prediction_for_models(
+    args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
+):
+    mol_atom_bond = True
+    models = [load_MAB_model(model_path) for model_path in model_paths]
+    bounded = any(
+        isinstance(
+            next(c for c in models[0].criterions if c is not None),
+            LossFunctionRegistry[loss_function],
+        )
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
+
+    mol_output_cols, atom_output_cols, bond_output_cols = load_output_columns(model_paths[0])
+
+    format_kwargs = dict(
+        smiles_cols=args.smiles_columns,
+        weight_col=None,
+        bounded=bounded,
+        n_atom_preds=len(atom_output_cols) if atom_output_cols is not None else 0,
+        n_bond_preds=len(bond_output_cols) if bond_output_cols is not None else 0,
+    )
+    test_loader = prepare_data_loader(args, multicomponent, mol_atom_bond, False, format_kwargs)
+    logger.info(f"test size: {len(test_loader.dataset)}")
+    if args.cal_path is not None:
+        cal_loader = prepare_data_loader(args, multicomponent, mol_atom_bond, True, format_kwargs)
+        logger.info(f"calibration size: {len(cal_loader.dataset)}")
+
+    uncertainty_estimator = Factory.build(
+        UncertaintyEstimatorRegistry[args.uncertainty_method],
+        ensemble_size=args.dropout_sampling_size,
+        dropout=args.uncertainty_dropout_p,
+    )
+
+    trainer = pl.Trainer(
+        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+    )
+    test_individual_preds, test_individual_uncs = uncertainty_estimator(
+        test_loader, models, trainer
+    )
+
+    test_individual_predss = test_individual_preds
+    test_individual_uncss = test_individual_uncs
+    test_predss = [
+        torch.mean(test_individual_preds, dim=0) if test_individual_preds is not None else None
+        for test_individual_preds in test_individual_predss
+    ]
+
+    test_uncss = []
+    cal_test_individual_uncss = []
+    if args.calibration_method is not None:
+        cal_individual_predss, cal_individual_uncss = uncertainty_estimator(
+            cal_loader, models, trainer
+        )
+        cal_targetss = [
+            cal_loader.dataset.Y,
+            np.concatenate(cal_loader.dataset.atom_Y, axis=0),
+            np.concatenate(cal_loader.dataset.bond_Y, axis=0),
+        ]
+        for test_individual_uncs, cal_individual_preds, cal_targets, cal_individual_uncs in zip(
+            test_individual_uncss, cal_individual_predss, cal_targetss, cal_individual_uncss
+        ):
+            if test_individual_uncs is None:
+                continue
+            cal_mask = torch.from_numpy(np.isfinite(cal_targets))
+            cal_targets = np.nan_to_num(cal_targets, nan=0.0)
+            cal_targets = torch.from_numpy(cal_targets)
+            cal_preds = torch.mean(cal_individual_preds, dim=0)
+            cal_uncs = torch.mean(cal_individual_uncs, dim=0)
+
+            uncertainty_calibrator = Factory.build(
+                UncertaintyCalibratorRegistry[args.calibration_method],
+                p=args.calibration_interval_percentile / 100,
+                alpha=args.conformal_alpha,
+            )
+
+            if isinstance(uncertainty_calibrator, MVEWeightingCalibrator):
+                uncertainty_calibrator.fit(cal_preds, cal_individual_uncs, cal_targets, cal_mask)
+                test_uncss.append(uncertainty_calibrator.apply(test_individual_uncs))
+            else:
+                if isinstance(uncertainty_calibrator, RegressionCalibrator):
+                    uncertainty_calibrator.fit(cal_preds, cal_uncs, cal_targets, cal_mask)
+                else:
+                    uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
+                for i in range(test_individual_uncs.shape[0]):
+                    test_individual_uncs[i] = uncertainty_calibrator.apply(test_individual_uncs[i])
+                cal_test_individual_uncss.append(test_individual_uncs)
+                test_uncss.append(torch.mean(test_individual_uncs, dim=0))
+        test_individual_uncss = cal_test_individual_uncss
+    else:
+        test_uncss = [
+            torch.mean(test_individual_uncs, dim=0) if test_individual_uncs is not None else None
+            for test_individual_uncs in test_individual_uncss
+        ]
+
+    if args.evaluation_methods is not None:
+        uncertainty_evaluators = [
+            Factory.build(UncertaintyEvaluatorRegistry[method])
+            for method in args.evaluation_methods
+        ]
+        test_targetss = [
+            test_loader.dataset.Y,
+            np.concatenate(test_loader.dataset.atom_Y, axis=0),
+            np.concatenate(test_loader.dataset.bond_Y, axis=0),
+        ]
+        test_maskss = [
+            torch.from_numpy(np.isfinite(test_targets)) for test_targets in test_targetss
+        ]
+        test_targetss = [np.nan_to_num(test_targets, nan=0.0) for test_targets in test_targetss]
+        test_targetss = [torch.from_numpy(test_targets) for test_targets in test_targetss]
+        logger.info("Uncertainty evaluation metric:")
+        for evaluator in uncertainty_evaluators:
+            for test_preds, test_uncs, test_targets, test_mask, kind in zip(
+                test_predss, test_uncss, test_targetss, test_maskss, ["mol", "atom", "bond"]
+            ):
+                if test_preds is None:
+                    continue
+                if isinstance(evaluator, RegressionEvaluator):
+                    metric_value = evaluator.evaluate(
+                        test_preds, test_uncs, test_targets, test_mask
+                    )
+                else:
+                    metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
+                logger.info(f"{evaluator.alias} ({kind}): {metric_value.tolist()}")
+
+    if args.uncertainty_method == "none" and (
+        isinstance(next(p for p in models[0].predictors if p is not None), MveFFN)
+        or isinstance(next(p for p in models[0].predictors if p is not None), EvidentialFFN)
+    ):
+        test_predss = [
+            test_preds[..., 0] if test_preds is not None else None for test_preds in test_predss
+        ]
+        test_individual_predss = [
+            test_individual_preds[..., 0] if test_individual_preds is not None else None
+            for test_individual_preds in test_individual_predss
+        ]
+
+    output_columns = [
+        col
+        for cols in [mol_output_cols, atom_output_cols, bond_output_cols]
+        if cols is not None
+        for col in cols
+    ]
+    if len(output_columns) == 0:
+        output_columns = [
+            f"pred_{i}"
+            for i in range(
+                sum(test_preds.shape[1] for test_preds in test_predss if test_preds is not None)
+            )
+        ]
+
+    atoms_per_molecule = [d.mol.GetNumAtoms() for d in test_loader.dataset.data]
+    atom_split_indices = np.cumsum(atoms_per_molecule)[:-1]
+    bonds_per_molecule = [d.mol.GetNumBonds() for d in test_loader.dataset.data]
+    bond_split_indices = np.cumsum(bonds_per_molecule)[:-1]
+    save_MAB_predictions(
+        args,
+        atom_split_indices,
+        bond_split_indices,
+        models[0],
+        output_columns,
+        test_predss,
+        test_uncss,
+        output_path,
+    )
+
+    if len(model_paths) > 1:
+        for i in range(test_individual_predss[0].shape[0]):
+            individual_output_path = output_path.with_name(
+                output_path.stem + f"_model_{i}" + output_path.suffix
+            )
+            save_MAB_predictions(
+                args,
+                atom_split_indices,
+                bond_split_indices,
+                models[0],
+                output_columns,
+                test_individual_predss[i],
+                test_individual_uncss[i],
+                individual_output_path,
+            )
 
 
 def save_MAB_predictions(
@@ -807,9 +833,10 @@ def main(args):
     model_file = torch.load(model_paths[0], map_location=torch.device("cpu"), weights_only=False)
     mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
 
-    make_prediction_for_models(
-        args, model_paths, multicomponent, mol_atom_bond, output_path=args.output
-    )
+    if mol_atom_bond:
+        make_MAB_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
+    else:
+        make_prediction_for_models(args, model_paths, multicomponent, output_path=args.output)
 
 
 if __name__ == "__main__":
