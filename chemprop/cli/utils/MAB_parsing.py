@@ -158,18 +158,12 @@ def build_MAB_data_from_files(
                 np.array([ast.literal_eval(bond_y) for bond_y in bond_ys], dtype=float).T
                 for bond_ys in bonds_ys
             ]
-            if bonds_ys[0].ndim == 2 and len(bonds_ys[0]) > 1:
+            if bonds_ys[0].ndim == 3:
                 bonds_ys_1D = []
                 for mol, bonds_y in zip(mols, bonds_ys):
                     bond_vals = [0] * mol.GetNumBonds()
-                    n_atoms = mol.GetNumAtoms()
-                    for u in range(n_atoms):
-                        for v in range(u + 1, n_atoms):
-                            bond = mol.GetBondBetweenAtoms(u, v)
-                            if bond is None:
-                                continue
-                            idx = bond.GetIdx()
-                            bond_vals[idx] = bonds_y[u][v]
+                    for i_bond, bond in enumerate(mol.GetBonds()):
+                        bond_vals[i_bond] = bonds_y[bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), :]
                     bonds_ys_1D.append(np.array(bond_vals, dtype=float))
                 bonds_ys = bonds_ys_1D
 
