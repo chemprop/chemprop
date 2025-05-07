@@ -163,45 +163,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     #     action="store_true",
     #     help="Whether to resume the experiment. Loads test results from any folds that have already been completed and skips training those folds.",
     # )
-    # parser.add_argument(
-    #     "--config-path",
-    #     help="Path to a :code:`.json` file containing arguments. Any arguments present in the config file will override arguments specified via the command line or by the defaults.",
-    # )
+
     parser.add_argument(
         "--ensemble-size",
         type=int,
         default=1,
         help="Number of models in ensemble for each splitting of data",
     )
-
-    # TODO: Add in v2.2
-    # abt_args = parser.add_argument_group("atom/bond target args")
-    # abt_args.add_argument(
-    #     "--is-atom-bond-targets",
-    #     action="store_true",
-    #     help="Whether this is atomic/bond properties prediction.",
-    # )
-    # abt_args.add_argument(
-    #     "--no-adding-bond-types",
-    #     action="store_true",
-    #     help="Whether the bond types determined by RDKit molecules added to the output of bond targets. This option is intended to be used with the :code:`is_atom_bond_targets`.",
-    # )
-    # abt_args.add_argument(
-    #     "--keeping-atom-map",
-    #     action="store_true",
-    #     help="Whether RDKit molecules keep the original atom mapping. This option is intended to be used when providing atom-mapped SMILES with the :code:`is_atom_bond_targets`.",
-    # )
-    # abt_args.add_argument(
-    #     "--no-shared-atom-bond-ffn",
-    #     action="store_true",
-    #     help="Whether the FFN weights for atom and bond targets should be independent between tasks.",
-    # )
-    # abt_args.add_argument(
-    #     "--weights-ffn-num-layers",
-    #     type=int,
-    #     default=2,
-    #     help="Number of layers in FFN for determining weights used in constrained targets.",
-    # )
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
@@ -283,12 +251,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     ffn_args.add_argument(
         "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
     )
-    # TODO: Decide if we want to implment this in v2
-    # ffn_args.add_argument(
-    #     "--features-only",
-    #     action="store_true",
-    #     help="Use only the additional features in an FFN, no graph network.",
-    # )
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
     extra_mpnn_args.add_argument(
