@@ -7,8 +7,8 @@ SMI = "c1ccccc1"
 
 
 @pytest.fixture(params=["@", "@@"])
-def chiral_smi(request):
-    return f"C[C{request.param}H](O)N"
+def stereo_smi(request):
+    return f"C[C{request.param}H](O)NC\C=C/C"
 
 
 @pytest.fixture(params=range(1, 3))
@@ -42,11 +42,12 @@ def test_addh(smi, targets):
     assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms()
 
 
-def test_ignore_chirality(chiral_smi, targets):
-    d1 = MoleculeDatapoint.from_smi(chiral_smi, y=targets)
-    d2 = MoleculeDatapoint.from_smi(chiral_smi, y=targets, ignore_chirality=True)
+def test_ignore_stereo(stereo_smi, targets):
+    d1 = MoleculeDatapoint.from_smi(stereo_smi, y=targets)
+    d2 = MoleculeDatapoint.from_smi(stereo_smi, y=targets, ignore_stereo=True)
 
     assert d1.mol.GetAtomWithIdx(1).GetChiralTag() != d2.mol.GetAtomWithIdx(1).GetChiralTag()
+    assert d1.mol.GetBondWithIdx(5).GetStereo() != d2.mol.GetBondWithIdx(5).GetStereo()
 
 
 def test_replace_token(smi, targets, features_with_nans):

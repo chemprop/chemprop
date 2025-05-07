@@ -1256,7 +1256,7 @@ def main(args):
         molecule_featurizers=args.molecule_featurizers,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        ignore_chirality=args.ignore_chirality,
+        ignore_stereo=args.ignore_stereo,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
