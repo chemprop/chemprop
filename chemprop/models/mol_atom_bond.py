@@ -9,7 +9,7 @@ import torch
 from torch import Tensor, nn, optim
 
 from chemprop.data import BatchMolAtomBondGraph, BatchMolGraph, MolAtomBondTrainingBatch
-from chemprop.nn import Aggregation, ChempropMetric, Constrainer, MABMessagePassing, Predictor
+from chemprop.nn import Aggregation, ChempropMetric, ConstrainerFFN, MABMessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
 from chemprop.utils.registry import Factory
@@ -43,9 +43,9 @@ class MolAtomBondMPNN(pl.LightningModule):
         the function to use to calculate the final atom-level prediction
     bond_predictor : Predictor | None, default=None
         the function to use to calculate the final bond-level prediction
-    atom_constrainer : Constrainer | None, default=None
+    atom_constrainer : ConstrainerFFN | None, default=None
         the constrainer to use to constrain the atom-level predictions
-    bond_constrainer : Constrainer | None, default=None
+    bond_constrainer : ConstrainerFFN | None, default=None
         the constrainer to use to constrain the bond-level predictions
     batch_norm : bool, default=False
         if `True`, apply batch normalization to the learned fingerprints before passing them to the
@@ -79,8 +79,8 @@ class MolAtomBondMPNN(pl.LightningModule):
         mol_predictor: Predictor | None = None,
         atom_predictor: Predictor | None = None,
         bond_predictor: Predictor | None = None,
-        atom_constrainer: Constrainer | None = None,
-        bond_constrainer: Constrainer | None = None,
+        atom_constrainer: ConstrainerFFN | None = None,
+        bond_constrainer: ConstrainerFFN | None = None,
         batch_norm: bool = False,
         metrics: Iterable[ChempropMetric] | None = None,
         warmup_epochs: int = 2,

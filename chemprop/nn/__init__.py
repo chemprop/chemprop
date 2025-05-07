@@ -6,7 +6,7 @@ from .agg import (
     NormAggregation,
     SumAggregation,
 )
-from .ffn import Constrainer
+from .ffn import ConstrainerFFN
 from .message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
@@ -70,7 +70,7 @@ __all__ = [
     "SumAggregation",
     "NormAggregation",
     "AttentiveAggregation",
-    "Constrainer",
+    "ConstrainerFFN",
     "ChempropMetric",
     "ClassificationMixin",
     "LossFunctionRegistry",

@@ -67,8 +67,8 @@ class MLP(nn.Sequential, FFN):
         return self[-1][-1].out_features
 
 
-class Constrainer(nn.Module, HasHParams, HyperparametersMixin):
-    """A :class:`Constrainer` adjusts atom or bond property predictions to satisfy molecular
+class ConstrainerFFN(nn.Module, HasHParams, HyperparametersMixin):
+    """A :class:`ConstrainerFFN` adjusts atom or bond property predictions to satisfy molecular
     constraints by using an :class:`MLP` to map learned atom or bond embeddings to weights that
     determine how much of the total adjustment needed is added to each atom or bond prediction.
     """

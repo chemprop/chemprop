@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from chemprop.nn import Constrainer
+from chemprop.nn import ConstrainerFFN
 
 
 @pytest.mark.parametrize("fp_dim", [2, 100, 300, 600])
@@ -17,7 +17,7 @@ def test_constrainer_forward(fp_dim):
     constraints = torch.randn(m, t)
     constraints[2] = 0
 
-    constrainer = Constrainer(
+    constrainer = ConstrainerFFN(
         n_constraints=t, fp_dim=fp_dim, hidden_dim=32, n_layers=2, dropout=0.1, activation="relu"
     )
     with torch.no_grad():

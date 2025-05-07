@@ -50,7 +50,7 @@ from chemprop.data import (
 from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
-from chemprop.nn.ffn import Constrainer
+from chemprop.nn.ffn import ConstrainerFFN
 from chemprop.nn.message_passing import (
     AtomMessagePassing,
     BondMessagePassing,
@@ -1299,7 +1299,7 @@ def build_MAB_model(
     atom_constrainer, bond_constrainer = None, None
     if args.constraints_path is not None:
         if any("atom" in col for col in args.constraints_to_targets):
-            atom_constrainer = Constrainer(
+            atom_constrainer = ConstrainerFFN(
                 n_constraints=sum([c.count("atom") for c in args.constraints_to_targets]),
                 fp_dim=mp.output_dims[0],
                 hidden_dim=args.bond_constrainer_ffn_hidden_dim,
@@ -1309,7 +1309,7 @@ def build_MAB_model(
             )
 
         if any("bond" in col for col in args.constraints_to_targets):
-            bond_constrainer = Constrainer(
+            bond_constrainer = ConstrainerFFN(
                 n_constraints=sum([c.count("bond") for c in args.constraints_to_targets]),
                 fp_dim=(mp.output_dims[1] * 2),
                 hidden_dim=args.bond_constrainer_ffn_hidden_dim,
