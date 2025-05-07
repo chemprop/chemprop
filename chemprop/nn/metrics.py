@@ -326,6 +326,8 @@ class BinaryMCCLoss(ChempropMetric):
 
 @MetricRegistry.register("binary-mcc")
 class BinaryMCCMetric(BinaryMCCLoss):
+    higher_is_better = True
+
     def compute(self):
         return 1 - super().compute()
 
@@ -413,6 +415,8 @@ class MulticlassMCCLoss(ChempropMetric):
 
 @MetricRegistry.register("multiclass-mcc")
 class MulticlassMCCMetric(MulticlassMCCLoss):
+    higher_is_better = True
+
     def compute(self):
         return 1 - super().compute()
 
