@@ -133,4 +133,7 @@ class Constrainer(nn.Module, HasHParams, HyperparametersMixin):
         pred_has_constraint = ~torch.isnan(constraints)[0]
         deviation = constraints[:, pred_has_constraint] - per_mol_preds[:, pred_has_constraint]
 
-        return preds + w * deviation[batch]
+        corrections = w * deviation[batch]
+        cor_shape_preds = torch.zeros_like(preds, dtype=preds.dtype, device=preds.device)
+        cor_shape_preds[:, pred_has_constraint] = corrections
+        return preds + cor_shape_preds
