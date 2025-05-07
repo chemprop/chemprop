@@ -44,7 +44,7 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_stereo: bool = False) -
     add_h : bool
         If True, adds hydrogens to the molecule.
     ignore_stereo : bool, optional
-        If True, ignores stereochemical information when constructing the molecule. Default is False.
+        If True, ignores stereochemical information (R/S and Cis/Trans) when constructing the molecule. Default is False.
 
     Returns
     -------
