@@ -48,9 +48,9 @@ Some atom and bond properties must sum to a molecule-level value, such as partia
 
 .. code-block::
 
-    smiles,constraint
-    C,0
-    [C-],-1
+    constraint_1,constraint_2
+    0,12.01
+    -1,36.04
     ...
 
 If using constraints, you must indicate which constraint column corresponds to which atom or bond target column. This is done by passing a sequence of strings with the :code:`--constraints-to-targets` flag. The order of the strings matches the order of the constraint columns. The strings must look like 'atom_target_{i}' or 'bond_target_{i}', where i is the index of the atom or bond target column. The index of the atom and bond target columns is determined by the order they were passed using :code:`--atom-target-columns` and :code:`--bond-target-columns`.

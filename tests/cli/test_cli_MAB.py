@@ -704,12 +704,6 @@ def test_predict_mve_quick(monkeypatch, regression_data_path, mve_model_path):
         mve_model_path,
         "--cal-path",
         input_path,
-        "--mol-target-columns",
-        *mol_targets,
-        "--atom-target-columns",
-        *atom_targets,
-        "--bond-target-columns",
-        *bond_targets,
         "--uncertainty-method",
         "mve",
         "--calibration-method",
@@ -764,15 +758,22 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         main()
 
 
-def test_predict_regression_constrained(monkeypatch, regression_data_path, constrained_model_path):
-    input_path, *_ = regression_data_path
+def test_predict_regression_constrained(monkeypatch, constrained_data_path, constrained_model_path):
+    (input_path, constraints_path, constraints_to_targets, smiles, *_) = constrained_data_path
+
     args = [
         "chemprop",
         "predict",
         "-i",
         input_path,
+        "--smiles-columns",
+        smiles,
         "--model-path",
         constrained_model_path,
+        "--constraints-path",
+        constraints_path,
+        "--constraints-to-targets",
+        *constraints_to_targets,
         "--keep-h",
         "--reorder-atoms",
     ]
