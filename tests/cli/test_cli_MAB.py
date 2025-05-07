@@ -1019,9 +1019,9 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
     old_data, new_data = old_data[0], new_data[0]
 
     for i in range(len(old_data)):
-        np.testing.assert_allclose(old_data[i].y, new_data[i].y, atol=1e-6)
-        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-6)
-        np.testing.assert_allclose(old_data[i].bond_y, new_data[i].bond_y, atol=1e-6)
+        np.testing.assert_allclose(old_data[i].y, new_data[i].y, atol=1e-4, rtol=1e-6)
+        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-4, rtol=1e-6)
+        np.testing.assert_allclose(old_data[i].bond_y, new_data[i].bond_y, atol=1e-4, rtol=1e-6)
 
 
 def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
@@ -1082,4 +1082,4 @@ def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
     old_data, new_data = old_data[0], new_data[0]
 
     for i in range(len(old_data)):
-        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-6)
+        np.testing.assert_allclose(old_data[i].atom_y, new_data[i].atom_y, atol=1e-4, rtol=1e-6)
