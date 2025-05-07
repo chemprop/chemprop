@@ -28,3 +28,4 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     extra_features_descriptors
     use_featurizer_with_other_libraries
     convert_v1_to_v2
+    mol_atom_bond/index
