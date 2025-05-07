@@ -45,7 +45,7 @@ class MulticomponentMPNN(MPNN):
         X_d: Tensor | None = None,
     ) -> Tensor:
         H_vs: list[Tensor] = self.message_passing(bmgs, V_ds)
-        Hs = [self.agg(H_v, bmg.batch) for H_v, bmg in zip(H_vs, bmgs)]
+        Hs = [self.agg(H_v, bmg.batch, bmg.V_w) for H_v, bmg in zip(H_vs, bmgs)]
         H = torch.cat(Hs, 1)
         H = self.bn(H)
 

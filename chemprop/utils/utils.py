@@ -72,6 +72,56 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
     return mol
 
 
+def make_polymer_mol(
+    smi: str, keep_h: bool, add_h: bool, ignore_chirality: bool = False
+) -> Chem.Mol:
+    """
+    Builds an RDKit molecule from a SMILES string.
+
+    Parameters
+    ----------
+    smi : str
+        a SMILES string.
+    keep_h : bool
+        whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
+    add_h : bool
+        whether to add hydrogens to the molecule
+    ignore_chirality : bool, optional
+        If True, ignores chirality information when constructing the molecule. Default is False.
+
+    Returns
+    -------
+    Chem.Mol
+        the RDKit molecule.
+    """
+    # Create one molecule object per fragment and combine the fragments into
+    # a single molecule object
+    mols = []
+    for s in smi.split("."):
+        m = make_mol(s, keep_h, add_h, ignore_chirality=ignore_chirality)
+        mols.append(m)
+    # Combine all the mols into a single mol object
+    mol = mols.pop(0)
+    while len(mols) > 0:
+        m2 = mols.pop(0)
+        mol = Chem.CombineMols(mol, m2)
+
+    return mol
+
+
+def remove_wildcard_atoms(rwmol):
+    """
+    removes wildcard atoms from an RDKit Mol
+    """
+    indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
+    while len(indicies) > 0:
+        rwmol.RemoveAtom(indicies[0])
+        indicies = [a.GetIdx() for a in rwmol.GetAtoms() if "*" in a.GetSmarts()]
+    Chem.SanitizeMol(rwmol, Chem.SanitizeFlags.SANITIZE_ALL)
+
+    return rwmol
+
+
 def pretty_shape(shape: Iterable[int]) -> str:
     """Make a pretty string from an input shape
 
