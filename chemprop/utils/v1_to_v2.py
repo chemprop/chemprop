@@ -80,6 +80,9 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "balanced_accuracy": "balanced_accuracy is not in v2",
     }
 
+    renamed_loss_functions = {
+        "quantile_interval": "quantile",
+    }
     args_v1 = model_v1_dict["args"]
     hyper_parameters_v2["batch_norm"] = False
     hyper_parameters_v2["metrics"] = [
@@ -138,9 +141,8 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "multiclass": "ce",
         "specitra": "sid",
     }
-    T_loss_fn = LossFunctionRegistry[
-        getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
-    ]
+    loss_function = getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
+    T_loss_fn = LossFunctionRegistry[renamed_loss_functions.get(loss_function, loss_function)]
 
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
