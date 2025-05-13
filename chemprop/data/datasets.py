@@ -326,7 +326,7 @@ class PolymerDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """A :class:`PolymerDataset` composed of :class:`PolymerDatapoint`\s
 
     A :class:`PolymerDataset` produces featurized data for input to a
-    :class:`wMPNN` model. Typically, data featurization is performed on-the-fly
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
     and parallelized across multiple workers via the :class:`~torch.utils.data
     DataLoader` class. However, for small datasets, it may be more efficient to
     featurize the data in advance and cache the results. This can be done by
