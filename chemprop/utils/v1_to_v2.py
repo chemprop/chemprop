@@ -139,7 +139,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "classification": "bce",
         "regression": "mse",
         "multiclass": "ce",
-        "specitra": "sid",
+        "spectra": "sid",
     }
     loss_function = getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
     T_loss_fn = LossFunctionRegistry[renamed_loss_functions.get(loss_function, loss_function)]
