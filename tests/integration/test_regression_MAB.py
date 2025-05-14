@@ -10,18 +10,6 @@ from torch.utils.data import DataLoader
 from chemprop import models, nn
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
-pytestmark = [
-    pytest.mark.parametrize(
-        "mol_atom_bond_mpnn",
-        [
-            (nn.MABAtomMessagePassing(), nn.MeanAggregation()),
-            (nn.MABBondMessagePassing(), nn.MeanAggregation()),
-        ],
-        indirect=True,
-    ),
-    pytest.mark.integration,
-]
-
 
 @pytest.fixture
 def dataloader(mol_atom_bond_regression_data):
@@ -42,6 +30,14 @@ def dataloader(mol_atom_bond_regression_data):
     return DataLoader(dset, 32, collate_fn=collate_mol_atom_bond_batch)
 
 
+@pytest.mark.parametrize(
+    "mol_atom_bond_mpnn",
+    [
+        (nn.MABAtomMessagePassing(), nn.MeanAggregation()),
+        (nn.MABBondMessagePassing(), nn.MeanAggregation()),
+    ],
+    indirect=True,
+)
 def test_quick(mol_atom_bond_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -55,6 +51,14 @@ def test_quick(mol_atom_bond_mpnn, dataloader):
     trainer.fit(mol_atom_bond_mpnn, dataloader, None)
 
 
+@pytest.mark.parametrize(
+    "mol_atom_bond_mpnn",
+    [
+        (nn.MABAtomMessagePassing(), nn.MeanAggregation()),
+        (nn.MABBondMessagePassing(), nn.MeanAggregation()),
+    ],
+    indirect=True,
+)
 def test_overfit(mol_atom_bond_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -82,9 +86,8 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     assert mse <= 0.1  # note this is in the scaled target space
 
 
-@pytest.mark.integration
-def test_mve_quick(regression_mpnn_mve, dataloader):
-    mp = nn.BondMessagePassing()
+def test_mve_quick(dataloader):
+    mp = nn.MABBondMessagePassing()
     agg = nn.SumAggregation()
     mol_ffn = nn.MveFFN()
     atom_ffn = nn.MveFFN()
