@@ -513,7 +513,8 @@ def main(args: Namespace):
 
     args = update_args_with_config(args, best_config)
 
-    args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
+    TrainSubcommand.parser.parse_known_args()
+
     save_config(TrainSubcommand.parser, args, best_config_save_path)
 
     logger.info(
