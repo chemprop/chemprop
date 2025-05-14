@@ -7,7 +7,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from chemprop import nn
+from chemprop import models, nn
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
 pytestmark = [
@@ -80,3 +80,25 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     mse = errors.square().mean().item()
 
     assert mse <= 0.1  # note this is in the scaled target space
+
+
+@pytest.mark.integration
+def test_mve_quick(regression_mpnn_mve, dataloader):
+    mp = nn.BondMessagePassing()
+    agg = nn.SumAggregation()
+    mol_ffn = nn.MveFFN()
+    atom_ffn = nn.MveFFN()
+    bond_ffn = nn.MveFFN(input_dim=600)
+
+    MAB_mve = models.MolAtomBondMPNN(mp, agg, mol_ffn, atom_ffn, bond_ffn, batch_norm=True)
+
+    trainer = pl.Trainer(
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        accelerator="cpu",
+        devices=1,
+        fast_dev_run=True,
+    )
+    trainer.fit(MAB_mve, dataloader, None)
