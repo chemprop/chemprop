@@ -37,7 +37,7 @@ def make_mol(
     smi: str,
     keep_h: bool = False,
     add_h: bool = False,
-    ignore_chirality: bool = False,
+    ignore_stereo: bool = False,
     reorder_atoms: bool = False,
 ) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
@@ -51,8 +51,8 @@ def make_mol(
         them if they are specified. Default is False.
     add_h : bool, optional
         whether to add hydrogens to the molecule. Default is False.
-    ignore_chirality : bool, optional
-        whether to ignore chirality information when constructing the molecule. Default is False.
+    ignore_stereo : bool, optional
+        whether to ignore stereochemical information (R/S and Cis/Trans) when constructing the molecule. Default is False.
     reorder_atoms : bool, optional
         whether to reorder the atoms in the molecule by their atom map numbers. This is useful when
         the order of atoms in the SMILES string does not match the atom mapping, e.g. '[F:2][Cl:1]'.
@@ -73,9 +73,11 @@ def make_mol(
     if add_h:
         mol = Chem.AddHs(mol)
 
-    if ignore_chirality:
+    if ignore_stereo:
         for atom in mol.GetAtoms():
             atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+        for bond in mol.GetBonds():
+            bond.SetStereo(Chem.BondStereo.STEREONONE)
 
     if reorder_atoms:
         atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())

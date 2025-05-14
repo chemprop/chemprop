@@ -26,7 +26,7 @@ def test_MAB_parsing(data_dir):
         keep_h=True,
         add_h=False,
         reorder_atoms=True,
-        ignore_chirality=False,
+        ignore_stereo=False,
     )
     data = data[0]
     assert len(data) == 11
@@ -76,7 +76,7 @@ def test_MAB_parsing_bounded(data_dir):
         keep_h=True,
         add_h=False,
         reorder_atoms=True,
-        ignore_chirality=False,
+        ignore_stereo=False,
     )
     data = data[0]
     assert len(data) == 11
@@ -116,7 +116,7 @@ def test_MAB_parsing_constrained(data_dir):
         keep_h=True,
         add_h=False,
         reorder_atoms=True,
-        ignore_chirality=False,
+        ignore_stereo=False,
     )
     data = data[0]
     assert len(data) == 11
@@ -153,5 +153,5 @@ def test_MAB_parsing_constrained_error(data_dir):
             keep_h=True,
             add_h=False,
             reorder_atoms=True,
-            ignore_chirality=False,
+            ignore_stereo=False,
         )

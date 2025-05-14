@@ -53,11 +53,11 @@ class _MoleculeDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         reorder_atoms: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_chirality, reorder_atoms)
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -138,11 +138,11 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         reorder_atoms: bool = True,
         **kwargs,
     ) -> MolAtomBondDatapoint:
-        mol = make_mol(smi, keep_h, add_h, ignore_chirality, reorder_atoms=reorder_atoms)
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms=reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -163,7 +163,7 @@ class _ReactionDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -180,8 +180,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h, ignore_chirality)
-        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
+        rct = make_mol(rct_smi, keep_h, add_h, ignore_stereo)
+        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_stereo)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 
