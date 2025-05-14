@@ -10,18 +10,17 @@ class Activation(EnumMapping):
     LEAKYRELU = auto()
     PRELU = auto()
     TANH = auto()
-    SELU = auto()
     ELU = auto()
 
 
-def get_activation_function(activation: str | Activation) -> nn.Module:
+def get_activation_function(activation: str | nn.Module | Activation) -> nn.Module:
     """Gets an activation function module given the name of the activation.
 
     See :class:`~chemprop.v2.models.utils.Activation` for available activations.
 
     Parameters
     ----------
-    activation : str | Activation
+    activation : str | nn.Module | Activation
         The name of the activation function.
 
     Returns
@@ -29,6 +28,12 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
     nn.Module
         The activation function module.
     """
+    if isinstance(activation, nn.Module):
+        if isinstance(activation, nn.modules.activation.SELU):
+            raise TypeError(
+                "Support for SELU activation (intended for self-normalizing networks) has been removed in v2.2.0"
+            )
+        return activation
     match Activation.get(activation):
         case Activation.RELU:
             return nn.ReLU()
@@ -38,8 +43,6 @@ def get_activation_function(activation: str | Activation) -> nn.Module:
             return nn.PReLU()
         case Activation.TANH:
             return nn.Tanh()
-        case Activation.SELU:
-            return nn.SELU()
         case Activation.ELU:
             return nn.ELU()
         case _:
