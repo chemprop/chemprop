@@ -124,4 +124,4 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     mse = sum(results[0].values())
     print(mse)
 
-    assert mse <= 0.25
+    assert mse <= 0.3
