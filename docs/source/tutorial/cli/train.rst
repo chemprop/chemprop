@@ -216,6 +216,19 @@ When training the new model, its architecture **must** resemble that of the old 
 
 It is also possible to freeze the weights of a loaded Chemprop model during training, such as for transfer learning applications. To do so, you first need to load a pre-trained model by specifying its checkpoint file using :code:`--checkpoint <path>`. After loading the model, the MPNN weights can be frozen via :code:`--freeze-encoder`. You can control how the weights are frozen in the FFN layers by using :code:`--frzn-ffn-layers <n>` flag, where the :code:`n` is the first n layers are frozen in the FFN layers. By default, :code:`n` is set to 0, meaning all FFN layers are trainable unless specified otherwise.
 
+Finetuning Foundation Models
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+During finetuning one can pretrain a model on an unrelated task and then re-use the learned representation in a new task to improve predictions. This has the effect of improving predictions, particularly on small datasets, by circumventing the need to the model to re-learn the basic facets of molecules representation. 
+
+Unlike Transfer Learning, this does **not** require that the downstream task's FFN has the same architecture as the pretrained model. When finetuning, the Message Passing (depth, hidden size, activation function, etc.) and Aggregation configurations are fixed to be whatever they were during pretraining, but the FNN is initialized from scratch according to the users request and then trained.
+
+Users can access pretrained foundation models by using the :code:`--from-foundation <name>` command line argument. Currently, the following foundation models are available in ChemProp:
+
+ * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1MM molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
+
+The first time a given model is requested it will automatically be downloaded for you.
+
 .. _train-on-reactions:
 
 Training on Reactions
