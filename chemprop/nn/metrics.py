@@ -547,6 +547,7 @@ class Wasserstein(ChempropMetric):
 
 
 @LossFunctionRegistry.register(["quantile", "pinball"])
+@MetricRegistry.register(["quantile", "pinball"])
 class QuantileLoss(ChempropMetric):
     def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
         super().__init__(task_weights)
