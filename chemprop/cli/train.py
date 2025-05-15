@@ -47,6 +47,7 @@ from chemprop.data import (
     split_data_by_indices,
 )
 from chemprop.data.datasets import _MolGraphDatasetMixin
+from chemprop.featurizers.atom import AtomFeatureMode
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
@@ -58,7 +59,6 @@ from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransf
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 from chemprop.utils.utils import EnumMapping
-from chemprop.featurizers.atom import AtomFeatureMode
 
 logger = logging.getLogger(__name__)
 
@@ -528,7 +528,7 @@ def validate_train_args(args):
                 if (mode := args.multi_hot_atom_featurizer_mode) != AtomFeatureMode.V2:
                     raise ArgumentError(
                         argument=None,
-                        message=f"Foundation model {fm_name} must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!"
+                        message=f"Foundation model {fm_name} must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
                     )
         for arg_value, arg_name in (
             (args.message_hidden_dim, "--message-hidden-dim"),
@@ -987,12 +987,16 @@ def build_model(
                 ckpt_dir = Path(__file__).parent / "_foundation_models"
                 ckpt_dir.mkdir(exist_ok=True)
                 if not (ckpt_dir / "chemeleon_mp.pt").exists():
-                    logger.info("Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15426601)")
+                    logger.info(
+                        "Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15426601)"
+                    )
                     urlretrieve(
                         r"https://zenodo.org/records/15426601/files/chemeleon_mp.pt",
                         ckpt_dir / "chemeleon_mp.pt",
                     )
-                logger.info("Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work")
+                logger.info(
+                    "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
+                )
                 if is_multi:
                     mp_block = MulticomponentMessagePassing(
                         [
