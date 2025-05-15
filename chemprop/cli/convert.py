@@ -20,7 +20,7 @@ class ConvertSubcommand(Subcommand):
             "-c",
             "--conversion",
             choices=["v1_to_v2", "v2_0_to_v2_1"],
-            help="Conversion to perform.",
+            help="Conversion to perform. Models converted from v1 to v2 must be run with the v1 featurizer via `--multi-hot-atom-featurizer-mode v1`.",
             default="v1_to_v2",
         )
         parser.add_argument(
