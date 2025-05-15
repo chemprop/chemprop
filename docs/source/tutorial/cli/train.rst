@@ -252,6 +252,23 @@ Both reaction and molecule SMILES can be associated with a target (e.g. a reacti
 The reaction and molecule SMILES columns can be ordered in any way. However, the same column ordering as used in the training must be used for the prediction. For more information on atom-mapped reaction SMILES, please refer to :ref:`train-on-reactions`.
 
 
+Training on Polymers
+^^^^^^^^^^^^^^^^^^^^
+
+Chemprop can also process polymers represented in the following notation :code:`Monomer 1.Monomer 2|Monomer 1 Weight|Monomer 2 Weight|<Connection Point 1-Connection Point 2:Forward Bond Weight:Reverse Bond Weight~Degree of Polymerisation`.
+
+For example, for the polymer string: :code:`[*:1]c1cc(F)c([*:2])cc1F.[*:3]c1c(O)cc(O)c([*:4])c1O|0.5|0.5|<1-3:0.5:0.5<1-4:0.5:0.5<2-3:0.5:0.5<2-4:0.5:0.5~10`.
+
+..  * :code: `[*:1]c1cc(F)c([*:2])cc1F.[*:3]c1c(O)cc(O)c([*:4])c1O` represents two monomers: :code:`[*:1]c1cc(F)c([*:2])cc1F` with connection points 1 and 2 and :code:`[*:3]c1c(O)cc(O)c([*:4])c1O` with connection points 3 and 4.
+..  * :code: `|0.5|0.5|` represents a ratio of Monomer 1:Monomer 2 of 50%:50% and should sum to 1.
+..  * :code: `<1-3:0.5:0.5<1-4:0.5:0.5<2-3:0.5:0.5<2-4:0.5:0.5` represents the bonds between monomer connection points. Bonds between connection point atoms 1-3, 1-4, 2-3 and 2-4 all have a bond weight of 0.5, i.e. have a 50% chance of occuring in the repeat unit.
+..  * :code: `~10` represents the degree of polymerisation (number of repeat units), here 10.
+
+Specify columns in the input file in polymer notation using the option :code:`--polymer-columns` to enable this, which transforms the polymer SMILES to the corresponding weighted molecular graph. 
+
+For further details, as well as a citable reference, please see `DOI 10.1039/D2SC02839E <https://doi.org/10.1039.D2SC02839E>`.
+
+
 Training on Spectra
 ^^^^^^^^^^^^^^^^^^^
 

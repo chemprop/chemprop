@@ -93,6 +93,7 @@ def make_fingerprint_for_model(
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
+        polymer_cols=args.polymer_columns,
         rxn_cols=args.reaction_columns,
         target_cols=[],
         ignore_cols=None,
