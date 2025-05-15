@@ -67,9 +67,12 @@ recursive = true
 aggressive = 2
 max_line_length = 100
 
-
 [tool.pytest.ini_options]
 addopts = "--cov chemprop"
+markers = [
+    "integration",
+    "CLI",
+]
 
 [tool.isort]
 profile = "black"

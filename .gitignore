@@ -172,7 +172,6 @@ cython_debug/
 *.ckpt
 chemprop/_version.py
 *.ckpt
-*.ipynb
 config.toml
 
 !tests/data/*
