@@ -525,7 +525,9 @@ def validate_train_args(args):
         # model-specific validation
         match FoundationModels.get(fm_name):
             case FoundationModels.CHEMELEON:
-                if (mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)) != AtomFeatureMode.V2:
+                if (
+                    mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)
+                ) != AtomFeatureMode.V2:
                     raise ArgumentError(
                         argument=None,
                         message=f"Foundation model {fm_name} must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
