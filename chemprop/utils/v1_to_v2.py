@@ -79,12 +79,19 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "precision": "precision is not in v2",
         "balanced_accuracy": "balanced_accuracy is not in v2",
     }
-
     renamed_loss_functions = {"quantile_interval": "quantile"}
+
     args_v1 = model_v1_dict["args"]
+
+    metric_kwargs = {"quantile": {"alpha": args_v1.quantile_loss_alpha}}
+    loss_fn_kwargs = {"quantile_interval": {"alpha": args_v1.quantile_loss_alpha}}
+
     hyper_parameters_v2["batch_norm"] = False
     hyper_parameters_v2["metrics"] = [
-        Factory.build(MetricRegistry[renamed_metrics.get(args_v1.metric, args_v1.metric)])
+        Factory.build(
+            MetricRegistry[renamed_metrics.get(metric, metric)], **metric_kwargs.get(metric, {})
+        )
+        for metric in args_v1.metrics
     ]
     hyper_parameters_v2["warmup_epochs"] = args_v1.warmup_epochs
     hyper_parameters_v2["init_lr"] = args_v1.init_lr
@@ -146,7 +153,9 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         {
             "activation": args_v1.activation,
             "cls": PredictorRegistry[args_v1.dataset_type],
-            "criterion": Factory.build(T_loss_fn, task_weights=task_weights),
+            "criterion": Factory.build(
+                T_loss_fn, task_weights=task_weights, **loss_fn_kwargs.get(loss_function, {})
+            ),
             "task_weights": None,
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
