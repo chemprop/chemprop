@@ -3,7 +3,7 @@
 Installation
 ============
 
-Chemprop can either be installed from PyPI via pip_, from source (i.e., directly from the `git repo`_) using ``pip`` or the ``environment.yml`` file, or from `Docker`_. The PyPI version includes the vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like (e.g. ``mamba``).
+Chemprop can either be installed from PyPI via pip_ or using a provided ``x.y.x_requirements.txt`` file, from source (i.e., directly from the `git repo`_) using ``pip`` or the ``environment.yml`` file, or from `Docker`_. The PyPI version includes the vast majority of Chemprop functionality, but some functionality is only accessible when installed from source. We recommend installing ``chemprop`` in a virtual environment (e.g., conda_ or miniconda_). The following sections assume you are using ``conda`` or ``miniconda``, but you can use any virtual environment manager you like (e.g. ``mamba``).
 
 .. _pip: https://pypi.org/project/chemprop/
 .. _git repo: https://github.com/chemprop/chemprop.git
@@ -24,11 +24,21 @@ Chemprop can either be installed from PyPI via pip_, from source (i.e., directly
 Option 1: Installing from PyPI
 ------------------------------
 
+To install the latest version of ChemProp and all of its dependencies, execute the following commands:
+
 .. code-block::
 
     conda create -n chemprop python=3.11
     conda activate chemprop
     pip install chemprop
+
+The above approach is recommended as it will install the most updated versions of all external dependencies and will be more compatible with other dependencies you may wish to add. However, it is possible that external dependencies to ChemProp may introduce backwards incompatible changes to their codebase. For this reason, we also provide known working sets of dependencies for each ChemProp version. To install a specific version of ChemProp (i.e. 2.1.0), download the corresponding ``x.y.z_requirements.txt`` file from the `ChemProp GitHub repository <https://github.com/chemprop/chemprop/tree/main/requirements>`_ and run the following commands:
+
+.. code-block::
+
+    conda create -n chemprop python=3.11
+    conda activate chemprop
+    pip install -r x.y.z_requirements.txt
 
 Option 2: Installing from source using pip
 ------------------------------------------
