@@ -197,7 +197,7 @@ def prepare_data_loader(
         molecule_featurizers=args.molecule_featurizers,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        ignore_chirality=args.ignore_chirality,
+        ignore_stereo=args.ignore_stereo,
     )
 
     datas = build_data_from_files(

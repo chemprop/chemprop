@@ -53,10 +53,10 @@ class _MoleculeDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_chirality)
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -111,12 +111,12 @@ class _PolymerDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         **kwargs,
     ) -> _PolymerDatapointMixin:
         frag_weights = smi.split("|")[1:-1]
         edges = smi.split("<")[1:]
-        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_chirality=ignore_chirality)
+        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -169,7 +169,7 @@ class _ReactionDatapointMixin:
         *args,
         keep_h: bool = False,
         add_h: bool = False,
-        ignore_chirality: bool = False,
+        ignore_stereo: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -186,8 +186,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h, ignore_chirality)
-        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_chirality)
+        rct = make_mol(rct_smi, keep_h, add_h, ignore_stereo)
+        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_stereo)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 

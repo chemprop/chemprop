@@ -475,7 +475,7 @@ def main(args: Namespace):
         molecule_featurizers=args.molecule_featurizers,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        ignore_chirality=args.ignore_chirality,
+        ignore_stereo=args.ignore_stereo,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
