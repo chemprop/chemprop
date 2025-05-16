@@ -9,7 +9,7 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
@@ -29,7 +29,22 @@ class Datum(NamedTuple):
     gt_mask: np.ndarray | None
 
 
+class MolAtomBondDatum(NamedTuple):
+    """a singular training data point that supports atom and bond level targets"""
+
+    mg: MolGraph
+    V_d: np.ndarray | None
+    E_d: np.ndarray | None
+    x_d: np.ndarray | None
+    ys: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    weight: float
+    lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    constraints: tuple[np.ndarray | None, np.ndarray | None]
+
+
 MolGraphDataset: TypeAlias = Dataset[Datum]
+MolAtomBondGraphDataset: TypeAlias = Dataset[MolAtomBondDatum]
 
 
 class _MolGraphDatasetMixin:
@@ -315,6 +330,221 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.__V_fs = self._V_fs
         self.__E_fs = self._E_fs
         self.__V_ds = self._V_ds
+
+
+@dataclass
+class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
+    data: list[MolAtomBondDatapoint]
+
+    def __getitem__(self, idx: int) -> MolAtomBondDatum:
+        d = self.data[idx]
+        mg = self.mg_cache[idx]
+
+        return MolAtomBondDatum(
+            mg,
+            self.V_ds[idx],
+            self.E_ds[idx],
+            self.X_d[idx],
+            [
+                self.Y[idx] if isinstance(self.Y[idx], np.ndarray) else None,
+                self.atom_Y[idx] if self.atom_Y is not None else None,
+                self.bond_Y[idx] if self.bond_Y is not None else None,
+            ],
+            d.weight,
+            [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
+            [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
+            [d.atom_constraint, d.bond_constraint],
+        )
+
+    @property
+    def _atom_Y(self) -> list[np.ndarray]:
+        """the raw atom targets of the dataset"""
+        return [d.atom_y for d in self.data]
+
+    @property
+    def atom_Y(self) -> list[np.ndarray]:
+        """the (scaled) atom targets of the dataset"""
+        return self.__atom_Y
+
+    @atom_Y.setter
+    def atom_Y(self, atom_Y: list[np.ndarray]):
+        self._validate_attribute(atom_Y, "atom targets")
+
+        self.__atom_Y = atom_Y
+
+    @cached_property
+    def _atom_constraints(self) -> np.ndarray:
+        return np.array([d.atom_constraint for d in self.data])
+
+    @property
+    def atom_constraints(self) -> np.ndarray:
+        return self.__atom_constraints
+
+    @atom_constraints.setter
+    def atom_constraints(self, atom_constraints: ArrayLike):
+        self._validate_attribute(atom_constraints, "atom constraints")
+        self.__atom_constraints = np.array(atom_constraints)
+
+    @property
+    def _bond_Y(self) -> list[np.ndarray]:
+        """the raw bond targets of the dataset"""
+        return [d.bond_y for d in self.data]
+
+    @property
+    def bond_Y(self) -> list[np.ndarray]:
+        """the (scaled) bond targets of the dataset"""
+        return self.__bond_Y
+
+    @bond_Y.setter
+    def bond_Y(self, bond_Y: list[np.ndarray]):
+        self._validate_attribute(bond_Y, "bond targets")
+
+        self.__bond_Y = bond_Y
+
+    @cached_property
+    def _bond_constraints(self) -> np.ndarray:
+        return np.array([d.bond_constraint for d in self.data])
+
+    @property
+    def bond_constraints(self) -> np.ndarray:
+        return self.__bond_constraints
+
+    @bond_constraints.setter
+    def bond_constraints(self, bond_constraints: ArrayLike):
+        self._validate_attribute(bond_constraints, "bond constraints")
+        self.__bond_constraints = np.array(bond_constraints)
+
+    @property
+    def atom_gt_mask(self) -> np.ndarray:
+        return np.vstack([d.atom_gt_mask for d in self.data])
+
+    @property
+    def atom_lt_mask(self) -> np.ndarray:
+        return np.vstack([d.atom_lt_mask for d in self.data])
+
+    @property
+    def bond_gt_mask(self) -> np.ndarray:
+        return np.vstack([d.bond_gt_mask for d in self.data])
+
+    @property
+    def bond_lt_mask(self) -> np.ndarray:
+        return np.vstack([d.bond_lt_mask for d in self.data])
+
+    @property
+    def _E_ds(self) -> list[np.ndarray]:
+        """the raw bond descriptors of the dataset"""
+        return [d.E_d for d in self.data]
+
+    @property
+    def E_ds(self) -> list[np.ndarray]:
+        """the (scaled) bond descriptors of the dataset"""
+        return self.__E_ds
+
+    @E_ds.setter
+    def E_ds(self, E_ds: list[np.ndarray]):
+        self._validate_attribute(E_ds, "bond descriptors")
+
+        self.__E_ds = E_ds
+
+    @property
+    def d_ed(self) -> int:
+        """the extra bond descriptor dimension, if any"""
+        return 0 if self.E_ds[0] is None else self.E_ds[0].shape[1]
+
+    def normalize_targets(
+        self, key: str = "mol", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"mol", "atom", "bond"}
+
+        match key:
+            case "mol":
+                X = self._Y
+            case "atom":
+                X = np.concatenate(self._atom_Y, axis=0)
+            case "bond":
+                X = np.concatenate(self._bond_Y, axis=0)
+            case _:
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        match key:
+            case "mol":
+                self.Y = scaler.transform(X)
+            case "atom":
+                self.atom_Y = [scaler.transform(y) if y.size > 0 else y for y in self._atom_Y]
+                if self.atom_constraints[0] is not None:
+                    atoms_per_mol = [len(d.atom_y) for d in self.data]
+                    scaled_atom_constraints = [
+                        (row - n * scaler.mean_) / scaler.scale_
+                        for row, n in zip(self._atom_constraints, atoms_per_mol)
+                    ]
+                    self.atom_constraints = np.array(scaled_atom_constraints)
+            case "bond":
+                self.bond_Y = [scaler.transform(y) if y.size > 0 else y for y in self._bond_Y]
+                if self.bond_constraints[0] is not None:
+                    bonds_per_mol = [len(d.bond_y) for d in self.data]
+                    scaled_bond_constraints = [
+                        (row - n * scaler.mean_) / scaler.scale_
+                        for row, n in zip(self._bond_constraints, bonds_per_mol)
+                    ]
+                    self.bond_constraints = np.array(scaled_bond_constraints)
+            case _:
+                raise RuntimeError("unreachable code reached!")
+
+        return scaler
+
+    def normalize_inputs(
+        self, key: str = "X_d", scaler: StandardScaler | None = None
+    ) -> StandardScaler:
+        VALID_KEYS = {"X_d", "V_f", "E_f", "V_d", "E_d"}
+
+        match key:
+            case "X_d":
+                X = None if self.d_xd == 0 else self.X_d
+            case "V_f":
+                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
+            case "E_f":
+                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
+            case "V_d":
+                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
+            case "E_d":
+                X = None if self.d_ed == 0 else np.concatenate(self.E_ds, axis=0)
+            case _:
+                raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
+
+        if X is None:
+            return scaler
+
+        if scaler is None:
+            scaler = StandardScaler().fit(X)
+
+        match key:
+            case "X_d":
+                self.X_d = scaler.transform(X)
+            case "V_f":
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
+            case "E_f":
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
+            case "V_d":
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
+            case "E_d":
+                self.E_ds = [scaler.transform(E_d) if E_d.size > 0 else E_d for E_d in self.E_ds]
+            case _:
+                raise RuntimeError("unreachable code reached!")
+
+        return scaler
+
+    def reset(self):
+        """Reset the atom and bond features; atom and extra descriptors; and targets of each
+        datapoint to their initial, unnormalized values."""
+        super().reset()
+        self.__E_ds = self._E_ds
+        self.__atom_Y = self._atom_Y
+        self.__bond_Y = self._bond_Y
+        self.__atom_constraints = self._atom_constraints
+        self.__bond_constraints = self._bond_constraints
 
 
 @dataclass

@@ -28,7 +28,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
     )
-
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
         "-n",
@@ -89,7 +88,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--ignore-stereo",
         action="store_true",
-        help="Ignore stereochemical information in the input SMILES",
+        help="Ignore stereochemical information (R/S and Cis/Trans) in the input SMILES",
+    )
+    data_args.add_argument(
+        "--reorder-atoms",
+        action="store_true",
+        help="Reorder atoms in the Chem.Mol object using the specified atom map numbers",
     )
     featurization_args.add_argument(
         "--molecule-featurizers",
@@ -127,6 +131,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--no-bond-feature-scaling", action="store_true", help="Turn off extra bond feature scaling"
     )
     featurization_args.add_argument(
+        "--no-bond-descriptor-scaling",
+        action="store_true",
+        help="Turn off extra bond descriptor scaling",
+    )
+    featurization_args.add_argument(
         "--atom-features-path",
         nargs="+",
         action="append",
@@ -144,12 +153,21 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="append",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path [...] --bond-features-path [...]``).",
     )
-    # TODO: Add in v2.2
-    # parser.add_argument(
-    #     "--constraints-path",
-    #     help="Path to constraints applied to atomic/bond properties prediction.",
-    # )
-
+    featurization_args.add_argument(
+        "--bond-descriptors-path",
+        nargs="+",
+        action="append",
+        help="Path to additional bond descriptors to use with the learned bond representations after message passing. The file follows the same format as `--atom-descriptors-path`, i.e. the file is created using `np.savez('atom_descriptors.npz', *E_ds)` where `E_ds` is a list of 2D numpy arrays with shape `n_atoms x n_descriptors`.",
+    )
+    parser.add_argument(
+        "--constraints-path",
+        help="Path to a CSV file containing the constraints for atomic/bond properties prediction. The file should have one column for each property being constrained with no SMILES column. The order of the rows should match the order of the SMILES in the input CSV. See also `--constraints-to-targets` for how to specify which constraint applies to which prediction.",
+    )
+    parser.add_argument(
+        "--constraints-to-targets",
+        nargs="+",
+        help="A series of strings that match the order of the columns in the constraints file and look like 'atom_target_{i}' or 'bond_target_{i}', where i is the index of the atom or bond target column. The index of the atom and bond target columns is determined by the order they were given using `--atom-target-columns` and `--bond-target-columns`.",
+    )
     return parser
 
 
@@ -161,7 +179,14 @@ def process_common_args(args: Namespace) -> Namespace:
     #         message="`--features-generators` has been renamed to `--molecule-featurizers`.",
     #     )
 
-    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+    # Bond descriptors are not supported for multi-component data, but it seems easier to treat it
+    #  like atom descriptors
+    for key in [
+        "atom_features_path",
+        "atom_descriptors_path",
+        "bond_features_path",
+        "bond_descriptors_path",
+    ]:
         inds_paths = getattr(args, key)
 
         if not inds_paths:
@@ -182,7 +207,7 @@ def process_common_args(args: Namespace) -> Namespace:
             else:
                 ind, path = ind_path
 
-            if ind_path_dict.get(int(ind), None):
+            if ind_path_dict.get(int(ind)):
                 raise ArgumentError(
                     argument=None,
                     message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",
