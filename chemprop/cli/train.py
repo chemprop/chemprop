@@ -907,20 +907,20 @@ def summarize(
     dataset: _MolGraphDatasetMixin,
     mol_atom_or_bond: Literal["Mol", "Atom", "Bond"] | None = None,
 ) -> tuple[list, list]:
+    if isinstance(dataset, MulticomponentDataset):
+        y = dataset.datasets[0].Y
+    elif mol_atom_or_bond == "Atom":
+        y = np.concatenate(dataset.atom_Y, axis=0)
+    elif mol_atom_or_bond == "Bond":
+        y = np.concatenate(dataset.bond_Y, axis=0)
+    else:
+        y = dataset.Y
     if task_type in [
         "regression",
         "regression-mve",
         "regression-evidential",
         "regression-quantile",
     ]:
-        if isinstance(dataset, MulticomponentDataset):
-            y = dataset.datasets[0].Y
-        elif mol_atom_or_bond == "Atom":
-            y = np.concatenate(dataset.atom_Y, axis=0)
-        elif mol_atom_or_bond == "Bond":
-            y = np.concatenate(dataset.bond_Y, axis=0)
-        else:
-            y = dataset.Y
         y_mean = np.nanmean(y, axis=0)
         y_std = np.nanstd(y, axis=0)
         y_median = np.nanmedian(y, axis=0)
@@ -947,11 +947,6 @@ def summarize(
         "multiclass",
         "multiclass-dirichlet",
     ]:
-        if isinstance(dataset, MulticomponentDataset):
-            y = dataset.datasets[0].Y
-        else:
-            y = dataset.Y
-
         mask = np.isnan(y)
         classes = np.sort(np.unique(y[~mask]))
 

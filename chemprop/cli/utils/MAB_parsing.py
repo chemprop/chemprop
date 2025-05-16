@@ -41,27 +41,28 @@ def build_MAB_data_from_files(
     )
 
     X_ds = np.load(p_descriptors)["arr_0"] if p_descriptors else [None] * n_datapoints
+    loaded_arrays = np.load(p_atom_feats[0]) if p_atom_feats else None
     V_fs = (
-        [np.load(p_atom_feats[0])[f"arr_{i}"] for i in range(n_datapoints)]
-        if p_atom_feats
+        [loaded_arrays[f"arr_{i}"] for i in range(n_datapoints)]
+        if loaded_arrays
         else [None] * n_datapoints
     )
+    loaded_arrays = np.load(p_atom_descs[0]) if p_atom_descs else None
     V_ds = (
-        [np.load(p_atom_descs[0])[f"arr_{i}"] for i in range(n_datapoints)]
-        if p_atom_descs
+        [loaded_arrays[f"arr_{i}"] for i in range(n_datapoints)]
+        if loaded_arrays
         else [None] * n_datapoints
     )
+    loaded_arrays = np.load(p_bond_feats[0]) if p_bond_feats else None
     E_fs = (
-        [np.load(p_bond_feats[0])[f"arr_{i}"] for i in range(n_datapoints)]
-        if p_bond_feats
+        [loaded_arrays[f"arr_{i}"] for i in range(n_datapoints)]
+        if loaded_arrays
         else [None] * n_datapoints
     )
+    loaded_arrays = np.load(p_bond_descs[0]) if p_bond_descs else None
     E_ds = (
-        [
-            np.repeat(np.load(p_bond_descs[0])[f"arr_{i}"], repeats=2, axis=0)
-            for i in range(n_datapoints)
-        ]
-        if p_bond_descs
+        [np.repeat(loaded_arrays[f"arr_{i}"], repeats=2, axis=0) for i in range(n_datapoints)]
+        if loaded_arrays
         else [None] * n_datapoints
     )
 

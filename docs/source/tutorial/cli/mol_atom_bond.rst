@@ -44,7 +44,7 @@ The model predictions are still returned as a list of values which follow the or
 Constrained Prediction
 ----------------------
 
-Some atom and bond properties must sum to a molecule-level value, such as partial charges sum to molecular charge. These constraints are given as a csv file with the following format:
+Some atom and bond properties must sum to a molecule-level value, such as partial charges sum to molecular charge. These constraints are given to :code:`--constraints-path` as a csv file with the following format:
 
 .. code-block::
 
