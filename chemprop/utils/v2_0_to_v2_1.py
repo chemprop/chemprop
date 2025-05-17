@@ -1,3 +1,4 @@
+from os import PathLike
 import pickle
 import sys
 
@@ -33,8 +34,12 @@ class Unpickler(pickle.Unpickler):
         return super().find_class(module, name)
 
 
-if __name__ == "__main__":
+def convert_model_file_v2_0_to_v2_1(model_v1_file: PathLike, model_v2_file: PathLike):
     model = torch.load(
-        sys.argv[1], map_location="cpu", pickle_module=sys.modules[__name__], weights_only=False
+        model_v1_file, map_location="cpu", pickle_module=sys.modules[__name__], weights_only=False
     )
-    torch.save(model, sys.argv[2])
+    torch.save(model, model_v2_file)
+
+
+if __name__ == "__main__":
+    convert_model_file_v2_0_to_v2_1(sys.argv[1], sys.argv[2])
