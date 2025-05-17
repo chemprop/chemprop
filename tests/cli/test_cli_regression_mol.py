@@ -44,6 +44,7 @@ def mve_model_path(data_dir):
 def evidential_model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_evidential_mol.pt")
 
+
 @pytest.fixture
 def quantile_model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_quantile_mol.pt")
