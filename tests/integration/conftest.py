@@ -39,6 +39,7 @@ def regression_mpnn_quantile(request):
 
     return models.MPNN(request.param, agg, ffn, True)
 
+
 @pytest.fixture(scope="session")
 def classification_mpnn_dirichlet(request):
     agg = nn.SumAggregation()
