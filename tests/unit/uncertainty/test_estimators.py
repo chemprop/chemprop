@@ -15,6 +15,7 @@ from chemprop.uncertainty.estimator import (
     MulticlassDirichletEstimator,
     MVEEstimator,
     NoUncertaintyEstimator,
+    QuantileRegressionEstimator,
 )
 
 
@@ -118,6 +119,17 @@ def test_EvidentialEstimators(
 
     torch.testing.assert_close(preds, expected_preds)
     torch.testing.assert_close(uncs, expected_uncs)
+
+def test_QuantileRegressionEstimator(data_dir, dataloader, trainer):
+    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_quantile_mol.pt")
+    estimator = QuantileRegressionEstimator()
+    preds, uncs = estimator(dataloader, [model], trainer)
+    
+    print("preds", preds.tolist())
+    print("uncs", uncs.tolist())
+         
+    torch.testing.assert_close(preds, torch.tensor([[[2.183332], [2.2001247]]]))
+    torch.testing.assert_close(uncs, torch.tensor([[[0.29111385], [0.3591898]]]))
 
 
 def test_ClassificationDirichletEstimator(data_dir, dataloader, trainer):

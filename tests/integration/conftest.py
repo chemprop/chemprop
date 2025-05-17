@@ -33,6 +33,13 @@ def regression_mpnn_evidential(request):
 
 
 @pytest.fixture(scope="session")
+def regression_mpnn_quantile(request):
+    agg = nn.SumAggregation()
+    ffn = nn.QuantileFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+@pytest.fixture(scope="session")
 def classification_mpnn_dirichlet(request):
     agg = nn.SumAggregation()
     ffn = nn.BinaryDirichletFFN()
