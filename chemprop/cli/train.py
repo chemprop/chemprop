@@ -1049,10 +1049,6 @@ def build_model(
             mp_block = MulticomponentMessagePassing(
                 mp_blocks, train_dset.n_components, args.mpn_shared
             )
-            # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
-            # if args.mpn_shared:
-            #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
-            # else:
         else:
             mp_block = mp_cls(
                 train_dset.featurizer.atom_fdim,
