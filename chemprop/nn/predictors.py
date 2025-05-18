@@ -212,8 +212,10 @@ class QuantileFFN(RegressionFFN):
     _T_default_criterion = QuantileLoss
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = super().forward(Z)
-        lower_bound, upper_bound = torch.chunk(Y, self.n_targets, 1)
+        lower_bound, upper_bound = torch.chunk(self.ffn(Z), self.n_targets, 1)
+
+        lower_bound = self.output_transform(lower_bound)
+        upper_bound = self.output_transform(upper_bound)
 
         mean = (lower_bound + upper_bound) / 2
         interval = upper_bound - lower_bound
