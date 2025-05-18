@@ -40,11 +40,12 @@ def activation_function_argument(argument):
     s = s.strip().lower()
     if s in {"true", "false"}:
         v = s == "true"
-    try:
-        v = int(s)
-    except ValueError:
+    else:
         try:
-            v = float(s)
+            v = int(s)
         except ValueError:
-            v = s
+            try:
+                v = float(s)
+            except ValueError:
+                v = s
     return {k[0]: v} if k else v
