@@ -64,6 +64,14 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
+def test_predict_ignore_stereo(monkeypatch, data_path, model_path):
+    args = ["chemprop", "predict", "-i", data_path, "--model-path", model_path, "--ignore-stereo"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_dirichlet_quick(monkeypatch, data_path, dirichlet_model_path):
     args = [
         "chemprop",

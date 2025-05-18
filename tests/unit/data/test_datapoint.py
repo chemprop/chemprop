@@ -6,6 +6,11 @@ from chemprop.data import MoleculeDatapoint
 SMI = "c1ccccc1"
 
 
+@pytest.fixture(params=["@", "@@"])
+def stereo_smi(request):
+    return f"C[C{request.param}H](O)NC\C=C/C"
+
+
 @pytest.fixture(params=range(1, 3))
 def targets(request):
     return np.random.rand(request.param)
@@ -35,6 +40,14 @@ def test_addh(smi, targets):
     d2 = MoleculeDatapoint.from_smi(smi, y=targets, add_h=True)
 
     assert d1.mol.GetNumAtoms() != d2.mol.GetNumAtoms()
+
+
+def test_ignore_stereo(stereo_smi, targets):
+    d1 = MoleculeDatapoint.from_smi(stereo_smi, y=targets)
+    d2 = MoleculeDatapoint.from_smi(stereo_smi, y=targets, ignore_stereo=True)
+
+    assert d1.mol.GetAtomWithIdx(1).GetChiralTag() != d2.mol.GetAtomWithIdx(1).GetChiralTag()
+    assert d1.mol.GetBondWithIdx(5).GetStereo() != d2.mol.GetBondWithIdx(5).GetStereo()
 
 
 def test_replace_token(smi, targets, features_with_nans):
