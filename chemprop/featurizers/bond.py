@@ -1,12 +1,16 @@
 from typing import Sequence
 
-import numpy as np
-from rdkit.Chem.rdchem import Bond, BondType
+from rdkit.Chem.rdchem import Bond, BondStereo, BondType
 
-from chemprop.featurizers.base import VectorFeaturizer
+from chemprop.featurizers.base import (
+    MultiHotFeaturizer,
+    NullityFeaturizer,
+    OneHotFeaturizer,
+    ValueFeaturizer,
+)
 
 
-class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
+class MultiHotBondFeaturizer(MultiHotFeaturizer[Bond]):
     """A :class:`MultiHotBondFeaturizer` feauturizes bonds based on the following attributes:
 
     * ``null``-ity (i.e., is the bond ``None``?)
@@ -36,87 +40,77 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
 
     Parameters
     ----------
-    bond_types : Sequence[BondType] | None, default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
+    bond_types : Sequence[BondType], default=[SINGLE, DOUBLE, TRIPLE, AROMATIC]
         the known bond types
-    stereos : Sequence[int] | None, default=[0, 1, 2, 3, 4, 5]
+    stereos : Sequence[BondStereo], default=[NONE, ANY, Z, E, CIS, TRANS]
         the known bond stereochemistries. See [1]_ for more details
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = MultiHotBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.to_string(mol.GetBondWithIdx(i)))
+    0 0100 1 0 1000000
+    0 1000 1 0 1000000
+    0 0001 1 1 1000000
+    0 0001 1 1 1000000
 
     References
     ----------
     .. [1] https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondStereo.values
+
     """
 
     def __init__(
-        self, bond_types: Sequence[BondType] | None = None, stereos: Sequence[int] | None = None
+        self,
+        bond_types: Sequence[BondType] | None = None,
+        stereos: Sequence[BondStereo] | None = None,
     ):
-        self.bond_types = bond_types or [
+        self.bond_types = bond_types or (
             BondType.SINGLE,
             BondType.DOUBLE,
             BondType.TRIPLE,
             BondType.AROMATIC,
-        ]
-        self.stereo = stereos or range(6)
+        )
+        self.stereos = stereos or (
+            BondStereo.STEREONONE,
+            BondStereo.STEREOANY,
+            BondStereo.STEREOZ,
+            BondStereo.STEREOE,
+            BondStereo.STEREOCIS,
+            BondStereo.STEREOTRANS,
+        )
 
-    def __len__(self):
-        return 1 + len(self.bond_types) + 2 + (len(self.stereo) + 1)
-
-    def __call__(self, b: Bond) -> np.ndarray:
-        x = np.zeros(len(self), int)
-
-        if b is None:
-            x[0] = 1
-            return x
-
-        i = 1
-        bond_type = b.GetBondType()
-        bt_bit, size = self.one_hot_index(bond_type, self.bond_types)
-        if bt_bit != size:
-            x[i + bt_bit] = 1
-        i += size - 1
-
-        x[i] = int(b.GetIsConjugated())
-        x[i + 1] = int(b.IsInRing())
-        i += 2
-
-        stereo_bit, _ = self.one_hot_index(int(b.GetStereo()), self.stereo)
-        x[i + stereo_bit] = 1
-
-        return x
-
-    @classmethod
-    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
-        n = len(xs)
-
-        return xs.index(x) if x in xs else n, n + 1
+        super().__init__(
+            NullityFeaturizer(),
+            OneHotFeaturizer(lambda b: b.GetBondType(), self.bond_types),
+            ValueFeaturizer(lambda b: b.GetIsConjugated(), int),
+            ValueFeaturizer(lambda b: b.IsInRing(), int),
+            OneHotFeaturizer(lambda b: b.GetStereo(), self.stereos, padding=True),
+        )
 
 
-class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
+class RIGRBondFeaturizer(MultiHotFeaturizer[Bond]):
     """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
 
     * ``null``-ity (i.e., is the bond ``None``?)
     * in ring?
+
+    Example
+    -------
+    >>> from rdkit import Chem
+    >>> mol = Chem.MolFromSmiles('C=C-c1ccccc1')
+    >>> featurizer = RIGRBondFeaturizer()
+    >>> for i in range(4):
+    ...     print(featurizer.to_string(mol.GetBondWithIdx(i)))
+    0 0
+    0 0
+    0 1
+    0 1
+
     """
 
-    def __len__(self):
-        return 2
-
-    def __call__(self, b: Bond) -> np.ndarray:
-        x = np.zeros(len(self), int)
-
-        if b is None:
-            x[0] = 1
-            return x
-
-        x[1] = int(b.IsInRing())
-
-        return x
-
-    @classmethod
-    def one_hot_index(cls, x, xs: Sequence) -> tuple[int, int]:
-        """Returns a tuple of the index of ``x`` in ``xs`` and ``len(xs) + 1`` if ``x`` is in ``xs``.
-        Otherwise, returns a tuple with ``len(xs)`` and ``len(xs) + 1``."""
-        n = len(xs)
-
-        return xs.index(x) if x in xs else n, n + 1
+    def __init__(self):
+        super().__init__(NullityFeaturizer(), ValueFeaturizer(lambda b: b.IsInRing(), int))
