@@ -988,14 +988,17 @@ def build_model(
             case FoundationModels.CHEMELEON:
                 ckpt_dir = Path().home() / ".chemprop"
                 ckpt_dir.mkdir(exist_ok=True)
-                if not (ckpt_dir / "chemeleon_mp.pt").exists():
+                model_path = ckpt_dir / "chemeleon_mp.pt"
+                if not model_path.exists():
                     logger.info(
-                        "Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15426601)"
+                        f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15426601) to {model_path}"
                     )
                     urlretrieve(
                         r"https://zenodo.org/records/15426601/files/chemeleon_mp.pt",
-                        ckpt_dir / "chemeleon_mp.pt",
+                        model_path,
                     )
+                else:
+                    logger.info(f"Loading cached CheMeleon from {model_path}")
                 logger.info(
                     "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
                 )
@@ -1003,7 +1006,7 @@ def build_model(
                     mp_block = MulticomponentMessagePassing(
                         [
                             torch.load(
-                                ckpt_dir / "chemeleon_mp.pt", map_location="cpu", weights_only=False
+                                model_path, map_location="cpu", weights_only=False
                             )
                             for _ in range(train_dset.n_components)
                         ],
