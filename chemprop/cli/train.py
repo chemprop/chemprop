@@ -1014,7 +1014,7 @@ def build_model(
                     mp_block = torch.load(
                         ckpt_dir / "chemeleon_mp.pt", map_location="cpu", weights_only=False
                     )
-                agg = Factory.build(AggregationRegistry["mean"], norm=None)
+                agg = Factory.build(AggregationRegistry["mean"])
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
