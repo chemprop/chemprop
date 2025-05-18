@@ -1016,7 +1016,6 @@ def build_model(
                     )
                 agg = Factory.build(AggregationRegistry["mean"], norm=None)
     else:
-        agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
             mp_blocks = [
@@ -1063,6 +1062,7 @@ def build_model(
                 V_d_transform=V_d_transforms[0],
                 graph_transform=graph_transforms[0],
             )
+        agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
 
     predictor_cls = PredictorRegistry[args.task_type]
     if args.loss_function is not None:
