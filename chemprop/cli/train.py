@@ -986,7 +986,7 @@ def build_model(
     if from_foundation is not None:
         match FoundationModels.get(from_foundation):
             case FoundationModels.CHEMELEON:
-                ckpt_dir = Path(__file__).parent / "_foundation_models"
+                ckpt_dir = Path().home() / ".chemprop"
                 ckpt_dir.mkdir(exist_ok=True)
                 if not (ckpt_dir / "chemeleon_mp.pt").exists():
                     logger.info(

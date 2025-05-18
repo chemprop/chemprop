@@ -227,7 +227,7 @@ Users can access pretrained foundation models by using the :code:`--from-foundat
 
  * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1MM molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
 
-The first time a given model is requested it will automatically be downloaded for you.
+The first time a given model is requested it will automatically be downloaded for you and saved to a directory called `.chemprop` in your home directory.
 
 .. _train-on-reactions:
 
