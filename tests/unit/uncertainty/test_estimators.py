@@ -126,9 +126,6 @@ def test_QuantileRegressionEstimator(data_dir, dataloader, trainer):
     estimator = QuantileRegressionEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
-    print("preds", preds.tolist())
-    print("uncs", uncs.tolist())
-
     torch.testing.assert_close(preds, torch.tensor([[[2.183332], [2.2001247]]]))
     torch.testing.assert_close(uncs, torch.tensor([[[0.29111385], [0.3591898]]]))
 
