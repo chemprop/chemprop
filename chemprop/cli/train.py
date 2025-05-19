@@ -520,7 +520,7 @@ def validate_train_args(args):
                     message=f"Unrecognized foundation model name {fm_name}! Should be one of: {', '.join((FoundationModels.keys()))} or a local file (double check your filepath).",
                 ) from KeyError
             else:
-                local_foundation=True
+                local_foundation = True
         if args.checkpoint is not None:
             raise ArgumentError(
                 argument=None,
@@ -545,7 +545,7 @@ def validate_train_args(args):
                         if arg_value is not None:
                             raise ArgumentError(
                                 argument=None,
-                                message=f"CheMeleon does not support passing {arg_name}"
+                                message=f"CheMeleon does not support passing {arg_name}",
                             )
         _msg = ""
         for arg_value, arg_name in (
@@ -562,7 +562,10 @@ def validate_train_args(args):
             if arg_value is not None:
                 _msg += f"\n`{arg_name} {arg_value}`"
         if _msg:
-            logger.warning("The following arguments are ignored when making the message passing layer because it is initialized from a foundation model:" + _msg)
+            logger.warning(
+                "The following arguments are ignored when making the message passing layer because it is initialized from a foundation model:"
+                + _msg
+            )
 
     # TODO: model_frzn is deprecated and then remove in v2.2
     if args.checkpoint is not None and args.model_frzn is not None:
@@ -1004,11 +1007,12 @@ def build_model(
             if is_multi:
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
-                    foundation = MPNN.load_from_file(from_foundation)  # must re-load for each, no good way to copy
+                    foundation = MPNN.load_from_file(
+                        from_foundation
+                    )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
-                mp_block = MulticomponentMessagePassing(mp_blocks,
-                    train_dset.n_components,
-                    args.mpn_shared,
+                mp_block = MulticomponentMessagePassing(
+                    mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
                 foundation = MPNN.load_from_file(from_foundation)
@@ -1025,8 +1029,7 @@ def build_model(
                             f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15460715) to {model_path}"
                         )
                         urlretrieve(
-                            r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt",
-                            model_path,
+                            r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt", model_path
                         )
                     else:
                         logger.info(f"Loading cached CheMeleon from {model_path}")
@@ -1035,16 +1038,18 @@ def build_model(
                     )
                     chemeleon_mp = torch.load(model_path, weights_only=True)
                     if is_multi:
-                        mp_blocks = [BondMessagePassing(**chemeleon_mp['hyper_parameters']) for _ in range(train_dset.n_components)]
+                        mp_blocks = [
+                            BondMessagePassing(**chemeleon_mp["hyper_parameters"])
+                            for _ in range(train_dset.n_components)
+                        ]
                         for block in mp_blocks:
-                            block.load_state_dict(chemeleon_mp['state_dict'])
-                        mp_block = MulticomponentMessagePassing(mp_blocks,
-                            train_dset.n_components,
-                            args.mpn_shared,
+                            block.load_state_dict(chemeleon_mp["state_dict"])
+                        mp_block = MulticomponentMessagePassing(
+                            mp_blocks, train_dset.n_components, args.mpn_shared
                         )
                     else:
-                        mp_block = BondMessagePassing(**chemeleon_mp['hyper_parameters'])
-                        mp_block.load_state_dict(chemeleon_mp['state_dict'])
+                        mp_block = BondMessagePassing(**chemeleon_mp["hyper_parameters"])
+                        mp_block.load_state_dict(chemeleon_mp["state_dict"])
                     agg = Factory.build(AggregationRegistry["mean"])
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
