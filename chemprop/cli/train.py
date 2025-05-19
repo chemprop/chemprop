@@ -437,7 +437,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--tracking-metric",
         default="val_loss",
-        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training.",
+        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -593,7 +593,7 @@ def validate_train_args(args):
     valid_tracking_metrics = (
         args.metrics or [PredictorRegistry[args.task_type]._T_default_metric.alias]
     ) + ["val_loss"]
-    if args.tracking_metric not in valid_tracking_metrics:
+    if args.tracking_metric.split("-")[0] not in valid_tracking_metrics:
         raise ArgumentError(
             argument=None,
             message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
@@ -1405,15 +1405,44 @@ def train_model(
             )
             trainer_logger = CSVLogger(model_output_dir, "trainer_logs")
 
-        if args.tracking_metric == "val_loss":
-            tracking_metric = args.tracking_metric
-            if isinstance(train_loader.dataset, MolAtomBondDataset):
+        if isinstance(train_loader.dataset, MolAtomBondDataset):
+            if args.tracking_metric == "val_loss":
                 T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
+                tracking_metric = args.tracking_metric
             else:
-                T_tracking_metric = model.criterion.__class__
+                metric, *kind = args.tracking_metric.split("-")
+                if len(kind) == 0:
+                    colss = [
+                        args.mol_target_columns,
+                        args.atom_target_columns,
+                        args.bond_target_columns,
+                    ]
+                    if sum(cols is not None for cols in colss) != 1:
+                        raise ArgumentError(
+                            argument=None,
+                            message="If training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track.",
+                        )
+                    idx, kind = next(
+                        (idx, kind)
+                        for idx, (kind, cols) in enumerate(zip(["mol", "atom", "bond"], colss))
+                        if cols is not None
+                    )
+                else:
+                    kind = kind[0]
+
+                if metric == "val_loss":
+                    T_tracking_metric = model.criterions[idx].__class__
+                    tracking_metric = kind + "_" + metric
+                else:
+                    T_tracking_metric = MetricRegistry[metric]
+                    tracking_metric = kind + "_val/" + metric
         else:
-            T_tracking_metric = MetricRegistry[args.tracking_metric]
-            tracking_metric = "val/" + args.tracking_metric
+            if args.tracking_metric == "val_loss":
+                T_tracking_metric = model.criterion.__class__
+                tracking_metric = args.tracking_metric
+            else:
+                T_tracking_metric = MetricRegistry[args.tracking_metric]
+                tracking_metric = "val/" + args.tracking_metric
 
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
