@@ -16,7 +16,7 @@ class EnumMapping(StrEnum):
             return cls[name.upper()]
         except KeyError:
             raise KeyError(
-                f"Unsupported {cls.__name__} member! got: '{name}'. expected one of: {cls.keys()}"
+                f"Unsupported {cls.__name__} member! got: '{name}'. expected one of: {", ".join(cls.keys())}"
             )
 
     @classmethod
