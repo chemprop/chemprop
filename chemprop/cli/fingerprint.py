@@ -17,7 +17,7 @@ from chemprop.cli.utils import (
     make_dataset,
 )
 from chemprop.models import load_model
-from chemprop.nn.metrics import LossFunctionRegistry
+from chemprop.nn.metrics import BoundedMixin
 
 logger = logging.getLogger(__name__)
 
@@ -92,11 +92,7 @@ def make_fingerprint_for_model(
     criterion = (
         model.criterion if not mol_atom_bond else next(c for c in model.criterions if c is not None)
     )
-    bounded = any(
-        isinstance(criterion, LossFunctionRegistry[loss_function])
-        for loss_function in LossFunctionRegistry.keys()
-        if "bounded" in loss_function
-    )
+    bounded = isinstance(criterion, BoundedMixin)
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,

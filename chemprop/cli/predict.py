@@ -23,8 +23,8 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     make_dataset,
 )
-from chemprop.models.utils import load_MAB_model, load_model, load_output_columns
-from chemprop.nn.metrics import LossFunctionRegistry
+from chemprop.models.utils import load_model, load_output_columns
+from chemprop.nn.metrics import BoundedMixin
 from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,
@@ -263,11 +263,7 @@ def make_prediction_for_models(
 ):
     mol_atom_bond = False
     models = [load_model(model_path, multicomponent) for model_path in model_paths]
-    bounded = any(
-        isinstance(models[0].criterion, LossFunctionRegistry[loss_function])
-        for loss_function in LossFunctionRegistry.keys()
-        if "bounded" in loss_function
-    )
+    bounded = isinstance(models[0].criterion, BoundedMixin)
     output_columns = load_output_columns(model_paths[0])
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -468,14 +464,7 @@ def make_MAB_prediction_for_models(
 ):
     mol_atom_bond = True
     models = [load_model(model_path, mol_atom_bond=True) for model_path in model_paths]
-    bounded = any(
-        isinstance(
-            next(c for c in models[0].criterions if c is not None),
-            LossFunctionRegistry[loss_function],
-        )
-        for loss_function in LossFunctionRegistry.keys()
-        if "bounded" in loss_function
-    )
+    bounded = isinstance(next(c for c in models[0].criterions if c is not None), BoundedMixin)
 
     mol_output_cols, atom_output_cols, bond_output_cols = load_output_columns(model_paths[0])
 
