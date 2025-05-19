@@ -358,7 +358,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "--mol-target-columns",
         nargs="+",
-        help="Names of the columns containing mol target values. (When training on mol and atom/bond targets simultaneously.)",
+        help="Names of the columns containing mol target values (when training on mol and atom/bond targets simultaneously).",
     )
     train_data_args.add_argument(
         "--atom-target-columns",

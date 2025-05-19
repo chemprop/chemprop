@@ -541,7 +541,6 @@ def main(args: Namespace):
 
     input_transforms = normalize_inputs(train_dset, val_dset, args)
 
-    output_transform = [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else None
     if "regression" in args.task_type:
         if isinstance(train_dset, MolAtomBondDataset):
             output_transform = []
@@ -563,6 +562,10 @@ def main(args: Namespace):
             val_dset.normalize_targets(output_scaler)
             logger.info(f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}")
             output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
+    else:
+        output_transform = (
+            [None, None, None] if isinstance(train_dset, MolAtomBondDataset) else None
+        )
 
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed

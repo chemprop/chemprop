@@ -493,12 +493,10 @@ def make_MAB_prediction_for_models(
     trainer = pl.Trainer(
         logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
     )
-    test_individual_preds, test_individual_uncs = uncertainty_estimator(
+    test_individual_predss, test_individual_uncss = uncertainty_estimator(
         test_loader, models, trainer
     )
 
-    test_individual_predss = test_individual_preds
-    test_individual_uncss = test_individual_uncs
     test_predss = [
         torch.mean(test_individual_preds, dim=0) if test_individual_preds is not None else None
         for test_individual_preds in test_individual_predss

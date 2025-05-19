@@ -157,7 +157,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--bond-descriptors-path",
         nargs="+",
         action="append",
-        help="Path to additional bond descriptors to use with the learned bond representations after message passing. The file follows the same format as `--atom-descriptors-path`, i.e. the file is created using `np.savez('atom_descriptors.npz', *E_ds)` where `E_ds` is a list of 2D numpy arrays with shape `n_atoms x n_descriptors`.",
+        help="Path to additional bond descriptors to use with the learned bond representations after message passing. The file follows the same format as `--atom-descriptors-path`, i.e. the file is created using `np.savez('bond_descriptors.npz', *E_ds)` where `E_ds` is a list of 2D numpy arrays with shape `n_bonds x n_descriptors`.",
     )
     parser.add_argument(
         "--constraints-path",
@@ -179,8 +179,7 @@ def process_common_args(args: Namespace) -> Namespace:
     #         message="`--features-generators` has been renamed to `--molecule-featurizers`.",
     #     )
 
-    # Bond descriptors are not supported for multi-component data, but it seems easier to treat it
-    #  like atom descriptors
+    # Bond descriptors are not supported for multi-component, but we treat it like atom descriptors
     for key in [
         "atom_features_path",
         "atom_descriptors_path",
@@ -198,7 +197,7 @@ def process_common_args(args: Namespace) -> Namespace:
             if len(ind_path) > 2:
                 raise ArgumentError(
                     argument=None,
-                    message="Too many arguments were given for atom features/descriptors or bond features. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
+                    message="Too many arguments were given for atom/bond features/descriptors. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
                 )
 
             if len(ind_path) == 1:
@@ -210,7 +209,7 @@ def process_common_args(args: Namespace) -> Namespace:
             if ind_path_dict.get(int(ind)):
                 raise ArgumentError(
                     argument=None,
-                    message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",
+                    message=f"Duplicate atom/bond features/descriptors given for molecule index {ind}",
                 )
 
             ind_path_dict[int(ind)] = Path(path)
