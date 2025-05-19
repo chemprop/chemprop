@@ -41,7 +41,7 @@ Another option is :code:`learning_rate` which includes:
 
 Other individual search parameters include:
 
- * :code:`activation` The activation function used in the MPNN & FFN layers. Choices include ``relu``, ``leakyrelu``, ``prelu``, ``tanh``, and ``elu``
+ * :code:`activation` The activation function used in the MPNN & FFN layers. Choices include ``relu``, ``leakyrelu``, ``prelu``, ``tanh``, and ``elu`` (``selu`` is no longer supported since v2.2.0)
  * :code:`aggregation` Aggregation mode used during molecule-level predictor. Choices include ``mean``, ``sum``, ``norm``
  * :code:`aggregation_norm` For ``norm`` aggregation, the normalization factor by which atomic features are divided
  * :code:`batch_size` Batch size for dataloader
