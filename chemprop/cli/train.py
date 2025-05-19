@@ -509,39 +509,44 @@ def validate_train_args(args):
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
         )
 
+    local_foundation = False
     if (fm_name := args.from_foundation) is not None:
         try:
             FoundationModels.get(fm_name)
         except KeyError:
-            raise ArgumentError(
-                argument=None,
-                message=f"Unrecognized foundation model name {fm_name}! Should be one of: {', '.join((FoundationModels.keys()))}",
-            ) from KeyError
+            if not Path(fm_name).exists():
+                raise ArgumentError(
+                    argument=None,
+                    message=f"Unrecognized foundation model name {fm_name}! Should be one of: {', '.join((FoundationModels.keys()))} or a local file (double check your filepath).",
+                ) from KeyError
+            else:
+                local_foundation=True
         if args.checkpoint is not None:
             raise ArgumentError(
                 argument=None,
                 message="--checkpoint and --from-foundation are mutually exclusive arguments",
             )
         # model-specific validation
-        match FoundationModels.get(fm_name):
-            case FoundationModels.CHEMELEON:
-                if (
-                    mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)
-                ) != AtomFeatureMode.V2:
-                    raise ArgumentError(
-                        argument=None,
-                        message=f"CheMeleon must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
-                    )
-                for arg_value, arg_name in (
-                    (args.atom_features_path, "--atom-features-path"),
-                    (args.atom_descriptors_path, "--atom-descriptors-path"),
-                    (args.bond_features_path, "--bond-features-path"),
-                ):
-                    if arg_value is not None:
+        if not local_foundation:
+            match FoundationModels.get(fm_name):
+                case FoundationModels.CHEMELEON:
+                    if (
+                        mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)
+                    ) != AtomFeatureMode.V2:
                         raise ArgumentError(
                             argument=None,
-                            message=f"CheMeleon does not support passing {arg_name}"
+                            message=f"CheMeleon must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
                         )
+                    for arg_value, arg_name in (
+                        (args.atom_features_path, "--atom-features-path"),
+                        (args.atom_descriptors_path, "--atom-descriptors-path"),
+                        (args.bond_features_path, "--bond-features-path"),
+                    ):
+                        if arg_value is not None:
+                            raise ArgumentError(
+                                argument=None,
+                                message=f"CheMeleon does not support passing {arg_name}"
+                            )
         _msg = ""
         for arg_value, arg_name in (
             (args.message_hidden_dim, "--message-hidden-dim"),
@@ -995,37 +1000,52 @@ def build_model(
         mpnn_cls = MPNN
 
     if from_foundation is not None:
-        match FoundationModels.get(from_foundation):
-            case FoundationModels.CHEMELEON:
-                ckpt_dir = Path().home() / ".chemprop"
-                ckpt_dir.mkdir(exist_ok=True)
-                model_path = ckpt_dir / "chemeleon_mp.pt"
-                if not model_path.exists():
-                    logger.info(
-                        f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15460715) to {model_path}"
-                    )
-                    urlretrieve(
-                        r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt",
-                        model_path,
-                    )
-                else:
-                    logger.info(f"Loading cached CheMeleon from {model_path}")
-                logger.info(
-                    "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
+        if Path(from_foundation).exists():  # local model
+            if is_multi:
+                mp_blocks = []
+                for _ in range(train_dset.n_components):
+                    foundation = MPNN.load_from_file(from_foundation)  # must re-load for each, no good way to copy
+                    mp_blocks.append(foundation.message_passing)
+                mp_block = MulticomponentMessagePassing(mp_blocks,
+                    train_dset.n_components,
+                    args.mpn_shared,
                 )
-                chemeleon_mp = torch.load(model_path, weights_only=True)
-                if is_multi:
-                    mp_blocks = [BondMessagePassing(**chemeleon_mp['hyper_parameters']) for _ in range(train_dset.n_components)]
-                    for block in mp_blocks:
-                        block.load_state_dict(chemeleon_mp['state_dict'])
-                    mp_block = MulticomponentMessagePassing(mp_blocks,
-                        train_dset.n_components,
-                        args.mpn_shared,
+            else:
+                foundation = MPNN.load_from_file(from_foundation)
+                mp_block = foundation.message_passing
+            agg = foundation.agg
+        else:  # remote model
+            match FoundationModels.get(from_foundation):
+                case FoundationModels.CHEMELEON:
+                    ckpt_dir = Path().home() / ".chemprop"
+                    ckpt_dir.mkdir(exist_ok=True)
+                    model_path = ckpt_dir / "chemeleon_mp.pt"
+                    if not model_path.exists():
+                        logger.info(
+                            f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15460715) to {model_path}"
+                        )
+                        urlretrieve(
+                            r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt",
+                            model_path,
+                        )
+                    else:
+                        logger.info(f"Loading cached CheMeleon from {model_path}")
+                    logger.info(
+                        "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
                     )
-                else:
-                    mp_block = BondMessagePassing(**chemeleon_mp['hyper_parameters'])
-                    mp_block.load_state_dict(chemeleon_mp['state_dict'])
-                agg = Factory.build(AggregationRegistry["mean"])
+                    chemeleon_mp = torch.load(model_path, weights_only=True)
+                    if is_multi:
+                        mp_blocks = [BondMessagePassing(**chemeleon_mp['hyper_parameters']) for _ in range(train_dset.n_components)]
+                        for block in mp_blocks:
+                            block.load_state_dict(chemeleon_mp['state_dict'])
+                        mp_block = MulticomponentMessagePassing(mp_blocks,
+                            train_dset.n_components,
+                            args.mpn_shared,
+                        )
+                    else:
+                        mp_block = BondMessagePassing(**chemeleon_mp['hyper_parameters'])
+                        mp_block.load_state_dict(chemeleon_mp['state_dict'])
+                    agg = Factory.build(AggregationRegistry["mean"])
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:

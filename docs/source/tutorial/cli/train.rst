@@ -226,8 +226,9 @@ Unlike Transfer Learning, this does **not** require that the downstream task's F
 Users can access pretrained foundation models by using the :code:`--from-foundation <name>` command line argument. Currently, the following foundation models are available in ChemProp:
 
  * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1MM molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
+ * :code:`<your-model>.pt` specify a filepath for a ChemProp model trained via the CLI and the Message Passing will be re-used with a new FFN
 
-The first time a given model is requested it will automatically be downloaded for you and saved to a directory called `.chemprop` in your home directory.
+The first time a given model is requested it will automatically be downloaded for you and saved to a directory called `.chemprop` in your home directory (except for your own models).
 
 .. _train-on-reactions:
 

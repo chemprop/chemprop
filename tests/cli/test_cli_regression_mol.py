@@ -93,6 +93,28 @@ def test_train_quick_from_foundation(monkeypatch, data_path):
             main()
 
 
+def test_train_quick_from_local_foundation(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+        "--from-foundation",
+        model_path,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_train_config(monkeypatch, config_path, tmp_path):
     args = [
         "chemprop",
