@@ -530,8 +530,19 @@ def validate_train_args(args):
                 ) != AtomFeatureMode.V2:
                     raise ArgumentError(
                         argument=None,
-                        message=f"Foundation model {fm_name} must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
+                        message=f"CheMeleon must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
                     )
+                for arg_value, arg_name in (
+                    (args.atom_features_path, "--atom-features-path"),
+                    (args.atom_descriptors_path, "--atom-descriptors-path"),
+                    (args.bond_features_path, "--bond-features-path"),
+                ):
+                    if arg_value is not None:
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"CheMeleon does not support passing {arg_name}"
+                        )
+        _msg = ""
         for arg_value, arg_name in (
             (args.message_hidden_dim, "--message-hidden-dim"),
             (args.message_bias, "--message-bias"),
@@ -544,9 +555,9 @@ def validate_train_args(args):
             (args.atom_messages, "--atom-messages"),
         ):
             if arg_value is not None:
-                logger.warning(
-                    f"Passed value `{arg_name} {arg_value}` (possibly default) is overwritten by `--from-foundation {fm_name}`!"
-                )
+                _msg += f"\n`{arg_name} {arg_value}`"
+        if _msg:
+            logger.warning("The following arguments are ignored when making the message passing layer because it is initialized from a foundation model:" + _msg)
 
     # TODO: model_frzn is deprecated and then remove in v2.2
     if args.checkpoint is not None and args.model_frzn is not None:
@@ -991,10 +1002,10 @@ def build_model(
                 model_path = ckpt_dir / "chemeleon_mp.pt"
                 if not model_path.exists():
                     logger.info(
-                        f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15426601) to {model_path}"
+                        f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15460715) to {model_path}"
                     )
                     urlretrieve(
-                        r"https://zenodo.org/records/15426601/files/chemeleon_mp.pt",
+                        r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt",
                         model_path,
                     )
                 else:
@@ -1002,21 +1013,18 @@ def build_model(
                 logger.info(
                     "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
                 )
+                chemeleon_mp = torch.load(model_path, weights_only=True)
                 if is_multi:
-                    mp_block = MulticomponentMessagePassing(
-                        [
-                            torch.load(
-                                model_path, map_location="cpu", weights_only=False
-                            )
-                            for _ in range(train_dset.n_components)
-                        ],
+                    mp_blocks = [BondMessagePassing(**chemeleon_mp['hyper_parameters']) for _ in range(train_dset.n_components)]
+                    for block in mp_blocks:
+                        block.load_state_dict(chemeleon_mp['state_dict'])
+                    mp_block = MulticomponentMessagePassing(mp_blocks,
                         train_dset.n_components,
                         args.mpn_shared,
                     )
                 else:
-                    mp_block = torch.load(
-                        ckpt_dir / "chemeleon_mp.pt", map_location="cpu", weights_only=False
-                    )
+                    mp_block = BondMessagePassing(**chemeleon_mp['hyper_parameters'])
+                    mp_block.load_state_dict(chemeleon_mp['state_dict'])
                 agg = Factory.build(AggregationRegistry["mean"])
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
