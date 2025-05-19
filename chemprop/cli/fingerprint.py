@@ -161,37 +161,7 @@ def make_fingerprint_for_model(
     logger.info(model)
 
     with torch.no_grad():
-        if mol_atom_bond:
-            encodings = [
-                model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
-                for batch in test_loader
-            ]
-            H = [
-                torch.cat(encoding, 0).numpy() if encoding[0] is not None else None
-                for encoding in zip(*encodings)
-            ]
-            for H, kind in zip(H, ["mol", "atom", "bond"]):
-                if H is None:
-                    continue
-                match output_path.suffix:
-                    case ".npz":
-                        np.savez(
-                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"), H=H
-                        )
-                    case ".csv":
-                        fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
-                        df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
-                        df_fingerprints.to_csv(
-                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"),
-                            index=False,
-                        )
-                    case _:
-                        raise ArgumentError(
-                            argument=None,
-                            message=f"Output must be a CSV or npz file. Got {args.output}.",
-                        )
-            logger.info(f"Fingerprints saved to '{output_path}'")
-        else:
+        if not mol_atom_bond:
             if multicomponent:
                 encodings = [
                     model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
@@ -214,7 +184,36 @@ def make_fingerprint_for_model(
                 raise ArgumentError(
                     argument=None, message=f"Output must be a CSV or npz file. Got {args.output}."
                 )
-            logger.info(f"Fingerprints saved to '{output_path}'")
+        else:
+            encodings = [
+                model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
+                for batch in test_loader
+            ]
+            Hs = [
+                torch.cat(encoding, 0).numpy() if encoding[0] is not None else None
+                for encoding in zip(*encodings)
+            ]
+            for H, kind in zip(Hs, ["mol", "atom", "bond"]):
+                if H is None:
+                    continue
+                match output_path.suffix:
+                    case ".npz":
+                        np.savez(
+                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"), H=H
+                        )
+                    case ".csv":
+                        fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
+                        df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
+                        df_fingerprints.to_csv(
+                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"),
+                            index=False,
+                        )
+                    case _:
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"Output must be a CSV or npz file. Got {args.output}.",
+                        )
+        logger.info(f"Fingerprints saved to '{output_path}'")
 
 
 def main(args):
