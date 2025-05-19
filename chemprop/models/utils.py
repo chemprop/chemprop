@@ -24,18 +24,15 @@ def save_model(
     )
 
 
-def load_model(path: PathLike, multicomponent: bool) -> MPNN:
-    if multicomponent:
-        model = MulticomponentMPNN.load_from_file(path, map_location=torch.device("cpu"))
-    else:
-        model = MPNN.load_from_file(path, map_location=torch.device("cpu"))
+def load_model(
+    path: PathLike, multicomponent: bool = False, mol_atom_bond: bool = False
+) -> MPNN | MulticomponentMPNN | MolAtomBondMPNN:
+    model_cls = [
+        [MPNN, MulticomponentMPNN],
+        [MolAtomBondMPNN, "Atom/Bond predictions not supported for multicomponent"],
+    ][mol_atom_bond][multicomponent]
 
-    return model
-
-
-def load_MAB_model(path: PathLike) -> MolAtomBondMPNN:
-    model = MolAtomBondMPNN.load_from_file(path, map_location=torch.device("cpu"))
-    return model
+    return model_cls.load_from_file(path, map_location=torch.device("cpu"))
 
 
 def load_output_columns(

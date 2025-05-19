@@ -16,7 +16,7 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     make_dataset,
 )
-from chemprop.models import load_MAB_model, load_model
+from chemprop.models import load_model
 from chemprop.nn.metrics import LossFunctionRegistry
 
 logger = logging.getLogger(__name__)
@@ -86,25 +86,17 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, mol_atom_bond: bool, output_path: Path
 ):
-    if mol_atom_bond:
-        model = load_MAB_model(model_path)
-        bounded = any(
-            isinstance(
-                next(c for c in model.criterions if c is not None),
-                LossFunctionRegistry[loss_function],
-            )
-            for loss_function in LossFunctionRegistry.keys()
-            if "bounded" in loss_function
-        )
-    else:
-        model = load_model(model_path, multicomponent)
-        bounded = any(
-            isinstance(model.criterion, LossFunctionRegistry[loss_function])  # maybe fix for mixed?
-            for loss_function in LossFunctionRegistry.keys()
-            if "bounded" in loss_function
-        )
-
+    model = load_model(model_path, multicomponent, mol_atom_bond)
     model.eval()
+
+    criterion = (
+        model.criterion if not mol_atom_bond else next(c for c in model.criterions if c is not None)
+    )
+    bounded = any(
+        isinstance(criterion, LossFunctionRegistry[loss_function])
+        for loss_function in LossFunctionRegistry.keys()
+        if "bounded" in loss_function
+    )
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,

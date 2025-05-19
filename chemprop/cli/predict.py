@@ -467,7 +467,7 @@ def make_MAB_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
     mol_atom_bond = True
-    models = [load_MAB_model(model_path) for model_path in model_paths]
+    models = [load_model(model_path, mol_atom_bond=True) for model_path in model_paths]
     bounded = any(
         isinstance(
             next(c for c in models[0].criterions if c is not None),
