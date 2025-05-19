@@ -1,8 +1,11 @@
 from enum import auto
+import logging
 
 from torch import nn
 
 from chemprop.utils.utils import EnumMapping
+
+logger = logging.getLogger(__name__)
 
 
 class Activation(EnumMapping):
@@ -28,10 +31,13 @@ def get_activation_function(activation: str | nn.Module | Activation) -> nn.Modu
     nn.Module
         The activation function module.
     """
+    if activation == "selu":
+        logger.warning('Accepting activation="selu" for backward compatibility.')
+        activation = nn.modules.activation.SELU()
     if isinstance(activation, nn.Module):
         if isinstance(activation, nn.modules.activation.SELU):
-            raise TypeError(
-                "Support for SELU activation (intended for self-normalizing networks) has been removed in v2.2.0"
+            logger.warning(
+                "Chemprop does not support self-normalization. Using SELU activation is not enough to achieve it."
             )
         return activation
     match Activation.get(activation):
