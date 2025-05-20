@@ -513,12 +513,7 @@ def main(args: Namespace):
 
     args = update_args_with_config(args, best_config)
 
-    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
-        setattr(args, key, None)
     args = TrainSubcommand.parser.parse_known_args(namespace=args)[0]
-    args = process_common_args(args)
-    args = process_train_args(args)
-
     save_config(TrainSubcommand.parser, args, best_config_save_path)
 
     logger.info(
