@@ -155,7 +155,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     transfer_args.add_argument(
         "--from-foundation",
-        help=f"Name of pretrained foundation model used to initialize message passing. One of: {', '.join((FoundationModels.keys()))}",
+        help=f"Name of pretrained foundation model used to initialize message passing. One of: {', '.join((FoundationModels.keys()))}, or a path to a local model file.",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
