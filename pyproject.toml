@@ -67,10 +67,13 @@ recursive = true
 aggressive = 2
 max_line_length = 100
 
-
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --ignore=docs --cov chemprop"
 testpaths = ["chemprop", "tests"]
+markers = [
+    "integration",
+    "CLI",
+]
 
 [tool.isort]
 profile = "black"
