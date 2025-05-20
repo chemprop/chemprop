@@ -129,19 +129,19 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--atom-features-path",
         nargs="+",
-        action="append",
+        action="extend",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom features to supply before message passing (e.g., ``--atom-features-path 0 /path/to/features_0.npz``) indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-features-path [...] --atom-features-path [...]``).",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
         nargs="+",
-        action="append",
+        action="extend",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom descriptors to supply after message passing (e.g., ``--atom-descriptors-path 0 /path/to/descriptors_0.npz`` indicates that the descriptors at the given path should be supplied to the 0-th component. To supply additional descriptors for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-descriptors-path [...] --atom-descriptors-path [...]``).",
     )
     featurization_args.add_argument(
         "--bond-features-path",
         nargs="+",
-        action="append",
+        action="extend",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path [...] --bond-features-path [...]``).",
     )
     # TODO: Add in v2.2
@@ -167,37 +167,32 @@ def process_common_args(args: Namespace) -> Namespace:
         if not inds_paths:
             continue
 
-        # If a config file is used, inds_paths looks like [["0"], ["/path/to/features_0.npz"], ...]
-        if len(inds_paths) != 1 and all(len(item) == 1 for item in inds_paths):
-            ind_path_dict = {
-                int(ind[0]): Path(path[0]) for ind, path in zip(inds_paths[::2], inds_paths[1::2])
-            }
-        # Otherwise [["0", "/path/to/features_0.npz"], ...] or ["/path/to/features_0.npz"]
-        else:
-            ind_path_dict = {}
+        if len(inds_paths) == 1:
+            setattr(args, key, {0: Path(inds_paths[0])})
+            continue
 
-            for ind_path in inds_paths:
-                if len(ind_path) > 2:
-                    raise ArgumentError(
-                        argument=None,
-                        message="Too many arguments were given for atom features/descriptors or bond features. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule).",
-                    )
+        if len(inds_paths) % 2 != 0:
+            raise ArgumentError(
+                argument=None,
+                message=f"Invalid argument list for {key}. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
+            )
 
-                if len(ind_path) == 1:
-                    ind = 0
-                    path = ind_path[0]
-                else:
-                    ind, path = ind_path
+        try:
+            inds = [int(ind) for ind in inds_paths[::2]]
+        except ValueError:
+            raise ArgumentError(
+                argument=None,
+                message=f"Invalid argument list for {key}. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
+            )
+        paths = [Path(path) for path in inds_paths[1::2]]
 
-                if ind_path_dict.get(int(ind), None):
-                    raise ArgumentError(
-                        argument=None,
-                        message=f"Duplicate atom features/descriptors or bond features given for molecule index {ind}",
-                    )
+        if len(set(inds)) != len(inds):
+            raise ArgumentError(
+                argument=None,
+                message=f"Duplicate {key} received for one of the molecules. Got {inds_paths}.",
+            )
 
-                ind_path_dict[int(ind)] = Path(path)
-
-        setattr(args, key, ind_path_dict)
+        setattr(args, key, {ind: path for ind, path in zip(inds, paths)})
 
     return args
 
