@@ -48,8 +48,6 @@ def make_split_indices(
         The random seed passed to astartes, by default 0
     num_replicates : int, optional
         Number of replicates, by default 1
-    num_folds : None, optional
-        This argument was removed in v2.1 - use `num_replicates` instead.
 
     Returns
     -------
@@ -66,12 +64,6 @@ def make_split_indices(
     ValueError
         Unsupported split method requested
     """
-    if num_folds is not None:
-        raise RuntimeError("This argument was removed in v2.1 - use `num_replicates` instead.")
-    if num_replicates == 1:
-        logger.warning(
-            "The return type of make_split_indices has changed in v2.1 - see help(make_split_indices)"
-        )
     if (num_splits := len(sizes)) != 3:
         raise ValueError(
             f"Specify sizes for train, validation, and test (got {num_splits} values)."
