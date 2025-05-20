@@ -130,19 +130,19 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--atom-features-path",
         nargs="+",
         action="extend",
-        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom features to supply before message passing (e.g., ``--atom-features-path 0 /path/to/features_0.npz``) indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-features-path [...] --atom-features-path [...]``).",
+        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom features to supply before message passing (e.g., ``--atom-features-path 0 /path/to/features_0.npz``) indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-features-path 0 path_zero --atom-features-path 1 path_one``) or pass each two-tuple in a series (e.g., ``--atom-features-path 0 path_zero 1 path_one``).",
     )
     featurization_args.add_argument(
         "--atom-descriptors-path",
         nargs="+",
         action="extend",
-        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom descriptors to supply after message passing (e.g., ``--atom-descriptors-path 0 /path/to/descriptors_0.npz`` indicates that the descriptors at the given path should be supplied to the 0-th component. To supply additional descriptors for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-descriptors-path [...] --atom-descriptors-path [...]``).",
+        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional atom descriptors to supply after message passing (e.g., ``--atom-descriptors-path 0 /path/to/descriptors_0.npz`` indicates that the descriptors at the given path should be supplied to the 0-th component. To supply additional descriptors for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--atom-descriptors-path 0 path_zero --atom-descriptors-path 1 path_one``) or pass each two-tuple in a series (e.g., ``--atom-descriptors-path 0 path_zero 1 path_one``).",
     )
     featurization_args.add_argument(
         "--bond-features-path",
         nargs="+",
         action="extend",
-        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path [...] --bond-features-path [...]``).",
+        help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path 0 path_zero --bond-features-path 1 path_one``) or pass each two-tuple in a series (e.g., ``--bond-features-path 0 path_zero 1 path_one``).",
     )
     # TODO: Add in v2.2
     # parser.add_argument(
@@ -174,7 +174,7 @@ def process_common_args(args: Namespace) -> Namespace:
         if len(inds_paths) % 2 != 0:
             raise ArgumentError(
                 argument=None,
-                message=f"Invalid argument list for {key}. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
+                message=f"Invalid argument list for --{key.replace('_', '-')}. It should be either a series of two-tuples of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
             )
 
         try:
@@ -182,14 +182,14 @@ def process_common_args(args: Namespace) -> Namespace:
         except ValueError:
             raise ArgumentError(
                 argument=None,
-                message=f"Invalid argument list for {key}. It should be either a two-tuple of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
+                message=f"Invalid argument list for --{key.replace('_', '-')}. It should be either a series of two-tuples of molecule index and a path, or a single path (assumed to be the 0-th molecule). Got {inds_paths}.",
             )
         paths = [Path(path) for path in inds_paths[1::2]]
 
         if len(set(inds)) != len(inds):
             raise ArgumentError(
                 argument=None,
-                message=f"Duplicate {key} received for one of the molecules. Got {inds_paths}.",
+                message=f"Duplicate --{key.replace('_', '-')} received for one of the molecules. Got {inds_paths}.",
             )
 
         setattr(args, key, {ind: path for ind, path in zip(inds, paths)})
