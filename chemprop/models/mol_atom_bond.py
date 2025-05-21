@@ -329,7 +329,7 @@ class MolAtomBondMPNN(pl.LightningModule):
                 f"{kind}_train_loss",
                 predictor.criterion,
                 batch_size=targets.shape[0],
-                prog_bar=True,
+                prog_bar=False,
                 on_epoch=True,
             )
 
@@ -396,7 +396,7 @@ class MolAtomBondMPNN(pl.LightningModule):
             targets = targets.nan_to_num(nan=0.0)
             vl = metrics[-1](preds, targets, mask, weights, lt_mask, gt_mask)
             total_vl += vl
-            self.log(f"{kind}_val_loss", metrics[-1], batch_size=targets.shape[0], prog_bar=True)
+            self.log(f"{kind}_val_loss", metrics[-1], batch_size=targets.shape[0], prog_bar=False)
 
         n_datapoints = bmg.batch[-1].item() + 1
         self.log("val_loss", total_vl, batch_size=n_datapoints, prog_bar=True)
