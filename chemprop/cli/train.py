@@ -1,10 +1,12 @@
 from copy import deepcopy
+from enum import auto
 from io import StringIO
 import json
 import logging
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from urllib.request import urlretrieve
 
 from configargparse import ArgumentError, ArgumentParser, Namespace
 from lightning import pytorch as pl
@@ -45,6 +47,7 @@ from chemprop.data import (
     split_data_by_indices,
 )
 from chemprop.data.datasets import _MolGraphDatasetMixin
+from chemprop.featurizers.atom import AtomFeatureMode
 from chemprop.models import MPNN, MulticomponentMPNN, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.message_passing import (
@@ -55,6 +58,7 @@ from chemprop.nn.message_passing import (
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
+from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +66,10 @@ logger = logging.getLogger(__name__)
 _CV_REMOVAL_ERROR = (
     "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
 )
+
+
+class FoundationModels(EnumMapping):
+    CHEMELEON = auto()
 
 
 class TrainSubcommand(Subcommand):
@@ -144,6 +152,10 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=0,
         help="Freeze the first ``n`` layers of the FFN from the checkpoint model (specified by ``--checkpoint``). The message passing layer should also be frozen with ``--freeze-encoder``.",
+    )
+    transfer_args.add_argument(
+        "--from-foundation",
+        help=f"Name of pretrained foundation model used to initialize message passing. One of: {', '.join((FoundationModels.keys()))}, or a path to a local model file.",
     )
     # transfer_args.add_argument(
     #     "--freeze-first-only",
@@ -496,6 +508,64 @@ def validate_train_args(args):
             argument=None,
             message=f"The number of epochs should be higher than the number of epochs during warmup. Got {args.epochs} epochs and {args.warmup_epochs} warmup epochs",
         )
+
+    local_foundation = False
+    if (fm_name := args.from_foundation) is not None:
+        try:
+            FoundationModels.get(fm_name)
+        except KeyError:
+            if not Path(fm_name).exists():
+                raise ArgumentError(
+                    argument=None,
+                    message=f"Unrecognized foundation model name {fm_name}! Should be one of: {', '.join((FoundationModels.keys()))} or a local file (double check your filepath).",
+                ) from KeyError
+            else:
+                local_foundation = True
+        if args.checkpoint is not None:
+            raise ArgumentError(
+                argument=None,
+                message="--checkpoint and --from-foundation are mutually exclusive arguments",
+            )
+        # model-specific validation
+        if not local_foundation:
+            match FoundationModels.get(fm_name):
+                case FoundationModels.CHEMELEON:
+                    if (
+                        mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)
+                    ) != AtomFeatureMode.V2:
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"CheMeleon must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
+                        )
+                    for arg_value, arg_name in (
+                        (args.atom_features_path, "--atom-features-path"),
+                        (args.atom_descriptors_path, "--atom-descriptors-path"),
+                        (args.bond_features_path, "--bond-features-path"),
+                    ):
+                        if arg_value is not None:
+                            raise ArgumentError(
+                                argument=None,
+                                message=f"CheMeleon does not support passing {arg_name}",
+                            )
+        _msg = ""
+        for arg_value, arg_name in (
+            (args.message_hidden_dim, "--message-hidden-dim"),
+            (args.message_bias, "--message-bias"),
+            (args.depth, "--depth"),
+            (args.undirected, "--undirected"),
+            (args.dropout, "--dropout"),
+            (args.activation, "--activation"),
+            (args.aggregation, "--aggregation"),
+            (args.aggregation_norm, "--aggregation-norm"),
+            (args.atom_messages, "--atom-messages"),
+        ):
+            if arg_value is not None:
+                _msg += f"\n`{arg_name} {arg_value}`"
+        if _msg:
+            logger.warning(
+                "The following arguments are ignored when making the message passing layer because it is initialized from a foundation model:"
+                + _msg
+            )
 
     # TODO: model_frzn is deprecated and then remove in v2.2
     if args.checkpoint is not None and args.model_frzn is not None:
@@ -919,65 +989,118 @@ def build_model(
     train_dset: MolGraphDataset | MulticomponentDataset,
     output_transform: UnscaleTransform,
     input_transforms: tuple[ScaleTransform, list[GraphTransform], list[ScaleTransform]],
-) -> MPNN:
-    mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
-
+    from_foundation: FoundationModels | None = None,
+) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms = input_transforms
     if isinstance(train_dset, MulticomponentDataset):
-        mp_blocks = [
-            mp_cls(
-                train_dset.datasets[i].featurizer.atom_fdim,
-                train_dset.datasets[i].featurizer.bond_fdim,
+        is_multi = True
+        d_xd = train_dset.datasets[0].d_xd
+        n_tasks = train_dset.datasets[0].Y.shape[1]
+        mpnn_cls = MulticomponentMPNN
+    else:
+        is_multi = False
+        d_xd = train_dset.d_xd
+        n_tasks = train_dset.Y.shape[1]
+        mpnn_cls = MPNN
+
+    if from_foundation is not None:
+        if Path(from_foundation).exists():  # local model
+            if is_multi:
+                mp_blocks = []
+                for _ in range(train_dset.n_components):
+                    foundation = MPNN.load_from_file(
+                        from_foundation
+                    )  # must re-load for each, no good way to copy
+                    mp_blocks.append(foundation.message_passing)
+                mp_block = MulticomponentMessagePassing(
+                    mp_blocks, train_dset.n_components, args.mpn_shared
+                )
+            else:
+                foundation = MPNN.load_from_file(from_foundation)
+                mp_block = foundation.message_passing
+            agg = foundation.agg
+        else:  # remote model
+            match FoundationModels.get(from_foundation):
+                case FoundationModels.CHEMELEON:
+                    ckpt_dir = Path().home() / ".chemprop"
+                    ckpt_dir.mkdir(exist_ok=True)
+                    model_path = ckpt_dir / "chemeleon_mp.pt"
+                    if not model_path.exists():
+                        logger.info(
+                            f"Downloading CheMeleon Foundation model from Zenodo (https://zenodo.org/records/15460715) to {model_path}"
+                        )
+                        urlretrieve(
+                            r"https://zenodo.org/records/15460715/files/chemeleon_mp.pt", model_path
+                        )
+                    else:
+                        logger.info(f"Loading cached CheMeleon from {model_path}")
+                    logger.info(
+                        "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
+                    )
+                    chemeleon_mp = torch.load(model_path, weights_only=True)
+                    if is_multi:
+                        mp_blocks = [
+                            BondMessagePassing(**chemeleon_mp["hyper_parameters"])
+                            for _ in range(train_dset.n_components)
+                        ]
+                        for block in mp_blocks:
+                            block.load_state_dict(chemeleon_mp["state_dict"])
+                        mp_block = MulticomponentMessagePassing(
+                            mp_blocks, train_dset.n_components, args.mpn_shared
+                        )
+                    else:
+                        mp_block = BondMessagePassing(**chemeleon_mp["hyper_parameters"])
+                        mp_block.load_state_dict(chemeleon_mp["state_dict"])
+                    agg = Factory.build(AggregationRegistry["mean"])
+    else:
+        mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+        if is_multi:
+            mp_blocks = [
+                mp_cls(
+                    train_dset.datasets[i].featurizer.atom_fdim,
+                    train_dset.datasets[i].featurizer.bond_fdim,
+                    d_h=args.message_hidden_dim,
+                    d_vd=(
+                        train_dset.datasets[i].d_vd
+                        if isinstance(train_dset.datasets[i], MoleculeDataset)
+                        else 0
+                    ),
+                    bias=args.message_bias,
+                    depth=args.depth,
+                    undirected=args.undirected,
+                    dropout=args.dropout,
+                    activation=args.activation,
+                    V_d_transform=V_d_transforms[i],
+                    graph_transform=graph_transforms[i],
+                )
+                for i in range(train_dset.n_components)
+            ]
+            if args.mpn_shared:
+                if args.reaction_columns is not None and args.smiles_columns is not None:
+                    raise ArgumentError(
+                        argument=None,
+                        message="Cannot use shared MPNN with both molecule and reaction data.",
+                    )
+
+            mp_block = MulticomponentMessagePassing(
+                mp_blocks, train_dset.n_components, args.mpn_shared
+            )
+        else:
+            mp_block = mp_cls(
+                train_dset.featurizer.atom_fdim,
+                train_dset.featurizer.bond_fdim,
                 d_h=args.message_hidden_dim,
-                d_vd=(
-                    train_dset.datasets[i].d_vd
-                    if isinstance(train_dset.datasets[i], MoleculeDataset)
-                    else 0
-                ),
+                d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
                 bias=args.message_bias,
                 depth=args.depth,
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=args.activation,
-                V_d_transform=V_d_transforms[i],
-                graph_transform=graph_transforms[i],
+                V_d_transform=V_d_transforms[0],
+                graph_transform=graph_transforms[0],
             )
-            for i in range(train_dset.n_components)
-        ]
-        if args.mpn_shared:
-            if args.reaction_columns is not None and args.smiles_columns is not None:
-                raise ArgumentError(
-                    argument=None,
-                    message="Cannot use shared MPNN with both molecule and reaction data.",
-                )
+        agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
 
-        mp_block = MulticomponentMessagePassing(mp_blocks, train_dset.n_components, args.mpn_shared)
-        # NOTE(degraff): this if/else block should be handled by the init of MulticomponentMessagePassing
-        # if args.mpn_shared:
-        #     mp_block = MulticomponentMessagePassing(mp_blocks[0], n_components, args.mpn_shared)
-        # else:
-        d_xd = train_dset.datasets[0].d_xd
-        n_tasks = train_dset.datasets[0].Y.shape[1]
-        mpnn_cls = MulticomponentMPNN
-    else:
-        mp_block = mp_cls(
-            train_dset.featurizer.atom_fdim,
-            train_dset.featurizer.bond_fdim,
-            d_h=args.message_hidden_dim,
-            d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
-            bias=args.message_bias,
-            depth=args.depth,
-            undirected=args.undirected,
-            dropout=args.dropout,
-            activation=args.activation,
-            V_d_transform=V_d_transforms[0],
-            graph_transform=graph_transforms[0],
-        )
-        d_xd = train_dset.d_xd
-        n_tasks = train_dset.Y.shape[1]
-        mpnn_cls = MPNN
-
-    agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
     predictor_cls = PredictorRegistry[args.task_type]
     if args.loss_function is not None:
         task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
@@ -1080,7 +1203,9 @@ def train_model(
                     model.predictor.ffn[idx].requires_grad_(False)
                     model.predictor.ffn[idx + 1].eval()
         else:
-            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+            model = build_model(
+                args, train_loader.dataset, output_transform, input_transforms, args.from_foundation
+            )
         logger.info(model)
 
         try:
