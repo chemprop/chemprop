@@ -87,9 +87,9 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--add-h", action="store_true", help="Whether hydrogens should be added to the mol graph"
     )
     data_args.add_argument(
-        "--ignore-chirality",
+        "--ignore-stereo",
         action="store_true",
-        help="Ignore chirality information in the input SMILES",
+        help="Ignore stereochemical information in the input SMILES",
     )
     featurization_args.add_argument(
         "--molecule-featurizers",
