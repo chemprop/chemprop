@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 UNSUPPORTED_METRICS = {"balanced_accuracy", "precision", "quantile", "recall"}
+RENAMED_LOSS_FUNCTIONS = {"quantile_interval": "quantile"}
 
 
 def get_ffn_info(model_v1_dict: dict) -> dict:
@@ -30,12 +31,12 @@ def get_ffn_info(model_v1_dict: dict) -> dict:
 
     # loss_function was added in #238
     loss_function = getattr(args_v1, "loss_function", None)
+    loss_function = RENAMED_LOSS_FUNCTIONS.get(loss_function, loss_function)
     if loss_function in [None, *loss_fn_defaults.values()]:
         predictor = args_v1.dataset_type
         loss_function = loss_fn_defaults[predictor]
-    elif loss_function == "quantile_interval":
-        predictor = "regression-quantile"
-        loss_function = "quantile"
+    elif loss_function in ["mve", "evidential", "quantile"]:
+        predictor = f"regression-{loss_function}"
     else:
         raise NotImplementedError(
             f"Support for loss function '{loss_function}' has not been implemented."
@@ -60,12 +61,15 @@ def get_ffn_info(model_v1_dict: dict) -> dict:
 
     kwargs = {}
     loss_vars = {}
-    if loss_function == "quantile":
-        alpha = args_v1.quantile_loss_alpha
-        q = alpha / 2
-        kwargs["alpha"] = alpha
-        loss_vars["bounds"] = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
-        loss_vars["tau"] = torch.tensor([[q, 1 - q], [q - 1, -q]]).view(2, 2, 1, 1)
+    match loss_function:
+        case "quantile":
+            alpha = args_v1.quantile_loss_alpha
+            q = alpha / 2
+            kwargs["alpha"] = alpha
+            loss_vars["bounds"] = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
+            loss_vars["tau"] = torch.tensor([[q, 1 - q], [q - 1, -q]]).view(2, 2, 1, 1)
+        case "evidential":
+            kwargs["v_kl"] = args_v1.evidential_regularization
 
     return {
         "predictor_class": PredictorRegistry[predictor],
