@@ -10,6 +10,11 @@ from chemprop.data.datasets import MoleculeDataset
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.featurizers.molgraph.molecule import SimpleMoleculeMolGraphFeaturizer
 from chemprop.models.model import MPNN
+from chemprop.uncertainty.estimator import (
+    EvidentialTotalEstimator,
+    MVEEstimator,
+    QuantileRegressionEstimator,
+)
 from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 
@@ -67,3 +72,48 @@ def test_converter_v1_4(tmp_path, example_model_v1_4_path):
 
     convert_model_file_v1_to_v2(example_model_v1_4_path, model_v2_save_path)
     assert model_v2_save_path.exists()
+
+
+def _retrieve_model_v1_prediction_with_uncertainty(data_dir, method):
+    path = data_dir / f"example_model_v1_{method}_regression_prediction.csv"
+
+    with open(path, "r", encoding="utf-8") as fid:
+        reader = csv.reader(fid)
+        next(reader)
+        smis, ys, uncs = zip(*[(smi, float(score), float(unc)) for smi, score, unc in reader])
+
+    featurizer = SimpleMoleculeMolGraphFeaturizer(atom_featurizer=MultiHotAtomFeaturizer.v1())
+
+    ys = np.array(ys).reshape(-1, 1)
+    uncs = np.array(uncs).reshape(-1, 1)
+    test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
+    test_dset = MoleculeDataset(test_data, featurizer)
+
+    test_loader = build_dataloader(test_dset, shuffle=False)
+    return ys, uncs, test_loader
+
+
+@pytest.mark.parametrize(
+    ("method", "estimator"),
+    [
+        ("mve", MVEEstimator()),
+        ("evidential", EvidentialTotalEstimator()),
+        ("quantile", QuantileRegressionEstimator()),
+    ],
+)
+def test_converter_with_uncertainty_method(data_dir, tmp_path, method, estimator):
+    directory = tmp_path / "test_converter"
+    directory.mkdir()
+    model_v2_save_path = directory / f"example_model_v2_{method}_regression.npt"
+
+    model_v1_path = data_dir / f"example_model_v1_{method}_regression.pt"
+    convert_model_file_v1_to_v2(model_v1_path, model_v2_save_path)
+    assert model_v2_save_path.exists()
+
+    ys_v1, uncs_v1, test_loader = _retrieve_model_v1_prediction_with_uncertainty(data_dir, method)
+    mpnn = MPNN.load_from_checkpoint(model_v2_save_path)
+    trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
+    ys_v2, uncs_v2 = estimator(test_loader, [mpnn], trainer)
+
+    assert np.allclose(ys_v2, ys_v1, atol=1e-6)
+    assert np.allclose(uncs_v2, uncs_v1, atol=1e-6)
