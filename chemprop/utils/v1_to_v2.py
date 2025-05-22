@@ -1,7 +1,6 @@
 import logging
 from os import PathLike
 
-from configargparse import Namespace
 from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
