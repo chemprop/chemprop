@@ -776,8 +776,15 @@ def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
 
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         if getattr(config_args, key) is not None:
-            for index, path in getattr(config_args, key).items():
-                getattr(config_args, key)[index] = str(path)
+            setattr(
+                config_args,
+                key,
+                [
+                    item
+                    for index, path in getattr(config_args, key).items()
+                    for item in (index, str(path))
+                ],
+            )
 
     parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
