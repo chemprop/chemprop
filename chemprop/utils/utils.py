@@ -74,9 +74,7 @@ def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_stereo: bool = False) -
     return mol
 
 
-def make_polymer_mol(
-    smi: str, keep_h: bool, add_h: bool, ignore_stereo: bool = False
-) -> Chem.Mol:
+def make_polymer_mol(smi: str, keep_h: bool, add_h: bool, ignore_stereo: bool = False) -> Chem.Mol:
     """
     Builds an RDKit molecule from a SMILES string.
 

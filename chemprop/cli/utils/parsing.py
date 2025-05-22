@@ -261,9 +261,7 @@ def make_datapoints(
     if len(polyss) > 0:
         poly_molss = [
             [
-                make_polymer_mol(
-                    smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo
-                )
+                make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo)
                 for smi in smis
             ]
             for smis in polyss
