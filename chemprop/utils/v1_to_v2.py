@@ -44,13 +44,14 @@ def get_ffn_info(model_v1_dict: dict) -> dict:
     # target_weights was added in #183
     target_weights = getattr(args_v1, "target_weights", None)
     num_tasks = args_v1.num_tasks
-    data_scaler = model_v1_dict["data_scaler"].copy()
+    data_scaler = model_v1_dict["data_scaler"]
 
     if loss_function == "quantile":
         num_tasks = num_tasks // 2
         if target_weights is not None:
             target_weights = target_weights[0::2]
-        data_scaler = {k: v[0::2] for k, v in data_scaler.items()}
+        if data_scaler is not None:
+            data_scaler = {k: v[0::2] for k, v in data_scaler.items()}
 
     if target_weights is not None:
         task_weights = torch.tensor(target_weights).unsqueeze(0)
