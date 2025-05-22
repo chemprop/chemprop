@@ -1,4 +1,6 @@
 # flake8: noqa
+import sys
+
 import numpy as np
 import pytest
 from rdkit import Chem
@@ -206,6 +208,9 @@ def test_morgan_binary_custom(mol, morgan_binary_custom):
     np.testing.assert_array_almost_equal(np.nonzero(features), morgan_binary_custom)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="rdkit's BertzCT gives different values on Windows"
+)
 def test_rdkit_2d(mol, rdkit_2d_values):
     featurizer = RDKit2DFeaturizer()
     features = featurizer(mol)
@@ -213,6 +218,9 @@ def test_rdkit_2d(mol, rdkit_2d_values):
     np.testing.assert_array_almost_equal(features, rdkit_2d_values, decimal=2)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="rdkit's BertzCT gives different values on Windows"
+)
 def test_v1_rdkit_2d(mol, v1_rdkit_2d_values):
     featurizer = V1RDKit2DFeaturizer()
     features = featurizer(mol)
@@ -220,6 +228,9 @@ def test_v1_rdkit_2d(mol, v1_rdkit_2d_values):
     np.testing.assert_array_almost_equal(features, v1_rdkit_2d_values, decimal=2)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="rdkit's BertzCT gives different values on Windows"
+)
 def test_v1_rdkit_2d_normalized(mol, v1_rdkit_2d_normalized_values):
     featurizer = V1RDKit2DNormalizedFeaturizer()
     features = featurizer(mol)

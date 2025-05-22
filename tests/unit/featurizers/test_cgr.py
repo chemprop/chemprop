@@ -133,11 +133,13 @@ bond_expect_balanced.update(
 
 # A fake `bond` is used in test_calc_edge_features. This is a workaround,
 # as RDKit cannot construct a bond directly in Python
-bond = make_mol("[CH3:1][H:2]", keep_h=True, add_h=False).GetBondWithIdx(0)
+bond = make_mol("[CH3:1][H:2]", keep_h=True, add_h=False, ignore_stereo=False).GetBondWithIdx(0)
 
 
 def get_reac_prod(rxn_smi: str) -> list:
-    return [make_mol(smi, keep_h=True, add_h=False) for smi in rxn_smi.split(">>")]
+    return [
+        make_mol(smi, keep_h=True, add_h=False, ignore_stereo=False) for smi in rxn_smi.split(">>")
+    ]
 
 
 def randomize_case(s: str) -> str:

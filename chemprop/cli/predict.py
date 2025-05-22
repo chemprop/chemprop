@@ -194,7 +194,10 @@ def prepare_data_loader(
     )
 
     featurization_kwargs = dict(
-        molecule_featurizers=args.molecule_featurizers, keep_h=args.keep_h, add_h=args.add_h
+        molecule_featurizers=args.molecule_featurizers,
+        keep_h=args.keep_h,
+        add_h=args.add_h,
+        ignore_stereo=args.ignore_stereo,
     )
 
     datas = build_data_from_files(
@@ -335,7 +338,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, test_preds
+            lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
         )
         test_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
@@ -380,7 +383,7 @@ def save_individual_predictions(
 
         predicted_class_labels = test_individual_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 3, test_individual_preds
+            lambda x: ",".join(map(str, x)), 3, test_individual_preds.numpy()
         )
         test_individual_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1

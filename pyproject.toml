@@ -28,7 +28,7 @@ keywords = [
 requires-python = ">=3.11"
 dependencies = [
     "lightning >= 2.0",
-    "numpy < 2.0.0",
+    "numpy",
     "pandas",
     "rdkit",
     "scikit-learn",
@@ -67,9 +67,12 @@ recursive = true
 aggressive = 2
 max_line_length = 100
 
-
 [tool.pytest.ini_options]
 addopts = "--cov chemprop"
+markers = [
+    "integration",
+    "CLI",
+]
 
 [tool.isort]
 profile = "black"

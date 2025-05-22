@@ -16,7 +16,7 @@ class EnumMapping(StrEnum):
             return cls[name.upper()]
         except KeyError:
             raise KeyError(
-                f"Unsupported {cls.__name__} member! got: '{name}'. expected one of: {cls.keys()}"
+                f"Unsupported {cls.__name__} member! got: '{name}'. expected one of: {', '.join(cls.keys())}"
             )
 
     @classmethod
@@ -32,7 +32,7 @@ class EnumMapping(StrEnum):
         return zip(cls.keys(), cls.values())
 
 
-def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
+def make_mol(smi: str, keep_h: bool, add_h: bool, ignore_stereo: bool = False) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -42,7 +42,9 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
     keep_h : bool
         whether to keep hydrogens in the input smiles. This does not add hydrogens, it only keeps them if they are specified
     add_h : bool
-        whether to add hydrogens to the molecule
+        If True, adds hydrogens to the molecule.
+    ignore_stereo : bool, optional
+        If True, ignores stereochemical information (R/S and Cis/Trans) when constructing the molecule. Default is False.
 
     Returns
     -------
@@ -62,6 +64,12 @@ def make_mol(smi: str, keep_h: bool, add_h: bool) -> Chem.Mol:
 
     if add_h:
         mol = Chem.AddHs(mol)
+
+    if ignore_stereo:
+        for atom in mol.GetAtoms():
+            atom.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
+        for bond in mol.GetBonds():
+            bond.SetStereo(Chem.BondStereo.STEREONONE)
 
     return mol
 
