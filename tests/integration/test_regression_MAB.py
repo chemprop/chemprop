@@ -10,6 +10,8 @@ from torch.utils.data import DataLoader
 from chemprop import models, nn
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
+torch.manual_seed(1)
+
 
 @pytest.fixture
 def dataloader(mol_atom_bond_regression_data):
@@ -67,8 +69,9 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=200,
+        max_epochs=100,
         overfit_batches=1.00,
+        deterministic=True,
     )
     trainer.fit(mol_atom_bond_mpnn, dataloader)
 

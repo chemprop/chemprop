@@ -5,8 +5,11 @@ from lightning import pytorch as pl
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 
 from chemprop import data, featurizers, models, nn
+
+torch.manual_seed(0)
 
 
 @pytest.fixture
@@ -118,10 +121,11 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         devices=1,
         max_epochs=400,
         overfit_batches=1.00,
+        deterministic=True,
     )
     trainer.fit(mol_atom_bond_mpnn, dataloader)
     results = trainer.test(mol_atom_bond_mpnn, dataloader)
     mse = sum(results[0].values())
     print(mse)
 
-    assert mse <= 0.3
+    assert mse <= 0.07
