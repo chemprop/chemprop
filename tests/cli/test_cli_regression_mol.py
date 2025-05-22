@@ -8,7 +8,7 @@ import torch
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
-from chemprop.cli.train import TrainSubcommand
+from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
 
 pytestmark = pytest.mark.CLI
@@ -63,6 +63,51 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--show-individual-scores",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_quick_from_foundation(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    for foundation in FoundationModels.keys():
+        args = [
+            "chemprop",
+            "train",
+            "-i",
+            input_path,
+            "--epochs",
+            "3",
+            "--num-workers",
+            "0",
+            "--show-individual-scores",
+            "--from-foundation",
+            foundation,
+        ]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
+
+
+def test_train_quick_from_local_foundation(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+        "--from-foundation",
+        model_path,
     ]
 
     with monkeypatch.context() as m:
