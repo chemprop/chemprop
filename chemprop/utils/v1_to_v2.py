@@ -237,10 +237,21 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     return model_v2_dict
 
 
-def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
+def convert_model_file_v1_to_v2(
+    model_v1_file: PathLike, model_v2_file: PathLike, ignore_unsupported_metrics: bool
+) -> None:
     """Converts a v1 model .pt file to a v2 model .pt file"""
 
     model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"), weights_only=False)
+
+    unsupported = set(model_v1_dict["args"].metrics) & UNSUPPORTED_METRICS
+    if unsupported:
+        msg = f"The model contains unsupported metrics: {', '.join(unsupported)}."
+        if ignore_unsupported_metrics:
+            logger.warning(f"{msg} Ignoring them.")
+        else:
+            raise ValueError(f"{msg} Use --ignore-unsupported-metrics to ignore them.")
+
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
     logger.warning(
         "Remember to use the same featurizers which were used when training the model. The default "
