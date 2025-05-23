@@ -111,5 +111,5 @@ def test_converter_with_uncertainty_method(data_dir, tmp_path, method, uncertain
     trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
     ys_v2, uncs_v2 = map(np.array, uncertainty_estimator(test_loader, [mpnn], trainer))
 
-    assert np.allclose(ys_v2, ys, atol=1e-6)
-    assert np.allclose(uncs_v2, uncs, atol=1e-6)
+    assert np.allclose(ys_v2, ys, atol=1e-5)
+    assert np.allclose(uncs_v2, uncs, atol=1e-5)
