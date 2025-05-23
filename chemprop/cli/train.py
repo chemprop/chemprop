@@ -1424,9 +1424,12 @@ def build_MAB_model(
 
     atom_constrainer, bond_constrainer = None, None
     if args.constraints_path is not None:
-        if any("atom" in col for col in args.constraints_to_targets):
+        n_atom_cons = sum([col in args.atom_target_columns for col in args.constraints_to_targets])
+        n_bond_cons = sum([col in args.bond_target_columns for col in args.constraints_to_targets])
+
+        if n_atom_cons:
             atom_constrainer = ConstrainerFFN(
-                n_constraints=sum([c.count("atom") for c in args.constraints_to_targets]),
+                n_constraints=n_atom_cons,
                 fp_dim=mp.output_dims[0],
                 hidden_dim=args.bond_constrainer_ffn_hidden_dim,
                 n_layers=args.bond_constrainer_ffn_num_layers,
@@ -1434,9 +1437,9 @@ def build_MAB_model(
                 activation=args.activation,
             )
 
-        if any("bond" in col for col in args.constraints_to_targets):
+        if n_bond_cons:
             bond_constrainer = ConstrainerFFN(
-                n_constraints=sum([c.count("bond") for c in args.constraints_to_targets]),
+                n_constraints=n_bond_cons,
                 fp_dim=(mp.output_dims[1] * 2),
                 hidden_dim=args.bond_constrainer_ffn_hidden_dim,
                 n_layers=args.bond_constrainer_ffn_num_layers,

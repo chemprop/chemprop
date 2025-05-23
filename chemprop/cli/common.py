@@ -166,7 +166,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--constraints-to-targets",
         nargs="+",
-        help="A series of strings that match the order of the columns in the constraints file and look like 'atom_target_{i}' or 'bond_target_{i}', where i is the index of the atom or bond target column. The index of the atom and bond target columns is determined by the order they were given using `--atom-target-columns` and `--bond-target-columns`.",
+        help="The column names of the atom or bond targets that correspond to each constraint column in the constraints CSV.",
     )
     return parser
 

@@ -64,7 +64,7 @@ def constrained_data_path(data_dir):
     return (
         str(data_dir / "mol_atom_bond" / "constrained_regression.csv"),
         str(data_dir / "mol_atom_bond" / "constrained_regression_constraints.csv"),
-        ["atom_target_0", "atom_target_1", "bond_target_1"],
+        ["atom_y1", "atom_y2", "bond_y2"],
         "smiles",
         ["mol_y"],
         ["atom_y1", "atom_y2"],
@@ -936,13 +936,13 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
 
 def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
     constraint_cols = [
-        "atom_target_0",
-        "atom_target_1",
-        "atom_target_2",
-        "atom_target_3",
-        "atom_target_4",
-        "atom_target_5",
-        "atom_target_6",
+        "hirshfeld_charges",
+        "hirshfeld_charges_plus1",
+        "hirshfeld_charges_minus1",
+        "hirshfeld_spin_density_plus1",
+        "hirshfeld_spin_density_minus1",
+        "hirshfeld_charges_fukui_neu",
+        "hirshfeld_charges_fukui_elec",
     ]
     args = [
         "chemprop",
@@ -985,8 +985,8 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
         p_bond_feats=None,
         p_atom_descs=None,
         p_bond_descs=None,
-        p_constraints=data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv",
-        constraints_cols_to_target_cols={col: i for i, col in enumerate(constraint_cols)},
+        p_constraints=None,
+        constraints_cols_to_target_cols=None,
         molecule_featurizers=None,
         add_h=True,
     )
@@ -1012,8 +1012,8 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
         p_bond_feats=None,
         p_atom_descs=None,
         p_bond_descs=None,
-        p_constraints=data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv",
-        constraints_cols_to_target_cols={col: i for i, col in enumerate(constraint_cols)},
+        p_constraints=None,
+        constraints_cols_to_target_cols=None,
         molecule_featurizers=None,
         add_h=True,
     )
