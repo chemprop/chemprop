@@ -22,7 +22,6 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     mpnn_fingerprints
     active_learning
     transfer_learning
-    chemeleon_foundation_finetuning
     uncertainty
     interpreting_monte_carlo_tree_search
     shapley_value_with_customized_featurizers

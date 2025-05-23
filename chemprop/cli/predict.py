@@ -475,6 +475,8 @@ def make_MAB_prediction_for_models(
         bond_target_cols=bond_output_cols,
         weight_col=None,
         bounded=bounded,
+        n_atom_preds=len(atom_output_cols) if atom_output_cols is not None else 0,
+        n_bond_preds=len(bond_output_cols) if bond_output_cols is not None else 0,
     )
     test_loader = prepare_data_loader(args, multicomponent, mol_atom_bond, False, format_kwargs)
     logger.info(f"test size: {len(test_loader.dataset)}")

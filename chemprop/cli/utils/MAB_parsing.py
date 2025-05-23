@@ -26,6 +26,8 @@ def build_MAB_data_from_files(
     p_constraints: PathLike | None,
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
+    n_atom_preds: int = 0,
+    n_bond_preds: int = 0,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
@@ -179,13 +181,17 @@ def build_MAB_data_from_files(
         if constraints_cols_to_target_cols is None:
             raise ValueError(
                 "If using constraints, you must indicate which constraint column corresponds to "
-                "which atom or bond target column. This is done by passing the names of the atom "
-                "or bond target columns that correspond to each constraint column to the "
-                "`--constraints-to-targets` flag"
+                "which atom or bond target column. This is done by passing a sequence of strings "
+                "with the `--constraints-to-targets` flag. The order of the strings matches the "
+                "order of the constraint columns. The strings must look like 'atom_target_{i}' or "
+                "'bond_target_{i}', where i is the index of the atom or bond target column. The "
+                "index of the atom and bond target columns is determined by the order they were "
+                "passed using `--atom-target-columns` and `--bond-target-columns`."
             )
 
         atom_constraint_cols = [
-            constraints_cols_to_target_cols.get(col) for col in atom_target_cols
+            constraints_cols_to_target_cols.get(f"atom_target_{col}")
+            for col in range(atoms_ys[0].shape[1] if atoms_ys[0] is not None else n_atom_preds)
         ]
         if atom_constraint_cols:
             atom_constraints = np.hstack(
@@ -198,7 +204,8 @@ def build_MAB_data_from_files(
             )
 
         bond_constraint_cols = [
-            constraints_cols_to_target_cols.get(col) for col in bond_target_cols
+            constraints_cols_to_target_cols.get(f"bond_target_{col}")
+            for col in range(bonds_ys[0].shape[1] if bonds_ys[0] is not None else n_bond_preds)
         ]
         if bond_constraint_cols:
             bond_constraints = np.hstack(
