@@ -5,15 +5,13 @@ from lightning import pytorch as pl
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 
 from chemprop import data, featurizers, models, nn
-
-torch.manual_seed(0)
 
 
 @pytest.fixture
 def dataloader():
+    pl.seed_everything(0)
     data_dir = Path(__file__).parent.parent / "data" / "mol_atom_bond"
     df_input = pd.read_csv(data_dir / "bounded.csv")
     columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2", "weight"]
@@ -79,6 +77,7 @@ def dataloader():
 
 @pytest.fixture
 def mol_atom_bond_mpnn():
+    pl.seed_everything(0)
     mp = nn.MABAtomMessagePassing()
     metrics = [nn.BoundedMSE()]
     agg = nn.SumAggregation()
@@ -112,6 +111,7 @@ def test_quick(mol_atom_bond_mpnn, dataloader):
 
 
 def test_overfit(mol_atom_bond_mpnn, dataloader):
+    pl.seed_everything(0)
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,

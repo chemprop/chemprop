@@ -4,11 +4,8 @@ from lightning import pytorch as pl
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 
 from chemprop import data, models, nn
-
-torch.manual_seed(0)
 
 columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2", "weight"]
 
@@ -19,6 +16,7 @@ def mab_data_dir(data_dir):
 
 
 def make_dataloader(path):
+    pl.seed_everything(0)
     df_input = pd.read_csv(path)
     smis = df_input.loc[:, columns[0]].values
     mol_ys = df_input.loc[:, columns[1:3]].values
@@ -51,6 +49,7 @@ def make_dataloader(path):
 
 
 def test_classification_overfit(mab_data_dir):
+    pl.seed_everything(0)
     dataloader = make_dataloader(mab_data_dir / "classification.csv")
     mp = nn.MABBondMessagePassing()
     agg = nn.SumAggregation()
@@ -81,6 +80,7 @@ def test_classification_overfit(mab_data_dir):
 
 
 def test_multiclass_overfit(mab_data_dir):
+    pl.seed_everything(0)
     dataloader = make_dataloader(mab_data_dir / "multiclass.csv")
     mp = nn.MABBondMessagePassing()
     agg = nn.SumAggregation()

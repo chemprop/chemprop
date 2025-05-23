@@ -10,11 +10,12 @@ from torch.utils.data import DataLoader
 from chemprop import models, nn
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
-torch.manual_seed(1)
+pl.seed_everything(1)
 
 
 @pytest.fixture
 def dataloader(mol_atom_bond_regression_data):
+    pl.seed_everything(0)
     smis, mols_ys, atoms_ys, bonds_ys = mol_atom_bond_regression_data
     all_data = [
         MolAtomBondDatapoint.from_smi(
@@ -62,6 +63,7 @@ def test_quick(mol_atom_bond_mpnn, dataloader):
     indirect=True,
 )
 def test_overfit(mol_atom_bond_mpnn, dataloader):
+    pl.seed_everything(0)
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -69,7 +71,7 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=100,
+        max_epochs=150,
         overfit_batches=1.00,
         deterministic=True,
     )
@@ -86,7 +88,7 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
     errors = torch.cat(errors)
     mse = errors.square().mean().item()
 
-    assert mse <= 0.1  # note this is in the scaled target space
+    assert mse <= 0.01  # note this is in the scaled target space
 
 
 def test_mve_quick(dataloader):
