@@ -721,12 +721,12 @@ def normalize_inputs(train_dset, val_dset, args):
 
 def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
     if isinstance(train_dset, MulticomponentDataset):
-        _model = MulticomponentMPNN.load_from_file(model_path)
+        _model = MulticomponentMPNN.load_from_file(model_path, map_location="cpu")
         blocks = _model.message_passing.blocks
         train_dsets = train_dset.datasets
         val_dsets = val_dset.datasets
     else:
-        _model = MPNN.load_from_file(model_path)
+        _model = MPNN.load_from_file(model_path, map_location="cpu")
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
         val_dsets = [val_dset]
