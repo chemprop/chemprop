@@ -34,15 +34,7 @@ def test_cli_convert_error(monkeypatch, tmp_path, data_dir):
     input_path = data_dir / "example_model_v1_quantile_regression.pt"
     output_path = tmp_path / "wont_be_converted.pt"
 
-    args = [
-        "chemprop",
-        "convert",
-        "-i",
-        str(input_path),
-        "-o",
-        str(output_path),
-        "--ignore-unsupported-metrics",
-    ]
+    args = ["chemprop", "convert", "-i", str(input_path), "-o", str(output_path)]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

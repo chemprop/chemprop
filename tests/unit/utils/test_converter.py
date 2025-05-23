@@ -74,7 +74,23 @@ def test_converter_v1_4(tmp_path, example_model_v1_4_path):
     assert model_v2_save_path.exists()
 
 
-def _retrieve_model_v1_prediction_with_uncertainty(data_dir, method):
+@pytest.mark.parametrize(
+    ("method", "uncertainty_estimator"),
+    [
+        ("mve", MVEEstimator()),
+        ("evidential", EvidentialTotalEstimator()),
+        ("quantile", QuantileRegressionEstimator()),
+    ],
+)
+def test_converter_with_uncertainty_method(data_dir, tmp_path, method, uncertainty_estimator):
+    directory = tmp_path / "test_converter"
+    directory.mkdir()
+    model_v2_save_path = directory / f"example_model_v2_{method}_regression.npt"
+
+    model_v1_path = data_dir / f"example_model_v1_{method}_regression.pt"
+    convert_model_file_v1_to_v2(model_v1_path, model_v2_save_path, ignore_unsupported_metrics=True)
+    assert model_v2_save_path.exists()
+
     path = data_dir / f"example_model_v1_{method}_regression_prediction.csv"
 
     with open(path, "r", encoding="utf-8") as fid:
@@ -90,30 +106,10 @@ def _retrieve_model_v1_prediction_with_uncertainty(data_dir, method):
     test_dset = MoleculeDataset(test_data, featurizer)
 
     test_loader = build_dataloader(test_dset, shuffle=False)
-    return ys, uncs, test_loader
 
-
-@pytest.mark.parametrize(
-    ("method", "uncertainty_estimator"),
-    [
-        ("mve", MVEEstimator()),
-        ("evidential", EvidentialTotalEstimator()),
-        ("quantile", QuantileRegressionEstimator()),
-    ],
-)
-def test_converter_with_uncertainty_method(data_dir, tmp_path, method, uncertainty_estimator):
-    directory = tmp_path / "test_converter"
-    directory.mkdir()
-    model_v2_save_path = directory / f"example_model_v2_{method}_regression.npt"
-
-    model_v1_path = data_dir / f"example_model_v1_{method}_regression.pt"
-    convert_model_file_v1_to_v2(model_v1_path, model_v2_save_path)
-    assert model_v2_save_path.exists()
-
-    ys_v1, uncs_v1, test_loader = _retrieve_model_v1_prediction_with_uncertainty(data_dir, method)
     mpnn = MPNN.load_from_checkpoint(model_v2_save_path)
     trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
     ys_v2, uncs_v2 = map(np.array, uncertainty_estimator(test_loader, [mpnn], trainer))
 
-    assert np.allclose(ys_v2, ys_v1, atol=1e-6)
-    assert np.allclose(uncs_v2, uncs_v1, atol=1e-6)
+    assert np.allclose(ys_v2, ys, atol=1e-6)
+    assert np.allclose(uncs_v2, uncs, atol=1e-6)

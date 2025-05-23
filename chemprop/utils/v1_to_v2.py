@@ -238,7 +238,7 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
 
 
 def convert_model_file_v1_to_v2(
-    model_v1_file: PathLike, model_v2_file: PathLike, ignore_unsupported_metrics: bool
+    model_v1_file: PathLike, model_v2_file: PathLike, ignore_unsupported_metrics: bool = False
 ) -> None:
     """Converts a v1 model .pt file to a v2 model .pt file"""
 
