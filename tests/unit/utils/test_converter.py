@@ -94,14 +94,14 @@ def _retrieve_model_v1_prediction_with_uncertainty(data_dir, method):
 
 
 @pytest.mark.parametrize(
-    ("method", "estimator"),
+    ("method", "uncertainty_estimator"),
     [
         ("mve", MVEEstimator()),
         ("evidential", EvidentialTotalEstimator()),
         ("quantile", QuantileRegressionEstimator()),
     ],
 )
-def test_converter_with_uncertainty_method(data_dir, tmp_path, method, estimator):
+def test_converter_with_uncertainty_method(data_dir, tmp_path, method, uncertainty_estimator):
     directory = tmp_path / "test_converter"
     directory.mkdir()
     model_v2_save_path = directory / f"example_model_v2_{method}_regression.npt"
@@ -113,7 +113,7 @@ def test_converter_with_uncertainty_method(data_dir, tmp_path, method, estimator
     ys_v1, uncs_v1, test_loader = _retrieve_model_v1_prediction_with_uncertainty(data_dir, method)
     mpnn = MPNN.load_from_checkpoint(model_v2_save_path)
     trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
-    ys_v2, uncs_v2 = estimator(test_loader, [mpnn], trainer)
+    ys_v2, uncs_v2 = map(np.array, uncertainty_estimator(test_loader, [mpnn], trainer))
 
     assert np.allclose(ys_v2, ys_v1, atol=1e-6)
     assert np.allclose(uncs_v2, uncs_v1, atol=1e-6)
