@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
 from chemprop.featurizers import Featurizer
-from chemprop.utils import make_mol
+from chemprop.utils import make_mol, make_polymer_mol
 
 MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
 
 
 @dataclass(slots=True)
 class _DatapointMixin:
-    """A mixin class for both molecule- and reaction- and multicomponent-type data"""
+    """A mixin class for both molecule-, polymer-, reaction- and multicomponent-type data"""
 
     y: np.ndarray | None = None
     """the targets for the molecule with unknown targets indicated by `nan`s"""
@@ -77,6 +77,66 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     concatenated to bond-level features *before* message passing"""
     V_d: np.ndarray | None = None
     """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
+    descriptors *after* message passing"""
+
+    def __post_init__(self):
+        NAN_TOKEN = 0
+        if self.V_f is not None:
+            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
+        if self.E_f is not None:
+            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
+        if self.V_d is not None:
+            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
+
+        super().__post_init__()
+
+    def __len__(self) -> int:
+        return 1
+
+
+@dataclass
+class _PolymerDatapointMixin:
+    mol: Chem.Mol | None
+    """the polymer associated with this datapoint"""
+    fragment_weights: list = field(default_factory=list)
+    """the fragment weights associated with each monomer"""
+    edges: str = None
+    """the directed edges between monomers"""
+
+    @classmethod
+    def from_smi(
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        **kwargs,
+    ) -> _PolymerDatapointMixin:
+        frag_weights = smi.split("|")[1:-1]
+        edges = smi.split("<")[1:]
+        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, frag_weights, edges, *args, **kwargs)
+
+
+@dataclass
+class PolymerDatapoint(_DatapointMixin, _PolymerDatapointMixin):
+    """A :class:`PolymerDatapoint` contains a single polymer and its associated features and targets."""
+
+    V_f: np.ndarray | None = None
+    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the polymer, and
+    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
+    *before* message passing"""
+    E_f: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the polymer, and
+    ``d_ef`` is the number of additional features  containing additional features that will be
+    concatenated to bond-level features *before* message passing"""
+    V_d: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the polymer, and
     ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
     descriptors *after* message passing"""
 
