@@ -9,7 +9,15 @@ pytestmark = pytest.mark.CLI
 
 
 @pytest.mark.parametrize(
-    "case", ["regression_mol", "quantile_regression", "mve_regression", "evidential_regression"]
+    "case",
+    [
+        "regression_mol",
+        "quantile_regression",
+        "mve_regression",
+        "evidential_regression",
+        "dirichlet_classification",
+        "dirichlet_multiclass",
+    ],
 )
 def test_cli_convert(monkeypatch, tmp_path, data_dir, case):
     input_path = data_dir / f"example_model_v1_{case}.pt"
