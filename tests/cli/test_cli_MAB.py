@@ -171,7 +171,11 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
         "--show-individual-scores",
         "--keep-h",
         "--reorder-atoms",
-        "-qq",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+
     ]
 
     with monkeypatch.context() as m:
@@ -216,6 +220,10 @@ def test_train_regression_quick_features(monkeypatch, regression_data_path, extr
         bond_descriptors_path,
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -297,6 +305,10 @@ def test_train_regression_no_mol(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -340,6 +352,10 @@ def test_train_regresssion_no_atom(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -385,6 +401,10 @@ def test_train_regression_no_bond(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -428,6 +448,10 @@ def test_train_regression_only_mol(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -471,6 +495,10 @@ def test_train_regression_only_atom(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -514,6 +542,10 @@ def test_train_regression_only_bond(monkeypatch, regression_data_path):
         "3",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -563,6 +595,10 @@ def test_train_bounded_quick(monkeypatch, bounded_data_path):
         "bounded-mse",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -592,6 +628,10 @@ def test_train_classification_quick(monkeypatch, classification_data_path):
         "classification",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -639,6 +679,10 @@ def test_train_multiclass_quick(monkeypatch, multiclass_data_path):
         "multiclass",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -686,6 +730,10 @@ def test_train_mve_quick(monkeypatch, regression_data_path):
         "regression-mve",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -751,6 +799,10 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         *constraints_to_targets,
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -837,6 +889,10 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         "cpu",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
@@ -905,6 +961,10 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
         "all",
         "--keep-h",
         "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
     ]
 
     with monkeypatch.context() as m:
