@@ -47,9 +47,6 @@ For more details on each command, see the corresponding section below:
 * :ref:`hpopt`
 * :ref:`fingerprint`
 
-The following features are not yet implemented, but will be included in a future release:
-
-* ``interpret``: Interpret model predictions.
 
 .. toctree::
     :maxdepth: 1
@@ -60,3 +57,4 @@ The following features are not yet implemented, but will be included in a future
     convert
     hpopt
     fingerprint
+    mol_atom_bond
