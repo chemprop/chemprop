@@ -15,7 +15,7 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
-UNSUPPORTED_METRICS = {"balanced_accuracy", "precision", "quantile", "recall"}
+UNSUPPORTED_METRICS = {"balanced_accuracy", "precision", "quantile", "recall", "cross_entropy"}
 RENAMED_LOSS_FUNCTIONS = {"quantile_interval": "quantile"}
 
 
@@ -32,15 +32,13 @@ def get_ffn_info(model_v1_dict: dict) -> dict:
     # loss_function was added in #238
     loss_function = getattr(args_v1, "loss_function", None)
     loss_function = RENAMED_LOSS_FUNCTIONS.get(loss_function, loss_function)
-    if loss_function in [None, *loss_fn_defaults.values()]:
-        predictor = args_v1.dataset_type
-        loss_function = loss_fn_defaults[predictor]
-    elif loss_function in ["mve", "evidential", "quantile"]:
+    if loss_function in ["mve", "evidential", "quantile"]:
         predictor = f"regression-{loss_function}"
+    elif loss_function == "dirichlet":
+        predictor = f"{args_v1.dataset_type}-dirichlet"
     else:
-        raise NotImplementedError(
-            f"Support for loss function '{loss_function}' has not been implemented."
-        )
+        predictor = args_v1.dataset_type
+        loss_function = loss_fn_defaults.get(predictor, loss_function)
 
     # target_weights was added in #183
     target_weights = getattr(args_v1, "target_weights", None)
@@ -61,15 +59,14 @@ def get_ffn_info(model_v1_dict: dict) -> dict:
 
     kwargs = {}
     loss_vars = {}
-    match loss_function:
-        case "quantile":
-            alpha = args_v1.quantile_loss_alpha
-            q = alpha / 2
-            kwargs["alpha"] = alpha
-            loss_vars["bounds"] = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
-            loss_vars["tau"] = torch.tensor([[q, 1 - q], [q - 1, -q]]).view(2, 2, 1, 1)
-        case "evidential":
-            kwargs["v_kl"] = args_v1.evidential_regularization
+    if loss_function == "quantile":
+        alpha = args_v1.quantile_loss_alpha
+        q = alpha / 2
+        kwargs["alpha"] = alpha
+        loss_vars["bounds"] = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
+        loss_vars["tau"] = torch.tensor([[q, 1 - q], [q - 1, -q]]).view(2, 2, 1, 1)
+    elif loss_function in ["evidential", "dirichlet"]:
+        kwargs["v_kl"] = args_v1.evidential_regularization
 
     return {
         "predictor_class": PredictorRegistry[predictor],
@@ -124,8 +121,7 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict, ffn_info: dict) -> dict:
         ).unsqueeze(0)
 
     n_metrics = len(set(args_v1.metrics) - UNSUPPORTED_METRICS) or 1
-    for i_metric in range(n_metrics + 1):
-        state_dict_v2[f"metrics.{i_metric}.task_weights"] = ffn_info["task_weights"]
+    state_dict_v2[f"metrics.{n_metrics}.task_weights"] = ffn_info["task_weights"]
     state_dict_v2["predictor.criterion.task_weights"] = ffn_info["task_weights"]
     for key, value in ffn_info["loss_vars"].items():
         state_dict_v2[f"metrics.{n_metrics}.{key}"] = value
@@ -212,6 +208,9 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict, ffn_info: dict) -> di
         means = ffn_info["data_scaler"]["means"]
         stds = ffn_info["data_scaler"]["stds"]
         hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(means, stds)
+
+    if args_v1.dataset_type == "multiclass":
+        hyper_parameters_v2["predictor"]["n_classes"] = args_v1.multiclass_num_classes
 
     return hyper_parameters_v2
 
