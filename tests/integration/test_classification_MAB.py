@@ -16,6 +16,7 @@ def mab_data_dir(data_dir):
 
 
 def make_dataloader(path):
+    pl.seed_everything(0)
     df_input = pd.read_csv(path)
     smis = df_input.loc[:, columns[0]].values
     mol_ys = df_input.loc[:, columns[1:3]].values
@@ -48,6 +49,7 @@ def make_dataloader(path):
 
 
 def test_classification_overfit(mab_data_dir):
+    pl.seed_everything(0)
     dataloader = make_dataloader(mab_data_dir / "classification.csv")
     mp = nn.MABBondMessagePassing()
     agg = nn.SumAggregation()
@@ -66,17 +68,19 @@ def test_classification_overfit(mab_data_dir):
         logger=False,
         enable_checkpointing=False,
         enable_progress_bar=False,
-        max_epochs=25,
+        max_epochs=20,
         overfit_batches=1.0,
+        deterministic=True,
     )
 
     trainer.fit(model, dataloader)
     results = trainer.test(model, dataloader)
     auroc = sum(results[0].values())
-    assert auroc > 0.99 * 3
+    assert auroc > 2.97
 
 
 def test_multiclass_overfit(mab_data_dir):
+    pl.seed_everything(0)
     dataloader = make_dataloader(mab_data_dir / "multiclass.csv")
     mp = nn.MABBondMessagePassing()
     agg = nn.SumAggregation()
@@ -96,9 +100,10 @@ def test_multiclass_overfit(mab_data_dir):
         enable_progress_bar=True,
         max_epochs=40,
         overfit_batches=1.0,
+        deterministic=True,
     )
 
     trainer.fit(model, dataloader)
     results = trainer.test(model, dataloader)
     mcc = sum(results[0].values())
-    assert mcc > 0.99 * 3
+    assert mcc > 2.97

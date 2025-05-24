@@ -1,5 +1,6 @@
 import warnings
 
+from lightning import pytorch as pl
 import pytest
 
 from chemprop import models, nn
@@ -18,6 +19,7 @@ def mpnn(request):
 
 @pytest.fixture(scope="session")
 def mol_atom_bond_mpnn(request):
+    pl.seed_everything(0)
     message_passing, agg = request.param
     mol_ffn = nn.RegressionFFN()
     atom_ffn = nn.RegressionFFN()
