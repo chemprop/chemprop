@@ -31,17 +31,17 @@ from chemprop.nn.utils import Activation
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {
     "activation": None,
+    "dropout": None,
+    "message_hidden_dim": None,
+    "depth": None,
     "aggregation": None,
     "aggregation_norm": None,
-    "batch_size": None,
-    "depth": None,
-    "dropout": None,
     "ffn_hidden_dim": None,
     "ffn_num_layers": None,
-    "final_lr_ratio": None,
-    "message_hidden_dim": None,
+    "batch_size": None,
     "init_lr_ratio": None,
     "max_lr": None,
+    "final_lr_ratio": None,
     "warmup_epochs": None,
 }
 
@@ -60,17 +60,17 @@ try:
 
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
-        "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
-        "aggregation_norm": tune.quniform(lower=1, upper=200, q=1),
-        "batch_size": tune.choice([16, 32, 64, 128, 256]),
-        "depth": tune.qrandint(lower=2, upper=6, q=1),
         "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
+        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "depth": tune.randint(lower=2, upper=6 + 1),
+        "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
+        "aggregation_norm": tune.randint(lower=1, upper=200 + 1),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
         "ffn_num_layers": tune.qrandint(lower=1, upper=3, q=1),
-        "final_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
-        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
+        "batch_size": tune.choice([16, 32, 64, 128, 256]),
         "init_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
         "max_lr": tune.loguniform(lower=1e-4, upper=1e-2),
+        "final_lr_ratio": tune.loguniform(lower=1e-2, upper=1),
         "warmup_epochs": None,
     }
 except ImportError:
@@ -277,7 +277,7 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
         assert (
             train_epochs >= 6
         ), "Training epochs must be at least 6 to perform hyperparameter optimization for warmup_epochs."
-        SEARCH_SPACE["warmup_epochs"] = tune.qrandint(lower=1, upper=train_epochs // 2, q=1)
+        SEARCH_SPACE["warmup_epochs"] = tune.randint(lower=1, upper=train_epochs // 2 + 1)
 
     return {param: SEARCH_SPACE[param] for param in search_parameters}
 
