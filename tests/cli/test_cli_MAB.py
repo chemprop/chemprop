@@ -175,7 +175,6 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
         "0.4",
         "0.3",
         "0.3",
-
     ]
 
     with monkeypatch.context() as m:
