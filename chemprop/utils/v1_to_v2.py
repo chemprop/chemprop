@@ -118,7 +118,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     hyper_parameters_v2["final_lr"] = args_v1.final_lr
 
     # convert the message passing block
-    if args_v1.reaction_solvent:
+    if getattr(args_v1, "reaction_solvent", False):
         W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.W_i.weight"].shape
         W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.W_h.weight"].shape
         W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.W_o.weight"].shape
@@ -280,7 +280,7 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
             "input_dim": args_v1.hidden_size
             + args_v1.atom_descriptors_size
             + d_xd
-            + (args_v1.hidden_size_solvent if args_v1.reaction_solvent else 0),
+            + (args_v1.hidden_size_solvent if getattr(args_v1, "reaction_solvent", False) else 0),
             "n_layers": args_v1.ffn_num_layers - 1,
             "n_tasks": args_v1.num_tasks,
         }
