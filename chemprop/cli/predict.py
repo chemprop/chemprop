@@ -1,4 +1,5 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
+from copy import deepcopy
 import logging
 from pathlib import Path
 import sys
@@ -9,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from chemprop import data
+from chemprop import data, featurizers
 from chemprop.cli.common import (
     add_common_args,
     find_models,
@@ -18,6 +19,7 @@ from chemprop.cli.common import (
 )
 from chemprop.cli.utils import LookupAction, Subcommand, build_data_from_files, make_dataset
 from chemprop.models.utils import load_model, load_output_columns
+from chemprop.nn.message_passing import BondMessagePassing
 from chemprop.nn.metrics import LossFunctionRegistry
 from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
 from chemprop.uncertainty import (
@@ -182,6 +184,70 @@ def process_predict_args(args: Namespace) -> Namespace:
     return args
 
 
+def check_featurizer_matches_model(data_loader, model):
+    """
+    The default featurizer in v1 has a longer atom feature vector than in v2. We try to detect this
+    common mistake and point users to the fix.
+    Additionally, in v1 there was a mode for reaction-in-solvent data. The order of the message
+    passing blocks was reaction + solvent. In v2 the CLI always does molecule datasets + reaction
+    datasets. We also try to detect this and fix it automatically for the user, as there is no flag
+    for this.
+    """
+    datasets = getattr(data_loader.dataset, "datasets", [data_loader.dataset])
+    mps = getattr(model.message_passing, "blocks", [model.message_passing])
+    current_dims = []
+    v1_default_dims = []
+    mp_input_dims = []
+    for dataset, mp in zip(datasets, mps):
+        featurizer = dataset.featurizer
+        v1_default_featurizer = deepcopy(featurizer)
+        v1_default_featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+
+        datapoint = dataset.data[0]
+        mol_s = datapoint.mol if hasattr(datapoint, "mol") else (datapoint.rct, datapoint.pdt)
+        mg = featurizer(mol_s)
+        v1_default_mg = v1_default_featurizer(mol_s)
+
+        if isinstance(mp, BondMessagePassing):
+            current_dims.append(mg.V.shape[1] + mg.E.shape[1])
+            v1_default_dims.append(v1_default_mg.V.shape[1] + v1_default_mg.E.shape[1])
+        else:
+            current_dims.append(mg.V.shape[1])
+            v1_default_dims.append(v1_default_mg.V.shape[1])
+        mp_input_dims.append(mp.W_i.in_features)
+
+    if current_dims == mp_input_dims:
+        return data_loader
+
+    if v1_default_dims == mp_input_dims or (
+        len(v1_default_dims) == 2 and v1_default_dims[::-1] == mp_input_dims
+    ):
+        logger.warning(
+            "The featurizer output dimension(s) did not match the model input dimension(s), but "
+            "the v1 default featurizer output dimensions(s) do match. Using the v1 default "
+            "featurizer! To remove this warning, pass `--multi-hot-atom-featurizer-mode v1`."
+        )
+        for dataset in datasets:
+            dataset.featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+        current_dims = v1_default_dims
+
+    if len(current_dims) == 2 and current_dims[::-1] == mp_input_dims:
+        dataset = data.MulticomponentDataset([datasets[1], datasets[0]])
+        return data.build_dataloader(
+            dataset, data_loader.batch_size, data_loader.num_workers, shuffle=False
+        )
+
+    if current_dims != mp_input_dims:
+        raise ArgumentError(
+            argument=None,
+            message=f"The featurizer output dimension(s) ({current_dims}) and the model input "
+            f"dimension(s) ({mp_input_dims}) are different. Check that you are using the same "
+            "featurization arguments that were used when training the model.",
+        )
+
+    return data_loader
+
+
 def prepare_data_loader(
     args: Namespace, multicomponent: bool, is_calibration: bool, format_kwargs: dict
 ):
@@ -237,10 +303,12 @@ def make_prediction_for_models(
     )
     format_kwargs["target_cols"] = output_columns if args.evaluation_methods is not None else []
     test_loader = prepare_data_loader(args, multicomponent, False, format_kwargs)
+    test_loader = check_featurizer_matches_model(test_loader, model)
     logger.info(f"test size: {len(test_loader.dataset)}")
     if args.cal_path is not None:
         format_kwargs["target_cols"] = output_columns
         cal_loader = prepare_data_loader(args, multicomponent, True, format_kwargs)
+        cal_loader = check_featurizer_matches_model(cal_loader, model)
         logger.info(f"calibration size: {len(cal_loader.dataset)}")
 
     uncertainty_estimator = Factory.build(
