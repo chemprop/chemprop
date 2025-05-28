@@ -10,8 +10,6 @@ from torch.utils.data import DataLoader
 from chemprop import models, nn
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset, collate_mol_atom_bond_batch
 
-pl.seed_everything(1)
-
 
 @pytest.fixture
 def dataloader(mol_atom_bond_regression_data):
