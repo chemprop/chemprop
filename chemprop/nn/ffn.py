@@ -38,7 +38,7 @@ class MLP(nn.Sequential, FFN):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
     ):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
