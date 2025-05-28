@@ -70,7 +70,11 @@ _CV_REMOVAL_ERROR = (
 )
 
 _ACTIVATION_FUNCTIONS = OrderedDict(
-    {uppercase(func): func for func in sorted(nn.modules.activation.__all__) if func != "SELU"}
+    {
+        uppercase(func): getattr(nn.modules.activation, func)
+        for func in sorted(nn.modules.activation.__all__)
+        if func != "SELU"
+    }
 )
 _ACTIVATION_FUNCTIONS.move_to_end("RELU", last=False)
 

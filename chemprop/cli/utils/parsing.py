@@ -467,4 +467,4 @@ def parse_activation(cls: type[nn.Module], arguments: list | None) -> nn.Module:
                 kwargs.update(item)
             else:
                 posargs.append(item)
-    return getattr(nn.modules.activation, cls)(*posargs, **kwargs)
+    return cls(*posargs, **kwargs)
