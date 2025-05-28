@@ -736,12 +736,12 @@ def normalize_inputs(train_dset, val_dset, args):
 
 def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
     if isinstance(train_dset, MulticomponentDataset):
-        _model = MulticomponentMPNN.load_from_file(model_path)
+        _model = MulticomponentMPNN.load_from_file(model_path, map_location="cpu")
         blocks = _model.message_passing.blocks
         train_dsets = train_dset.datasets
         val_dsets = val_dset.datasets
     else:
-        _model = MPNN.load_from_file(model_path)
+        _model = MPNN.load_from_file(model_path, map_location="cpu")
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
         val_dsets = [val_dset]
@@ -791,8 +791,15 @@ def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
 
     for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
         if getattr(config_args, key) is not None:
-            for index, path in getattr(config_args, key).items():
-                getattr(config_args, key)[index] = str(path)
+            setattr(
+                config_args,
+                key,
+                [
+                    item
+                    for index, path in getattr(config_args, key).items()
+                    for item in (index, str(path))
+                ],
+            )
 
     parser.write_config_file(parsed_namespace=config_args, output_file_paths=[str(config_path)])
 
