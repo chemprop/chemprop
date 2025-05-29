@@ -466,7 +466,7 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        return MolAtomBondDataset(data, featurizer)
+        return MolAtomBondDataset(data, featurizer, n_workers=n_workers)
 
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

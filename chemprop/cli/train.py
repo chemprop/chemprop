@@ -947,6 +947,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:
