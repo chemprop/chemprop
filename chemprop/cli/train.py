@@ -933,6 +933,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
+
     if any(
         cols is not None
         for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
@@ -968,6 +969,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
+            n_workers=args.num_workers,
             **format_kwargs,
             **featurization_kwargs,
         )
@@ -1109,6 +1111,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in train_data
         ]
@@ -1118,6 +1121,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in val_data
         ]
@@ -1130,6 +1134,7 @@ def build_datasets(args, train_data, val_data, test_data):
                     args.rxn_mode,
                     args.multi_hot_atom_featurizer_mode,
                     args.use_cuikmolmaker_featurization,
+                    n_workers=args.num_workers,
                 )
                 for data in test_data
             ]
@@ -1145,12 +1150,14 @@ def build_datasets(args, train_data, val_data, test_data):
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         val_dset = make_dataset(
             val_data,
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         if len(test_data) > 0:
             test_dset = make_dataset(
@@ -1158,6 +1165,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
         else:
             test_dset = None

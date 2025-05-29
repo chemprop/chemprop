@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import StrEnum
 import os
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
+import multiprocess
 import numpy as np
 import psutil
 from rdkit import Chem
@@ -87,6 +88,41 @@ def make_mol(
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
+
+
+def parallel_execute(
+    exe_func: Callable, func_args: Iterable, n_workers: int = 1, zipped: bool = True
+) -> list:
+    """Optionally executes a function in parallel.
+
+    Parameters
+    ----------
+    exe_func : Callable
+        function to execute.
+    func_args : Iterable
+        arguments for each iteration of function execution.
+    n_workers : int, optional
+        Number of parallel workers.
+    zipped : bool, optional
+        If True, avoids aggregating list of variables.
+
+    Returns
+    -------
+    list
+        list of function outputs for each argument.
+    """
+    if not zipped:
+        func_args = zip(*func_args)
+    if n_workers >= 2:
+
+        def wrapped_call(args):
+            return exe_func(*args)
+
+        with multiprocess.Pool(n_workers) as p:
+            results = p.map(wrapped_call, func_args)
+    else:
+        results = [exe_func(*func_arg) for func_arg in func_args]
+    return results
 
 
 def pretty_shape(shape: Iterable[int]) -> str:
