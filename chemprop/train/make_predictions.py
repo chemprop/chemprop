@@ -137,7 +137,7 @@ def predict_and_save(
     return_invalid_smiles: bool = False,
     save_results: bool = True,
 ):
-    """
+    r"""
     Function to predict with a model and save the predictions to file.
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
