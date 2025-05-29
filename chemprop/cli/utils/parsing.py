@@ -4,6 +4,7 @@ from typing import Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from torch import nn
 
 from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import MolAtomBondDataset, MoleculeDataset, ReactionDataset
@@ -477,3 +478,15 @@ def parse_indices(idxs):
                 indices.append(int(idx))
         return indices
     return idxs
+
+
+def parse_activation(cls: type[nn.Module], arguments: list | None) -> nn.Module:
+    """Parse arguments and instantiate an activation function"""
+    posargs, kwargs = [], {}
+    if arguments is not None:
+        for item in arguments:
+            if isinstance(item, dict):
+                kwargs.update(item)
+            else:
+                posargs.append(item)
+    return cls(*posargs, **kwargs)

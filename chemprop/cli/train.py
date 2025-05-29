@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 from enum import auto
 from io import StringIO
@@ -31,10 +32,12 @@ from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
+    activation_function_argument,
     build_data_from_files,
     build_MAB_data_from_files,
     get_column_names,
     make_dataset,
+    parse_activation,
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
@@ -62,7 +65,6 @@ from chemprop.nn.message_passing import (
     MulticomponentMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
-from chemprop.nn.utils import Activation
 from chemprop.utils import Factory
 from chemprop.utils.utils import EnumMapping
 
@@ -72,6 +74,15 @@ logger = logging.getLogger(__name__)
 _CV_REMOVAL_ERROR = (
     "The -k/--num-folds argument was removed in v2.1.0 - use --num-replicates instead."
 )
+
+_ACTIVATION_FUNCTIONS = OrderedDict(
+    {
+        uppercase(func): getattr(nn.modules.activation, func)
+        for func in sorted(nn.modules.activation.__all__)
+        if func != "SELU"
+    }
+)
+_ACTIVATION_FUNCTIONS.move_to_end("RELU", last=False)
 
 
 class FoundationModels(EnumMapping):
@@ -208,13 +219,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to use the same message passing neural network for all input molecules (only relevant if ``number_of_molecules`` > 1)",
     )
     mp_args.add_argument(
-        "--activation",
-        type=uppercase,
-        default="RELU",
-        choices=list(Activation.keys()),
-        help="Activation function in message passing/FFN layers",
-    )
-    mp_args.add_argument(
         "--aggregation",
         "--agg",
         default="norm",
@@ -229,6 +233,21 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
+    )
+
+    mp_args.add_argument(
+        "--activation",
+        type=uppercase,
+        default="RELU",
+        choices=list(_ACTIVATION_FUNCTIONS.keys()),
+        help="Activation function in message passing/FFN layers.",
+    )
+
+    mp_args.add_argument(
+        "--activation-args",
+        nargs="*",
+        type=activation_function_argument,
+        help="Arguments for the activation function (Example: arg1 arg2 key1=value1 key2=value2).",
     )
 
     # TODO: Add in v2.1
@@ -1137,7 +1156,7 @@ def build_model(
     from_foundation: FoundationModels | None = None,
 ) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
-
+    activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
     if isinstance(train_dset, MulticomponentDataset):
         is_multi = True
         d_xd = train_dset.datasets[0].d_xd
@@ -1215,7 +1234,7 @@ def build_model(
                     depth=args.depth,
                     undirected=args.undirected,
                     dropout=args.dropout,
-                    activation=args.activation,
+                    activation=activation,
                     V_d_transform=V_d_transforms[i],
                     graph_transform=graph_transforms[i],
                 )
@@ -1241,7 +1260,7 @@ def build_model(
                 depth=args.depth,
                 undirected=args.undirected,
                 dropout=args.dropout,
-                activation=args.activation,
+                activation=activation,
                 V_d_transform=V_d_transforms[0],
                 graph_transform=graph_transforms[0],
             )
@@ -1272,7 +1291,7 @@ def build_model(
         hidden_dim=args.ffn_hidden_dim,
         n_layers=args.ffn_num_layers,
         dropout=args.dropout,
-        activation=args.activation,
+        activation=activation,
         criterion=criterion,
         task_weights=args.task_weights,
         n_classes=args.multiclass_num_classes,

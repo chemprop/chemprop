@@ -112,7 +112,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
@@ -121,9 +121,11 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         super().__init__()
         # manually add criterion and output_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        ignore_list = ["criterion", "output_transform", "activation"]
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["criterion"] = criterion
         self.hparams["output_transform"] = output_transform
+        self.hparams["activation"] = activation
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
@@ -281,7 +283,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
