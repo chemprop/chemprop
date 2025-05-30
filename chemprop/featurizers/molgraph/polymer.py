@@ -71,9 +71,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 # Create a map R --> bond type
                 bond = mol.GetBondBetweenAtoms(atom.GetIdx(), neighbor_idx)
                 r_bond_types[r_tag] = bond.GetBondType()
-            # If not R atom
+            # If not R atom, tag it as a core atom
             else:
-                # Tag it as a core atom
                 atom.SetBoolProp("core", True)
 
         # Use the map created to tag attachment points
@@ -191,11 +190,10 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)
 
     def _get_atoms(self, rwmol: Chem.Mol, atom_features_extra: np.ndarray | None):
-        # -----------------
-        # Get atom features
-        # -----------------
-        # for all 'core' atoms, i.e. not R groups, as tagged before. This is done here to ensure that atoms linked to R groups
+        """
+        generates atom features for all 'core' atoms, i.e not R groups as previously tagged. This is done here to ensure that atoms linked to R groups
         # have the correct saturation
+        """
         n_atoms = rwmol.GetNumAtoms()
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
@@ -217,6 +215,11 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 ],
                 dtype=np.single,
             ).flatten()
+        # Check to ensure V and V_w are of equal length
+        if V.shape[0] != len(V_w):
+            raise ValueError(
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
+            )
         # Concatenate the extra atoms features to the atom features (V)
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -235,15 +238,20 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
     def _get_bonds(
         self, rwmol: Chem.Mol, r_bond_types: list[str], bond_features_extra: np.ndarray | None
     ):
+        """
+        generates the edge (bond) features
+        """
         n_bonds = rwmol.GetNumBonds()
         # Initialize atom to bond mapping for each atom
         E = np.empty((2 * n_bonds + 2 * len(self.polymer_info), self.bond_fdim))
         edge_index = [[], []]
         # Initalize bond weight array
         E_w = []
-        # ---------------------------------------
-        # Get bond features for separate monomers
-        # ---------------------------------------
+        """
+        ---------------------------------------
+        Get bond features for separate monomers
+        ---------------------------------------
+        """
         # Create counter for the number of bonds (i)
         i = 0
         for bond in rwmol.GetBonds():
@@ -260,12 +268,14 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             E_w.extend([1.0, 1.0])
             # Increase the total number of bonds by 2
             i += 2
-        # -------------------------------------------------------
-        # Get the bond features for bonds between repeating units
-        # -------------------------------------------------------
-        # we duplicate the monomers present to allow (i) creating bonds that exist already within the same molecule and
-        # (ii) collect the correct bond features, e.g., for bonds that would otherwise be considered in a ring when they are not,
-        # when e.g. creating a bond between two atoms in the same ring.
+        """
+        -------------------------------------------------------
+        Get the bond features for bonds between repeating units
+        -------------------------------------------------------
+        we duplicate the monomers present to allow (i) creating bonds that exist already within the same molecule and
+        (ii) collect the correct bond features, e.g., for bonds that would otherwise be considered in a ring when they are not,
+        when e.g. creating a bond between two atoms in the same ring.
+        """
         rwmol_copy = deepcopy(rwmol)
         _ = [a.SetBoolProp("OriginalMol", True) for a in rwmol.GetAtoms()]
         _ = [a.SetBoolProp("OriginalMol", False) for a in rwmol_copy.GetAtoms()]
@@ -334,7 +344,11 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             # Remove the bond
             cm.RemoveBond(a1, _a2)
             Chem.SanitizeMol(cm, Chem.SanitizeFlags.SANITIZE_ALL)
-
+        # Check E and E_w are of equal length and equal the number of bonds
+        if E.shape[0] != i or len(E_w) != i:
+            raise ValueError(
+                f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
+            )
         # Check to ensure that the number of bonds equals the length of the number of extra bond features
         if bond_features_extra is not None and len(bond_features_extra) != i / 2:
             raise ValueError(

@@ -5,15 +5,27 @@ from typing import Literal, Mapping, Sequence
 import numpy as np
 import pandas as pd
 from rdkit.Chem.rdchem import RWMol
+from torch import nn
 
-from chemprop.data.datapoints import MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
-from chemprop.data.datasets import MoleculeDataset, PolymerDataset, ReactionDataset
+from chemprop.data.datapoints import (
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    PolymerDatapoint,
+    ReactionDatapoint,
+)
+from chemprop.data.datasets import (
+    MolAtomBondDataset,
+    MoleculeDataset,
+    PolymerDataset,
+    ReactionDataset,
+)
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     PolymerMolGraphFeaturizer,
+    RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.utils import make_mol, make_polymer_mol, remove_wildcard_atoms
@@ -131,6 +143,7 @@ def make_datapoints(
     keep_h: bool,
     add_h: bool,
     ignore_stereo: bool,
+    reorder_atoms: bool,
 ) -> tuple[
     list[list[MoleculeDatapoint]], list[list[PolymerDatapoint]], list[list[ReactionDatapoint]]
 ]:
@@ -256,12 +269,21 @@ def make_datapoints(
             N = len(smiss[0])
 
     if len(smiss) > 0:
-        molss = [[make_mol(smi, keep_h, add_h, ignore_stereo) for smi in smis] for smis in smiss]
+        molss = [
+            [make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis]
+            for smis in smiss
+        ]
         n_mols = len(smiss)
     if len(polyss) > 0:
         poly_molss = [
             [
-                make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo)
+                make_polymer_mol(
+                    smi.split("|")[0],
+                    keep_h,
+                    add_h,
+                    ignore_stereo=ignore_stereo,
+                    reorder_atoms=reorder_atoms,
+                )
                 for smi in smis
             ]
             for smis in polyss
@@ -271,7 +293,11 @@ def make_datapoints(
         rctss = [
             [
                 make_mol(
-                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi, keep_h, add_h, ignore_stereo
+                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                    keep_h,
+                    add_h,
+                    ignore_stereo,
+                    reorder_atoms,
                 )
                 for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
             ]
@@ -279,7 +305,7 @@ def make_datapoints(
         ]
         pdtss = [
             [
-                make_mol(pdt_smi, keep_h, add_h, ignore_stereo)
+                make_mol(pdt_smi, keep_h, add_h, ignore_stereo, reorder_atoms)
                 for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
             ]
             for rxns in rxnss
@@ -511,10 +537,13 @@ def load_input_feats_and_descs(
 
 
 def make_dataset(
-    data: Sequence[MoleculeDatapoint] | Sequence[PolymerDatapoint] | Sequence[ReactionDatapoint],
-    reaction_mode: str,
+    data: Sequence[MoleculeDatapoint]
+    | Sequence[MolAtomBondDatapoint]
+    | Sequence[PolymerDatapoint]
+    | Sequence[ReactionDatapoint],
+    reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
-) -> MoleculeDataset | PolymerDataset | ReactionDataset:
+) -> MoleculeDataset | MolAtomBondDataset | PolymerDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":
@@ -525,6 +554,17 @@ def make_dataset(
             raise TypeError(
                 f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!"
             )
+
+    if isinstance(data[0], MolAtomBondDatapoint):
+        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
+        featurizer = SimpleMoleculeMolGraphFeaturizer(
+            atom_featurizer=atom_featurizer,
+            bond_featurizer=bond_featurizer,
+            extra_atom_fdim=extra_atom_fdim,
+            extra_bond_fdim=extra_bond_fdim,
+        )
+        return MolAtomBondDataset(data, featurizer)
 
     if isinstance(data[0], MoleculeDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
@@ -549,7 +589,7 @@ def make_dataset(
         return PolymerDataset(data, featurizer)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
-        mode_=reaction_mode, atom_featurizer=atom_featurizer
+        mode_=reaction_mode, atom_featurizer=atom_featurizer, bond_featurizer=bond_featurizer
     )
 
     return ReactionDataset(data, featurizer)
@@ -567,3 +607,15 @@ def parse_indices(idxs):
                 indices.append(int(idx))
         return indices
     return idxs
+
+
+def parse_activation(cls: type[nn.Module], arguments: list | None) -> nn.Module:
+    """Parse arguments and instantiate an activation function"""
+    posargs, kwargs = [], {}
+    if arguments is not None:
+        for item in arguments:
+            if isinstance(item, dict):
+                kwargs.update(item)
+            else:
+                posargs.append(item)
+    return cls(*posargs, **kwargs)

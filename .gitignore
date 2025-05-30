@@ -171,6 +171,7 @@ cython_debug/
 *.tfevents.*
 *.ckpt
 chemprop/_version.py
+*.ipynb
 config.toml
 .python-version
 uv.lock

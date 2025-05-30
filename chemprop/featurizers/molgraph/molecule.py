@@ -68,6 +68,11 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
             V_w = np.ones((1, n_atoms), dtype=np.single).flatten()
 
+        if V.shape[0] != len(V_w):
+            raise ValueError(
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
+            )
+
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
         E_w = []
@@ -88,7 +93,11 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             edge_index[1].extend([v, u])
             E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
             i += 2
-
+        # Check E and E_w are of equal length and equal the number of bonds
+        if E.shape[0] != i or len(E_w) != i:
+            raise ValueError(
+                f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
+            )
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
         E_w = np.array(E_w, float)
