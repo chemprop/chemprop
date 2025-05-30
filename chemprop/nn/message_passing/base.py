@@ -139,12 +139,12 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         .. math::
             H &= \mathtt{dropout} \left( \tau(\mathbf{W}_o(V \mathbin\Vert M)) \right) \\
             H &= \mathtt{dropout} \left( \tau(\mathbf{W}_d(H \mathbin\Vert V_d)) \right),
-            H &= \omega_{v}H,
+            H &= w_v H,
 
         where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
         :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M` is
         the message matrix, :math:`V` is the original vertex feature matrix, :math:`V_d` is an
-        optional vertex descriptor matrix and :math: `\omega_{v}` is the atom weight matrix.
+        optional vertex descriptor matrix and :math: `w_v` is the atom weight matrix.
 
         Parameters
         ----------
