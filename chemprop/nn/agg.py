@@ -82,9 +82,6 @@ class MeanAggregation(Aggregation):
             dim_size, V_w.shape[1], dtype=V_w.dtype, device=V_w.device
         ).scatter_reduce_(self.dim, index_weight, V_w, reduce="sum", include_self=False)
         return torch.div(sum_node_embeddings, sum_of_weights)
-        # return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-        #    self.dim, index_torch, H, reduce="mean", include_self=False
-        # )
 
 
 @AggregationRegistry.register("sum")

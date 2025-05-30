@@ -8,7 +8,7 @@ import torch
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
-from chemprop.cli.train import TrainSubcommand
+from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
 
 pytestmark = pytest.mark.CLI
@@ -63,6 +63,51 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--show-individual-scores",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_quick_from_foundation(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    for foundation in FoundationModels.keys():
+        args = [
+            "chemprop",
+            "train",
+            "-i",
+            input_path,
+            "--epochs",
+            "3",
+            "--num-workers",
+            "0",
+            "--show-individual-scores",
+            "--from-foundation",
+            foundation,
+        ]
+
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
+
+
+def test_train_quick_from_local_foundation(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+        "--from-foundation",
+        model_path,
     ]
 
     with monkeypatch.context() as m:
@@ -573,7 +618,13 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
-    input_path, *_ = data_path
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
 
     args = [
         "chemprop",
@@ -592,6 +643,14 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         "morgan_binary",
         "--search-parameter-keywords",
         "all",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
     ]
 
     with monkeypatch.context() as m:
@@ -617,3 +676,27 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "model_0" / "best.pt").exists()
+
+
+def test_custom_activation_quick(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--activation",
+        "SOFTPLUS",
+        "--activation-args",
+        "1.0",
+        "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()

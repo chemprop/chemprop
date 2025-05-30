@@ -10,9 +10,14 @@ import torch
 from chemprop import data
 from chemprop.cli.common import add_common_args, process_common_args, validate_common_args
 from chemprop.cli.predict import find_models
-from chemprop.cli.utils import Subcommand, build_data_from_files, make_dataset
+from chemprop.cli.utils import (
+    Subcommand,
+    build_data_from_files,
+    build_MAB_data_from_files,
+    make_dataset,
+)
 from chemprop.models import load_model
-from chemprop.nn.metrics import LossFunctionRegistry
+from chemprop.nn.metrics import BoundedMixin
 
 logger = logging.getLogger(__name__)
 
@@ -79,16 +84,15 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 
 
 def make_fingerprint_for_model(
-    args: Namespace, model_path: Path, multicomponent: bool, output_path: Path
+    args: Namespace, model_path: Path, multicomponent: bool, mol_atom_bond: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent)
+    model = load_model(model_path, multicomponent, mol_atom_bond)
     model.eval()
 
-    bounded = any(
-        isinstance(model.criterion, LossFunctionRegistry[loss_function])
-        for loss_function in LossFunctionRegistry.keys()
-        if "bounded" in loss_function
+    criterion = (
+        model.criterion if not mol_atom_bond else next(c for c in model.criterions if c is not None)
     )
+    bounded = isinstance(criterion, BoundedMixin)
 
     format_kwargs = dict(
         no_header_row=args.no_header_row,
@@ -106,19 +110,40 @@ def make_fingerprint_for_model(
         molecule_featurizers=args.molecule_featurizers,
         keep_h=args.keep_h,
         add_h=args.add_h,
-        ignore_chirality=args.ignore_chirality,
+        ignore_stereo=args.ignore_stereo,
+        reorder_atoms=args.reorder_atoms,
     )
 
-    test_data = build_data_from_files(
-        args.test_path,
-        **format_kwargs,
-        p_descriptors=args.descriptors_path,
-        p_atom_feats=args.atom_features_path,
-        p_bond_feats=args.bond_features_path,
-        p_atom_descs=args.atom_descriptors_path,
-        **featurization_kwargs,
-    )
+    if mol_atom_bond:
+        for key in ["no_header_row", "polymer_cols", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+            format_kwargs.pop(key, None)
+        test_data = build_MAB_data_from_files(
+            args.test_path,
+            **format_kwargs,
+            mol_target_cols=None,
+            atom_target_cols=None,
+            bond_target_cols=None,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            p_bond_descs=args.bond_descriptors_path,
+            p_constraints=None,
+            constraints_cols_to_target_cols=None,
+            **featurization_kwargs,
+        )
+    else:
+        test_data = build_data_from_files(
+            args.test_path,
+            **format_kwargs,
+            p_descriptors=args.descriptors_path,
+            p_atom_feats=args.atom_features_path,
+            p_bond_feats=args.bond_features_path,
+            p_atom_descs=args.atom_descriptors_path,
+            **featurization_kwargs,
+        )
     logger.info(f"test size: {len(test_data[0])}")
+
     test_dsets = [
         make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
     ]
@@ -133,29 +158,59 @@ def make_fingerprint_for_model(
     logger.info(model)
 
     with torch.no_grad():
-        if multicomponent:
-            encodings = [
-                model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
-                for batch in test_loader
-            ]
+        if not mol_atom_bond:
+            if multicomponent:
+                encodings = [
+                    model.encoding(batch.bmgs, batch.V_ds, batch.X_d, args.ffn_block_index)
+                    for batch in test_loader
+                ]
+            else:
+                encodings = [
+                    model.encoding(batch.bmg, batch.V_d, batch.X_d, args.ffn_block_index)
+                    for batch in test_loader
+                ]
+            H = torch.cat(encodings, 0).numpy()
+
+            if output_path.suffix in [".npz"]:
+                np.savez(output_path, H=H)
+            elif output_path.suffix == ".csv":
+                fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
+                df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
+                df_fingerprints.to_csv(output_path, index=False)
+            else:
+                raise ArgumentError(
+                    argument=None, message=f"Output must be a CSV or npz file. Got {args.output}."
+                )
         else:
             encodings = [
-                model.encoding(batch.bmg, batch.V_d, batch.X_d, args.ffn_block_index)
+                model.encoding(batch.bmg, batch.V_d, batch.E_d, batch.X_d, args.ffn_block_index)
                 for batch in test_loader
             ]
-        H = torch.cat(encodings, 0).numpy()
-
-    if output_path.suffix in [".npz"]:
-        np.savez(output_path, H=H)
-    elif output_path.suffix == ".csv":
-        fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
-        df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
-        df_fingerprints.to_csv(output_path, index=False)
-    else:
-        raise ArgumentError(
-            argument=None, message=f"Output must be a CSV or npz file. Got {args.output}."
-        )
-    logger.info(f"Fingerprints saved to '{output_path}'")
+            Hs = [
+                torch.cat(encoding, 0).numpy() if encoding[0] is not None else None
+                for encoding in zip(*encodings)
+            ]
+            for H, kind in zip(Hs, ["mol", "atom", "bond"]):
+                if H is None:
+                    continue
+                match output_path.suffix:
+                    case ".npz":
+                        np.savez(
+                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"), H=H
+                        )
+                    case ".csv":
+                        fingerprint_columns = [f"fp_{i}" for i in range(H.shape[1])]
+                        df_fingerprints = pd.DataFrame(H, columns=fingerprint_columns)
+                        df_fingerprints.to_csv(
+                            output_path.with_stem(output_path.stem + f"_{kind}_fingerprints"),
+                            index=False,
+                        )
+                    case _:
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"Output must be a CSV or npz file. Got {args.output}.",
+                        )
+        logger.info(f"Fingerprints saved to '{output_path}'")
 
 
 def main(args):
@@ -171,10 +226,15 @@ def main(args):
 
     multicomponent = n_components > 1
 
-    for i, model_path in enumerate(find_models(args.model_paths)):
+    model_paths = find_models(args.model_paths)
+
+    model_file = torch.load(model_paths[0], map_location=torch.device("cpu"), weights_only=False)
+    mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
+
+    for i, model_path in enumerate(model_paths):
         logger.info(f"Fingerprints with model {i} at '{model_path}'")
         output_path = args.output.parent / f"{args.output.stem}_{i}{args.output.suffix}"
-        make_fingerprint_for_model(args, model_path, multicomponent, output_path)
+        make_fingerprint_for_model(args, model_path, multicomponent, mol_atom_bond, output_path)
 
 
 if __name__ == "__main__":

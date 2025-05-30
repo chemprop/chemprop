@@ -88,12 +88,18 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
 
     def apply_atom_weights(self, mol: Chem.Mol, fragment_weights: list[str]):
         """
-        applies fragment weights to atoms
+        applies fragment weights to atoms in each monomer
         """
         # Convert fragment weights to floats
         fragment_weights = [float(x) for x in fragment_weights]
         # Split mol into its fragments
         mols = Chem.GetMolFrags(mol, asMols=True)
+        # Check the input is correct. We need the same number of fragments and their weights.
+        num_frags = len(mols)
+        if len(fragment_weights) != num_frags:
+            raise ValueError(
+                f"The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})"
+            )
         new_mols = []
         for s, w in zip(mols, fragment_weights):
             for a in s.GetAtoms():
@@ -211,6 +217,11 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 ],
                 dtype=np.single,
             ).flatten()
+        # Check to ensure the length of V = V_w
+        if V.shape[0] != len(V_w):
+            raise ValueError(
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]}, V_w={len(V_w)}"
+            )
         # Concatenate the extra atoms features to the atom features (V)
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -328,7 +339,11 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             # Remove the bond
             cm.RemoveBond(a1, _a2)
             Chem.SanitizeMol(cm, Chem.SanitizeFlags.SANITIZE_ALL)
-
+        # Check E and E_w are of equal length and equal the number of bonds
+        if E.shape[0] != i or len(E_w) != i:
+            raise ValueError(
+                f"Arrays E and E_w have incorrect lengths expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
+            )
         # Check to ensure that the number of bonds equals the length of the number of extra bond features
         if bond_features_extra is not None and len(bond_features_extra) != i / 2:
             raise ValueError(

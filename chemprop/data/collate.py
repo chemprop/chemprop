@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from chemprop.data.datasets import Datum
+from chemprop.data.datasets import Datum, MolAtomBondDatum
 from chemprop.data.molgraph import MolGraph
 
 
@@ -33,8 +33,8 @@ class BatchMolGraph:
     """a tensor of shape ``E`` that maps from an edge index to the index of the source of the
     reverse edge in the ``edge_index`` attribute."""
     degree_of_poly: Tensor = field(init=False)
-    """a tensor of shape ``n`` thats maps the degree of polymerisation in the form 1 + log(Xn),
-    default 1 for a small molecule to each molecule"""
+    """the degree of polymerisation in the form 1 + log(Xn),
+    default 1 for a small molecule, matrix"""
     batch: Tensor = field(init=False)
     """the index of the parent :class:`MolGraph` in the batched graph"""
 
@@ -114,6 +114,79 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
         torch.tensor(weights, dtype=torch.float).unsqueeze(1),
         None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
         None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
+    )
+
+
+@dataclass(repr=False, eq=False, slots=True)
+class BatchMolAtomBondGraph(BatchMolGraph):
+    bond_batch: Tensor = field(init=False)
+    """A tensor of indices that show which :class:`MolGraph` each bond belongs to in the batch"""
+
+    def __post_init__(self, mgs: Sequence[MolGraph]):
+        # inheriting a dataclass with slots=True requires explicit arguments to super
+        super(BatchMolAtomBondGraph, self).__post_init__(mgs)
+
+        bond_batch_indexes = []
+        for i, mg in enumerate(mgs):
+            bond_batch_indexes.append([i] * len(mg.E))
+
+        self.bond_batch = torch.tensor(np.concatenate(bond_batch_indexes)).long()
+
+    def to(self, device):
+        super(BatchMolAtomBondGraph, self).to(device)
+        self.bond_batch = self.bond_batch.to(device)
+
+
+class MolAtomBondTrainingBatch(NamedTuple):
+    bmg: BatchMolAtomBondGraph
+    V_d: Tensor | None
+    E_d: Tensor | None
+    X_d: Tensor | None
+    Ys: tuple[Tensor | None, Tensor | None, Tensor | None]
+    w: tuple[Tensor | None, Tensor | None, Tensor | None]
+    lt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+    gt_masks: tuple[Tensor | None, Tensor | None, Tensor | None]
+    constraints: tuple[Tensor | None, Tensor | None]
+
+
+def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBondTrainingBatch:
+    mgs, V_ds, E_ds, x_ds, yss, weights, lt_maskss, gt_maskss, constraintss = zip(*batch)
+
+    weights = torch.tensor(weights, dtype=torch.float).unsqueeze(1)
+    weights_tensors = []
+    for ys in zip(*yss):
+        if ys[0] is None:
+            weights_tensors.append(None)
+        elif ys[0].ndim == 1:
+            weights_tensors.append(weights)
+        else:
+            repeats = torch.tensor([y.shape[0] for y in ys])
+            weights_tensors.append(torch.repeat_interleave(weights, repeats, dim=0))
+
+    if constraintss[0][0] is None and constraintss[0][1] is None:
+        constraintss = None
+    else:
+        constraintss = [
+            None if constraints[0] is None else torch.from_numpy(np.array(constraints)).float()
+            for constraints in zip(*constraintss)
+        ]
+
+    return MolAtomBondTrainingBatch(
+        BatchMolAtomBondGraph(mgs),
+        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
+        None if E_ds[0] is None else torch.from_numpy(np.concatenate(E_ds)).float(),
+        None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
+        [None if ys[0] is None else torch.from_numpy(np.vstack(ys)).float() for ys in zip(*yss)],
+        weights_tensors,
+        [
+            None if lt_masks[0] is None else torch.from_numpy(np.vstack(lt_masks))
+            for lt_masks in zip(*lt_maskss)
+        ],
+        [
+            None if gt_masks[0] is None else torch.from_numpy(np.vstack(gt_masks))
+            for gt_masks in zip(*gt_maskss)
+        ],
+        constraintss,
     )
 
 
