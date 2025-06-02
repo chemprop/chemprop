@@ -210,7 +210,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
             M = self.message(H, bmg)
             H = self.update(M, H_0)
 
-        H = torch.mul(bmg.E_w[bmg.edge_index[0]].unsqueeze(1), H)
+        H = torch.mul(bmg.E_w.unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
