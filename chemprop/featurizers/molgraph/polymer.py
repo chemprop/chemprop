@@ -355,6 +355,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
                 f"got: {i} and {len(bond_features_extra)}, respectively"
             )
+        # If the molecule contains no bonds, set E_w = 1
+        if len(E_w) == 0:
+            E_w.extend([1.0])
         # Reverse the edge indexes
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         # Convert the edge index to a numpy array of type int
