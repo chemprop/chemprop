@@ -1136,8 +1136,11 @@ def build_datasets(args, train_data, val_data, test_data):
             for dataset, label in zip(
                 [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
             ):
-                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                if dataset is not None:
+                    column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
+                    output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                else:
+                    output = label + " set is empty."
                 logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
