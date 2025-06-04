@@ -97,12 +97,15 @@ Our code supports several methods of splitting data into train, validation, and 
 
     chemprop train --splits-file splits.json -i data.csv -t regression
 
+.. note::
+    Use zero-indexing when assigning data indices to different sets. Additionally note that ranges have inclusive ends (ie. [0,1] / "0-1" / "0,1" are equivalent).
+
 .. code-block:: JSON
     :caption: splits.json
 
     [
-        {"train": [1, 2], "val": "3-5", "test": "6,7"},
-        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+        {"train": [0, 1], "val": "2-3", "test": "4,5"},
+        {"val": [0, 1], "test": "2-3", "train": "4,5"},
     ]
 
 .. note::
