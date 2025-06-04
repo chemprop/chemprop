@@ -88,7 +88,7 @@ def make_split_indices(
     if sizes[1] == 0.0 or sizes[2] == 0.0:
         # flip val and test size if test size is not 0 (to bypass astartes check)
         if sizes[2] == 0.0:
-            astartes_kwargs["test_size"]=sizes[1]
+            astartes_kwargs["test_size"] = sizes[1]
         include_val = False
         split_fun = train_test_split
         mol_split_fun = train_test_split_molecules
@@ -136,7 +136,7 @@ def make_split_indices(
                     train_idxs, test_idxs, val_idxs = _unpack_astartes_result(result, include_val)
                 else:
                     train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
-                
+
                 # convert these to the 'actual' indices from the original list using the dict we made
                 train = sum((smiles_indices[unique_smiles[i]] for i in train_idxs), [])
                 val = sum((smiles_indices[unique_smiles[j]] for j in val_idxs), [])
@@ -181,7 +181,7 @@ def make_split_indices(
 
             case _:
                 raise RuntimeError("Unreachable code reached!")
-            
+
         train_replicates.append(train)
         val_replicates.append(val)
         test_replicates.append(test)
