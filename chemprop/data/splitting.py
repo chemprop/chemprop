@@ -85,7 +85,10 @@ def make_split_indices(
         train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed
     )
     # if no validation set, reassign the splitting functions
-    if sizes[1] == 0.0:
+    if sizes[1] == 0.0 or sizes[2] == 0.0:
+        # flip val and test size if test size is not 0 (to bypass astartes check)
+        if sizes[2] == 0.0:
+            astartes_kwargs["test_size"]=sizes[1]
         include_val = False
         split_fun = train_test_split
         mol_split_fun = train_test_split_molecules
@@ -107,7 +110,11 @@ def make_split_indices(
                 result = mol_split_fun(
                     np.array(mols_without_atommaps), sampler="scaffold", **astartes_kwargs
                 )
-                train, val, test = _unpack_astartes_result(result, include_val)
+                # flip val & test back if test size is 0
+                if sizes[2] == 0.0:
+                    train, test, val = _unpack_astartes_result(result, include_val)
+                else:
+                    train, val, test = _unpack_astartes_result(result, include_val)
 
             # Use to constrain data with the same smiles go in the same split.
             case SplitType.RANDOM_WITH_REPEATED_SMILES:
@@ -124,8 +131,12 @@ def make_split_indices(
                 result = split_fun(
                     np.arange(len(unique_smiles)), sampler="random", **astartes_kwargs
                 )
-                train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
-
+                # flip val & test back if test size is 0
+                if sizes[2] == 0.0:
+                    train_idxs, test_idxs, val_idxs = _unpack_astartes_result(result, include_val)
+                else:
+                    train_idxs, val_idxs, test_idxs = _unpack_astartes_result(result, include_val)
+                
                 # convert these to the 'actual' indices from the original list using the dict we made
                 train = sum((smiles_indices[unique_smiles[i]] for i in train_idxs), [])
                 val = sum((smiles_indices[unique_smiles[j]] for j in val_idxs), [])
@@ -133,7 +144,11 @@ def make_split_indices(
 
             case SplitType.RANDOM:
                 result = split_fun(np.arange(n_datapoints), sampler="random", **astartes_kwargs)
-                train, val, test = _unpack_astartes_result(result, include_val)
+                # flip val & test back if test size is 0
+                if sizes[2] == 0.0:
+                    train, test, val = _unpack_astartes_result(result, include_val)
+                else:
+                    train, val, test = _unpack_astartes_result(result, include_val)
 
             case SplitType.KENNARD_STONE:
                 result = mol_split_fun(
@@ -144,7 +159,11 @@ def make_split_indices(
                     fprints_hopts=dict(n_bits=2048),
                     **astartes_kwargs,
                 )
-                train, val, test = _unpack_astartes_result(result, include_val)
+                # flip val & test back if test size is 0
+                if sizes[2] == 0.0:
+                    train, test, val = _unpack_astartes_result(result, include_val)
+                else:
+                    train, val, test = _unpack_astartes_result(result, include_val)
 
             case SplitType.KMEANS:
                 result = mol_split_fun(
@@ -155,10 +174,14 @@ def make_split_indices(
                     fprints_hopts=dict(n_bits=2048),
                     **astartes_kwargs,
                 )
-                train, val, test = _unpack_astartes_result(result, include_val)
+                if sizes[2] == 0.0:
+                    train, test, val = _unpack_astartes_result(result, include_val)
+                else:
+                    train, val, test = _unpack_astartes_result(result, include_val)
 
             case _:
                 raise RuntimeError("Unreachable code reached!")
+            
         train_replicates.append(train)
         val_replicates.append(val)
         test_replicates.append(test)

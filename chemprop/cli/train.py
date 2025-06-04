@@ -974,7 +974,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             split_idxss = json.load(json_file)
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
         args.num_replicates = len(split_idxss)
 
     else:
