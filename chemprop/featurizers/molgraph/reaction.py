@@ -149,9 +149,6 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
             raise ValueError(
                 f"Arrays E and E_w have incorrect lengths: expected {len(E)}, got E={len(E)} and E_w={len(E_w)}"
             )
-        # If the molecule contains no bonds, set E_w = 1
-        if len(E_w) == 0:
-            E_w.extend([1.0])
         E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)

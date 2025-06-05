@@ -9,7 +9,8 @@ class _BondMessagePassingMixin:
         return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
     def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        H = torch.mul(bmg.E_w.unsqueeze(1), H)
+        if len(bmg.E_w) != 0:
+            H = torch.mul(bmg.E_w.unsqueeze(1), H)
         index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
         M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False

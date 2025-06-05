@@ -98,9 +98,6 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             raise ValueError(
                 f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
             )
-        # If the molecule contains no bonds, set E_w = 1
-        if len(E_w) == 0:
-            E_w.extend([1.0])
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
         E_w = np.array(E_w, float)
