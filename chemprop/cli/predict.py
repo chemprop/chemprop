@@ -370,6 +370,10 @@ def make_prediction_for_models(
         )
 
 
+def _to_str(z):
+    return f"{z:.6e}"
+
+
 def save_predictions(args, model, output_columns, test_preds, test_uncs, output_path):
     unc_columns = [f"{col}_unc" for col in output_columns]
 
@@ -377,7 +381,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
+            lambda x: ",".join(map(_to_str, x)), 2, test_preds.numpy()
         )
         test_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
@@ -422,7 +426,7 @@ def save_individual_predictions(
 
         predicted_class_labels = test_individual_preds.argmax(axis=-1)
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 3, test_individual_preds.numpy()
+            lambda x: ",".join(map(_to_str, x)), 3, test_individual_preds.numpy()
         )
         test_individual_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
@@ -662,13 +666,13 @@ def save_MAB_predictions(
     if isinstance(next(p for p in model.predictors if p is not None), MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
+            np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, mol_preds)
             if mol_preds is not None
             else [None] * n_datapoints
         )
         atomss_class_probs = (
             np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
+                np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, atom_preds),
                 atom_split_indices,
             )
             if atom_preds is not None
@@ -676,7 +680,7 @@ def save_MAB_predictions(
         )
         bondss_class_probs = (
             np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
+                np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, bond_preds),
                 bond_split_indices,
             )
             if bond_preds is not None
