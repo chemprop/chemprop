@@ -1706,6 +1706,10 @@ def train_model(
 
         if args.remove_checkpoints:
             temp_dir.cleanup()
+            
+            
+def _to_str(z):
+    return f"{z:.6e}"
 
 
 def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir, args):
@@ -1761,7 +1765,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
         formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, preds
+            lambda x: ",".join(map(_to_str, x)), 2, preds
         )
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
@@ -1854,13 +1858,13 @@ def evaluate_and_save_MAB_predictions(
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
+            np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, mol_preds)
             if mol_preds is not None
             else [None] * len(names)
         )
         atomss_class_probs = (
             np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
+                np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, atom_preds),
                 atom_split_indices,
             )
             if atom_preds is not None
@@ -1868,7 +1872,7 @@ def evaluate_and_save_MAB_predictions(
         )
         bondss_class_probs = (
             np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
+                np.apply_along_axis(lambda x: ",".join(map(_to_str, x)), 2, bond_preds),
                 bond_split_indices,
             )
             if bond_preds is not None
