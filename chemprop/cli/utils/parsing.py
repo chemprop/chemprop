@@ -29,6 +29,7 @@ def parse_csv(
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
     weight_col: str | None,
+    extra_feature_cols: Sequence[str] | None,
     bounded: bool = False,
     no_header_row: bool = False,
 ):
@@ -51,13 +52,16 @@ def parse_csv(
         rxnss = None
         input_cols = [df.columns[0]]
 
+    extra_feature_cols = list(extra_feature_cols or [])
+    X_extra = df[extra_feature_cols].to_numpy(np.single) if extra_feature_cols else None
+
     if target_cols is None:
         target_cols = list(
             column
             for column in df.columns
             if column
             not in set(  # if splits or weight is None, df.columns will never have None
-                input_cols + (ignore_cols or []) + [splits_col] + [weight_col]
+                input_cols + (ignore_cols or []) + extra_feature_cols + [splits_col] + [weight_col]
             )
         )
 
@@ -74,7 +78,7 @@ def parse_csv(
         lt_mask = None
         gt_mask = None
 
-    return smiss, rxnss, Y, weights, lt_mask, gt_mask
+    return smiss, rxnss, X_extra, Y, weights, lt_mask, gt_mask
 
 
 def get_column_names(
@@ -337,6 +341,7 @@ def build_data_from_files(
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
     weight_col: str | None,
+    extra_feature_cols: Sequence[str] | None,
     bounded: bool,
     p_descriptors: PathLike,
     p_atom_feats: dict[int, PathLike],
@@ -344,7 +349,7 @@ def build_data_from_files(
     p_atom_descs: dict[int, PathLike],
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
+    smiss, rxnss, Y, X_extra, weights, lt_mask, gt_mask = parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,
@@ -352,13 +357,20 @@ def build_data_from_files(
         ignore_cols,
         splits_col,
         weight_col,
+        extra_feature_cols,
         bounded,
         no_header_row,
+        extra_feature_cols,
     )
     n_molecules = len(smiss) if smiss is not None else 0
     n_datapoints = len(Y)
 
     X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
+    if X_extra is not None:
+        if X_ds is None:
+            X_ds = X_extra
+        else:
+            X_ds = np.hstack([X_ds,X_extra])
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")

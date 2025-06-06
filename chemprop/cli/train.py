@@ -557,6 +557,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Seed for PyTorch randomness (e.g., random initial weights)",
     )
 
+    parser.add_argument(
+        "--extra-feature-columns",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Extra features, like temperature and pressure, to be included in datasets",
+    )
+
     return parser
 
 
@@ -1949,6 +1957,7 @@ def main(args):
         splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
+        extra_feature_cols = args.extra_feature_colomns,
     )
 
     featurization_kwargs = dict(
