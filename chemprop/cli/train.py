@@ -1957,7 +1957,7 @@ def main(args):
         splits_col=args.splits_column,
         weight_col=args.weight_column,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
-        extra_feature_cols = args.extra_feature_colomns,
+        extra_feature_cols = args.extra_feature_columns,
     )
 
     featurization_kwargs = dict(

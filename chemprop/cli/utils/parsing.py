@@ -360,7 +360,6 @@ def build_data_from_files(
         extra_feature_cols,
         bounded,
         no_header_row,
-        extra_feature_cols,
     )
     n_molecules = len(smiss) if smiss is not None else 0
     n_datapoints = len(Y)
@@ -371,6 +370,7 @@ def build_data_from_files(
             X_ds = X_extra
         else:
             X_ds = np.hstack([X_ds,X_extra])
+            
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
