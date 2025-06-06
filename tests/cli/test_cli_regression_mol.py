@@ -700,3 +700,24 @@ def test_custom_activation_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_empty_testset(monkeypatch):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        "data.csv",
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "y",
+        "--split-sizes",
+        "0.5",
+        "0.5",
+        "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
