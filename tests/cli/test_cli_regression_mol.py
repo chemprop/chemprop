@@ -702,16 +702,17 @@ def test_custom_activation_quick(monkeypatch, data_path):
         main()
 
 
-def test_empty_testset(monkeypatch):
+def test_empty_testset(monkeypatch, data_path):
+    input_path, *_ = data_path
     args = [
         "chemprop",
         "train",
         "-i",
-        "data.csv",
+        input_path,
         "--smiles-columns",
         "smiles",
         "--target-columns",
-        "y",
+        "lipo",
         "--split-sizes",
         "0.5",
         "0.5",
