@@ -99,7 +99,7 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
     """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
-    underlying :class:`SimpleFFN` to map the learned fingerprint to the desired output.
+    underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 
     _T_default_criterion: ChempropMetric
@@ -112,7 +112,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
@@ -121,9 +121,11 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         super().__init__()
         # manually add criterion and output_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["criterion", "output_transform"])
+        ignore_list = ["criterion", "output_transform", "activation"]
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["criterion"] = criterion
         self.hparams["output_transform"] = output_transform
+        self.hparams["activation"] = activation
         self.hparams["cls"] = self.__class__
 
         self.ffn = MLP.build(
@@ -280,7 +282,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         hidden_dim: int = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
-        activation: str = "relu",
+        activation: str | nn.Module = "relu",
         criterion: ChempropMetric | None = None,
         task_weights: Tensor | None = None,
         threshold: float | None = None,
@@ -307,7 +309,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         return self.output_dim // (self.n_targets * self.n_classes)
 
     def forward(self, Z: Tensor) -> Tensor:
-        return self.train_step(Z).softmax(-1)
+        return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes).softmax(-1)
 
     def train_step(self, Z: Tensor) -> Tensor:
         return super().forward(Z).reshape(Z.shape[0], -1, self.n_classes)
