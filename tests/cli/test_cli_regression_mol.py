@@ -18,6 +18,7 @@ pytestmark = pytest.mark.CLI
 def data_path(data_dir):
     return (
         str(data_dir / "regression" / "mol" / "mol.csv"),
+        str(data_dir / "regression" / "mol" / "augmented_mol.csv"),
         str(data_dir / "regression" / "mol" / "descriptors.npz"),
         str(data_dir / "regression" / "mol" / "atom_features.npz"),
         str(data_dir / "regression" / "mol" / "bond_features.npz"),
@@ -149,6 +150,7 @@ def test_train_config(monkeypatch, config_path, tmp_path):
 def test_train_quick_features(monkeypatch, data_path):
     (
         input_path,
+        _,
         descriptors_path,
         atom_features_path,
         bond_features_path,
@@ -620,6 +622,7 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     (
         input_path,
+        _,
         descriptors_path,
         atom_features_path,
         bond_features_path,
@@ -695,6 +698,27 @@ def test_custom_activation_quick(monkeypatch, data_path):
         "--activation-args",
         "1.0",
         "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+def test_extra_feature_augmentation(monkeypatch, data_path):
+    _, input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--target-columns",
+        "y",
+        "--extra-feature-columns",
+        "temperature",
+        "pressure",
+        "--splits-column",
+        "split",
     ]
 
     with monkeypatch.context() as m:
