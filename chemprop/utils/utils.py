@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 import os
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, Type
 
 import multiprocess
 import numpy as np
@@ -88,6 +88,13 @@ def make_mol(
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
+
+
+def created_and_call_object(class_definition: Type, object_input):
+    """Creates object from class_definition and calls it with object_input.
+    This is useful for parallel calls to methods that contain boost functions.
+    """
+    return class_definition()(object_input)
 
 
 def parallel_execute(

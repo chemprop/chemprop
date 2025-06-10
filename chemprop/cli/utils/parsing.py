@@ -27,7 +27,7 @@ from chemprop.featurizers.molgraph import (
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils import make_mol, parallel_execute
+from chemprop.utils import created_and_call_object, make_mol, parallel_execute
 
 logger = logging.getLogger(__name__)
 
@@ -334,7 +334,18 @@ def make_datapoints(
         if len(smiss) > 0:
             mol_descriptors = np.hstack(
                 [
-                    np.vstack([np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols])
+                    np.hstack(
+                        [
+                            np.vstack(
+                                parallel_execute(
+                                    created_and_call_object,
+                                    [(mf.__class__, mol) for mol in mols],
+                                    n_workers=n_workers,
+                                )
+                            )
+                            for mf in molecule_featurizers
+                        ]
+                    )
                     for mols in molss
                 ]
             )
@@ -344,15 +355,24 @@ def make_datapoints(
                 X_d = np.hstack([X_d, mol_descriptors])
 
         if len(rxnss) > 0:
+
+            def construct_row(rct, pdt, molecule_featurizers):
+                return np.hstack(
+                    [
+                        created_and_call_object(mf.__class__, mol)
+                        for mf in molecule_featurizers
+                        for mol in (rct, pdt)
+                    ]
+                )
+
             rct_pdt_descriptors = np.hstack(
                 [
                     np.vstack(
-                        [
-                            np.hstack(
-                                [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
-                            )
-                            for rct, pdt in zip(rcts, pdts)
-                        ]
+                        parallel_execute(
+                            construct_row,
+                            [(rct, pdt, molecule_featurizers) for rct, pdt in zip(rcts, pdts)],
+                            n_workers=n_workers,
+                        )
                     )
                     for rcts, pdts in zip(rctss, pdtss)
                 ]
