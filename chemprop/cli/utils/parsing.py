@@ -341,15 +341,15 @@ def build_data_from_files(
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
     weight_col: str | None,
-    extra_feature_cols: Sequence[str] | None,
     bounded: bool,
     p_descriptors: PathLike,
     p_atom_feats: dict[int, PathLike],
     p_bond_feats: dict[int, PathLike],
     p_atom_descs: dict[int, PathLike],
+    extra_feature_cols: Sequence[str] | None = None,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, Y, X_extra, weights, lt_mask, gt_mask = parse_csv(
+    smiss, rxnss, X_extra, Y, weights, lt_mask, gt_mask = parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,

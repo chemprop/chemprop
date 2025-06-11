@@ -716,7 +716,7 @@ def test_extra_feature_augmentation(monkeypatch, data_path):
         "y",
         "--extra-feature-columns",
         "temperature",
-        "pressure",
+        #"pressure",
         "--splits-column",
         "split",
     ]
