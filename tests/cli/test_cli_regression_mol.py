@@ -706,7 +706,6 @@ def test_custom_activation_quick(monkeypatch, data_path):
 
 def test_extra_feature_augmentation(monkeypatch, data_path):
     _, input_path, *_ = data_path
-
     args = [
         "chemprop",
         "train",
@@ -716,11 +715,10 @@ def test_extra_feature_augmentation(monkeypatch, data_path):
         "y",
         "--extra-feature-columns",
         "temperature",
-        #"pressure",
+        "pressure",
         "--splits-column",
         "split",
     ]
-
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
