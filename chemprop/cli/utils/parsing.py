@@ -369,8 +369,8 @@ def build_data_from_files(
         if X_ds is None:
             X_ds = X_extra
         else:
-            X_ds = np.hstack([X_ds,X_extra])
-            
+            X_ds = np.hstack([X_ds, X_extra])
+
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")

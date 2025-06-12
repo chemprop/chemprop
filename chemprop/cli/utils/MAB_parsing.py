@@ -46,7 +46,7 @@ def build_MAB_data_from_files(
         if X_ds is None:
             X_ds = X_extra
         else:
-            X_ds = np.hstack([X_ds,X_extra])
+            X_ds = np.hstack([X_ds, X_extra])
 
     loaded_arrays = np.load(p_atom_feats[0]) if p_atom_feats else None
     V_fs = (

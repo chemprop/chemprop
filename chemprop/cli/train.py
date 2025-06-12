@@ -1956,7 +1956,7 @@ def main(args):
         ignore_cols=args.ignore_columns,
         splits_col=args.splits_column,
         weight_col=args.weight_column,
-        extra_feature_cols = args.extra_feature_columns,
+        extra_feature_cols=args.extra_feature_columns,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
 

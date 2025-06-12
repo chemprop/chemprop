@@ -704,6 +704,7 @@ def test_custom_activation_quick(monkeypatch, data_path):
         m.setattr("sys.argv", args)
         main()
 
+
 def test_extra_feature_augmentation(monkeypatch, data_path):
     _, input_path, *_ = data_path
     args = [
