@@ -923,6 +923,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
+
     if any(
         cols is not None
         for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
@@ -946,6 +947,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:
@@ -955,6 +957,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
+            n_workers=args.num_workers,
             **format_kwargs,
             **featurization_kwargs,
         )
@@ -1087,18 +1090,27 @@ def build_datasets(args, train_data, val_data, test_data):
     multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, n_workers=args.num_workers
+            )
             for data in train_data
         ]
         val_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, n_workers=args.num_workers
+            )
             for data in val_data
         ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
             test_dsets = [
-                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                make_dataset(
+                    data,
+                    args.rxn_mode,
+                    args.multi_hot_atom_featurizer_mode,
+                    n_workers=args.num_workers,
+                )
                 for data in test_data
             ]
             test_dset = MulticomponentDataset(test_dsets)
@@ -1108,10 +1120,22 @@ def build_datasets(args, train_data, val_data, test_data):
         train_data = train_data[0]
         val_data = val_data[0]
         test_data = test_data[0]
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        train_dset = make_dataset(
+            train_data,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            n_workers=args.num_workers,
+        )
+        val_dset = make_dataset(
+            val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode, n_workers=args.num_workers
+        )
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(
+                test_data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                n_workers=args.num_workers,
+            )
         else:
             test_dset = None
     if args.task_type != "spectral":
