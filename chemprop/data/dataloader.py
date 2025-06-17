@@ -4,14 +4,14 @@ from torch.utils.data import DataLoader
 
 from chemprop.data.collate import (
     collate_batch,
-    collate_torch_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
+    collate_torch_batch,
 )
 from chemprop.data.datasets import (
+    BatchMoleculeDataset,
     MolAtomBondDataset,
     MoleculeDataset,
-    BatchMoleculeDataset,
     MulticomponentDataset,
     ReactionDataset,
 )

@@ -1,5 +1,5 @@
 from .cache import MolGraphCache, MolGraphCacheFacade, MolGraphCacheOnTheFly
-from .molecule import SimpleMoleculeMolGraphFeaturizer, BatchMolGraphFeaturizer
+from .molecule import BatchMolGraphFeaturizer, SimpleMoleculeMolGraphFeaturizer
 from .reaction import CGRFeaturizer, CondensedGraphOfReactionFeaturizer, RxnMode
 
 __all__ = [

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from enum import StrEnum
+import os
 from typing import Iterable, Iterator
 
 import numpy as np
-from rdkit import Chem
 import psutil
-import os
+from rdkit import Chem
 
 
 class EnumMapping(StrEnum):

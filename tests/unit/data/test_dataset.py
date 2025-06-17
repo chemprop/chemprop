@@ -5,11 +5,11 @@ import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.data.datasets import MoleculeDatapoint, MoleculeDataset, BatchMoleculeDataset
+from chemprop.data.datasets import BatchMoleculeDataset, MoleculeDatapoint, MoleculeDataset
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.molecule import (
-    SimpleMoleculeMolGraphFeaturizer,
     BatchMolGraphFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.utils.utils import is_cuikmolmaker_available
 

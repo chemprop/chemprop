@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import NamedTuple, TypeAlias
 import warnings
+
 import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
@@ -13,9 +14,9 @@ from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, Re
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
+    BatchMolGraphFeaturizer,
     CGRFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
-    BatchMolGraphFeaturizer,
 )
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 from chemprop.types import Rxn

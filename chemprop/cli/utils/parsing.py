@@ -8,19 +8,19 @@ from torch import nn
 
 from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.datasets import (
+    BatchMoleculeDataset,
     MolAtomBondDataset,
     MoleculeDataset,
-    BatchMoleculeDataset,
     ReactionDataset,
 )
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
+    BatchMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
-    BatchMolGraphFeaturizer,
 )
 from chemprop.utils import make_mol
 

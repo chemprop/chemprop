@@ -1,8 +1,9 @@
 import os
 import subprocess
 import sys
-import requests
+
 import rdkit
+import requests
 import torch
 
 # Check that conda is installed

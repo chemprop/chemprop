@@ -68,7 +68,6 @@ from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransf
 from chemprop.utils import Factory
 from chemprop.utils.utils import EnumMapping
 
-
 logger = logging.getLogger(__name__)
 
 
