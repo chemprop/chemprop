@@ -68,6 +68,7 @@ from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransf
 from chemprop.utils import Factory
 from chemprop.utils.utils import EnumMapping
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -979,9 +980,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     else:
         splitting_data = all_data[args.split_key_molecule]
+
         if isinstance(splitting_data[0], ReactionDatapoint):
             splitting_mols = [datapoint.rct for datapoint in splitting_data]
         else:
+            # TODO: Form mols only if needed by the splitting type; Random split does not need mols
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
@@ -1087,18 +1090,33 @@ def build_datasets(args, train_data, val_data, test_data):
     multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
             for data in train_data
         ]
         val_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
             for data in val_data
         ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
             test_dsets = [
-                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                make_dataset(
+                    data,
+                    args.rxn_mode,
+                    args.multi_hot_atom_featurizer_mode,
+                    args.use_cuikmolmaker_featurization,
+                )
                 for data in test_data
             ]
             test_dset = MulticomponentDataset(test_dsets)
@@ -1108,10 +1126,25 @@ def build_datasets(args, train_data, val_data, test_data):
         train_data = train_data[0]
         val_data = val_data[0]
         test_data = test_data[0]
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        train_dset = make_dataset(
+            train_data,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        val_dset = make_dataset(
+            val_data,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(
+                test_data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
         else:
             test_dset = None
     if args.task_type != "spectral":
@@ -1960,7 +1993,6 @@ def main(args):
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
-
     for replicate_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
         if args.num_replicates == 1:
             output_dir = args.output_dir

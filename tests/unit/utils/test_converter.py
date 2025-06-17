@@ -35,7 +35,10 @@ def example_model_v1_prediction(data_dir):
     featurizer = SimpleMoleculeMolGraphFeaturizer(atom_featurizer=MultiHotAtomFeaturizer.v1())
 
     ys = np.array(ys).reshape(-1, 1)
-    test_data = [MoleculeDatapoint.from_smi(smi, None) for smi in smis]
+    test_data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=None)
+        for smi in smis
+    ]
     test_dset = MoleculeDataset(test_data, featurizer)
 
     test_loader = build_dataloader(test_dset, shuffle=False)

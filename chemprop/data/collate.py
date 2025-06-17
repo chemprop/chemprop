@@ -72,8 +72,39 @@ class BatchMolGraph:
         self.batch = self.batch.to(device)
 
 
+@dataclass(repr=False, eq=False, slots=True)
+class BatchTorchMolGraph:
+    V: Tensor
+    """the atom feature matrix"""
+    E: Tensor
+    """the bond feature matrix"""
+    edge_index: Tensor
+    """an tensor of shape ``2 x E`` containing the edges of the graph in COO format"""
+    rev_edge_index: Tensor
+    """A tensor of shape ``E`` that maps from an edge index to the index of the source of the
+    reverse edge in the ``edge_index`` attribute."""
+    batch: Tensor
+    """the index of the parent :class:`MolGraph` in the batched graph"""
+
+    __size: int = field(init=False)
+
+    def __post_init__(self):
+        self.__size = self.V.shape[0]
+
+    def __len__(self) -> int:
+        """the number of individual :class:`MolGraph`\s in this batch"""
+        return self.__size
+
+    def to(self, device: str | torch.device):
+        self.V = self.V.to(device)
+        self.E = self.E.to(device)
+        self.edge_index = self.edge_index.to(device)
+        self.rev_edge_index = self.rev_edge_index.to(device)
+        self.batch = self.batch.to(device)
+
+
 class TrainingBatch(NamedTuple):
-    bmg: BatchMolGraph
+    bmg: BatchMolGraph | BatchTorchMolGraph
     V_d: Tensor | None
     X_d: Tensor | None
     Y: Tensor | None
@@ -87,6 +118,37 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
 
     return TrainingBatch(
         BatchMolGraph(mgs),
+        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
+        None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
+        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        torch.tensor(weights, dtype=torch.float).unsqueeze(1),
+        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
+        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
+    )
+
+
+def collate_torch_batch(batch: Iterable[Datum]) -> TrainingBatch:
+    (
+        atom_feats,
+        bond_feats,
+        edge_index,
+        rev_edge_index,
+        _batch,
+        V_ds,
+        x_ds,
+        ys,
+        weights,
+        lt_masks,
+        gt_masks,
+    ) = batch
+    return TrainingBatch(
+        BatchTorchMolGraph(
+            V=atom_feats,
+            E=bond_feats,
+            edge_index=edge_index,
+            rev_edge_index=rev_edge_index,
+            batch=_batch,
+        ),
         None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
         None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
         None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),

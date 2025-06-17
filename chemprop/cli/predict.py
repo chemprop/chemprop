@@ -252,7 +252,15 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
 
-    dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
+    dsets = [
+        make_dataset(
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        for d in datas
+    ]
     dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
     return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)

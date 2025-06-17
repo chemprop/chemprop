@@ -5,9 +5,13 @@ import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.data.datasets import MoleculeDatapoint, MoleculeDataset
+from chemprop.data.datasets import MoleculeDatapoint, MoleculeDataset, BatchMoleculeDataset
 from chemprop.data.molgraph import MolGraph
-from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.molgraph.molecule import (
+    SimpleMoleculeMolGraphFeaturizer,
+    BatchMolGraphFeaturizer,
+)
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 
 @pytest.fixture(params=[1, 5, 10])
@@ -51,10 +55,20 @@ def V_ds(mols):
     indirect=True,
 )
 @pytest.fixture
-def data(mols, targets, X_d, V_fs, E_fs, V_ds):
+def data(smis, targets, X_d, V_fs, E_fs, V_ds):
     return [
-        MoleculeDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
-        for mol, target, x_d, V_f, E_f, V_d in zip(mols, targets, X_d, V_fs, E_fs, V_ds)
+        MoleculeDatapoint(
+            smiles=smi,
+            _keep_h=False,
+            _add_h=False,
+            _ignore_stereo=False,
+            y=target,
+            x_d=x_d,
+            V_f=V_f,
+            E_f=E_f,
+            V_d=V_d,
+        )
+        for smi, target, x_d, V_f, E_f, V_d in zip(smis, targets, X_d, V_fs, E_fs, V_ds)
     ]
 
 
@@ -79,6 +93,16 @@ def dataset(data, cache):
     return dset
 
 
+@pytest.fixture
+def batch_molecule_dataset(data):
+    if is_cuikmolmaker_available():
+        featurizer = BatchMolGraphFeaturizer(atom_featurizer_mode="V2")
+        dset = BatchMoleculeDataset(data, featurizer)
+        return dset
+    else:
+        return None
+
+
 def test_none():
     with pytest.raises(ValueError):
         MoleculeDataset(None, SimpleMoleculeMolGraphFeaturizer())
@@ -88,16 +112,22 @@ def test_empty():
     """TODO"""
 
 
-def test_len(data, dataset):
+def test_len(data, dataset, batch_molecule_dataset):
     assert len(data) == len(dataset)
+    if is_cuikmolmaker_available():
+        assert len(data) == len(batch_molecule_dataset)
 
 
-def test_smis(dataset, smis):
+def test_smis(dataset, batch_molecule_dataset, smis):
     assert smis == dataset.smiles
+    if is_cuikmolmaker_available():
+        assert smis == batch_molecule_dataset.smiles
 
 
-def test_targets(dataset, targets):
+def test_targets(dataset, batch_molecule_dataset, targets):
     np.testing.assert_array_equal(dataset.Y, targets)
+    if is_cuikmolmaker_available():
+        np.testing.assert_array_equal(batch_molecule_dataset.Y, targets)
 
 
 def test_set_targets_too_short(dataset):
@@ -105,8 +135,10 @@ def test_set_targets_too_short(dataset):
         dataset.Y = np.random.rand(len(dataset) // 2, 1)
 
 
-def test_num_tasks(dataset, targets):
+def test_num_tasks(dataset, batch_molecule_dataset, targets):
     assert dataset.t == targets.shape[1]
+    if is_cuikmolmaker_available():
+        assert batch_molecule_dataset.t == targets.shape[1]
 
 
 @pytest.mark.skipif(

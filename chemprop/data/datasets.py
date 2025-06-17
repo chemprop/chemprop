@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import NamedTuple, TypeAlias
-
+import warnings
 import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
@@ -12,7 +12,11 @@ from torch.utils.data import Dataset
 from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
-from chemprop.featurizers.molgraph import CGRFeaturizer, SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.molgraph import (
+    CGRFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
+    BatchMolGraphFeaturizer,
+)
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 from chemprop.types import Rxn
 
@@ -333,6 +337,66 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 
 @dataclass
+class BatchMoleculeDataset(MoleculeDataset):
+    """A :class:`BatchMoleculeDataset` composed of :class:`MoleculeDatapoint`\s and a :class:`BatchMolGraphFeaturizer`
+
+    A :class:`BatchMoleculeDataset` produces featurized data for a batch of molecules for ingestion by a
+    :class:`MPNN` model. Data featurization is always performed on-the-fly
+    and using the cuik-molmaker package. This batched processing is significantly faster and consumes less memory than the default featurization method. This is enabled by setting the
+    ``use_cuikmolmaker_featurization`` flag to ``True``.
+
+    Parameters
+    ----------
+    data : Iterable[MoleculeDatapoint]
+        the data from which to create a dataset
+    featurizer : BatchMolGraphFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
+    """
+
+    featurizer: BatchMolGraphFeaturizer = field(default_factory=BatchMolGraphFeaturizer)
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.cache = False
+
+    # caching should always be false for BatchMoleculeDataset
+    @property
+    def cache(self) -> bool:
+        return self.__cache
+
+    @cache.setter
+    def cache(self, cache: bool = False):
+        if cache:
+            warnings.warn(
+                "This option no longer does anything and is deprecated. --use-cuikmolmaker-featurization is meant to be used without caching!",
+                DeprecationWarning,
+            )
+        self.__cache = cache
+
+    def __getitems__(self, indexes: list[int]):
+        # TODO(sveccham): Remove in final PR
+        print("__getitems__ called")
+        smiles_list = [self.data[idx].smiles for idx in indexes]
+        batch_feats = self.featurizer(smiles_list)
+
+        batch_size = len(indexes)
+        X_d_batch = self.X_d[indexes]
+        Y_batch = self.Y[indexes]
+        weight_batch = [self.data[idx].weight for idx in indexes]
+        lt_mask_batch = [self.data[idx].lt_mask for idx in indexes]
+        gt_mask_batch = [self.data[idx].gt_mask for idx in indexes]
+
+        return (
+            *batch_feats,
+            [None] * batch_size,
+            X_d_batch,
+            Y_batch,
+            weight_batch,
+            lt_mask_batch,
+            gt_mask_batch,
+        )
+
+
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
     data: list[MolAtomBondDatapoint]
 

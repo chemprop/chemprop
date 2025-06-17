@@ -7,7 +7,12 @@ import pandas as pd
 from torch import nn
 
 from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
-from chemprop.data.datasets import MolAtomBondDataset, MoleculeDataset, ReactionDataset
+from chemprop.data.datasets import (
+    MolAtomBondDataset,
+    MoleculeDataset,
+    BatchMoleculeDataset,
+    ReactionDataset,
+)
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
@@ -15,6 +20,7 @@ from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
+    BatchMolGraphFeaturizer,
 )
 from chemprop.utils import make_mol
 
@@ -214,10 +220,39 @@ def make_datapoints(
     else:
         N = len(smiss[0])
 
+    weights = np.ones(N, dtype=np.single) if weights is None else weights
+    gt_mask = [None] * N if gt_mask is None else gt_mask
+    lt_mask = [None] * N if lt_mask is None else lt_mask
+    n_mols = len(smiss) if smiss else 0
+    V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
+    E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
+    V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
+    if X_d is None and molecule_featurizers is None:
+        X_d = [None] * N
+
     if len(smiss) > 0:
-        molss = [
-            [make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis]
-            for smis in smiss
+        mol_data = [
+            [
+                MoleculeDatapoint(
+                    smiles=smiss[smi_idx][i],
+                    _keep_h=keep_h,
+                    _add_h=add_h,
+                    _ignore_stereo=ignore_stereo,
+                    _reorder_atoms=reorder_atoms,
+                    name=smis[i],
+                    y=Y[i],
+                    weight=weights[i],
+                    gt_mask=gt_mask[i],
+                    lt_mask=lt_mask[i],
+                    x_d=X_d[i],
+                    x_phase=None,
+                    V_f=V_fss[smi_idx][i],
+                    E_f=E_fss[smi_idx][i],
+                    V_d=V_dss[smi_idx][i],
+                )
+                for i in range(N)
+            ]
+            for smi_idx, smis in enumerate(smiss)
         ]
     if len(rxnss) > 0:
         rctss = [
@@ -241,18 +276,7 @@ def make_datapoints(
             for rxns in rxnss
         ]
 
-    weights = np.ones(N, dtype=np.single) if weights is None else weights
-    gt_mask = [None] * N if gt_mask is None else gt_mask
-    lt_mask = [None] * N if lt_mask is None else lt_mask
-
-    n_mols = len(smiss) if smiss else 0
-    V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
-    E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
-    V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
-
-    if X_d is None and molecule_featurizers is None:
-        X_d = [None] * N
-    elif molecule_featurizers is None:
+    if molecule_featurizers is None:
         pass
     else:
         molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
@@ -260,8 +284,13 @@ def make_datapoints(
         if len(smiss) > 0:
             mol_descriptors = np.hstack(
                 [
-                    np.vstack([np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols])
-                    for mols in molss
+                    np.vstack(
+                        [
+                            np.hstack([mf(mol_dp.mol) for mf in molecule_featurizers])
+                            for mol_dp in mol_dp_list
+                        ]
+                    )
+                    for mol_dp_list in mol_data
                 ]
             )
             if X_d is None:
@@ -288,25 +317,6 @@ def make_datapoints(
             else:
                 X_d = np.hstack([X_d, rct_pdt_descriptors])
 
-    mol_data = [
-        [
-            MoleculeDatapoint(
-                mol=molss[mol_idx][i],
-                name=smis[i],
-                y=Y[i],
-                weight=weights[i],
-                gt_mask=gt_mask[i],
-                lt_mask=lt_mask[i],
-                x_d=X_d[i],
-                x_phase=None,
-                V_f=V_fss[mol_idx][i],
-                E_f=E_fss[mol_idx][i],
-                V_d=V_dss[mol_idx][i],
-            )
-            for i in range(N)
-        ]
-        for mol_idx, smis in enumerate(smiss)
-    ]
     rxn_data = [
         [
             ReactionDatapoint(
@@ -425,7 +435,8 @@ def make_dataset(
     | Sequence[ReactionDatapoint],
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
-) -> MoleculeDataset | MolAtomBondDataset | ReactionDataset:
+    cuikmolmaker_featurization: bool = False,
+) -> MoleculeDataset | BatchMoleculeDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":
@@ -449,6 +460,16 @@ def make_dataset(
         return MolAtomBondDataset(data, featurizer)
 
     if isinstance(data[0], MoleculeDatapoint):
+        if cuikmolmaker_featurization:
+            add_h = data[0]._add_h
+            featurizer = BatchMolGraphFeaturizer(
+                atom_featurizer=atom_featurizer,
+                bond_featurizer=bond_featurizer,
+                atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+                add_h=add_h,
+            )
+            return BatchMoleculeDataset(data, featurizer)
+
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(

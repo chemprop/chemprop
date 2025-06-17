@@ -5,6 +5,7 @@ from pathlib import Path
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,17 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         nargs="+",
         help="The column names of the atom or bond targets that correspond to each constraint column in the constraints CSV.",
     )
+    featurization_args.add_argument(
+        "--use-cuikmolmaker-featurization",
+        action="store_true",
+        help="Use ``cuik-molmaker`` for accelerated atom and bond featurization. This option is only available if ``cuik-molmaker`` is installed. In order to install ``cuik-molmaker``, run the script ``python check_and_install_cuik_molmaker.py``.",
+    )
+    # TODO: Add in v2.2
+    # parser.add_argument(
+    #     "--constraints-path",
+    #     help="Path to constraints applied to atomic/bond properties prediction.",
+    # )
+
     return parser
 
 
@@ -222,7 +234,29 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    pass
+    # Validation that cuik-molmaker is installed if the flag is used
+    if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
+        raise ArgumentError(
+            argument=None,
+            message="cuik-molmaker is not installed. Please install it using `python chemprop/scripts/check_and_install_cuik_molmaker.py` before using the `--use-cuikmolmaker-featurization` flag.",
+        )
+
+    if args.use_cuikmolmaker_featurization:
+        if args.keep_h:
+            raise ArgumentError(
+                argument=None,
+                message="`--keep-h` is not supported when using cuik-molmaker featurization.",
+            )
+        if args.ignore_stereo:
+            raise ArgumentError(
+                argument=None,
+                message="`--ignore-stereo` is not supported when using cuik-molmaker featurization.",
+            )
+        if args.reorder_atoms:
+            raise ArgumentError(
+                argument=None,
+                message="`--reorder-atoms` is not supported when using cuik-molmaker featurization.",
+            )
 
 
 def find_models(model_paths: list[Path]):
