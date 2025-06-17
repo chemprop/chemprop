@@ -212,7 +212,15 @@ def build_MAB_data_from_files(
 
     datapoints = [
         MolAtomBondDatapoint(
-            mol=mols[i],
+            smiles=smis[i],
+            _keep_h=make_mol_kwargs["keep_h"] if "keep_h" in make_mol_kwargs else False,
+            _add_h=make_mol_kwargs["add_h"] if "add_h" in make_mol_kwargs else False,
+            _ignore_stereo=make_mol_kwargs["ignore_stereo"]
+            if "ignore_stereo" in make_mol_kwargs
+            else False,
+            _reorder_atoms=make_mol_kwargs["reorder_atoms"]
+            if "reorder_atoms" in make_mol_kwargs
+            else False,
             name=smis[i],
             y=mol_ys[i],
             atom_y=atoms_ys[i],

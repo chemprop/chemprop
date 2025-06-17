@@ -230,30 +230,59 @@ def make_datapoints(
     if X_d is None and molecule_featurizers is None:
         X_d = [None] * N
 
+    mol_data = [
+        [
+            MoleculeDatapoint(
+                smiles=smiss[smi_idx][i],
+                _keep_h=keep_h,
+                _add_h=add_h,
+                _ignore_stereo=ignore_stereo,
+                _reorder_atoms=reorder_atoms,
+                name=smis[i],
+                y=Y[i],
+                weight=weights[i],
+                gt_mask=gt_mask[i],
+                lt_mask=lt_mask[i],
+                # x_d=X_d[i],
+                x_phase=None,
+                V_f=V_fss[smi_idx][i],
+                E_f=E_fss[smi_idx][i],
+                V_d=V_dss[smi_idx][i],
+            )
+            for i in range(N)
+        ]
+        for smi_idx, smis in enumerate(smiss)
+    ]
+
     if len(smiss) > 0:
-        mol_data = [
-            [
-                MoleculeDatapoint(
-                    smiles=smiss[smi_idx][i],
-                    _keep_h=keep_h,
-                    _add_h=add_h,
-                    _ignore_stereo=ignore_stereo,
-                    _reorder_atoms=reorder_atoms,
-                    name=smis[i],
-                    y=Y[i],
-                    weight=weights[i],
-                    gt_mask=gt_mask[i],
-                    lt_mask=lt_mask[i],
-                    x_d=X_d[i],
-                    x_phase=None,
-                    V_f=V_fss[smi_idx][i],
-                    E_f=E_fss[smi_idx][i],
-                    V_d=V_dss[smi_idx][i],
+        if molecule_featurizers is not None:
+            molecule_featurizers_fns = [
+                MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers
+            ]
+
+            if len(smiss) > 0:
+                mol_descriptors = np.hstack(
+                    [
+                        np.vstack(
+                            [
+                                np.hstack([mf(mol_dp.mol) for mf in molecule_featurizers_fns])
+                                for mol_dp in mol_dp_list
+                            ]
+                        )
+                        for mol_dp_list in mol_data
+                    ]
                 )
+                if X_d is None:
+                    X_d = mol_descriptors
+                else:
+                    X_d = np.hstack([X_d, mol_descriptors])
+
+            [
+                setattr(mol_data[mol_idx][i], "x_d", X_d[i])
+                for mol_idx, smis in enumerate(smiss)
                 for i in range(N)
             ]
-            for smi_idx, smis in enumerate(smiss)
-        ]
+
     if len(rxnss) > 0:
         rctss = [
             [
@@ -276,46 +305,32 @@ def make_datapoints(
             for rxns in rxnss
         ]
 
-    if molecule_featurizers is None:
-        pass
-    else:
-        molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
-
-        if len(smiss) > 0:
-            mol_descriptors = np.hstack(
-                [
-                    np.vstack(
-                        [
-                            np.hstack([mf(mol_dp.mol) for mf in molecule_featurizers])
-                            for mol_dp in mol_dp_list
-                        ]
-                    )
-                    for mol_dp_list in mol_data
-                ]
-            )
-            if X_d is None:
-                X_d = mol_descriptors
-            else:
-                X_d = np.hstack([X_d, mol_descriptors])
-
-        if len(rxnss) > 0:
-            rct_pdt_descriptors = np.hstack(
-                [
-                    np.vstack(
-                        [
-                            np.hstack(
-                                [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
-                            )
-                            for rct, pdt in zip(rcts, pdts)
-                        ]
-                    )
-                    for rcts, pdts in zip(rctss, pdtss)
-                ]
-            )
-            if X_d is None:
-                X_d = rct_pdt_descriptors
-            else:
-                X_d = np.hstack([X_d, rct_pdt_descriptors])
+        if molecule_featurizers is not None:
+            molecule_featurizers_fns = [
+                MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers
+            ]
+            if len(rxnss) > 0:
+                rct_pdt_descriptors = np.hstack(
+                    [
+                        np.vstack(
+                            [
+                                np.hstack(
+                                    [
+                                        mf(mol)
+                                        for mf in molecule_featurizers_fns
+                                        for mol in (rct, pdt)
+                                    ]
+                                )
+                                for rct, pdt in zip(rcts, pdts)
+                            ]
+                        )
+                        for rcts, pdts in zip(rctss, pdtss)
+                    ]
+                )
+                if X_d is None:
+                    X_d = rct_pdt_descriptors
+                else:
+                    X_d = np.hstack([X_d, rct_pdt_descriptors])
 
     rxn_data = [
         [
