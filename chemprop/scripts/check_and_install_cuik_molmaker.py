@@ -121,7 +121,7 @@ print(f"RDKit version: {rdkit_version}")
 torch_version = torch.__version__
 print(f"Torch version: {torch_version}")
 
-wheel_url = f"https://pypi.nvidia.com/rdkit-{rdkit_version}_torch-{torch_version}/cuik-molmaker/cuik_molmaker-0.1-py{python_version_digits}-none-manylinux2014_x86_64.whl"
+wheel_url = f"https://pypi.nvidia.com/rdkit-{rdkit_version}_torch-{torch_version}/"
 print(f"Installing cuik-molmaker from: {wheel_url}")
 
 # Check if URL exists
@@ -138,9 +138,19 @@ if response.status_code != 200:
     exit(1)
 
 # Install cuik-molmaker from correct wheel
-subprocess.run(
-    ["pip", "install", "--no-index", "cuik_molmaker==0.1", "--find-links", wheel_url], check=True
-)
+
+try:
+    subprocess.run(
+        ["pip", "install", "--no-deps", "--extra-index-url", wheel_url, "cuik_molmaker==0.1"],
+        check=True,
+    )
+except subprocess.CalledProcessError as e:
+    print(f"Failed to install cuik-molmaker: {e}")
+    print(
+        "1. Install from source. Follow instructions at https://github.com/NVIDIA-Digital-Bio/cuik-molmaker"
+    )
+    print("2. Reach out to cuik-molmaker developers at cuik_molmaker_dev@nvidia.com")
+    exit(1)
 
 print("cuik-molmaker installed successfully.")
 print("You can now use cuik-molmaker with Chemprop using --use_cuikmolmaker_featurization flag.")
