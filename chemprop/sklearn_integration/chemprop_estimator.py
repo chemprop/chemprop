@@ -14,6 +14,7 @@ from transformer import build_default_mpnn
 
 class ChempropTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, featurizer_type="molecule", rxn_mode=RxnMode.REAC_DIFF):
+        self.rxn_mode = rxn_mode
         if featurizer_type == "molecule":
             self.featurizer = SimpleMoleculeMolGraphFeaturizer()
         elif featurizer_type == "reaction":
@@ -88,6 +89,15 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
 
+#microtest
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import cross_val_score
+
+sklearnPipeline = Pipeline([
+    ("featurizer", ChempropTransformer()),
+    ("regressor", ChempropRegressor())
+])
+
 X = np.array([
     "CCO", "CCN", "CCC", "COC", "CNC", "CCCl", "CCBr", "CCF", "CCI", "CC=O",
     "CC#N", "CC(C)O", "CC(C)N", "CC(C)C", "COC(C)", "CN(C)C", "C1CCCCC1", "C1=CC=CC=C1",
@@ -100,5 +110,7 @@ y = np.array([
     0.64, 0.66, 0.59, 0.51, 0.48, 0.46, 0.49
 ])
 
-scores = cross_val_score(ChempropRegressor(), X, y, cv=5, scoring='neg_mean_squared_error')
-print(scores)
+scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_error')
+print("Cross-validation scores:", scores)
+print("Mean MSE:", -scores.mean())
+
