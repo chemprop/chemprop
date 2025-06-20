@@ -95,7 +95,7 @@ from sklearn.model_selection import cross_val_score
 
 sklearnPipeline = Pipeline([
     ("featurizer", ChempropTransformer()),
-    ("regressor", ChempropRegressor())
+    ("regressor", ChempropRegressor().load_from_file("./tests/data/example_model_v2_classification_dirichlet_mol.pt"))
 ])
 
 X = np.array([
@@ -114,3 +114,23 @@ scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_
 print("Cross-validation scores:", scores)
 print("Mean MSE:", -scores.mean())
 
+
+#microtest
+sklearnPipeline1 = Pipeline([
+    ("featurizer", ChempropTransformer()),
+    ("regressor", ChempropRegressor())
+])
+
+X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
+y_targets = [0.5, 1.2, 0.7]
+sklearnPipeline1.fit(X_smiles, y_targets)
+
+X_test = ["CCN", "CCCl"]
+predictions = sklearnPipeline1.predict(X_test)
+print("Predictions:", predictions)
+
+import joblib
+joblib.dump(sklearnPipeline1, "chemprop_pipeline.pkl")
+
+loadedPipeline = joblib.load("chemprop_pipeline.pkl")
+print("Reproduced Predictions:", loadedPipeline.predict(X))
