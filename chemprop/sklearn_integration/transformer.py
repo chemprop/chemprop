@@ -67,11 +67,14 @@ class MPNNTransformer(TransformerMixin, BaseEstimator):
                                             hidden_dim=300,
                                             depth=3).to(self.device)
         self.model.eval()
+        self.is_fitted_ = True
         return self
 
     def _to_molgraph(self, mol: Union[str, Chem.Mol]) -> MolGraph:
         if isinstance(mol, str):
             mol = Chem.MolFromSmiles(mol)
+        if mol is None:
+            print("fail to recognize {mol}")
         return self.featurizer(mol)
 
     def transform(self, X: List[Union[str, Chem.Mol]]) -> np.ndarray:
