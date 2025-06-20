@@ -7,7 +7,7 @@ import pandas as pd
 
 from chemprop.data import MolAtomBondDatapoint
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.utils import make_mol
+from chemprop.utils import make_mol, parallel_execute
 
 
 def build_MAB_data_from_files(
@@ -26,12 +26,15 @@ def build_MAB_data_from_files(
     p_constraints: PathLike | None,
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
+    n_workers: int = 1,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
 
     smis = df[smiles_cols[0]].values if smiles_cols is not None else df.iloc[:, 0].values
-    mols = [make_mol(smi, **make_mol_kwargs) for smi in smis]
+    mols = parallel_execute(
+        make_mol, [(smi,) + tuple(make_mol_kwargs.values()) for smi in smis], n_workers=n_workers
+    )
     n_datapoints = len(mols)
 
     weights = (
