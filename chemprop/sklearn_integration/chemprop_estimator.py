@@ -82,6 +82,11 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             preds = self.model(batch)
         return preds.view(-1).cpu().numpy()
 
+    def load_from_file(self, checkpoint_path: str, strict: bool = True):
+        self.model = MPNN.load_from_file(checkpoint_path, map_location=self.device, strict=strict)
+        self.model.eval()
+        return self
+
 
 X = np.array([
     "CCO", "CCN", "CCC", "COC", "CNC", "CCCl", "CCBr", "CCF", "CCI", "CC=O",
