@@ -57,11 +57,14 @@ def E_ds(mols):
     indirect=True,
 )
 @pytest.fixture
-def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds):
+def data(smis, targets, X_d, V_fs, E_fs, V_ds, E_ds):
     mol_targets, atom_targets, bond_targets = targets
     return [
         MolAtomBondDatapoint(
-            mol=mol,
+            smiles=smi,
+            _keep_h=False,
+            _add_h=False,
+            _ignore_stereo=False,
             y=mol_targets[i],
             atom_y=atom_targets[i],
             bond_y=bond_targets[i],
@@ -71,7 +74,7 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds):
             V_d=V_ds[i] if V_ds is not None else None,
             E_d=E_ds[i] if E_ds is not None else None,
         )
-        for i, mol in enumerate(mols)
+        for i, smi in enumerate(smis)
     ]
 
 

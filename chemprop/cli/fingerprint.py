@@ -144,7 +144,13 @@ def make_fingerprint_for_model(
     logger.info(f"test size: {len(test_data[0])}")
 
     test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+        make_dataset(
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        for d in test_data
     ]
 
     if multicomponent:

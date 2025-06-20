@@ -21,7 +21,10 @@ from chemprop.uncertainty.estimator import (
 @pytest.fixture
 def dataloader(mol_regression_data):
     smis, Y = mol_regression_data
-    data = [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis[:2], Y[:2])]
+    data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=y)
+        for smi, y in zip(smis[:2], Y[:2])
+    ]
     dset = MoleculeDataset(data)
 
     return DataLoader(dset, 32, collate_fn=collate_batch)

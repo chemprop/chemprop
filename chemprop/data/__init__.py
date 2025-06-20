@@ -11,6 +11,7 @@ from .collate import (
 from .dataloader import build_dataloader
 from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
 from .datasets import (
+    BatchMoleculeDataset,
     Datum,
     MolAtomBondDataset,
     MolAtomBondDatum,
@@ -37,6 +38,7 @@ __all__ = [
     "MolAtomBondDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "BatchMoleculeDataset",
     "ReactionDataset",
     "Datum",
     "MolAtomBondDatum",

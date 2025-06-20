@@ -16,7 +16,10 @@ from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 def data(mol_classification_data):
     smis, Y = mol_classification_data
 
-    return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
+    return [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=y)
+        for smi, y in zip(smis, Y)
+    ]
 
 
 @pytest.fixture

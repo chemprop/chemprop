@@ -45,6 +45,10 @@ RUN conda install pytorch cpuonly -c pytorch && \
     python -m pip install . && \
     python -m pip cache purge
 
+# Install cuik-molmaker using script
+RUN python /opt/chemprop/chemprop/scripts/check_and_install_cuik_molmaker.py
+
 # when running this image, open an interactive bash terminal inside the conda environment
 RUN echo "conda activate chemprop_env" > ~/.bashrc
+
 ENTRYPOINT ["/bin/bash", "--login"]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit.Chem import AllChem as Chem
@@ -43,8 +43,22 @@ class _DatapointMixin:
 
 @dataclass
 class _MoleculeDatapointMixin:
-    mol: Chem.Mol
-    """the molecule associated with this datapoint"""
+    smiles: str
+    """A :class:`_MoleculeDatapointMixin` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+    _keep_h: bool = False
+    _add_h: bool = False
+    _ignore_stereo: bool = False
+    _reorder_atoms: bool = False
+    _mol_cache: Chem.Mol = field(default=None, repr=False, compare=False)
+
+    @property
+    def mol(self) -> Chem.Mol:
+        """Lazily compute the molecule only when accessed"""
+        if self._mol_cache is None:
+            self._mol_cache = make_mol(
+                self.smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
+            )
+        return self._mol_cache
 
     @classmethod
     def from_smi(
@@ -57,11 +71,18 @@ class _MoleculeDatapointMixin:
         reorder_atoms: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms)
-
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
-        return cls(mol, *args, **kwargs)
+        # Pass the SMILES and parameters instead of the computed molecule
+        return cls(
+            smiles=smi,
+            _keep_h=keep_h,
+            _add_h=add_h,
+            _ignore_stereo=ignore_stereo,
+            _reorder_atoms=reorder_atoms,
+            *args,
+            **kwargs,
+        )
 
 
 @dataclass
@@ -142,11 +163,17 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
         reorder_atoms: bool = True,
         **kwargs,
     ) -> MolAtomBondDatapoint:
-        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms=reorder_atoms)
-
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
-        return cls(mol, *args, **kwargs)
+        return cls(
+            smi,
+            _keep_h=keep_h,
+            _add_h=add_h,
+            _ignore_stereo=ignore_stereo,
+            _reorder_atoms=reorder_atoms,
+            *args,
+            **kwargs,
+        )
 
 
 @dataclass

@@ -21,9 +21,11 @@ def featurizer():
 
 
 @pytest.fixture
-def dataset(mols, targets, featurizer):
-    data = [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
-
+def dataset(smis, targets, featurizer):
+    data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=target)
+        for smi, target in zip(smis, targets)
+    ]
     return MoleculeDataset(data, featurizer)
 
 
@@ -33,8 +35,11 @@ def seed(request):
 
 
 @pytest.fixture
-def class_sampler(mols, bin_targets, featurizer):
-    data = [MoleculeDatapoint(mol, y) for mol, y in zip(mols, bin_targets)]
+def class_sampler(smis, bin_targets, featurizer):
+    data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=target)
+        for smi, target in zip(smis, bin_targets)
+    ]
     dset = MoleculeDataset(data, featurizer)
 
     return ClassBalanceSampler(dset.Y, shuffle=True)
@@ -87,7 +92,10 @@ def test_class_balance_shuffle(class_sampler):
 
 
 def test_seed_class_balance_shuffle(smis, bin_targets, featurizer, seed):
-    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, bin_targets)]
+    data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=target)
+        for smi, target in zip(smis, bin_targets)
+    ]
     dset = MoleculeDataset(data, featurizer)
 
     sampler = ClassBalanceSampler(dset.Y, seed, True)
@@ -99,7 +107,10 @@ def test_seed_class_balance_shuffle(smis, bin_targets, featurizer, seed):
 
 
 def test_seed_class_balance_reproducibility(smis, bin_targets, featurizer, seed):
-    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, bin_targets)]
+    data = [
+        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=target)
+        for smi, target in zip(smis, bin_targets)
+    ]
     dset = MoleculeDataset(data, featurizer)
 
     sampler1 = ClassBalanceSampler(dset.Y, seed, True)
