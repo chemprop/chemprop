@@ -659,23 +659,15 @@ def save_MAB_predictions(
     if isinstance(next(p for p in model.predictors if p is not None), MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            format_probability_string(mol_preds)
-            if mol_preds is not None
-            else [None] * n_datapoints
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * n_datapoints
         )
         atomss_class_probs = (
-            np.split(
-                format_probability_string(atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * n_datapoints
         )
         bondss_class_probs = (
-            np.split(
-                format_probability_string(bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * n_datapoints
         )
