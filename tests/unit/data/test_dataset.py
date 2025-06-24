@@ -55,20 +55,10 @@ def V_ds(mols):
     indirect=True,
 )
 @pytest.fixture
-def data(smis, targets, X_d, V_fs, E_fs, V_ds):
+def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     return [
-        MoleculeDatapoint(
-            smiles=smi,
-            _keep_h=False,
-            _add_h=False,
-            _ignore_stereo=False,
-            y=target,
-            x_d=x_d,
-            V_f=V_f,
-            E_f=E_f,
-            V_d=V_d,
-        )
-        for smi, target, x_d, V_f, E_f, V_d in zip(smis, targets, X_d, V_fs, E_fs, V_ds)
+        MoleculeDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
+        for mol, target, x_d, V_f, E_f, V_d in zip(mols, targets, X_d, V_fs, E_fs, V_ds)
     ]
 
 

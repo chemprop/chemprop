@@ -132,6 +132,7 @@ def make_fingerprint_for_model(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         test_data = build_data_from_files(
             args.test_path,
             **format_kwargs,

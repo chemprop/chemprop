@@ -242,6 +242,7 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         datas = build_data_from_files(
             data_path,
             **format_kwargs,

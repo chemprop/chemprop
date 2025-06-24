@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from functools import cached_property
+import logging
 from typing import NamedTuple, TypeAlias
-import warnings
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -20,6 +20,8 @@ from chemprop.featurizers.molgraph import (
 )
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
 from chemprop.types import Rxn
+
+logger = logging.getLogger(__name__)
 
 
 class Datum(NamedTuple):
@@ -339,7 +341,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class BatchMoleculeDataset(MoleculeDataset):
-    """A :class:`BatchMoleculeDataset` composed of :class:`MoleculeDatapoint`\s and a :class:`BatchMolGraphFeaturizer`
+    """A :class:`BatchMoleculeDataset` composed of :class:`LazyMoleculeDatapoint`\s and a :class:`BatchMolGraphFeaturizer`
 
     A :class:`BatchMoleculeDataset` produces featurized data for a batch of molecules for ingestion by a
     :class:`MPNN` model. Data featurization is always performed on-the-fly
@@ -348,7 +350,7 @@ class BatchMoleculeDataset(MoleculeDataset):
 
     Parameters
     ----------
-    data : Iterable[MoleculeDatapoint]
+    data : Iterable[LazyMoleculeDatapoint]
         the data from which to create a dataset
     featurizer : BatchMolGraphFeaturizer
         the featurizer with which to generate MolGraphs of the molecules
@@ -368,9 +370,8 @@ class BatchMoleculeDataset(MoleculeDataset):
     @cache.setter
     def cache(self, cache: bool = False):
         if cache:
-            warnings.warn(
-                "This option no longer does anything and is deprecated. --use-cuikmolmaker-featurization is meant to be used without caching!",
-                DeprecationWarning,
+            logger.warning(
+                "This option no longer does anything and is deprecated. --use-cuikmolmaker-featurization is meant to be used without caching!"
             )
         self.__cache = cache
 

@@ -929,6 +929,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     ):
         for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
             format_kwargs.pop(key, None)
+        featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
@@ -1989,6 +1990,7 @@ def main(args):
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)

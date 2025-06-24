@@ -12,10 +12,7 @@ from chemprop.models import MPNN
 def data(mol_regression_data):
     smis, Y = mol_regression_data
 
-    return [
-        MoleculeDatapoint(smiles=smi, _keep_h=False, _add_h=False, _ignore_stereo=False, y=y)
-        for smi, y in zip(smis, Y)
-    ]
+    return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
 
 
 def test_output_transform(data):

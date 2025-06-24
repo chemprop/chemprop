@@ -6,6 +6,22 @@ import rdkit
 import requests
 import torch
 
+# Check if the system is Linux, MacOS or Windows
+system = sys.platform
+print(f"System: {system}")
+
+if system == "linux":
+    print("Currently on Linux.")
+elif system == "darwin":
+    print("Currently on MacOS. cuik-molmaker is currently support only on Linux.")
+    exit(1)
+elif system == "win32":
+    print("Currently on Windows. cuik-molmaker is currently support only on Linux.")
+    exit(1)
+else:
+    print(f"Unknown system: {system}")
+    exit(1)
+
 # Check that conda is installed
 try:
     conda_version = subprocess.check_output(["conda", "--version"], text=True).strip()
@@ -18,17 +34,19 @@ conda_prefix = os.getenv("CONDA_PREFIX")
 rdkit_so_file = os.path.join(conda_prefix, "lib", "libRDKitGraphMol.so")
 print(f"RDKit shared object file: {rdkit_so_file}")
 if not os.path.exists(rdkit_so_file):
+    print(f"Could not find RDKit shared object file: {rdkit_so_file}")
     print(
-        "RDKit is not installed. Please install RDKit from conda and try again."
-        "You can install RDKit with the following command: conda install -c conda-forge rdkit"
+        "This probably means that RDKit was not installed using conda. Currently, cuik-molmaker is only supported with RDKit installed using conda. Please install RDKit/Chemprop from conda and try again."
+        "For installation instructions, please refer to the Chemprop documentation: https://chemprop.readthedocs.io/en/latest/installation.html#option-3-installing-from-source-using-environment-yml"
     )
     exit(1)
 
 libtorch_so_file = os.path.join(conda_prefix, "lib", "libtorch_cpu.so")
 if not os.path.exists(libtorch_so_file):
+    print(f"Could not find PyTorch shared object file: {libtorch_so_file}")
     print(
-        "LibTorch is not installed. Please install PyTorch from conda and try again."
-        "You can install LibTorch with the following command: conda install -c conda-forge pytorch"
+        "This probably means that PyTorch was not installed using conda. Currently, cuik-molmaker is only supported with PyTorch installed using conda. Please install PyTorch/Chemprop from conda and try again."
+        "For installation instructions, please refer to the Chemprop documentation: https://chemprop.readthedocs.io/en/latest/installation.html#option-3-installing-from-source-using-environment-yml"
     )
     exit(1)
 
@@ -153,4 +171,4 @@ except subprocess.CalledProcessError as e:
     exit(1)
 
 print("cuik-molmaker installed successfully.")
-print("You can now use cuik-molmaker with Chemprop using --use_cuikmolmaker_featurization flag.")
+print("You can now use cuik-molmaker with Chemprop using --use-cuikmolmaker-featurization flag.")
