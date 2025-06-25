@@ -4,9 +4,9 @@ from torch.utils.data import DataLoader
 
 from chemprop.data.collate import (
     collate_batch,
+    collate_cuik_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
-    collate_cuik_batch,
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,

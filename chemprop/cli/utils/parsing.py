@@ -22,8 +22,8 @@ from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
-    CuikmolmakerMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerMolGraphFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )

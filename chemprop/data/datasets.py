@@ -14,8 +14,8 @@ from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, Re
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
-    CuikmolmakerMolGraphFeaturizer,
     CGRFeaturizer,
+    CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
@@ -356,7 +356,9 @@ class CuikmolmakerDataset(MoleculeDataset):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
-    featurizer: CuikmolmakerMolGraphFeaturizer = field(default_factory=CuikmolmakerMolGraphFeaturizer)
+    featurizer: CuikmolmakerMolGraphFeaturizer = field(
+        default_factory=CuikmolmakerMolGraphFeaturizer
+    )
 
     def __post_init__(self):
         super().__post_init__()
