@@ -1,4 +1,4 @@
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Literal
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -7,13 +7,14 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 
 from chemprop.models.model import MPNN
-from chemprop.data.datasets import MoleculeDataset
+from chemprop.data.datasets import MoleculeDataset, ReactionDataset
 from chemprop.cli.utils.parsing import make_datapoints, make_dataset
 from chemprop.data.collate import collate_batch
 from chemprop.sklearn_integration.transformer import build_default_mpnn
+from chemprop.featurizers.molgraph.reaction import RxnMode
 
 
-class ChempropTransformer(BaseEstimator, TransformerMixin):
+class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X: Sequence[str], y=None):
         return self
 
@@ -46,6 +47,57 @@ class ChempropTransformer(BaseEstimator, TransformerMixin):
         )
         return make_dataset(mol_data[0])
 
+class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        reaction_mode = RxnMode.REAC_DIFF,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = True,
+    ):
+        self.reaction_mode = reaction_mode
+        self.keep_h = keep_h
+        self.add_h = add_h
+        self.ignore_stereo = ignore_stereo
+        self.reorder_atoms = reorder_atoms
+
+    def fit(self, X: Sequence[str], y=None):
+        return self
+
+    def fit_transform(self, X: Sequence[str], y=None, **__):
+        return self._build_dataset(X, y)
+
+    def transform(self, X: Sequence[str]):
+        return self._build_dataset(X, None)
+
+    def _build_dataset(self, X: Sequence[str], Y: Optional[Sequence[float]]) -> ReactionDataset:
+        rxnss = [list(X)]
+        if Y is None:
+            Y = np.zeros((len(X), 1), dtype=float)
+        _, rxn_data = make_datapoints(
+            smiss=None,
+            rxnss=rxnss,
+            Y=Y,
+            weights=None,
+            lt_mask=None,
+            gt_mask=None,
+            X_d=None,
+            V_fss=None,
+            E_fss=None,
+            V_dss=None,
+            molecule_featurizers=None,
+            keep_h=self.keep_h,
+            add_h=self.add_h,
+            ignore_stereo=self.ignore_stereo,
+            reorder_atoms=self.reorder_atoms,
+        )
+
+        return make_dataset(
+            rxn_data[0],
+            reaction_mode=self.reaction_mode,
+        )
+
 
 class ChempropRegressor(BaseEstimator, RegressorMixin):
     def __init__(
@@ -73,7 +125,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             ],
         )
 
-    def fit(self, X: MoleculeDataset, y=None):
+    def fit(self, X: MoleculeDataset|ReactionDataset, y=None):
         g0 = X[0].mg
         self.model = (
             MPNN(**self.mpnn_args)
@@ -90,7 +142,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         self.trainer.fit(self.model, dl)
         return self
 
-    def predict(self, X: MoleculeDataset):
+    def predict(self, X: MoleculeDataset|ReactionDataset):
         self.model.eval()
         dl = DataLoader(
             X,
@@ -109,7 +161,7 @@ if __name__ == "__main__":
     from sklearn.model_selection import cross_val_score
 
     sklearnPipeline = Pipeline(
-        [("featurizer", ChempropTransformer()), ("regressor", ChempropRegressor())]
+        [("featurizer", ChempropMoleculeTransformer()), ("regressor", ChempropRegressor())]
     )
 
     X = np.array(
@@ -178,7 +230,7 @@ if __name__ == "__main__":
 
     # microtest
     sklearnPipeline1 = Pipeline(
-        [("featurizer", ChempropTransformer()), ("regressor", ChempropRegressor())]
+        [("featurizer", ChempropMoleculeTransformer()), ("regressor", ChempropRegressor())]
     )
 
     X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
