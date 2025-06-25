@@ -37,7 +37,7 @@ class ChempropTransformer(BaseEstimator, TransformerMixin):
         elif self.featurizer_type == "reaction":
             if isinstance(mol, tuple):
                 reac, prod = mol
-                reac = Chem.MolFromSmiles(reac)
+                reac = Chem.MolFromSmiles(reac)  # chemprop.utils.utils.py
                 prod = Chem.MolFromSmiles(prod)
                 return self.featurizer((reac, prod))
             else:
@@ -89,48 +89,48 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
 
-#microtest
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import cross_val_score
+# microtest
+# from sklearn.pipeline import Pipeline
+# from sklearn.model_selection import cross_val_score
 
-sklearnPipeline = Pipeline([
-    ("featurizer", ChempropTransformer()),
-    ("regressor", ChempropRegressor().load_from_file("./tests/data/example_model_v2_classification_dirichlet_mol.pt"))
-])
+# sklearnPipeline = Pipeline([
+#     ("featurizer", ChempropTransformer()),
+#     ("regressor", ChempropRegressor().load_from_file("./tests/data/example_model_v2_classification_dirichlet_mol.pt"))
+# ])
 
-X = np.array([
-    "CCO", "CCN", "CCC", "COC", "CNC", "CCCl", "CCBr", "CCF", "CCI", "CC=O",
-    "CC#N", "CC(C)O", "CC(C)N", "CC(C)C", "COC(C)", "CN(C)C", "C1CCCCC1", "C1=CC=CC=C1",
-    "CC(C)(C)O", "CC(C)(C)N", "COCCO", "CCOC(=O)C", "CCN(CC)CC", "CN1CCCC1", "C(CO)N"
-])
+# X = np.array([
+#     "CCO", "CCN", "CCC", "COC", "CNC", "CCCl", "CCBr", "CCF", "CCI", "CC=O",
+#     "CC#N", "CC(C)O", "CC(C)N", "CC(C)C", "COC(C)", "CN(C)C", "C1CCCCC1", "C1=CC=CC=C1",
+#     "CC(C)(C)O", "CC(C)(C)N", "COCCO", "CCOC(=O)C", "CCN(CC)CC", "CN1CCCC1", "C(CO)N"
+# ])
 
-y = np.array([
-    0.50, 0.60, 0.55, 0.58, 0.52, 0.62, 0.65, 0.57, 0.59, 0.61,
-    0.56, 0.60, 0.54, 0.53, 0.62, 0.63, 0.45, 0.40,
-    0.64, 0.66, 0.59, 0.51, 0.48, 0.46, 0.49
-])
+# y = np.array([
+#     0.50, 0.60, 0.55, 0.58, 0.52, 0.62, 0.65, 0.57, 0.59, 0.61,
+#     0.56, 0.60, 0.54, 0.53, 0.62, 0.63, 0.45, 0.40,
+#     0.64, 0.66, 0.59, 0.51, 0.48, 0.46, 0.49
+# ])
 
-scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_error')
-print("Cross-validation scores:", scores)
-print("Mean MSE:", -scores.mean())
+# scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_error')
+# print("Cross-validation scores:", scores)
+# print("Mean MSE:", -scores.mean())
 
 
-#microtest
-sklearnPipeline1 = Pipeline([
-    ("featurizer", ChempropTransformer()),
-    ("regressor", ChempropRegressor())
-])
+# #microtest
+# sklearnPipeline1 = Pipeline([
+#     ("featurizer", ChempropTransformer()),
+#     ("regressor", ChempropRegressor())
+# ])
 
-X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
-y_targets = [0.5, 1.2, 0.7]
-sklearnPipeline1.fit(X_smiles, y_targets)
+# X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
+# y_targets = [0.5, 1.2, 0.7]
+# sklearnPipeline1.fit(X_smiles, y_targets)
 
-X_test = ["CCN", "CCCl"]
-predictions = sklearnPipeline1.predict(X_test)
-print("Predictions:", predictions)
+# X_test = ["CCN", "CCCl"]
+# predictions = sklearnPipeline1.predict(X_test)
+# print("Predictions:", predictions)
 
-import joblib
-joblib.dump(sklearnPipeline1, "chemprop_pipeline.pkl")
+# import joblib
+# joblib.dump(sklearnPipeline1, "chemprop_pipeline.pkl")
 
-loadedPipeline = joblib.load("chemprop_pipeline.pkl")
-print("Reproduced Predictions:", loadedPipeline.predict(X))
+# loadedPipeline = joblib.load("chemprop_pipeline.pkl")
+# print("Reproduced Predictions:", loadedPipeline.predict(X))

@@ -4,8 +4,11 @@ import torch.nn as nn
 import numpy as np
 from chemprop.nn.predictors import RegressionFFN
 
+
 class Regressor(RegressorMixin, BaseEstimator):
-    def __init__(self, input_dim: int = 300, hidden_dim: int = 256, dropout: float = 0.0, device: str = "cpu"):
+    def __init__(
+        self, input_dim: int = 300, hidden_dim: int = 256, dropout: float = 0.0, device: str = "cpu"
+    ):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.dropout = dropout

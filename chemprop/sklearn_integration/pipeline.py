@@ -2,10 +2,9 @@ from sklearn.pipeline import Pipeline
 from chemprop.sklearn_integration.transformer import MPNNTransformer
 from chemprop.sklearn_integration.regressor import Regressor
 
-mpnn_pipeline = Pipeline([
-    ("embedding", MPNNTransformer()),
-    ("regressor", Regressor(input_dim=300))
-])
+mpnn_pipeline = Pipeline(
+    [("embedding", MPNNTransformer()), ("regressor", Regressor(input_dim=300))]
+)
 
 X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
 y_targets = [0.5, 1.2, 0.7]

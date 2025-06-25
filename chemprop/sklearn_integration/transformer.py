@@ -27,26 +27,19 @@ def build_default_mpnn(
         depth=depth,
         dropout=dropout,
         activation="relu",
-        bias=True
+        bias=True,
     )
 
     agg = MeanAggregation()
 
     predictor = RegressionFFN(
-        input_dim=hidden_dim,
-        hidden_dim=hidden_dim,
-        n_layers=2,
-        dropout=dropout,
-        activation="relu",
+        input_dim=hidden_dim, hidden_dim=hidden_dim, n_layers=2, dropout=dropout, activation="relu"
     )
 
     return MPNN(
-        message_passing=message_passing,
-        agg=agg,
-        predictor=predictor,
-        batch_norm=True,
-        metrics=[],
+        message_passing=message_passing, agg=agg, predictor=predictor, batch_norm=True, metrics=[]
     )
+
 
 class MPNNTransformer(TransformerMixin, BaseEstimator):
     def __init__(self, mpnn_args: Optional[dict] = None, device: Optional[str] = "cpu"):
@@ -62,10 +55,9 @@ class MPNNTransformer(TransformerMixin, BaseEstimator):
         if self.mpnn_args is not None:
             self.model = MPNN(**self.mpnn_args).to(self.device)
         else:
-            self.model = build_default_mpnn(self.featurizer.atom_fdim, 
-                                            self.featurizer.bond_fdim,
-                                            hidden_dim=300,
-                                            depth=3).to(self.device)
+            self.model = build_default_mpnn(
+                self.featurizer.atom_fdim, self.featurizer.bond_fdim, hidden_dim=300, depth=3
+            ).to(self.device)
         self.model.eval()
         self.is_fitted_ = True
         return self
@@ -84,7 +76,7 @@ class MPNNTransformer(TransformerMixin, BaseEstimator):
         mol_graphs = [self._to_molgraph(mol) for mol in X]
 
         # The MPNN model expects batched MolGraphs
-        batch = BatchMolGraph(mgs = mol_graphs)
+        batch = BatchMolGraph(mgs=mol_graphs)
         batch.to(self.device)
         with torch.no_grad():
             embeddings = self.model.fingerprint(batch)
