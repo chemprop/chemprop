@@ -5,9 +5,13 @@ import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.data.datasets import MoleculeDatapoint, MoleculeDataset
+from chemprop.data.datasets import CuikmolmakerDataset, MoleculeDatapoint, MoleculeDataset
 from chemprop.data.molgraph import MolGraph
-from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.molgraph.molecule import (
+    CuikmolmakerMolGraphFeaturizer,
+    SimpleMoleculeMolGraphFeaturizer,
+)
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 
 @pytest.fixture(params=[1, 5, 10])
@@ -79,6 +83,16 @@ def dataset(data, cache):
     return dset
 
 
+@pytest.fixture
+def cuik_molecule_dataset(data):
+    if is_cuikmolmaker_available():
+        featurizer = CuikmolmakerMolGraphFeaturizer(atom_featurizer_mode="V2")
+        dset = CuikmolmakerDataset(data, featurizer)
+        return dset
+    else:
+        return None
+
+
 def test_none():
     with pytest.raises(ValueError):
         MoleculeDataset(None, SimpleMoleculeMolGraphFeaturizer())
@@ -88,16 +102,22 @@ def test_empty():
     """TODO"""
 
 
-def test_len(data, dataset):
+def test_len(data, dataset, cuik_molecule_dataset):
     assert len(data) == len(dataset)
+    if is_cuikmolmaker_available():
+        assert len(data) == len(cuik_molecule_dataset)
 
 
-def test_smis(dataset, smis):
+def test_smis(dataset, cuik_molecule_dataset, smis):
     assert smis == dataset.smiles
+    if is_cuikmolmaker_available():
+        assert smis == cuik_molecule_dataset.smiles
 
 
-def test_targets(dataset, targets):
+def test_targets(dataset, cuik_molecule_dataset, targets):
     np.testing.assert_array_equal(dataset.Y, targets)
+    if is_cuikmolmaker_available():
+        np.testing.assert_array_equal(cuik_molecule_dataset.Y, targets)
 
 
 def test_set_targets_too_short(dataset):
@@ -105,8 +125,10 @@ def test_set_targets_too_short(dataset):
         dataset.Y = np.random.rand(len(dataset) // 2, 1)
 
 
-def test_num_tasks(dataset, targets):
+def test_num_tasks(dataset, cuik_molecule_dataset, targets):
     assert dataset.t == targets.shape[1]
+    if is_cuikmolmaker_available():
+        assert cuik_molecule_dataset.t == targets.shape[1]
 
 
 @pytest.mark.skipif(
