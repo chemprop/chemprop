@@ -73,7 +73,7 @@ class BatchMolGraph:
 
 
 @dataclass(repr=False, eq=False, slots=True)
-class BatchTorchMolGraph:
+class BatchCuikMolGraph:
     V: Tensor
     """the atom feature matrix"""
     E: Tensor
@@ -104,7 +104,7 @@ class BatchTorchMolGraph:
 
 
 class TrainingBatch(NamedTuple):
-    bmg: BatchMolGraph | BatchTorchMolGraph
+    bmg: BatchMolGraph | BatchCuikMolGraph
     V_d: Tensor | None
     X_d: Tensor | None
     Y: Tensor | None
@@ -127,7 +127,7 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     )
 
 
-def collate_torch_batch(batch: Iterable[Datum]) -> TrainingBatch:
+def collate_cuik_batch(batch: Iterable[Datum]) -> TrainingBatch:
     (
         atom_feats,
         bond_feats,
@@ -142,7 +142,7 @@ def collate_torch_batch(batch: Iterable[Datum]) -> TrainingBatch:
         gt_masks,
     ) = batch
     return TrainingBatch(
-        BatchTorchMolGraph(
+        BatchCuikMolGraph(
             V=atom_feats,
             E=bond_feats,
             edge_index=edge_index,

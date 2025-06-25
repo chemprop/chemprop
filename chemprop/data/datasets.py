@@ -14,7 +14,7 @@ from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, Re
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
-    BatchMolGraphFeaturizer,
+    CuikmolmakerMolGraphFeaturizer,
     CGRFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
@@ -340,10 +340,10 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 
 @dataclass
-class BatchMoleculeDataset(MoleculeDataset):
-    """A :class:`BatchMoleculeDataset` composed of :class:`LazyMoleculeDatapoint`\s and a :class:`BatchMolGraphFeaturizer`
+class CuikmolmakerDataset(MoleculeDataset):
+    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a :class:`CuikmolmakerMolGraphFeaturizer`
 
-    A :class:`BatchMoleculeDataset` produces featurized data for a batch of molecules for ingestion by a
+    A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion by a
     :class:`MPNN` model. Data featurization is always performed on-the-fly
     and using the cuik-molmaker package. This batched processing is significantly faster and consumes less memory than the default featurization method. This is enabled by setting the
     ``use_cuikmolmaker_featurization`` flag to ``True``.
@@ -352,17 +352,17 @@ class BatchMoleculeDataset(MoleculeDataset):
     ----------
     data : Iterable[LazyMoleculeDatapoint]
         the data from which to create a dataset
-    featurizer : BatchMolGraphFeaturizer
+    featurizer : CuikmolmakerMolGraphFeaturizer
         the featurizer with which to generate MolGraphs of the molecules
     """
 
-    featurizer: BatchMolGraphFeaturizer = field(default_factory=BatchMolGraphFeaturizer)
+    featurizer: CuikmolmakerMolGraphFeaturizer = field(default_factory=CuikmolmakerMolGraphFeaturizer)
 
     def __post_init__(self):
         super().__post_init__()
         self.cache = False
 
-    # caching should always be false for BatchMoleculeDataset
+    # caching should always be false for CuikmolmakerDataset
     @property
     def cache(self) -> bool:
         return self.__cache

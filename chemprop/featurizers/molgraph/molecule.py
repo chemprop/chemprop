@@ -1,4 +1,5 @@
 from dataclasses import InitVar, dataclass
+from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
@@ -96,8 +97,8 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
 
 @dataclass
-class BatchMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
-    """A :class:`BatchMolGraphFeaturizer` is the default implementation of a
+class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
+    """A :class:`CuikmolmakerMolGraphFeaturizer` is the default implementation of a
     :class:`_MolGraphFeaturizerMixin`. This class featurizes a list of molecules at once instead of one molecule at a time for efficiency.
 
     Parameters
@@ -125,8 +126,8 @@ class BatchMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
         super().__post_init__()
         if not is_cuikmolmaker_available():
             raise ImportError(
-                "BatchMolGraphFeaturizer requires cuik-molmaker package to be installed. "
-                "Please install it using 'python chemprop/scripts/check_and_install_cuik_molmaker.py'."
+                "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
+                f"Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
             )
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
 

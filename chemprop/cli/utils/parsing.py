@@ -13,7 +13,7 @@ from chemprop.data.datapoints import (
     ReactionDatapoint,
 )
 from chemprop.data.datasets import (
-    BatchMoleculeDataset,
+    CuikmolmakerDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     ReactionDataset,
@@ -22,7 +22,7 @@ from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
 from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
-    BatchMolGraphFeaturizer,
+    CuikmolmakerMolGraphFeaturizer,
     CondensedGraphOfReactionFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
@@ -513,7 +513,7 @@ def make_dataset(
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
-) -> MoleculeDataset | BatchMoleculeDataset | MolAtomBondDataset | ReactionDataset:
+) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":
@@ -539,13 +539,13 @@ def make_dataset(
     if isinstance(data[0], MoleculeDatapoint) or isinstance(data[0], LazyMoleculeDatapoint):
         if cuikmolmaker_featurization:
             add_h = data[0]._add_h
-            featurizer = BatchMolGraphFeaturizer(
+            featurizer = CuikmolmakerMolGraphFeaturizer(
                 atom_featurizer=atom_featurizer,
                 bond_featurizer=bond_featurizer,
                 atom_featurizer_mode=multi_hot_atom_featurizer_mode,
                 add_h=add_h,
             )
-            return BatchMoleculeDataset(data, featurizer)
+            return CuikmolmakerDataset(data, featurizer)
 
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
         extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0

@@ -238,7 +238,7 @@ def validate_common_args(args):
     if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
         raise ArgumentError(
             argument=None,
-            message="cuik-molmaker is not installed. Please install it using `python chemprop/scripts/check_and_install_cuik_molmaker.py` before using the `--use-cuikmolmaker-featurization` flag.",
+            message=f"cuik-molmaker is not installed. Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}` before using the `--use-cuikmolmaker-featurization` flag.",
         )
 
     if args.use_cuikmolmaker_featurization:

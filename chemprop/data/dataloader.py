@@ -6,10 +6,10 @@ from chemprop.data.collate import (
     collate_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
-    collate_torch_batch,
+    collate_cuik_batch,
 )
 from chemprop.data.datasets import (
-    BatchMoleculeDataset,
+    CuikmolmakerDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def build_dataloader(
     dataset: MoleculeDataset
-    | BatchMoleculeDataset
+    | CuikmolmakerDataset
     | MolAtomBondDataset
     | ReactionDataset
     | MulticomponentDataset,
@@ -62,8 +62,8 @@ def build_dataloader(
 
     if isinstance(dataset, MulticomponentDataset):
         collate_fn = collate_multicomponent
-    elif isinstance(dataset, BatchMoleculeDataset):
-        collate_fn = collate_torch_batch
+    elif isinstance(dataset, CuikmolmakerDataset):
+        collate_fn = collate_cuik_batch
     elif isinstance(dataset, MolAtomBondDataset):
         collate_fn = collate_mol_atom_bond_batch
     else:

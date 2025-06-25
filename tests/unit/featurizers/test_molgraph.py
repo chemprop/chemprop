@@ -4,7 +4,7 @@ from rdkit import Chem
 
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
-from chemprop.featurizers.molgraph import BatchMolGraphFeaturizer, SimpleMoleculeMolGraphFeaturizer
+from chemprop.featurizers.molgraph import CuikmolmakerMolGraphFeaturizer, SimpleMoleculeMolGraphFeaturizer
 from chemprop.utils.utils import is_cuikmolmaker_available
 
 
@@ -35,7 +35,7 @@ def mol_featurizer():
 @pytest.fixture(params=["V2", "V1", "ORGANIC", "RIGR"])
 def batch_mol_featurizer(request):
     if is_cuikmolmaker_available():
-        return BatchMolGraphFeaturizer(atom_featurizer_mode=request.param)
+        return CuikmolmakerMolGraphFeaturizer(atom_featurizer_mode=request.param)
     else:
         return None
 
@@ -64,7 +64,7 @@ def test_V_shape(mol, mol_featurizer: SimpleMoleculeMolGraphFeaturizer, mg: MolG
 
 
 @pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
-def test_batch_V_shape(smis, mols, batch_mol_featurizer: BatchMolGraphFeaturizer):
+def test_batch_V_shape(smis, mols, batch_mol_featurizer: CuikmolmakerMolGraphFeaturizer):
     total_num_atoms = sum([mol.GetNumAtoms() for mol in mols])
     batch = batch_mol_featurizer(smis)
     batch_V = batch[0]
@@ -87,7 +87,7 @@ def test_E_shape(mol, mol_featurizer: SimpleMoleculeMolGraphFeaturizer, mg: MolG
 
 
 @pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
-def test_batch_E_shape(smis, mols, batch_mol_featurizer: BatchMolGraphFeaturizer):
+def test_batch_E_shape(smis, mols, batch_mol_featurizer: CuikmolmakerMolGraphFeaturizer):
     total_num_bonds = sum([mol.GetNumBonds() for mol in mols])
     batch = batch_mol_featurizer(smis)
     batch_E = batch[1]
