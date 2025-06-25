@@ -9,7 +9,12 @@ from .collate import (
     collate_multicomponent,
 )
 from .dataloader import build_dataloader
-from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from .datapoints import (
+    LazyMoleculeDatapoint,
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    ReactionDatapoint,
+)
 from .datasets import (
     CuikmolmakerDataset,
     Datum,
