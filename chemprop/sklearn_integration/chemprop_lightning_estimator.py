@@ -18,7 +18,7 @@ from chemprop.data.datasets import (
 from chemprop.cli.utils.parsing import make_datapoints, make_dataset
 from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
 from chemprop.featurizers.molgraph.reaction import RxnMode
-from chemprop.cli.train import build_model, build_MAB_model
+from chemprop.cli.train import build_model
 from chemprop.models.utils import save_model
 from chemprop.cli.common import add_common_args
 from chemprop.cli.train import add_train_args
@@ -187,10 +187,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             n_comp = X.n_components if isinstance(X, MulticomponentDataset) else 1
             input_transforms = (None, [None] * n_comp, [None] * n_comp, [None] * n_comp)
             output_transform = None
-            if isinstance(X, MolAtomBondDataset):
-                self.model = build_MAB_model(self.args, X, output_transform, input_transforms)
-            else:
-                self.model = build_model(self.args, X, output_transform, input_transforms)
+            self.model = build_model(self.args, X, output_transform, input_transforms)
         dl = DataLoader(
             X,
             batch_size=self.args.batch_size,
