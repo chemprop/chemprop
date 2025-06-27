@@ -6,13 +6,17 @@ from os import PathLike
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
-from argparse import ArgumentError, ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace
 
 from chemprop.models.model import MPNN
-from chemprop.data.datasets import MoleculeDataset, ReactionDataset
+from chemprop.data.datasets import (
+    MoleculeDataset,
+    ReactionDataset,
+    MolAtomBondDataset,
+    MulticomponentDataset,
+)
 from chemprop.cli.utils.parsing import make_datapoints, make_dataset
-from chemprop.data.collate import collate_batch
-from chemprop.sklearn_integration.transformer import build_default_mpnn
+from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
 from chemprop.featurizers.molgraph.reaction import RxnMode
 from chemprop.cli.train import build_model, build_MAB_model
 from chemprop.models.utils import save_model
@@ -35,7 +39,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         if Y is None:
             Y = np.zeros((len(X), 1), dtype=float)
         elif Y.ndim == 1:
-            Y = Y.reshape(-1,1)
+            Y = Y.reshape(-1, 1)
         mol_data, _ = make_datapoints(
             smiss=smiss,
             rxnss=None,
@@ -59,7 +63,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
 class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        reaction_mode = RxnMode.REAC_DIFF,
+        reaction_mode=RxnMode.REAC_DIFF,
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -85,7 +89,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         if Y is None:
             Y = np.zeros((len(X), 1), dtype=float)
         elif Y.ndim == 1:
-            Y = Y.reshape(-1,1)
+            Y = Y.reshape(-1, 1)
         _, rxn_data = make_datapoints(
             smiss=None,
             rxnss=rxnss,
@@ -104,10 +108,46 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
             reorder_atoms=self.reorder_atoms,
         )
 
-        return make_dataset(
-            rxn_data[0],
-            reaction_mode=self.reaction_mode,
-        )
+        return make_dataset(rxn_data[0], reaction_mode=self.reaction_mode)
+
+
+class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        component_types: Sequence[Literal["molecule", "reaction"]],
+        reaction_modes: Sequence[RxnMode] | None = None,
+    ):
+        self.component_types = list(component_types)
+        self.reaction_modes = list(reaction_modes or [])
+        self._col_tf = []
+        rxn_iter = iter(self.reaction_modes + [RxnMode.REAC_DIFF] * 100)
+        for t in self.component_types:
+            self._col_tf.append(
+                ChempropMoleculeTransformer()
+                if t == "molecule"
+                else ChempropReactionTransformer(reaction_mode=next(rxn_iter))
+            )
+
+    def fit(self, X, y=None):
+        return self
+
+    def fit_transform(self, X, y=None, **__):
+        return self._build_dataset(X, y)
+
+    def transform(self, X):
+        return self._build_dataset(X, None)
+
+    def _build_dataset(self, X_cols, Y):
+        X_cols = list(X_cols)
+        if Y is None:
+            Y = np.zeros((len(X_cols[0]), 1), dtype=float)
+        else:
+            Y = np.asarray(Y, float)
+            if Y.ndim == 1:
+                Y = Y.reshape(-1, 1)
+        datasets = [tf.fit_transform(col, Y) for tf, col in zip(self._col_tf, X_cols)]
+        return MulticomponentDataset(datasets)
+
 
 def add_train_defaults(args: Namespace) -> Namespace:
     parser = ArgumentParser()
@@ -115,30 +155,25 @@ def add_train_defaults(args: Namespace) -> Namespace:
     parser = add_train_args(parser)
     defaults = parser.parse_args([])
     for k, v in vars(defaults).items():
-        if not hasattr(args,k):
-            setattr(args,k,v)
+        if not hasattr(args, k):
+            setattr(args, k, v)
     return args
 
+
+def pick_collate(dset):
+    if isinstance(dset, MulticomponentDataset):
+        return collate_multicomponent
+    if isinstance(dset, MolAtomBondDataset):
+        return collate_mol_atom_bond_batch
+    return collate_batch
+
+
 class ChempropRegressor(BaseEstimator, RegressorMixin):
-    def __init__(
-        self,
-        args: Namespace = Namespace(),
-        n_epochs: int = 50,
-        batch_size: int = 32,
-        num_workers: int = 0,
-        device: str = "cpu",
-    ):
+    def __init__(self, args: Namespace = Namespace()):
         self.args = add_train_defaults(args)
-        self.n_epochs = n_epochs
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.device = device
         self.model = None
         self.trainer = Trainer(
-            max_epochs=self.n_epochs,
-            accelerator="gpu" if torch.cuda.is_available() and "cuda" in self.device else "cpu",
-            devices=1,
-            logger=False,
+            max_epochs=self.args.epochs,
             callbacks=[
                 ModelCheckpoint(monitor="train_loss", mode="min"),
                 EarlyStopping(monitor="train_loss", patience=5, mode="min"),
@@ -147,62 +182,66 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
     def __sklearn_is_fitted__(self):
         return True
-    
-    def fit(self, X: MoleculeDataset|ReactionDataset, y=None):
+
+    # what does the dataset hierarchy look like?
+    def fit(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset, y=None):
         if self.model is None:
-            input_transforms = (None, [None], [None], [None])
+            n_comp = X.n_components if isinstance(X, MulticomponentDataset) else 1
+            input_transforms = (None, [None] * n_comp, [None] * n_comp, [None] * n_comp)
             output_transform = None
-            self.model = build_model(self.args, X, output_transform, input_transforms)
+            if isinstance(X, MolAtomBondDataset):
+                self.model = build_MAB_model(self.args, X, output_transform, input_transforms)
+            else:
+                self.model = build_model(self.args, X, output_transform, input_transforms)
         dl = DataLoader(
             X,
-            batch_size=self.batch_size,
+            batch_size=self.args.batch_size,
             shuffle=True,
-            num_workers=self.num_workers,
-            collate_fn=collate_batch,
+            num_workers=self.args.num_workers,
+            collate_fn=pick_collate,
             drop_last=True,
         )
         self.trainer.fit(self.model, dl)
         return self
 
-    def predict(self, X: MoleculeDataset|ReactionDataset):
+    def predict(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset):
         dl = DataLoader(
             X,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=collate_batch,
+            batch_size=self.args.batch_size,
+            num_workers=self.args.num_workers,
+            collate_fn=pick_collate,
             drop_last=True,
         )
         preds = self.trainer.predict(self.model, dataloaders=dl)
-        return torch.cat(preds,dim=0).view(-1).cpu().numpy()
-    
+        return torch.cat(preds, dim=0).view(-1).cpu().numpy()
+
     def load_from_file(self, checkpoint_path: str, strict: bool = True):
-        self.model = MPNN.load_from_file(checkpoint_path, map_location=self.device, strict=strict)
+        self.model = MPNN.load_from_file(checkpoint_path, strict=strict)
         return self
-    
+
     def save_model(self, path: PathLike):
-        output_columns = self.mpnn_args.target_columns
+        output_columns = self.args.target_columns
         save_model(path, self.model, output_columns)
         return self
-        
+
 
 if __name__ == "__main__":
     # microtest
     from sklearn.pipeline import Pipeline
-    from sklearn.model_selection import cross_val_score,train_test_split
+    from sklearn.model_selection import cross_val_score, train_test_split
     import pandas as pd
     from sklearn.metrics import mean_squared_error
 
     sklearnPipeline = Pipeline(
-        [("featurizer", ChempropMoleculeTransformer()), ("regressor", ChempropRegressor())]
+        [("featurizer", ChempropReactionTransformer()), ("regressor", ChempropRegressor())]
     )
 
-    df = pd.read_csv("mol.csv") # change to target datapath
+    df = pd.read_csv("rxn.csv")  # change to target datapath
     X = df["smiles"].to_numpy(dtype=str)
-    y = df["lipo"].to_numpy(dtype=float)
+    y = df["ea"].to_numpy(dtype=float)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
-    
+
     sklearnPipeline.fit(X_train, y_train)
     y_pred = sklearnPipeline.predict(X_test)
     print(f"MSE: {mean_squared_error(y_true=y_test, y_pred=y_pred)}")
@@ -211,23 +250,6 @@ if __name__ == "__main__":
     # print("Cross-validation scores:", scores)
     # print("Mean MSE:", -scores.mean())
 
+    
 
-    # # save/reload test
-    # sklearnPipeline1 = Pipeline(
-    #     [("featurizer", ChempropMoleculeTransformer()), ("regressor", ChempropRegressor())]
-    # )
 
-    # X_smiles = ["CCO", "CC(=O)O", "c1ccccc1"]
-    # y_targets = [0.5, 1.2, 0.7]
-    # sklearnPipeline1.fit(X_smiles, y_targets)
-
-    # X_test = ["CCN", "CCCl"]
-    # predictions = sklearnPipeline1.predict(X_test)
-    # print("Predictions:", predictions)
-
-    # import joblib
-
-    # joblib.dump(sklearnPipeline1, "chemprop_pipeline.pkl")
-
-    # loadedPipeline = joblib.load("chemprop_pipeline.pkl")
-    # print("Reproduced Predictions:", loadedPipeline.predict(X))
