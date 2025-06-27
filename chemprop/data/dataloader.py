@@ -7,6 +7,7 @@ from chemprop.data.datasets import (
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
@@ -15,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 def build_dataloader(
-    dataset: MoleculeDataset | MolAtomBondDataset | ReactionDataset | MulticomponentDataset,
+    dataset: MoleculeDataset
+    | MolAtomBondDataset
+    | PolymerDataset
+    | ReactionDataset
+    | MulticomponentDataset,
     batch_size: int = 64,
     num_workers: int = 0,
     class_balance: bool = False,
