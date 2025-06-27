@@ -119,10 +119,10 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     ):
         self.component_types = list(component_types)
         self.reaction_modes = list(reaction_modes or [])
-        self._col_tf = []
+        self.col_tf = []
         rxn_iter = iter(self.reaction_modes + [RxnMode.REAC_DIFF] * 100)
         for t in self.component_types:
-            self._col_tf.append(
+            self.col_tf.append(
                 ChempropMoleculeTransformer()
                 if t == "molecule"
                 else ChempropReactionTransformer(reaction_mode=next(rxn_iter))
@@ -141,11 +141,9 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         X_cols = list(X_cols)
         if Y is None:
             Y = np.zeros((len(X_cols[0]), 1), dtype=float)
-        else:
-            Y = np.asarray(Y, float)
-            if Y.ndim == 1:
-                Y = Y.reshape(-1, 1)
-        datasets = [tf.fit_transform(col, Y) for tf, col in zip(self._col_tf, X_cols)]
+        elif Y.ndim == 1:
+            Y = Y.reshape(-1, 1)
+        datasets = [tf.fit_transform(col, Y) for tf, col in zip(self.col_tf, X_cols)]
         return MulticomponentDataset(datasets)
 
 
@@ -198,7 +196,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             batch_size=self.args.batch_size,
             shuffle=True,
             num_workers=self.args.num_workers,
-            collate_fn=pick_collate,
+            collate_fn=pick_collate(X),
             drop_last=True,
         )
         self.trainer.fit(self.model, dl)
@@ -209,17 +207,17 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             X,
             batch_size=self.args.batch_size,
             num_workers=self.args.num_workers,
-            collate_fn=pick_collate,
+            collate_fn=pick_collate(X),
             drop_last=True,
         )
         preds = self.trainer.predict(self.model, dataloaders=dl)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
-    def load_from_file(self, checkpoint_path: str, strict: bool = True):
+    def _load_from_file(self, checkpoint_path: str, strict: bool = True):
         self.model = MPNN.load_from_file(checkpoint_path, strict=strict)
         return self
 
-    def save_model(self, path: PathLike):
+    def _save_model(self, path: PathLike):
         output_columns = self.args.target_columns
         save_model(path, self.model, output_columns)
         return self
@@ -233,18 +231,23 @@ if __name__ == "__main__":
     from sklearn.metrics import mean_squared_error
 
     sklearnPipeline = Pipeline(
-        [("featurizer", ChempropReactionTransformer()), ("regressor", ChempropRegressor())]
+        [("featurizer", ChempropMulticomponentTransformer(component_types=["reaction","molecule"])), 
+         ("regressor", ChempropRegressor())]
     )
 
-    df = pd.read_csv("rxn.csv")  # change to target datapath
-    X = df["smiles"].to_numpy(dtype=str)
-    y = df["ea"].to_numpy(dtype=float)
+    # df = pd.read_csv("rxn.csv")  # change to target datapath
+    # X = df["smiles"].to_numpy(dtype=str)
+    # y = df["ea"].to_numpy(dtype=float)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    df = pd.read_csv("rxn+mol.csv")  # change to target datapath
+    X = (df["rxn_smiles"].to_numpy(dtype=str), df["solvent_smiles"].to_numpy(dtype=str))
+    y = df["target"].to_numpy(dtype=float)
+    
+    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
-    sklearnPipeline.fit(X_train, y_train)
-    y_pred = sklearnPipeline.predict(X_test)
-    print(f"MSE: {mean_squared_error(y_true=y_test, y_pred=y_pred)}")
+    sklearnPipeline.fit(X, y)
+    y_pred = sklearnPipeline.predict(X)
+    print(f"MSE: {mean_squared_error(y_true=y, y_pred=y_pred)}")
 
     # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
     # print("Cross-validation scores:", scores)
