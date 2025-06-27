@@ -37,7 +37,7 @@ class ChempropTransformer(BaseEstimator, TransformerMixin):
         elif self.featurizer_type == "reaction":
             if isinstance(mol, tuple):
                 reac, prod = mol
-                reac = Chem.MolFromSmiles(reac)  # chemprop.utils.utils.py
+                reac = Chem.MolFromSmiles(reac)
                 prod = Chem.MolFromSmiles(prod)
                 return self.featurizer((reac, prod))
             else:
