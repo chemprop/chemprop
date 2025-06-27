@@ -86,7 +86,7 @@ def make_split_indices(
     )
     # if no validation set, reassign the splitting functions
     if sizes[1] == 0.0 or sizes[2] == 0.0:
-        # flip val and test size if test size is not 0 (to bypass astartes check)
+        # flip val and test size if test size is 0 (to bypass astartes check)
         if sizes[2] == 0.0:
             astartes_kwargs["test_size"] = sizes[1]
         include_val = False
