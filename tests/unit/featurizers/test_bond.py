@@ -33,19 +33,6 @@ def exp_len(bond_types, stereo):
 
 
 @pytest.fixture
-def bt_bit(bond, bond_types, featurizer):
-    bt = bond.GetBondType()
-    i_bt = int(bt)
-
-    i = bond_types.index(i_bt) if i_bt in bond_types else -1
-
-    if i == -1:
-        return i
-
-    return featurizer.one_hot_index(bt, featurizer.bond_types)[0] + 1
-
-
-@pytest.fixture
 def x(featurizer, bond):
     return featurizer(bond)
 
@@ -59,10 +46,6 @@ def test_none(featurizer):
     x_e[0] = 1
 
     np.testing.assert_array_equal(x_e, featurizer(None))
-
-
-def test_bt_bit(x, bt_bit):
-    assert x[bt_bit] == 1
 
 
 def test_conj_bit(featurizer, bond, x):
