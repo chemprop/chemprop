@@ -211,9 +211,9 @@ class RegressionConformalEvaluator(RegressionEvaluator):
     """
 
     def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        bounds = torch.tensor([-1 / 2, 1 / 2], device=mask.device)
-        interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
-        lower, upper = preds.unsqueeze(0) + interval
+        bounds = torch.tensor([-1, 1], device=mask.device)
+        half_interval = uncs.unsqueeze(0) * bounds.view([-1] + [1] * preds.ndim)
+        lower, upper = preds.unsqueeze(0) + half_interval
         covered_mask = torch.logical_and(lower <= targets, targets <= upper)
 
         return (covered_mask & mask).sum(0) / mask.sum(0)
