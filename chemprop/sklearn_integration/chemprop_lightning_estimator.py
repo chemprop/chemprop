@@ -1,4 +1,5 @@
-from typing import Sequence, Optional, Literal
+from typing import Sequence, Optional, Literal, List
+from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -15,7 +16,7 @@ from chemprop.data.datasets import (
     MolAtomBondDataset,
     MulticomponentDataset,
 )
-from chemprop.cli.utils.parsing import make_datapoints, make_dataset
+from chemprop.cli.utils.parsing import make_datapoints, make_dataset, parse_csv
 from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
 from chemprop.featurizers.molgraph.reaction import RxnMode
 from chemprop.cli.train import build_model
@@ -25,6 +26,24 @@ from chemprop.cli.train import add_train_args
 
 
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
+        smiles_cols: Sequence[str] | None = None,
+        rxn_cols: Sequence[str] | None = None,
+        target_cols: Sequence[str] | None = None,
+        ignore_cols: Sequence[str] | None = None,
+        weight_col: str | None = None,
+        no_header_row: bool = False,
+    ):
+        self.keep_h = keep_h
+        self.add_h = add_h
+        self.ignore_stereo = ignore_stereo
+        self.reorder_atoms = reorder_atoms
+
     def fit(self, X: Sequence[str], y=None):
         return self
 
@@ -52,10 +71,10 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
             E_fss=None,
             V_dss=None,
             molecule_featurizers=None,
-            keep_h=False,
-            add_h=False,
-            ignore_stereo=False,
-            reorder_atoms=True,
+            keep_h=self.keep_h,
+            add_h=self.add_h,
+            ignore_stereo=self.ignore_stereo,
+            reorder_atoms=self.reorder_atoms,
         )
         return make_dataset(mol_data[0])
 
@@ -67,7 +86,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
-        reorder_atoms: bool = True,
+        reorder_atoms: bool = False,
     ):
         self.reaction_mode = reaction_mode
         self.keep_h = keep_h
@@ -167,7 +186,79 @@ def pick_collate(dset):
 
 
 class ChempropRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, args: Namespace = Namespace()):
+    def __init__(
+        self,
+        smiles_columns: Optional[Sequence[str]] = None,
+        reaction_columns: Optional[Sequence[str]] = None,
+        num_workers: int = 0,
+        batch_size: int = 64,
+        data_path: Optional[str | Path] = None,
+        output_dir: Optional[str | Path] = None,
+        checkpoint: Optional[str | Path] = None,
+        rxn_mode: str = "REAC_DIFF",
+        multi_hot_atom_featurizer_mode: str = "V2",
+        molecule_featurizers: Optional[List[str]] = None,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
+        no_descriptor_scaling: bool = False,
+        message_hidden_dim: int = 300,
+        depth: int = 3,
+        dropout: float = 0.0,
+        aggregation: str = "norm",
+        ffn_hidden_dim: int = 300,
+        ffn_num_layers: int = 1,
+        batch_norm: bool = False,
+        multiclass_num_classes: int = 3,
+        accelerator: str = "auto",
+        devices: str | int | Sequence[int] = "auto",
+        epochs: int = 50,
+        patience: Optional[int] = None,
+        tracking_metric: str = "val_loss",
+        task_type: str = "regression",
+        loss_function: Optional[str] = None,
+        metrics: Optional[List[str]] = None,
+        weight_column: Optional[str] = None,
+        target_columns: Optional[Sequence[str]] = None,
+        ignore_columns: Optional[Sequence[str]] = None,
+    ):
+        args = Namespace(
+            smiles_columns=smiles_columns,
+            reaction_columns=reaction_columns,
+            num_workers=num_workers,
+            batch_size=batch_size,
+            data_path=data_path,
+            output_dir=str(output_dir) if output_dir is not None else None,
+            checkpoint=str(checkpoint) if checkpoint is not None else None,
+            rxn_mode=rxn_mode,
+            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+            molecule_featurizers=molecule_featurizers,
+            keep_h=keep_h,
+            add_h=add_h,
+            ignore_stereo=ignore_stereo,
+            reorder_atoms=reorder_atoms,
+            no_descriptor_scaling=no_descriptor_scaling,
+            message_hidden_dim=message_hidden_dim,
+            depth=depth,
+            dropout=dropout,
+            aggregation=aggregation,
+            ffn_hidden_dim=ffn_hidden_dim,
+            ffn_num_layers=ffn_num_layers,
+            batch_norm=batch_norm,
+            multiclass_num_classes=multiclass_num_classes,
+            accelerator=accelerator,
+            devices=devices,
+            epochs=epochs,
+            patience=patience,
+            tracking_metric=tracking_metric,
+            task_type=task_type,
+            loss_function=loss_function,
+            metrics=metrics,
+            weight_column=weight_column,
+            target_columns=target_columns,
+            ignore_columns=ignore_columns,
+        )
         self.args = add_train_defaults(args)
         self.model = None
         self.trainer = Trainer(
@@ -181,7 +272,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
     def __sklearn_is_fitted__(self):
         return True
 
-    # what does the dataset hierarchy look like?
     def fit(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset, y=None):
         if self.model is None:
             n_comp = X.n_components if isinstance(X, MulticomponentDataset) else 1
@@ -218,6 +308,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         output_columns = self.args.target_columns
         save_model(path, self.model, output_columns)
         return self
+
 
 
 if __name__ == "__main__":
