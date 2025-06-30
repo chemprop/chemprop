@@ -33,7 +33,6 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         ignore_stereo: bool = False,
         reorder_atoms: bool = False,
         smiles_cols: Sequence[str] | None = None,
-        rxn_cols: Sequence[str] | None = None,
         target_cols: Sequence[str] | None = None,
         ignore_cols: Sequence[str] | None = None,
         weight_col: str | None = None,
@@ -43,6 +42,11 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
         self.reorder_atoms = reorder_atoms
+        self.smiles_cols = smiles_cols
+        self.target_cols = target_cols
+        self.ignore_cols = ignore_cols
+        self.weight_col = weight_col
+        self.no_header_row = no_header_row
 
     def fit(self, X: Sequence[str], y=None):
         return self
@@ -53,19 +57,40 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X: Sequence[str]):
         return self._build_dataset(X, None)
 
-    def _build_dataset(self, X: Sequence[str], Y: Optional[np.ndarray]) -> MoleculeDataset:
-        smiss = [list(X)]
-        if Y is None:
-            Y = np.zeros((len(X), 1), dtype=float)
-        elif Y.ndim == 1:
-            Y = Y.reshape(-1, 1)
+    def _build_dataset(
+        self,
+        X: Sequence[str] | PathLike,
+        Y: Optional[np.ndarray],
+        weights=None,
+        lt_mask=None,
+        gt_mask=None,
+    ) -> MoleculeDataset:
+        if isinstance(X, PathLike):
+            smiss, _, Y, weights, lt_mask, gt_mask = parse_csv(
+                path=X,
+                smiles_cols=self.smiles_cols,
+                rxn_cols=None,
+                target_cols=self.target_cols,
+                ignore_cols=self.ignore_cols,
+                weight_col=self.weight_col,
+                bounded=False,
+                no_header_row=self.no_header_row,
+            )
+
+        else:
+            smiss = [list(X)]
+            if Y is None:
+                Y = np.zeros((len(X), 1), dtype=float)
+            elif Y.ndim == 1:
+                Y = Y.reshape(-1, 1)
+
         mol_data, _ = make_datapoints(
             smiss=smiss,
             rxnss=None,
             Y=Y,
-            weights=None,
-            lt_mask=None,
-            gt_mask=None,
+            weights=weights,
+            lt_mask=lt_mask,
+            gt_mask=gt_mask,
             X_d=None,
             V_fss=None,
             E_fss=None,
@@ -87,12 +112,22 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         add_h: bool = False,
         ignore_stereo: bool = False,
         reorder_atoms: bool = False,
+        rxn_cols: Sequence[str] | None = None,
+        target_cols: Sequence[str] | None = None,
+        ignore_cols: Sequence[str] | None = None,
+        weight_col: str | None = None,
+        no_header_row: bool = False,
     ):
         self.reaction_mode = reaction_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
         self.reorder_atoms = reorder_atoms
+        self.rxn_cols = rxn_cols
+        self.target_cols = target_cols
+        self.ignore_cols = ignore_cols
+        self.weight_col = weight_col
+        self.no_header_row = no_header_row
 
     def fit(self, X: Sequence[str], y=None):
         return self
@@ -103,19 +138,40 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X: Sequence[str]):
         return self._build_dataset(X, None)
 
-    def _build_dataset(self, X: Sequence[str], Y: Optional[Sequence[float]]) -> ReactionDataset:
-        rxnss = [list(X)]
-        if Y is None:
-            Y = np.zeros((len(X), 1), dtype=float)
-        elif Y.ndim == 1:
-            Y = Y.reshape(-1, 1)
+    def _build_dataset(
+        self,
+        X: Sequence[str] | PathLike,
+        Y: Optional[Sequence[float]],
+        weights=None,
+        lt_mask=None,
+        gt_mask=None,
+    ) -> ReactionDataset:
+        if isinstance(X, PathLike):
+            _, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
+                path=X,
+                smiles_cols=None,
+                rxn_cols=self.rxn_cols,
+                target_cols=self.target_cols,
+                ignore_cols=self.ignore_cols,
+                weight_col=self.weight_col,
+                bounded=False,
+                no_header_row=self.no_header_row,
+            )
+        else:
+            rxnss = [list(X)]
+            weights, lt_mask, gt_mask = None, None, None
+            if Y is None:
+                Y = np.zeros((len(X), 1), dtype=float)
+            elif Y.ndim == 1:
+                Y = Y.reshape(-1, 1)
+
         _, rxn_data = make_datapoints(
             smiss=None,
             rxnss=rxnss,
             Y=Y,
-            weights=None,
-            lt_mask=None,
-            gt_mask=None,
+            weights=weights,
+            lt_mask=lt_mask,
+            gt_mask=gt_mask,
             X_d=None,
             V_fss=None,
             E_fss=None,
@@ -133,10 +189,30 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
 class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        component_types: Sequence[Literal["molecule", "reaction"]],
+        component_types: Sequence[Literal["molecule", "reaction"]] | None = None,
         reaction_modes: Sequence[RxnMode] | None = None,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
+        smiles_cols: Sequence[str] | None = None,
+        rxn_cols: Sequence[str] | None = None,
+        target_cols: Sequence[str] | None = None,
+        ignore_cols: Sequence[str] | None = None,
+        weight_col: str | None = None,
+        no_header_row: bool = False,
     ):
-        self.component_types = list(component_types)
+        self.keep_h = keep_h
+        self.add_h = add_h
+        self.ignore_stereo = ignore_stereo
+        self.reorder_atoms = reorder_atoms
+        self.smiles_cols = smiles_cols
+        self.rxn_cols = rxn_cols
+        self.target_cols = target_cols
+        self.ignore_cols = ignore_cols
+        self.weight_col = weight_col
+        self.no_header_row = no_header_row
+        self.component_types = list(component_types or [])
         self.reaction_modes = list(reaction_modes or [])
         self.col_tf = []
         rxn_iter = iter(self.reaction_modes + [RxnMode.REAC_DIFF] * 100)
@@ -156,13 +232,33 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return self._build_dataset(X, None)
 
-    def _build_dataset(self, X_cols, Y):
-        X_cols = list(X_cols)
-        if Y is None:
-            Y = np.zeros((len(X_cols[0]), 1), dtype=float)
-        elif Y.ndim == 1:
-            Y = Y.reshape(-1, 1)
-        datasets = [tf.fit_transform(col, Y) for tf, col in zip(self.col_tf, X_cols)]
+    def _build_dataset(self, X, Y):
+        if isinstance(X, PathLike):
+            smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
+                path=X,
+                smiles_cols=self.smiles_cols,
+                rxn_cols=self.rxn_cols,
+                target_cols=self.target_cols,
+                ignore_cols=self.ignore_cols,
+                weight_col=self.weight_col,
+                bounded=False,
+                no_header_row=self.no_header_row,
+            )
+            datasets = [
+                ChempropMoleculeTransformer._build_dataset(
+                    X=smiss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+                ),
+                ChempropReactionTransformer._build_dataset(
+                    X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+                ),
+            ]
+        else:
+            X = list(X)
+            if Y is None:
+                Y = np.zeros((len(X[0]), 1), dtype=float)
+            elif Y.ndim == 1:
+                Y = Y.reshape(-1, 1)
+            datasets = [tf.fit_transform(col, Y) for tf, col in zip(self.col_tf, X)]
         return MulticomponentDataset(datasets)
 
 
@@ -192,9 +288,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         reaction_columns: Optional[Sequence[str]] = None,
         num_workers: int = 0,
         batch_size: int = 64,
-        data_path: Optional[str | Path] = None,
-        output_dir: Optional[str | Path] = None,
-        checkpoint: Optional[str | Path] = None,
+        data_path: Optional[PathLike] = None,
+        output_dir: Optional[PathLike] = None,
+        checkpoint: Optional[PathLike] = None,
         rxn_mode: str = "REAC_DIFF",
         multi_hot_atom_featurizer_mode: str = "V2",
         molecule_featurizers: Optional[List[str]] = None,
@@ -300,7 +396,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         preds = self.trainer.predict(self.model, dataloaders=dl)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
-    def _load_from_file(self, checkpoint_path: str, strict: bool = True):
+    def _load_from_file(self, checkpoint_path: PathLike, strict: bool = True):
         self.model = MPNN.load_from_file(checkpoint_path, strict=strict)
         return self
 
@@ -308,7 +404,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         output_columns = self.args.target_columns
         save_model(path, self.model, output_columns)
         return self
-
 
 
 if __name__ == "__main__":
@@ -319,8 +414,13 @@ if __name__ == "__main__":
     from sklearn.metrics import mean_squared_error
 
     sklearnPipeline = Pipeline(
-        [("featurizer", ChempropMulticomponentTransformer(component_types=["reaction","molecule"])), 
-         ("regressor", ChempropRegressor())]
+        [
+            (
+                "featurizer",
+                ChempropMulticomponentTransformer(component_types=["reaction", "molecule"]),
+            ),
+            ("regressor", ChempropRegressor()),
+        ]
     )
 
     # df = pd.read_csv("rxn.csv")  # change to target datapath
@@ -330,8 +430,8 @@ if __name__ == "__main__":
     df = pd.read_csv("rxn+mol.csv")  # change to target datapath
     X = (df["rxn_smiles"].to_numpy(dtype=str), df["solvent_smiles"].to_numpy(dtype=str))
     y = df["target"].to_numpy(dtype=float)
-    
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     sklearnPipeline.fit(X, y)
     y_pred = sklearnPipeline.predict(X)
@@ -340,7 +440,3 @@ if __name__ == "__main__":
     # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
     # print("Cross-validation scores:", scores)
     # print("Mean MSE:", -scores.mean())
-
-    
-
-
