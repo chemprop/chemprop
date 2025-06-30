@@ -571,6 +571,10 @@ def main(args: Namespace):
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
+    test_loader = build_dataloader(
+        test_dset, args.batch_size, args.num_workers, seed=args.data_seed
+    )
+
     if isinstance(train_loader.dataset, MolAtomBondDataset):
         model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
         monitor_mode = (
@@ -613,6 +617,10 @@ def main(args: Namespace):
     result_df.to_csv(all_progress_save_path, index=False)
 
     ray.shutdown()
+
+    # call build_model on best_checkpoint_save_path
+    # initialize the lightning trainer
+    # run inference and then log results on the testing dataset
 
 
 if __name__ == "__main__":
