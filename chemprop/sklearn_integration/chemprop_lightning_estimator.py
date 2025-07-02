@@ -422,9 +422,42 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def _save_model(self):
+        if self.args.model_output_dir is None:
+            raise ValueError("no output directory specified")
         output_columns = self.args.target_columns
-        save_model(self.model_output_dir / "best.pt", self.model, output_columns)
+        save_model(self.args.model_output_dir / "best.pt", self.model, output_columns)
         return self
+
+class ChempropEnsembleRegressor(ChempropRegressor):
+    def __init__(self, ensemble_size: int = 5, **chemprop_kwargs):
+        self.ensemble_size = ensemble_size
+        self._base_kwargs = chemprop_kwargs
+        super().__init__(**chemprop_kwargs)
+        self.models: List[ChempropRegressor] = []
+
+    def __sklearn_is_fitted__(self):
+        return len(self.models) == self.ensemble_size
+
+    def fit(self, X, y=None):
+        self.models = []
+        for _ in range(self.ensemble_size):
+            model = ChempropRegressor(**self._base_kwargs)
+            model.fit(X, y)
+            self.models.append(model)
+        return self
+
+    def predict(self, X):
+        preds = [model.predict(X) for model in self.models]
+        return np.mean(preds, axis=0)
+
+    def _save_models(self):
+        if self.args.model_output_dir is None:
+            raise ValueError("no output directory specified")
+        output_columns = self.args.target_columns
+        for idx, model in enumerate(self.models):
+            save_model(self.args.model_output_dir / f"best{idx}.pt", model, output_columns)
+        return self
+
 
 
 if __name__ == "__main__":
@@ -440,12 +473,13 @@ if __name__ == "__main__":
                 "featurizer",
                 ChempropMulticomponentTransformer(component_types=["reaction", "molecule"]),
             ),
-            ("regressor", ChempropRegressor(no_cache=True)),
+            ("regressor", ChempropEnsembleRegressor(ensemble_size=5, batch_size=32, depth=4)),
         ]
     )
 
     # df = pd.read_csv("rxn.csv")  # change to target datapath
-    # X = df["smiles"].to_numpy(dtype=str)
+    # X = 
+    # df["smiles"].to_numpy(dtype=str)
     # y = df["ea"].to_numpy(dtype=float)
 
     df = pd.read_csv("rxn+mol.csv")  # change to target datapath
