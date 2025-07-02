@@ -3,8 +3,14 @@ import subprocess
 import sys
 
 import rdkit
-import requests
 import torch
+
+# requests is needed for this install but is not part of a typical chemprop install
+try:
+    import requests
+except ImportError:
+    print("requests is not installed. Please install it with `conda install 'conda-forge::requests'`")
+    exit(1)
 
 # Check if the system is Linux, MacOS or Windows
 system = sys.platform
