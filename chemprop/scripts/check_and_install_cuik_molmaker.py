@@ -34,6 +34,7 @@ try:
     print(f"Conda is installed and accessible. Conda version: {conda_version}")
 except (subprocess.CalledProcessError, FileNotFoundError):
     print("Conda is not installed or not in your system's PATH.")
+    exit(1)
 
 conda_prefix = os.getenv("CONDA_PREFIX")
 
