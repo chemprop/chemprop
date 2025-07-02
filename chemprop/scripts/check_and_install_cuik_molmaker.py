@@ -9,7 +9,9 @@ import torch
 try:
     import requests
 except ImportError:
-    print("requests is not installed. Please install it with `conda install 'conda-forge::requests'`")
+    print(
+        "requests is not installed. Please install it with `conda install 'conda-forge::requests'`"
+    )
     exit(1)
 
 # Check if the system is Linux, MacOS or Windows

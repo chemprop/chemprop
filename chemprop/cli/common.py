@@ -172,7 +172,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--use-cuikmolmaker-featurization",
         action="store_true",
-        help="Use ``cuik-molmaker`` for accelerated atom and bond featurization. This option is only available if ``cuik-molmaker`` is installed. In order to install ``cuik-molmaker``, run the script ``python check_and_install_cuik_molmaker.py``.",
+        help="Use ``cuik-molmaker`` package for accelerated atom and bond featurization.",
     )
     # TODO: Add in v2.2
     # parser.add_argument(
