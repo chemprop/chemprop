@@ -23,11 +23,13 @@ from chemprop.cli.train import build_model
 from chemprop.models.utils import save_model
 from chemprop.cli.common import add_common_args
 from chemprop.cli.train import add_train_args
+from chemprop.nn import MetricRegistry
 
 
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
+        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -36,8 +38,10 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         target_cols: Sequence[str] | None = None,
         ignore_cols: Sequence[str] | None = None,
         weight_col: str | None = None,
+        bounded=None,
         no_header_row: bool = False,
     ):
+        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -46,6 +50,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         self.target_cols = target_cols
         self.ignore_cols = ignore_cols
         self.weight_col = weight_col
+        self.bounded = bounded
         self.no_header_row = no_header_row
 
     def fit(self, X: Sequence[str], y=None):
@@ -73,7 +78,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
                 target_cols=self.target_cols,
                 ignore_cols=self.ignore_cols,
                 weight_col=self.weight_col,
-                bounded=False,
+                bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
 
@@ -101,13 +106,16 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
             ignore_stereo=self.ignore_stereo,
             reorder_atoms=self.reorder_atoms,
         )
-        return make_dataset(mol_data[0])
+        return make_dataset(
+            mol_data[0], multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode
+        )
 
 
 class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         reaction_mode=RxnMode.REAC_DIFF,
+        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -116,9 +124,11 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         target_cols: Sequence[str] | None = None,
         ignore_cols: Sequence[str] | None = None,
         weight_col: str | None = None,
+        bounded: bool = False,
         no_header_row: bool = False,
     ):
         self.reaction_mode = reaction_mode
+        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -127,6 +137,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         self.target_cols = target_cols
         self.ignore_cols = ignore_cols
         self.weight_col = weight_col
+        self.bounded = bounded
         self.no_header_row = no_header_row
 
     def fit(self, X: Sequence[str], y=None):
@@ -154,7 +165,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
                 target_cols=self.target_cols,
                 ignore_cols=self.ignore_cols,
                 weight_col=self.weight_col,
-                bounded=False,
+                bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
         else:
@@ -183,14 +194,19 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
             reorder_atoms=self.reorder_atoms,
         )
 
-        return make_dataset(rxn_data[0], reaction_mode=self.reaction_mode)
+        return make_dataset(
+            rxn_data[0],
+            reaction_mode=self.reaction_mode,
+            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+        )
 
 
 class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         component_types: Sequence[Literal["molecule", "reaction"]] | None = None,
-        reaction_modes: Sequence[RxnMode] | None = None,
+        reaction_mode="REAC_DIFF",
+        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -200,8 +216,12 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         target_cols: Sequence[str] | None = None,
         ignore_cols: Sequence[str] | None = None,
         weight_col: str | None = None,
+        bounded: bool = False,
         no_header_row: bool = False,
     ):
+        self.component_types = list(component_types or [])
+        self.reaction_mode = reaction_mode
+        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -212,15 +232,29 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         self.ignore_cols = ignore_cols
         self.weight_col = weight_col
         self.no_header_row = no_header_row
-        self.component_types = list(component_types or [])
-        self.reaction_modes = list(reaction_modes or [])
-        self.col_tf = []
-        rxn_iter = iter(self.reaction_modes + [RxnMode.REAC_DIFF] * 100)
+        self.unit_transformers = []
         for t in self.component_types:
-            self.col_tf.append(
-                ChempropMoleculeTransformer()
+            self.unit_transformers.append(
+                ChempropMoleculeTransformer(
+                    multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+                    keep_h=keep_h,
+                    add_h=add_h,
+                    ignore_stereo=ignore_stereo,
+                    reorder_atoms=reorder_atoms,
+                    bounded=bounded,
+                    no_header_row=no_header_row,
+                )
                 if t == "molecule"
-                else ChempropReactionTransformer(reaction_mode=next(rxn_iter))
+                else ChempropReactionTransformer(
+                    multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+                    reaction_mode=reaction_mode,
+                    keep_h=keep_h,
+                    add_h=add_h,
+                    ignore_stereo=ignore_stereo,
+                    reorder_atoms=reorder_atoms,
+                    bounded=bounded,
+                    no_header_row=no_header_row,
+                )
             )
 
     def fit(self, X, y=None):
@@ -258,7 +292,10 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 Y = np.zeros((len(X[0]), 1), dtype=float)
             elif Y.ndim == 1:
                 Y = Y.reshape(-1, 1)
-            datasets = [tf.fit_transform(col, Y) for tf, col in zip(self.col_tf, X)]
+            datasets = [
+                transformer.fit_transform(col, Y)
+                for transformer, col in zip(self.unit_transformers, X)
+            ]
         return MulticomponentDataset(datasets)
 
 
@@ -284,20 +321,11 @@ def pick_collate(dset):
 class ChempropRegressor(BaseEstimator, RegressorMixin):
     def __init__(
         self,
-        smiles_columns: Optional[Sequence[str]] = None,
-        reaction_columns: Optional[Sequence[str]] = None,
         num_workers: int = 0,
         batch_size: int = 64,
-        data_path: Optional[PathLike] = None,
         output_dir: Optional[PathLike] = None,
         checkpoint: Optional[PathLike] = None,
-        rxn_mode: str = "REAC_DIFF",
-        multi_hot_atom_featurizer_mode: str = "V2",
         molecule_featurizers: Optional[List[str]] = None,
-        keep_h: bool = False,
-        add_h: bool = False,
-        ignore_stereo: bool = False,
-        reorder_atoms: bool = False,
         no_descriptor_scaling: bool = False,
         message_hidden_dim: int = 300,
         depth: int = 3,
@@ -311,29 +339,18 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         devices: str | int | Sequence[int] = "auto",
         epochs: int = 50,
         patience: Optional[int] = None,
-        tracking_metric: str = "val_loss",
+        tracking_metric: str = "train_loss",
+        no_cache: bool = False,
         task_type: str = "regression",
         loss_function: Optional[str] = None,
         metrics: Optional[List[str]] = None,
-        weight_column: Optional[str] = None,
-        target_columns: Optional[Sequence[str]] = None,
-        ignore_columns: Optional[Sequence[str]] = None,
     ):
         args = Namespace(
-            smiles_columns=smiles_columns,
-            reaction_columns=reaction_columns,
             num_workers=num_workers,
             batch_size=batch_size,
-            data_path=data_path,
-            output_dir=str(output_dir) if output_dir is not None else None,
-            checkpoint=str(checkpoint) if checkpoint is not None else None,
-            rxn_mode=rxn_mode,
-            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+            output_dir=output_dir,
+            checkpoint=checkpoint,
             molecule_featurizers=molecule_featurizers,
-            keep_h=keep_h,
-            add_h=add_h,
-            ignore_stereo=ignore_stereo,
-            reorder_atoms=reorder_atoms,
             no_descriptor_scaling=no_descriptor_scaling,
             message_hidden_dim=message_hidden_dim,
             depth=depth,
@@ -348,27 +365,29 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             epochs=epochs,
             patience=patience,
             tracking_metric=tracking_metric,
+            no_cache=no_cache,
             task_type=task_type,
             loss_function=loss_function,
             metrics=metrics,
-            weight_column=weight_column,
-            target_columns=target_columns,
-            ignore_columns=ignore_columns,
         )
         self.args = add_train_defaults(args)
         self.model = None
+        # T_tracking_metric = MetricRegistry[self.args.tracking_metric]
+        # monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
+        patience = self.args.patience if self.args.patience is not None else self.args.epochs
         self.trainer = Trainer(
+            accelerator=self.args.accelerator,
+            devices=self.args.devices,
             max_epochs=self.args.epochs,
-            callbacks=[
-                ModelCheckpoint(monitor="train_loss", mode="min"),
-                EarlyStopping(monitor="train_loss", patience=5, mode="min"),
-            ],
+            callbacks=[EarlyStopping(monitor="train_loss", patience=patience, mode="min")],
         )
 
     def __sklearn_is_fitted__(self):
         return True
 
     def fit(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset, y=None):
+        if not self.args.no_cache:
+            X.cache = True
         if self.model is None:
             n_comp = X.n_components if isinstance(X, MulticomponentDataset) else 1
             input_transforms = (None, [None] * n_comp, [None] * n_comp, [None] * n_comp)
@@ -386,6 +405,8 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset):
+        if not self.args.no_cache:
+            X.cache = True
         dl = DataLoader(
             X,
             batch_size=self.args.batch_size,
@@ -400,9 +421,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         self.model = MPNN.load_from_file(checkpoint_path, strict=strict)
         return self
 
-    def _save_model(self, path: PathLike):
+    def _save_model(self):
         output_columns = self.args.target_columns
-        save_model(path, self.model, output_columns)
+        save_model(self.model_output_dir / "best.pt", self.model, output_columns)
         return self
 
 
@@ -419,7 +440,7 @@ if __name__ == "__main__":
                 "featurizer",
                 ChempropMulticomponentTransformer(component_types=["reaction", "molecule"]),
             ),
-            ("regressor", ChempropRegressor()),
+            ("regressor", ChempropRegressor(no_cache=True)),
         ]
     )
 
