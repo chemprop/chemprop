@@ -40,7 +40,7 @@ SHELL ["conda", "run", "--no-capture-output", "-n", "chemprop_env", "/bin/bash",
 ADD chemprop chemprop
 ENV PYTHONPATH=/opt/chemprop
 ADD LICENSE.txt pyproject.toml README.md ./
-RUN conda install pytorch cpuonly -c pytorch && \
+RUN conda install pytorch-cpu -c conda-forge && \
     conda clean --all --yes && \
     python -m pip install . && \
     python -m pip cache purge
