@@ -984,7 +984,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         if isinstance(splitting_data[0], ReactionDatapoint):
             splitting_mols = [datapoint.rct for datapoint in splitting_data]
         else:
-            # TODO: Form mols only if needed by the splitting type; Random split does not need mols
             splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates

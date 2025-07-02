@@ -15,12 +15,12 @@
 # for GPU use (see installation documentation). 
 
 # Parent Image
-FROM continuumio/miniconda3:latest
+FROM condaforge/miniforge3:latest
 
-# Install libxrender1 (required by RDKit) and then clean up
+# Install libxrender1 (required by RDKit) and binutils (to get strings, for cuik-molmaker install) and then clean up
 RUN apt-get update && \
     apt-get install -y \
-    libxrender1 && \
+    libxrender1 binutils && \
     apt-get autoremove -y && \
     apt-get clean -y
 
@@ -38,17 +38,17 @@ SHELL ["conda", "run", "--no-capture-output", "-n", "chemprop_env", "/bin/bash",
 
 # Follow the installation instructions then clear the cache
 ADD chemprop chemprop
-ENV PYTHONPATH /opt/chemprop
-ADD LICENSE.txt pyproject.toml README.md ./
-RUN conda install pytorch cpuonly -c pytorch && \
+ENV PYTHONPATH=/opt/chemprop
+ADD LICENSE.txt pyproject.toml README.md environment.yml ./
+RUN conda env update --file environment.yml --name chemprop_env && \
     conda clean --all --yes && \
-    python -m pip install . && \
-    python -m pip cache purge
+    python -m pip install --no-deps .
 
 # Install cuik-molmaker using script
 RUN python /opt/chemprop/chemprop/scripts/check_and_install_cuik_molmaker.py
 
 # when running this image, open an interactive bash terminal inside the conda environment
-RUN echo "conda activate chemprop_env" > ~/.bashrc
+RUN conda init
+RUN echo "conda activate chemprop_env" >> ~/.bashrc
 
 ENTRYPOINT ["/bin/bash", "--login"]
