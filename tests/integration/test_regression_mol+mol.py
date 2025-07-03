@@ -36,7 +36,7 @@ def datas(mol_mol_regression_data):
 
     return [
         [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis1, Y)],
-        [MoleculeDatapoint.from_smi(smi) for smi in smis2],
+        [MoleculeDatapoint.from_smi(smi, None) for smi in smis2],
     ]
 
 

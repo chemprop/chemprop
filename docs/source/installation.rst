@@ -11,7 +11,7 @@ Chemprop can either be installed from PyPI via pip_ or using a provided ``x.y.x_
 .. _conda: https://docs.conda.io/en/latest/conda.html
 .. _miniconda: https://docs.conda.io/en/latest/miniconda.html
 
-.. note:: 
+.. note::
     *Python 3.11 vs. 3.12:* Options 1, 2, and 4 below explicitly specify ``python=3.11`` but you can choose to replace ``python=3.11`` with ``python=3.12`` in these commands. We test Chemprop on both versions in our CI.
 
 .. note:: 
@@ -20,6 +20,8 @@ Chemprop can either be installed from PyPI via pip_ or using a provided ``x.y.x_
     .. code-block::
 
         conda install pytorch cpuonly -c pytorch
+
+.. _install-from-pypi:
 
 Option 1: Installing from PyPI
 ------------------------------
@@ -40,6 +42,8 @@ The above approach is recommended as it will install the most updated versions o
     conda activate chemprop
     pip install -r x.y.z_requirements.txt
 
+.. _install-from-source-using-pip:
+
 Option 2: Installing from source using pip
 ------------------------------------------
 
@@ -54,6 +58,8 @@ Option 2: Installing from source using pip
 .. note:: 
     You can also use this option to install additional optional dependencies by replacing ``pip install -e .`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks]"``.
 
+.. _install-from-source-using-environment-yml:
+
 Option 3: Installing from source using environment.yml
 -------------------------------------------------------
 
@@ -64,6 +70,13 @@ Option 3: Installing from source using environment.yml
     conda env create -f environment.yml
     conda activate chemprop
     pip install -e .
+
+.. note::
+    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It can be installed using the python scripts ``check_and_install_cuik_molmaker.py``. This script finds a compatible version of ``cuik-molmaker`` depending on the version of ``RDkit`` and ``PyTorch`` and installs it. Currently, ``cuik-molmaker`` is compatible with installation :ref:`install-from-source-using-environment-yml` :ref:`install-via-docker`.
+
+.. _`cuik-molmaker`: https://github.com/NVIDIA-Digital-Bio/cuik-molmaker
+
+.. _install-via-docker:
 
 Option 4: Installing via Docker
 -------------------------------

@@ -23,7 +23,6 @@ def featurizer():
 @pytest.fixture
 def dataset(mols, targets, featurizer):
     data = [MoleculeDatapoint(mol, y) for mol, y in zip(mols, targets)]
-
     return MoleculeDataset(data, featurizer)
 
 
@@ -86,8 +85,8 @@ def test_class_balance_shuffle(class_sampler):
     assert idxs1 != idxs2
 
 
-def test_seed_class_balance_shuffle(smis, bin_targets, featurizer, seed):
-    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, bin_targets)]
+def test_seed_class_balance_shuffle(mols, bin_targets, featurizer, seed):
+    data = [MoleculeDatapoint(mol, y) for mol, y in zip(mols, bin_targets)]
     dset = MoleculeDataset(data, featurizer)
 
     sampler = ClassBalanceSampler(dset.Y, seed, True)
@@ -98,8 +97,8 @@ def test_seed_class_balance_shuffle(smis, bin_targets, featurizer, seed):
     assert list(sampler) != list(sampler)
 
 
-def test_seed_class_balance_reproducibility(smis, bin_targets, featurizer, seed):
-    data = [MoleculeDatapoint.from_smi(smi, target) for smi, target in zip(smis, bin_targets)]
+def test_seed_class_balance_reproducibility(mols, bin_targets, featurizer, seed):
+    data = [MoleculeDatapoint(mol, y) for mol, y in zip(mols, bin_targets)]
     dset = MoleculeDataset(data, featurizer)
 
     sampler1 = ClassBalanceSampler(dset.Y, seed, True)
