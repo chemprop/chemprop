@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
-    HELP = "Use a pretrained chemprop model to calculate learned representations."
+    HELP = "Use a pretrained Chemprop model to calculate learned representations."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
