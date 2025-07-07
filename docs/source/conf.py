@@ -39,7 +39,7 @@ autodoc_typehints = "description"
 # -- AutoAPI configuration ---------------------------------------------------
 nbsphinx_allow_errors = True
 autoapi_dirs = ["../.."]
-autoapi_ignore = ["*/tests/*", "*/cli/*"]
+autoapi_ignore = ["*/tests/*", "*/cli/*", "*scripts/check_and_install_cuik_molmaker.py*"]
 autoapi_file_patterns = ["*.py"]
 autoapi_options = [
     "members",
@@ -50,7 +50,6 @@ autoapi_options = [
     "imported-members",
 ]
 autoapi_keep_files = True
-autoapi_exclude = ["chemprop/scripts/check_and_install_cuik_molmaker.py"]
 
 # -- bibtex configuration ---------------------------------------------------
 
