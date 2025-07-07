@@ -50,6 +50,7 @@ autoapi_options = [
     "imported-members",
 ]
 autoapi_keep_files = True
+autoapi_exclude = ["chemprop/scripts/check_and_install_cuik_molmaker.py"]
 
 # -- bibtex configuration ---------------------------------------------------
 
