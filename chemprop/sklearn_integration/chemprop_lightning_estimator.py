@@ -3,13 +3,15 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import logging
 from os import PathLike
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, accuracy_score, r2_score
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from argparse import ArgumentParser, Namespace
 
-from chemprop.models.model import MPNN
+from chemprop.models import MulticomponentMPNN, MPNN
 from chemprop.data.datasets import (
     MoleculeDataset,
     ReactionDataset,
@@ -19,12 +21,14 @@ from chemprop.data.datasets import (
 from chemprop.cli.utils.parsing import make_datapoints, make_dataset, parse_csv
 from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
 from chemprop.featurizers.molgraph.reaction import RxnMode
-from chemprop.cli.train import build_model
+from chemprop.cli.train import build_model, normalize_inputs
 from chemprop.models.utils import save_model
-from chemprop.cli.common import add_common_args
+from chemprop.cli.common import add_common_args, find_models
 from chemprop.cli.train import add_train_args
-from chemprop.nn import MetricRegistry
+from chemprop.nn.transforms import UnscaleTransform
 
+
+logger = logging.getLogger(__name__)
 
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def __init__(
@@ -324,7 +328,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         num_workers: int = 0,
         batch_size: int = 64,
         output_dir: Optional[PathLike] = None,
-        checkpoint: Optional[PathLike] = None,
+        checkpoint: Optional[List[Path]] = None,
         molecule_featurizers: Optional[List[str]] = None,
         no_descriptor_scaling: bool = False,
         message_hidden_dim: int = 300,
@@ -339,7 +343,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         devices: str | int | Sequence[int] = "auto",
         epochs: int = 50,
         patience: Optional[int] = None,
-        tracking_metric: str = "train_loss",
         no_cache: bool = False,
         task_type: str = "regression",
         loss_function: Optional[str] = None,
@@ -364,7 +367,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             devices=devices,
             epochs=epochs,
             patience=patience,
-            tracking_metric=tracking_metric,
             no_cache=no_cache,
             task_type=task_type,
             loss_function=loss_function,
@@ -372,8 +374,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         )
         self.args = add_train_defaults(args)
         self.model = None
-        # T_tracking_metric = MetricRegistry[self.args.tracking_metric]
-        # monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         patience = self.args.patience if self.args.patience is not None else self.args.epochs
         self.trainer = Trainer(
             accelerator=self.args.accelerator,
@@ -388,10 +388,31 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
     def fit(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset, y=None):
         if not self.args.no_cache:
             X.cache = True
-        if self.model is None:
-            n_comp = X.n_components if isinstance(X, MulticomponentDataset) else 1
-            input_transforms = (None, [None] * n_comp, [None] * n_comp, [None] * n_comp)
+        if self.args.checkpoint is not None:
+            model_paths = find_models(self.args.checkpoint)
+            if len(model_paths)!=1:
+                logger.warning(
+                    "More than one model path privided in checkpoint, and only the first one is used, call ChempropEnsembleRegressor instead."
+                )
+            model_path = model_paths[0]
+                
+            if isinstance(X, MulticomponentDataset):
+                mpnn_cls = MulticomponentMPNN
+            else:
+                mpnn_cls = MPNN
+
+            model = mpnn_cls.load_from_file(model_path)
+            model.apply(
+                lambda m: setattr(m, "p", self.args.dropout)
+                if isinstance(m, torch.nn.Dropout)
+                else None
+            )
+        else:
+            input_transforms = normalize_inputs(X,X,self.args)
             output_transform = None
+            if "regression" in self.args.task_type:
+                output_scaler = X.normalize_targets()
+                output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
             self.model = build_model(self.args, X, output_transform, input_transforms)
         dl = DataLoader(
             X,
@@ -417,9 +438,21 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         preds = self.trainer.predict(self.model, dataloaders=dl)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
-    def _load_from_file(self, checkpoint_path: PathLike, strict: bool = True):
-        self.model = MPNN.load_from_file(checkpoint_path, strict=strict)
-        return self
+    def score(self, X, y, metric: Literal["mae","rmse","mse","r2","accuracy"]="rmse"):
+        y_pred = self.predict(X)
+
+        if metric == "mae":
+            return mean_absolute_error(y, y_pred)
+        elif metric == "rmse":
+            return root_mean_squared_error(y, y_pred)
+        elif metric == "mse":
+            return root_mean_squared_error(y, y_pred)**2
+        elif metric == "r2":
+            return r2_score(y, y_pred)
+        elif metric == "accuracy":
+            return accuracy_score(y, (y_pred > 0.5).astype(int))
+        else:
+            raise ValueError(f"Unsupported metric: {metric}")
 
     def _save_model(self):
         if self.args.model_output_dir is None:
@@ -431,25 +464,56 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 class ChempropEnsembleRegressor(ChempropRegressor):
     def __init__(self, ensemble_size: int = 5, **chemprop_kwargs):
         self.ensemble_size = ensemble_size
-        self._base_kwargs = chemprop_kwargs
+        self.base_kwargs = chemprop_kwargs
+        print(self.base_kwargs)
         super().__init__(**chemprop_kwargs)
         self.models: List[ChempropRegressor] = []
 
     def __sklearn_is_fitted__(self):
         return len(self.models) == self.ensemble_size
 
-    def fit(self, X, y=None):
+    def fit(self, X, y):
         self.models = []
-        for _ in range(self.ensemble_size):
-            model = ChempropRegressor(**self._base_kwargs)
-            model.fit(X, y)
-            self.models.append(model)
+        if self.args.checkpoint is not None:
+            if len(self.args.checkpoint) != self.ensemble_size:
+                logger.warning(
+                    f"The number of models in ensemble for each splitting of data is set to {len(self.args.checkpoint)}."
+                )
+                self.ensemble_size = len(self.args.checkpoint)
+
+            for path in self.args.checkpoint:
+                args = dict(self.base_kwargs)
+                args["checkpoint"] = path
+                model = ChempropRegressor(**args)
+                model.fit(X, y)
+                self.models.append(model)
+        else:
+            for _ in range(self.ensemble_size):
+                model = ChempropRegressor(**self.base_kwargs)
+                model.fit(X, y)
+                self.models.append(model)
         return self
 
     def predict(self, X):
         preds = [model.predict(X) for model in self.models]
         return np.mean(preds, axis=0)
 
+    def score(self, X, y, metric: Literal["mae","rmse","mse","r2","accuracy"]="rmse"):
+        y_pred = self.predict(X)
+
+        if metric == "mae":
+            return mean_absolute_error(y, y_pred)
+        elif metric == "rmse":
+            return root_mean_squared_error(y, y_pred)
+        elif metric == "mse":
+            return root_mean_squared_error(y, y_pred)**2
+        elif metric == "r2":
+            return r2_score(y, y_pred)
+        elif metric == "accuracy":
+            return accuracy_score(y, (y_pred > 0.5).astype(int))
+        else:
+            raise ValueError(f"Unsupported metric: {metric}")
+        
     def _save_models(self):
         if self.args.model_output_dir is None:
             raise ValueError("no output directory specified")
@@ -489,8 +553,8 @@ if __name__ == "__main__":
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     sklearnPipeline.fit(X, y)
-    y_pred = sklearnPipeline.predict(X)
-    print(f"MSE: {mean_squared_error(y_true=y, y_pred=y_pred)}")
+    score = sklearnPipeline.score(X,y)
+    print(f"RMSE: {score}")
 
     # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
     # print("Cross-validation scores:", scores)
