@@ -30,6 +30,7 @@ from chemprop.nn.transforms import UnscaleTransform
 
 logger = logging.getLogger(__name__)
 
+
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
@@ -390,12 +391,12 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             X.cache = True
         if self.args.checkpoint is not None:
             model_paths = find_models(self.args.checkpoint)
-            if len(model_paths)!=1:
+            if len(model_paths) != 1:
                 logger.warning(
-                    "More than one model path privided in checkpoint, and only the first one is used, call ChempropEnsembleRegressor instead."
+                    "More than one model path privided in checkpoint and only the first one is used. Call ChempropEnsembleRegressor instead."
                 )
             model_path = model_paths[0]
-                
+
             if isinstance(X, MulticomponentDataset):
                 mpnn_cls = MulticomponentMPNN
             else:
@@ -408,7 +409,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 else None
             )
         else:
-            input_transforms = normalize_inputs(X,X,self.args)
+            input_transforms = normalize_inputs(X, X, self.args)
             output_transform = None
             if "regression" in self.args.task_type:
                 output_scaler = X.normalize_targets()
@@ -438,7 +439,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         preds = self.trainer.predict(self.model, dataloaders=dl)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
-    def score(self, X, y, metric: Literal["mae","rmse","mse","r2","accuracy"]="rmse"):
+    def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
 
         if metric == "mae":
@@ -446,7 +447,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         elif metric == "rmse":
             return root_mean_squared_error(y, y_pred)
         elif metric == "mse":
-            return root_mean_squared_error(y, y_pred)**2
+            return root_mean_squared_error(y, y_pred) ** 2
         elif metric == "r2":
             return r2_score(y, y_pred)
         elif metric == "accuracy":
@@ -456,16 +457,16 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
     def _save_model(self):
         if self.args.model_output_dir is None:
-            raise ValueError("no output directory specified")
+            raise ValueError("model_output_dir is not specified")
         output_columns = self.args.target_columns
         save_model(self.args.model_output_dir / "best.pt", self.model, output_columns)
         return self
+
 
 class ChempropEnsembleRegressor(ChempropRegressor):
     def __init__(self, ensemble_size: int = 5, **chemprop_kwargs):
         self.ensemble_size = ensemble_size
         self.base_kwargs = chemprop_kwargs
-        print(self.base_kwargs)
         super().__init__(**chemprop_kwargs)
         self.models: List[ChempropRegressor] = []
 
@@ -483,7 +484,7 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
             for path in self.args.checkpoint:
                 args = dict(self.base_kwargs)
-                args["checkpoint"] = path
+                args["checkpoint"] = [path]
                 model = ChempropRegressor(**args)
                 model.fit(X, y)
                 self.models.append(model)
@@ -498,7 +499,7 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         preds = [model.predict(X) for model in self.models]
         return np.mean(preds, axis=0)
 
-    def score(self, X, y, metric: Literal["mae","rmse","mse","r2","accuracy"]="rmse"):
+    def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
 
         if metric == "mae":
@@ -506,22 +507,21 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         elif metric == "rmse":
             return root_mean_squared_error(y, y_pred)
         elif metric == "mse":
-            return root_mean_squared_error(y, y_pred)**2
+            return root_mean_squared_error(y, y_pred) ** 2
         elif metric == "r2":
             return r2_score(y, y_pred)
         elif metric == "accuracy":
             return accuracy_score(y, (y_pred > 0.5).astype(int))
         else:
             raise ValueError(f"Unsupported metric: {metric}")
-        
+
     def _save_models(self):
         if self.args.model_output_dir is None:
             raise ValueError("no output directory specified")
         output_columns = self.args.target_columns
         for idx, model in enumerate(self.models):
-            save_model(self.args.model_output_dir / f"best{idx}.pt", model, output_columns)
+            save_model(self.args.model_output_dir / f"best_{idx}.pt", model, output_columns)
         return self
-
 
 
 if __name__ == "__main__":
@@ -542,7 +542,7 @@ if __name__ == "__main__":
     )
 
     # df = pd.read_csv("rxn.csv")  # change to target datapath
-    # X = 
+    # X =
     # df["smiles"].to_numpy(dtype=str)
     # y = df["ea"].to_numpy(dtype=float)
 
@@ -553,7 +553,7 @@ if __name__ == "__main__":
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     sklearnPipeline.fit(X, y)
-    score = sklearnPipeline.score(X,y)
+    score = sklearnPipeline.score(X, y)
     print(f"RMSE: {score}")
 
     # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
