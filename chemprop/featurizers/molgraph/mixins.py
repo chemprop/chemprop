@@ -11,10 +11,16 @@ from chemprop.featurizers.bond import MultiHotBondFeaturizer
 class _MolGraphFeaturizerMixin:
     atom_featurizer: VectorFeaturizer[Atom] = field(default_factory=MultiHotAtomFeaturizer.v2)
     bond_featurizer: VectorFeaturizer[Bond] = field(default_factory=MultiHotBondFeaturizer)
+    backward_bond_featurizer: VectorFeaturizer[Bond] | None = None
 
     def __post_init__(self):
         self.atom_fdim = len(self.atom_featurizer)
         self.bond_fdim = len(self.bond_featurizer)
+        if (
+            self.backward_bond_featurizer is not None
+            and len(self.backward_bond_featurizer) != self.bond_fdim
+        ):
+            raise ValueError("backward_bond_featurizer must have same dimension as bond_featurizer")
 
     @property
     def shape(self) -> tuple[int, int]:
