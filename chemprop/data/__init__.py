@@ -9,7 +9,7 @@ from .collate import (
     collate_multicomponent,
 )
 from .dataloader import build_dataloader
-from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
 from .datasets import (
     Datum,
     MolAtomBondDataset,
@@ -17,6 +17,7 @@ from .datasets import (
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from .molgraph import MolGraph
@@ -35,8 +36,10 @@ __all__ = [
     "build_dataloader",
     "MoleculeDatapoint",
     "MolAtomBondDatapoint",
+    "PolymerDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "PolymerDataset",
     "ReactionDataset",
     "Datum",
     "MolAtomBondDatum",
