@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        data_path: Optional[PathLike] = None,
         multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
@@ -44,10 +43,9 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         target_cols: Sequence[str] | None = None,
         ignore_cols: Sequence[str] | None = None,
         weight_col: str | None = None,
-        bounded=None,
+        bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.data_path = data_path
         self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
@@ -63,23 +61,23 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Optional[Sequence[str]] = None, y=None, **_):
+    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **_):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Optional[Sequence[str]] = None):
+    def transform(self, X: Sequence[str]|PathLike):
         return self._build_dataset(X, None)
 
     def _build_dataset(
         self,
-        X: Optional[Sequence[str]],
+        X: Sequence[str]|PathLike,
         Y: Optional[np.ndarray],
         weights=None,
         lt_mask=None,
         gt_mask=None,
     ) -> MoleculeDataset:
-        if self.data_path is not None:
+        if isinstance(X, PathLike):
             smiss, _, Y, weights, lt_mask, gt_mask = parse_csv(
-                path=self.data_path,
+                path=X,
                 smiles_cols=self.smiles_cols,
                 rxn_cols=None,
                 target_cols=self.target_cols,
@@ -91,8 +89,6 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
             )
 
         else:
-            if X is None:
-                raise ValueError("No data supplied, X and data_path cannot both be None.")
             smiss = [list(X)]
             if Y is None:
                 Y = np.zeros((len(X), 1), dtype=float)
@@ -124,7 +120,6 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
 class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        data_path: Optional[PathLike] = None,
         reaction_mode=RxnMode.REAC_DIFF,
         multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
@@ -138,7 +133,6 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.data_path = data_path
         self.reaction_mode = reaction_mode
         self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
@@ -155,23 +149,23 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Optional[Sequence[str]] = None, y=None, **__):
+    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **__):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Optional[Sequence[str]] = None):
+    def transform(self, X: Sequence[str]|PathLike):
         return self._build_dataset(X, None)
 
     def _build_dataset(
         self,
-        X: Optional[Sequence[str]],
+        X: Sequence[str]|PathLike,
         Y: Optional[Sequence[float]],
         weights=None,
         lt_mask=None,
         gt_mask=None,
     ) -> ReactionDataset:
-        if self.data_path is not None:
+        if isinstance(X, PathLike):
             _, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
-                path=self.data_path,
+                path=X,
                 smiles_cols=None,
                 rxn_cols=self.rxn_cols,
                 target_cols=self.target_cols,
@@ -182,8 +176,6 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
                 no_header_row=self.no_header_row,
             )
         else:
-            if X is None:
-                raise ValueError("No data supplied, X and data_path cannot both be None.")
             rxnss = [list(X)]
             weights, lt_mask, gt_mask = None, None, None
             if Y is None:
@@ -219,7 +211,6 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
 class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        data_path: Optional[PathLike] = None,
         component_types: Sequence[Literal["molecule", "reaction"]] | None = None,
         reaction_mode="REAC_DIFF",
         multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
@@ -235,7 +226,6 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.data_path = data_path
         self.component_types = list(component_types or [])
         self.reaction_mode = reaction_mode
         self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
@@ -269,16 +259,16 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Optional[Sequence[str]] = None, y=None, **__):
+    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **__):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Optional[Sequence[str]] = None):
+    def transform(self, X: Sequence[str]|PathLike):
         return self._build_dataset(X, None)
 
-    def _build_dataset(self, X: Optional[Sequence[str]], Y):
-        if self.data_path is not None:
+    def _build_dataset(self, X: Sequence[str]|PathLike, Y):
+        if isinstance(X,PathLike):
             smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
-                path=self.data_path,
+                path=X,
                 smiles_cols=self.smiles_cols,
                 rxn_cols=self.rxn_cols,
                 target_cols=self.target_cols,
@@ -297,8 +287,6 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 ),
             ]
         else:
-            if X is None:
-                raise ValueError("No data supplied, X and data_path cannot both be None.")
             if len(X) != len(self.component_types):
                 logger.warning(
                     "data dimension and number of component_types inputted are inconsistent"
@@ -395,6 +383,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             max_epochs=self.args.epochs,
             callbacks=[EarlyStopping(monitor="train_loss", patience=patience, mode="min")],
         )
+        for name, value in locals().items():
+            if name not in {"self", "args"}:
+                setattr(self, name, value)
 
     def __sklearn_is_fitted__(self):
         return True
@@ -452,9 +443,12 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         preds = self.trainer.predict(self.model, dataloaders=dl)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
-    def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
+    def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-
+        if isinstance(X, MulticomponentDataset):
+            y = X.datasets[0].Y
+        else:
+            y = X.Y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -514,7 +508,10 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
     def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-
+        if isinstance(X, MulticomponentDataset):
+            y = X.datasets[0].Y
+        else:
+            y = X.Y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -549,29 +546,28 @@ if __name__ == "__main__":
             (
                 "featurizer",
                 ChempropMulticomponentTransformer(
-                    data_path="rxn+mol.csv",
                     smiles_cols="solvent_smiles",
                     rxn_cols="rxn_smiles",
                     target_cols="target",
-                ),
+                )
             ),
-            ("regressor", ChempropRegressor()),
+            ("regressor", ChempropRegressor(checkpoint = [Path("example_model_v2_regression_rxn+mol.pt")])),
         ]
     )
 
     # df = pd.read_csv("rxn.csv")  # change to target datapath
-    # X =
-    # df["smiles"].to_numpy(dtype=str)
+    # X = df["smiles"].to_numpy(dtype=str)
     # y = df["ea"].to_numpy(dtype=float)
 
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    
     df = pd.read_csv("rxn+mol.csv")  # change to target datapath
     X = (df["rxn_smiles"].to_numpy(dtype=str), df["solvent_smiles"].to_numpy(dtype=str))
     y = df["target"].to_numpy(dtype=float)
+    scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_error')
 
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
-
-    sklearnPipeline.fit(X, y)
-    score = sklearnPipeline.score(X, y)
+    sklearnPipeline.fit(X=Path("rxn+mol.csv"))
+    score = sklearnPipeline.score(X=Path("rxn+mol.csv"))
     print(f"RMSE: {score}")
 
     # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
