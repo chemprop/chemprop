@@ -92,7 +92,7 @@ class FoundationModels(EnumMapping):
 
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
-    HELP = "Train a chemprop model."
+    HELP = "Train a Chemprop model."
     parser = None
 
     @classmethod
@@ -464,7 +464,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
-        help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
+        help="Specify the evaluation metrics. If unspecified, Chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
         "--tracking-metric",
@@ -1201,7 +1201,7 @@ def build_model(
                     else:
                         logger.info(f"Loading cached CheMeleon from {model_path}")
                     logger.info(
-                        "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
+                        "Please cite DOI: 10.48550/arXiv.2506.15792 when using CheMeleon in published work"
                     )
                     chemeleon_mp = torch.load(model_path, weights_only=True)
                     if is_multi:
