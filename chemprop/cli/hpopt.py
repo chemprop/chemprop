@@ -395,6 +395,17 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         plugins=[RayLightningEnvironment()],
         deterministic=args.pytorch_seed is not None,
     )
+    # if trainer elects to use MPS we need to disable DDP, which is incompatible with MPS
+    if "MPS" in trainer.accelerator.__class__.__name__:
+        trainer = pl.Trainer(
+            accelerator=args.accelerator,
+            devices=args.devices,
+            max_epochs=args.epochs,
+            gradient_clip_val=args.grad_clip,
+            callbacks=[RayTrainReportCallback(), early_stopping],
+            plugins=[RayLightningEnvironment()],
+            deterministic=args.pytorch_seed is not None,
+        )
     trainer = prepare_trainer(trainer)
     trainer.fit(model, train_loader, val_loader)
 
