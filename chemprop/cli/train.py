@@ -975,7 +975,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             split_idxss = json.load(json_file)
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
         args.num_replicates = len(split_idxss)
 
     else:
@@ -1168,8 +1168,13 @@ def build_datasets(args, train_data, val_data, test_data):
             for dataset, label in zip(
                 [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
             ):
-                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                if dataset is not None:
+                    column_headers, table_rows = summarize(
+                        args.target_columns, args.task_type, dataset
+                    )
+                    output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                else:
+                    output = label + " set is empty."
                 logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
