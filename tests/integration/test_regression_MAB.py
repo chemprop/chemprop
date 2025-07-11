@@ -52,6 +52,7 @@ def test_quick(mol_atom_bond_mpnn, dataloader):
     trainer.fit(mol_atom_bond_mpnn, dataloader, None)
 
 
+pl.seed_everything(0)
 @pytest.mark.parametrize(
     "mol_atom_bond_mpnn",
     [

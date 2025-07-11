@@ -8,7 +8,7 @@ from os import PathLike
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, accuracy_score, r2_score
 from lightning.pytorch import Trainer
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import EarlyStopping
 from argparse import ArgumentParser, Namespace
 
 from chemprop.models import MulticomponentMPNN, MPNN
@@ -61,15 +61,15 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **_):
+    def fit_transform(self, X: np.ndarray | Sequence[str] | PathLike, y=None, **_):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Sequence[str]|PathLike):
+    def transform(self, X: np.ndarray | Sequence[str] | PathLike):
         return self._build_dataset(X, None)
 
     def _build_dataset(
         self,
-        X: Sequence[str]|PathLike,
+        X: np.ndarray | Sequence[str] | PathLike,
         Y: Optional[np.ndarray],
         weights=None,
         lt_mask=None,
@@ -149,15 +149,15 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **__):
+    def fit_transform(self, X: np.ndarray | Sequence[str] | PathLike, y=None, **__):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Sequence[str]|PathLike):
+    def transform(self, X: np.ndarray | Sequence[str] | PathLike):
         return self._build_dataset(X, None)
 
     def _build_dataset(
         self,
-        X: Sequence[str]|PathLike,
+        X: np.ndarray | Sequence[str] | PathLike,
         Y: Optional[Sequence[float]],
         weights=None,
         lt_mask=None,
@@ -226,7 +226,7 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.component_types = list(component_types or [])
+        self.component_types = component_types
         self.reaction_mode = reaction_mode
         self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
@@ -259,14 +259,16 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def fit_transform(self, X: Sequence[str]|PathLike, y=None, **__):
+    def fit_transform(self, X: np.ndarray | Sequence[Sequence[str]] | PathLike, y=None, **__):
         return self._build_dataset(X, y)
 
-    def transform(self, X: Sequence[str]|PathLike):
+    def transform(self, X: np.ndarray | Sequence[Sequence[str]] | PathLike):
         return self._build_dataset(X, None)
 
-    def _build_dataset(self, X: Sequence[str]|PathLike, Y):
-        if isinstance(X,PathLike):
+    def _build_dataset(
+        self, X: np.ndarray | Sequence[Sequence[str]] | PathLike, Y: Optional[Sequence[float]]
+    ):
+        if isinstance(X, PathLike):
             smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
                 path=X,
                 smiles_cols=self.smiles_cols,
@@ -286,12 +288,20 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                     X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
                 ),
             ]
+
         else:
+            if (
+                isinstance(X, (np.ndarray, list))
+                and np.ndim(X) == 2
+                and X.shape[1] == len(self.component_types)
+            ):
+                X = [np.asarray(X)[:, i] for i in range(X.shape[1])]
+            else:
+                X = list(X)
             if len(X) != len(self.component_types):
                 logger.warning(
                     "data dimension and number of component_types inputted are inconsistent"
                 )
-            X = list(X)
             if Y is None:
                 Y = np.zeros((len(X[0]), 1), dtype=float)
             elif Y.ndim == 1:
@@ -462,11 +472,12 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         else:
             raise ValueError(f"Unsupported metric: {metric}")
 
-    def _save_model(self):
-        if self.args.model_output_dir is None:
-            raise ValueError("model_output_dir is not specified")
-        output_columns = self.args.target_columns
-        save_model(self.args.model_output_dir / "best.pt", self.model, output_columns)
+    def _save_model(self, output_dir: Optional[PathLike] = None):
+        if output_dir is None:
+            if self.args.model_output_dir is None:
+                raise ValueError("model_output_dir is not specified")
+            output_dir = self.args.model_output_dir
+        save_model(output_dir + "/best.pt", self.model, None)
         return self
 
 
@@ -525,51 +536,38 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         else:
             raise ValueError(f"Unsupported metric: {metric}")
 
-    def _save_models(self):
-        if self.args.model_output_dir is None:
-            raise ValueError("no output directory specified")
-        output_columns = self.args.target_columns
+    def _save_model(self, output_dir: Optional[PathLike] = None):
+        if output_dir is None:
+            if self.args.model_output_dir is None:
+                raise ValueError("no output directory specified")
+            output_dir = self.args.model_output_dir
         for idx, model in enumerate(self.models):
-            save_model(self.args.model_output_dir / f"best_{idx}.pt", model, output_columns)
+            save_model(output_dir + "/" + f"best_{idx}.pt", model, None)
         return self
 
 
+# microtest
 if __name__ == "__main__":
-    # microtest
     from sklearn.pipeline import Pipeline
-    from sklearn.model_selection import cross_val_score, train_test_split
-    import pandas as pd
-    from sklearn.metrics import mean_squared_error
 
     sklearnPipeline = Pipeline(
         [
             (
                 "featurizer",
                 ChempropMulticomponentTransformer(
-                    smiles_cols="solvent_smiles",
-                    rxn_cols="rxn_smiles",
-                    target_cols="target",
-                )
+                    smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
+                ),
             ),
-            ("regressor", ChempropRegressor(checkpoint = [Path("example_model_v2_regression_rxn+mol.pt")])),
+            (
+                "regressor",
+                ChempropRegressor(
+                    epochs=10, checkpoint=[Path("example_model_v2_regression_rxn+mol.pt")]
+                ),
+            ),
         ]
     )
 
-    # df = pd.read_csv("rxn.csv")  # change to target datapath
-    # X = df["smiles"].to_numpy(dtype=str)
-    # y = df["ea"].to_numpy(dtype=float)
-
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
-    
-    df = pd.read_csv("rxn+mol.csv")  # change to target datapath
-    X = (df["rxn_smiles"].to_numpy(dtype=str), df["solvent_smiles"].to_numpy(dtype=str))
-    y = df["target"].to_numpy(dtype=float)
-    scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring='neg_mean_squared_error')
-
-    sklearnPipeline.fit(X=Path("rxn+mol.csv"))
-    score = sklearnPipeline.score(X=Path("rxn+mol.csv"))
+    sklearnPipeline.fit(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
+    score = sklearnPipeline.score(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
     print(f"RMSE: {score}")
-
-    # scores = cross_val_score(sklearnPipeline, X, y, cv=5, scoring="neg_mean_squared_error")
-    # print("Cross-validation scores:", scores)
-    # print("Mean MSE:", -scores.mean())
+    sklearnPipeline["regressor"]._save_model("checkpoints")
