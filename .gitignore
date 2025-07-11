@@ -162,6 +162,7 @@ cython_debug/
 *.idea
 *.DS_Store
 *.vscode
+*.code-workspace
 *.csv
 *.pkl
 *.pt
