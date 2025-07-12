@@ -53,6 +53,8 @@ def test_quick(mol_atom_bond_mpnn, dataloader):
 
 
 pl.seed_everything(0)
+
+
 @pytest.mark.parametrize(
     "mol_atom_bond_mpnn",
     [
