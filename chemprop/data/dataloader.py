@@ -24,12 +24,9 @@ logger = logging.getLogger(__name__)
 def build_dataloader(
     dataset: MoleculeDataset
     | CuikmolmakerDataset
-   
     | MolAtomBondDataset
-   
     | PolymerDataset
     | ReactionDataset
-   
     | MulticomponentDataset,
     batch_size: int = 64,
     num_workers: int = 0,

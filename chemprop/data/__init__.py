@@ -13,7 +13,8 @@ from .datapoints import (
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
-    PolymerDatapoint, ReactionDatapoint,
+    PolymerDatapoint,
+    ReactionDatapoint,
 )
 from .datasets import (
     CuikmolmakerDataset,

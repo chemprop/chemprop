@@ -149,7 +149,9 @@ def make_datapoints(
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
 ) -> tuple[
-    list[list[MoleculeDatapoint | LazyMoleculeDatapoint]], list[list[PolymerDatapoint]], list[list[ReactionDatapoint]]
+    list[list[MoleculeDatapoint | LazyMoleculeDatapoint]],
+    list[list[PolymerDatapoint]],
+    list[list[ReactionDatapoint]],
 ]:
     """Make the :class:`MoleculeDatapoint`s, :class: `PolymerDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
@@ -436,11 +438,9 @@ def make_datapoints(
             for rxns in rxnss
         ]
 
-        if molecule_featurizers is not None:
-            molecule_featurizers_fns = [
-                MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers
-            ]
-            if len(polyss) > 0:
+    if molecule_featurizers is not None:
+        molecule_featurizers_fns = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
+        if len(polyss) > 0:
             poly_descriptors = np.hstack(
                 [
                     np.vstack(
@@ -448,7 +448,7 @@ def make_datapoints(
                             np.hstack(
                                 [
                                     mf(remove_wildcard_atoms(RWMol(poly)))
-                                    for mf in molecule_featurizers
+                                    for mf in molecule_featurizers_fns
                                 ]
                             )
                             for poly in poly_mols
@@ -462,28 +462,24 @@ def make_datapoints(
             else:
                 X_d = np.hstack([X_d, poly_descriptors])
 
-            if len(rxnss) > 0:
-                rct_pdt_descriptors = np.hstack(
-                    [
-                        np.vstack(
-                            [
-                                np.hstack(
-                                    [
-                                        mf(mol)
-                                        for mf in molecule_featurizers_fns
-                                        for mol in (rct, pdt)
-                                    ]
-                                )
-                                for rct, pdt in zip(rcts, pdts)
-                            ]
-                        )
-                        for rcts, pdts in zip(rctss, pdtss)
-                    ]
-                )
-                if X_d is None:
-                    X_d = rct_pdt_descriptors
-                else:
-                    X_d = np.hstack([X_d, rct_pdt_descriptors])
+        if len(rxnss) > 0:
+            rct_pdt_descriptors = np.hstack(
+                [
+                    np.vstack(
+                        [
+                            np.hstack(
+                                [mf(mol) for mf in molecule_featurizers_fns for mol in (rct, pdt)]
+                            )
+                            for rct, pdt in zip(rcts, pdts)
+                        ]
+                    )
+                    for rcts, pdts in zip(rctss, pdtss)
+                ]
+            )
+            if X_d is None:
+                X_d = rct_pdt_descriptors
+            else:
+                X_d = np.hstack([X_d, rct_pdt_descriptors])
 
     mol_data = [
         [
