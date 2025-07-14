@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class FingerprintSubcommand(Subcommand):
     COMMAND = "fingerprint"
-    HELP = "Use a pretrained chemprop model to calculate learned representations."
+    HELP = "Use a pretrained Chemprop model to calculate learned representations."
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -140,6 +140,7 @@ def make_fingerprint_for_model(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         test_data = build_data_from_files(
             args.test_path,
             **format_kwargs,
@@ -152,7 +153,13 @@ def make_fingerprint_for_model(
     logger.info(f"test size: {len(test_data[0])}")
 
     test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+        make_dataset(
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        for d in test_data
     ]
 
     if multicomponent:

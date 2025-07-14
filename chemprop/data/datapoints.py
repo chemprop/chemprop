@@ -65,8 +65,60 @@ class _MoleculeDatapointMixin:
 
 
 @dataclass
+class _LazyMoleculeDatapointMixin:
+    smiles: str
+    """A :class:`_LazyMoleculeDatapointMixin` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+    _keep_h: bool = False
+    _add_h: bool = False
+    _ignore_stereo: bool = False
+    _reorder_atoms: bool = False
+    _mol_cache: Chem.Mol = field(default=None, repr=False, compare=False)
+
+    @property
+    def mol(self) -> Chem.Mol:
+        """Lazily compute the molecule only when accessed"""
+        if self._mol_cache is None:
+            self._mol_cache = make_mol(
+                self.smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
+            )
+        return self._mol_cache
+
+
+@dataclass
 class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
+
+    V_f: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
+    *before* message passing"""
+    E_f: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ef`` is the number of additional features  containing additional features that will be
+    concatenated to bond-level features *before* message passing"""
+    V_d: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
+    descriptors *after* message passing"""
+
+    def __post_init__(self):
+        NAN_TOKEN = 0
+        if self.V_f is not None:
+            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
+        if self.E_f is not None:
+            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
+        if self.V_d is not None:
+            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
+
+        super().__post_init__()
+
+    def __len__(self) -> int:
+        return 1
+
+
+@dataclass
+class LazyMoleculeDatapoint(_DatapointMixin, _LazyMoleculeDatapointMixin):
+    """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
 
     V_f: np.ndarray | None = None
     """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and

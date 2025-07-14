@@ -37,6 +37,13 @@ If polymer string representations are used, specifiy:
 
  * :code:`--polymer-columns` Text labels of the columns that include the polymer representation
 
+.. _performant-prediction:
+
+Performant Prediction
+^^^^^^^^^^^^^^^^^^^^^
+
+Prediction can be accelerated using molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
+
 
 Uncertainty Quantification
 --------------------------

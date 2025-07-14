@@ -9,8 +9,14 @@ from .collate import (
     collate_multicomponent,
 )
 from .dataloader import build_dataloader
-from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, PolymerDatapoint, ReactionDatapoint
+from .datapoints import (
+    LazyMoleculeDatapoint,
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    PolymerDatapoint, ReactionDatapoint,
+)
 from .datasets import (
+    CuikmolmakerDataset,
     Datum,
     MolAtomBondDataset,
     MolAtomBondDatum,
@@ -39,6 +45,7 @@ __all__ = [
     "PolymerDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "CuikmolmakerDataset",
     "PolymerDataset",
     "ReactionDataset",
     "Datum",
