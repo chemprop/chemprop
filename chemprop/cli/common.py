@@ -111,6 +111,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         help="Path to extra descriptors to concatenate to learned representation",
     )
+    featurization_args.add_argument(
+        "--descriptors-columns",
+        nargs="+",
+        help="Extra datapoint descriptors, like temperature and pressure, to be included in datasets",
+    )
     # TODO: Add in v2.1
     # featurization_args.add_argument(
     #     "--phase-features-path",

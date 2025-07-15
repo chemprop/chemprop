@@ -5,3 +5,4 @@ CCC,0.3,80,5,train
 CCCC,0.4,95,7,val
 CCCCC,0.5,110,9,val
 CCCCCC,0.6,120,11,test
+CCCCCCC,0.7,135,13,test

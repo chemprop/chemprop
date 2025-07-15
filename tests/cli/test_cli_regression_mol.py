@@ -18,7 +18,6 @@ pytestmark = pytest.mark.CLI
 def data_path(data_dir):
     return (
         str(data_dir / "regression" / "mol" / "mol.csv"),
-        str(data_dir / "regression" / "mol" / "augmented_mol.csv"),
         str(data_dir / "regression" / "mol" / "descriptors.npz"),
         str(data_dir / "regression" / "mol" / "atom_features.npz"),
         str(data_dir / "regression" / "mol" / "bond_features.npz"),
@@ -49,6 +48,11 @@ def evidential_model_path(data_dir):
 @pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
+
+
+@pytest.fixture
+def augmented_data_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "augmented_mol.csv")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -150,7 +154,6 @@ def test_train_config(monkeypatch, config_path, tmp_path):
 def test_train_quick_features(monkeypatch, data_path):
     (
         input_path,
-        _,
         descriptors_path,
         atom_features_path,
         bond_features_path,
@@ -622,7 +625,6 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     (
         input_path,
-        _,
         descriptors_path,
         atom_features_path,
         bond_features_path,
@@ -705,16 +707,15 @@ def test_custom_activation_quick(monkeypatch, data_path):
         main()
 
 
-def test_extra_feature_augmentation(monkeypatch, data_path):
-    _, input_path, *_ = data_path
+def test_extra_feature_augmentation(monkeypatch, augmented_data_path):
     args = [
         "chemprop",
         "train",
         "-i",
-        input_path,
+        augmented_data_path,
         "--target-columns",
         "y",
-        "--extra-feature-columns",
+        "--descriptors-columns",
         "temperature",
         "pressure",
         "--splits-column",

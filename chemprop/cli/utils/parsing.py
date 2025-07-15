@@ -29,7 +29,7 @@ def parse_csv(
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
     weight_col: str | None,
-    extra_feature_cols: Sequence[str] | None,
+    descriptor_cols: Sequence[str] | None,
     bounded: bool = False,
     no_header_row: bool = False,
 ):
@@ -52,8 +52,8 @@ def parse_csv(
         rxnss = None
         input_cols = [df.columns[0]]
 
-    extra_feature_cols = list(extra_feature_cols or [])
-    X_extra = df[extra_feature_cols].to_numpy(np.single) if extra_feature_cols else None
+    descriptor_cols = list(descriptor_cols or [])
+    X_extra = df[descriptor_cols].to_numpy(np.single) if descriptor_cols else None
 
     if target_cols is None:
         target_cols = list(
@@ -61,7 +61,7 @@ def parse_csv(
             for column in df.columns
             if column
             not in set(  # if splits or weight is None, df.columns will never have None
-                input_cols + (ignore_cols or []) + extra_feature_cols + [splits_col] + [weight_col]
+                input_cols + (ignore_cols or []) + descriptor_cols + [splits_col] + [weight_col]
             )
         )
 
@@ -78,7 +78,7 @@ def parse_csv(
         lt_mask = None
         gt_mask = None
 
-    return smiss, rxnss, X_extra, Y, weights, lt_mask, gt_mask
+    return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_extra
 
 
 def get_column_names(
@@ -343,13 +343,13 @@ def build_data_from_files(
     weight_col: str | None,
     bounded: bool,
     p_descriptors: PathLike,
+    descriptor_cols: Sequence[str] | None,
     p_atom_feats: dict[int, PathLike],
     p_bond_feats: dict[int, PathLike],
     p_atom_descs: dict[int, PathLike],
-    extra_feature_cols: Sequence[str] | None = None,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, X_extra, Y, weights, lt_mask, gt_mask = parse_csv(
+    smiss, rxnss, Y, weights, lt_mask, gt_mask, X_extra = parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,
@@ -357,7 +357,7 @@ def build_data_from_files(
         ignore_cols,
         splits_col,
         weight_col,
-        extra_feature_cols,
+        descriptor_cols,
         bounded,
         no_header_row,
     )
@@ -366,7 +366,7 @@ def build_data_from_files(
 
     X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
     if X_extra is not None:
-        if X_ds is None:
+        if X_ds[0] is None:
             X_ds = X_extra
         else:
             X_ds = np.hstack([X_ds, X_extra])

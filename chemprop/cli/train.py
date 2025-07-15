@@ -557,14 +557,6 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Seed for PyTorch randomness (e.g., random initial weights)",
     )
 
-    parser.add_argument(
-        "--extra-feature-columns",
-        type=str,
-        nargs="+",
-        default=None,
-        help="Extra features, like temperature and pressure, to be included in datasets",
-    )
-
     return parser
 
 
@@ -940,6 +932,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -960,6 +953,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -1956,7 +1950,6 @@ def main(args):
         ignore_cols=args.ignore_columns,
         splits_col=args.splits_column,
         weight_col=args.weight_column,
-        extra_feature_cols=args.extra_feature_columns,
         bounded=args.loss_function is not None and "bounded" in args.loss_function,
     )
 
