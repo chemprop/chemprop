@@ -10,16 +10,22 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import (
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    PolymerDatapoint,
+    ReactionDatapoint,
+)
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
     CGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
+    PolymerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
-from chemprop.types import Rxn
+from chemprop.types import Polymer, Rxn
 
 logger = logging.getLogger(__name__)
 
@@ -613,6 +619,40 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         self.__bond_Y = self._bond_Y
         self.__atom_constraints = self._atom_constraints
         self.__bond_constraints = self._bond_constraints
+
+
+@dataclass
+class PolymerDataset(MoleculeDataset):
+    """A :class:`PolymerDataset` composed of :class:`PolymerDatapoint`\s
+
+    A :class:`PolymerDataset` produces featurized data for input to a
+    :class:`MPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``PolymerDataset.cache=True``.
+
+    Parameters
+    ----------
+    data : Iterable[PolymerDatapoint]
+        the data from which to create a dataset
+    featurizer : MoleculeFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
+    """
+
+    data: list[PolymerDatapoint]
+    featurizer: Featurizer[Polymer, MolGraph] = field(default_factory=PolymerMolGraphFeaturizer)
+
+    def _init_cache(self):
+        """initialize the cache"""
+        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
+            self.polymers, self.V_fs, self.E_fs, self.featurizer
+        )
+
+    @property
+    def polymers(self) -> list[PolymerDatapoint]:
+        """the polymers associated with the dataset"""
+        return self.data
 
 
 @dataclass

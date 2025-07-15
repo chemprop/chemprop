@@ -13,6 +13,7 @@ from .datapoints import (
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
+    PolymerDatapoint,
     ReactionDatapoint,
 )
 from .datasets import (
@@ -23,6 +24,7 @@ from .datasets import (
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from .molgraph import MolGraph
@@ -41,9 +43,11 @@ __all__ = [
     "build_dataloader",
     "MoleculeDatapoint",
     "MolAtomBondDatapoint",
+    "PolymerDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
     "CuikmolmakerDataset",
+    "PolymerDataset",
     "ReactionDataset",
     "Datum",
     "MolAtomBondDatum",

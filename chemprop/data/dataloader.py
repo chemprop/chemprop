@@ -13,6 +13,7 @@ from chemprop.data.datasets import (
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
@@ -24,6 +25,7 @@ def build_dataloader(
     dataset: MoleculeDataset
     | CuikmolmakerDataset
     | MolAtomBondDataset
+    | PolymerDataset
     | ReactionDataset
     | MulticomponentDataset,
     batch_size: int = 64,
