@@ -690,6 +690,16 @@ def validate_train_args(args):
             "the `--metrics` flag.",
         )
 
+    if (
+        args.use_cuikmolmaker_featurization
+        and args.splits_column is None
+        and args.splits_file is None
+        and args.split != "random"
+    ):
+        logger.warning(
+            f"using split type: {args.split} requires creating `rdkit.Chem.Mol`s for each datapoint. This reduces the memory savings of `--use-cuikmolmaker-featurization`."
+        )
+
     input_cols, target_cols = get_column_names(
         args.data_path,
         args.smiles_columns,
@@ -981,10 +991,13 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     else:
         splitting_data = all_data[args.split_key_molecule]
 
-        if isinstance(splitting_data[0], ReactionDatapoint):
-            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        if args.split == "random":
+            splitting_mols = range(len(splitting_data))
         else:
-            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            else:
+                splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
