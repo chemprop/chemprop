@@ -158,6 +158,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
                 "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
                 f"Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
             )
+        atom_props_float = ["aromatic", "mass"]
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
 
         if self.atom_featurizer_mode == "V1":
@@ -189,6 +190,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
             ]
         elif self.atom_featurizer_mode == "RIGR":
             atom_props_onehot = ["atomic-number-common", "total-degree", "num-hydrogens"]
+            atom_props_float = ["mass"]
             bond_props = ["is-null", "in-ring"]
         else:
             raise ValueError(f"Invalid atom featurizer mode: {atom_featurizer_mode}")
@@ -197,7 +199,6 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
             atom_props_onehot
         )
 
-        atom_props_float = ["aromatic", "mass"]
         self.atom_property_list_float = cuik_molmaker.atom_float_feature_names_to_tensor(
             atom_props_float
         )
