@@ -5,6 +5,8 @@ from typing import Literal
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Mol
+import torch
+from torch import Tensor
 
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer, GraphFeaturizer

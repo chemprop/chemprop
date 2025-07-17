@@ -501,18 +501,19 @@ def make_dataset(
         return MolAtomBondDataset(data, featurizer)
 
     if isinstance(data[0], (MoleculeDatapoint, LazyMoleculeDatapoint)):
+        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
+
         if cuikmolmaker_featurization:
             add_h = data[0]._add_h
             featurizer = CuikmolmakerMolGraphFeaturizer(
-                atom_featurizer=atom_featurizer,
-                bond_featurizer=bond_featurizer,
                 atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+                extra_atom_fdim=extra_atom_fdim,
+                extra_bond_fdim=extra_bond_fdim,
                 add_h=add_h,
             )
             return CuikmolmakerDataset(data, featurizer)
 
-        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
-        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
         featurizer = SimpleMoleculeMolGraphFeaturizer(
             atom_featurizer=atom_featurizer,
             bond_featurizer=bond_featurizer,
