@@ -128,19 +128,6 @@ if not libtorch_compiled_with_cxx_abi:
 else:
     print("LibTorch was likely compiled with _GLIBCXX_USE_CXX11_ABI=1 (C++11 ABI)")
 
-# Get python version
-python_version = sys.version
-print(f"Python version: {python_version}")
-
-# Get python major version
-python_major_version = python_version.split(".")[0]
-print(f"Python major version: {python_major_version}")
-
-# Get python minor version
-python_minor_version = python_version.split(".")[1]
-print(f"Python minor version: {python_minor_version}")
-
-python_version_digits = f"{python_major_version}{python_minor_version}"
 
 rdkit_version = rdkit.__version__
 print(f"RDKit version: {rdkit_version}")
@@ -153,7 +140,7 @@ print(f"Installing cuik-molmaker from: {wheel_url}")
 
 # Check if URL exists
 response = requests.head(wheel_url)
-if response.status_code != 200:
+if True:  # response.status_code != 200:
     print(
         f"URL {wheel_url} does not exist for the version of RDKit ({rdkit_version}) and PyTorch ({torch_version}) you have installed."
     )
@@ -162,6 +149,16 @@ if response.status_code != 200:
         "1. Install from source. Follow instructions at https://github.com/NVIDIA-Digital-Bio/cuik-molmaker"
     )
     print("2. Reach out to cuik-molmaker developers at cuik_molmaker_dev@nvidia.com")
+    print("3. Use conda to install one of these combinations of RDKit and PyTorch:")
+    possible_rdkit_versions = ["2024.03.4", "2024.09.4", "2025.03.2"]
+    possible_torch_versions = ["2.6.0", "2.7.0"]
+    for possible_rdkit_version in possible_rdkit_versions:
+        for possible_torch_version in possible_torch_versions:
+            response = requests.head(
+                f"https://pypi.nvidia.com/rdkit-{possible_rdkit_version}_torch-{possible_torch_version}/"
+            )
+            if response.status_code == 200:
+                print(f"   - RDKit {possible_rdkit_version} with PyTorch {possible_torch_version}")
     exit(1)
 
 # Install cuik-molmaker from correct wheel
