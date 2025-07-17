@@ -257,7 +257,7 @@ def validate_common_args(args):
             )
         if args.molecule_featurizers is not None:
             logger.warning(
-                f"using molecule featurizers requires creating `rdkit.Chem.Mol`s for each datapoint. This reduces the memory savings of `--use-cuikmolmaker-featurization`."
+                "using molecule featurizers requires creating `rdkit.Chem.Mol`s for each datapoint. This reduces the memory savings of `--use-cuikmolmaker-featurization`."
             )
 
 
