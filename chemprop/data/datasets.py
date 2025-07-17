@@ -384,7 +384,10 @@ class CuikmolmakerDataset(MoleculeDataset):
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
         smiles_list = [self.data[idx].smiles for idx in indexes]
-        bmg = self.featurizer(smiles_list) 
+        V_f = np.concat([self.V_fs[idx] for idx in indexes]) if self.V_fs[0] is not None else None
+        E_f = np.concat([self.E_fs[idx] for idx in indexes]) if self.E_fs[0] is not None else None
+        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
+        bmg = self.featurizer(smiles_list, V_f, E_f)
 
         batch_size = len(indexes)
         X_d_batch = self.X_d[indexes]
