@@ -140,7 +140,7 @@ print(f"Installing cuik-molmaker from: {wheel_url}")
 
 # Check if URL exists
 response = requests.head(wheel_url)
-if True:  # response.status_code != 200:
+if response.status_code != 200:
     print(
         f"URL {wheel_url} does not exist for the version of RDKit ({rdkit_version}) and PyTorch ({torch_version}) you have installed."
     )
