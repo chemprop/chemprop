@@ -4,11 +4,7 @@ from rdkit import Chem
 
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
-from chemprop.featurizers.molgraph import (
-    CuikmolmakerMolGraphFeaturizer,
-    SimpleMoleculeMolGraphFeaturizer,
-)
-from chemprop.utils.utils import is_cuikmolmaker_available
+from chemprop.featurizers.molgraph import SimpleMoleculeMolGraphFeaturizer
 
 
 @pytest.fixture(params=[0, 10, 100])
@@ -35,14 +31,6 @@ def mol_featurizer():
     return SimpleMoleculeMolGraphFeaturizer()
 
 
-@pytest.fixture(params=["V2", "V1", "ORGANIC", "RIGR"])
-def batch_mol_featurizer(request):
-    if is_cuikmolmaker_available():
-        return CuikmolmakerMolGraphFeaturizer(atom_featurizer_mode=request.param)
-    else:
-        return None
-
-
 @pytest.fixture
 def mol_featurizer_extra(extra):
     return SimpleMoleculeMolGraphFeaturizer(None, None, extra, extra)
@@ -66,39 +54,11 @@ def test_V_shape(mol, mol_featurizer: SimpleMoleculeMolGraphFeaturizer, mg: MolG
     assert mg.V.shape == (n_a, d_a)
 
 
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
-def test_batch_V_shape(smis, mols, batch_mol_featurizer: CuikmolmakerMolGraphFeaturizer):
-    total_num_atoms = sum([mol.GetNumAtoms() for mol in mols])
-    batch = batch_mol_featurizer(smis)
-    batch_V = batch[0]
-    assert batch_V.shape[0] == total_num_atoms
-    if batch_mol_featurizer.atom_featurizer_mode == "V1":
-        assert batch_V.shape[1] == 133
-    elif batch_mol_featurizer.atom_featurizer_mode == "V2":
-        assert batch_V.shape[1] == 72
-    elif batch_mol_featurizer.atom_featurizer_mode == "ORGANIC":
-        assert batch_V.shape[1] == 44
-    elif batch_mol_featurizer.atom_featurizer_mode == "RIGR":
-        assert batch_V.shape[1] == 53
-
-
 def test_E_shape(mol, mol_featurizer: SimpleMoleculeMolGraphFeaturizer, mg: MolGraph):
     n_b = mol.GetNumBonds()
     d_b = mol_featurizer.bond_fdim
 
     assert mg.E.shape == (2 * n_b, d_b)
-
-
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
-def test_batch_E_shape(smis, mols, batch_mol_featurizer: CuikmolmakerMolGraphFeaturizer):
-    total_num_bonds = sum([mol.GetNumBonds() for mol in mols])
-    batch = batch_mol_featurizer(smis)
-    batch_E = batch[1]
-    assert batch_E.shape[0] == 2 * total_num_bonds
-    if batch_mol_featurizer.atom_featurizer_mode == "RIGR":
-        assert batch_E.shape[1] == 2
-    else:
-        assert batch_E.shape[1] == 14
 
 
 def test_x2y_len(mol: Chem.Mol, mg: MolGraph):

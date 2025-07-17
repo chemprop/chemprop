@@ -39,6 +39,7 @@ __all__ = [
     "MulticomponentTrainingBatch",
     "collate_multicomponent",
     "build_dataloader",
+    "LazyMoleculeDatapoint",
     "MoleculeDatapoint",
     "MolAtomBondDatapoint",
     "ReactionDatapoint",
