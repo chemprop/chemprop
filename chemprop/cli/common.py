@@ -250,6 +250,15 @@ def validate_common_args(args):
                 argument=None,
                 message="`--reorder-atoms` is not supported when using cuik-molmaker featurization.",
             )
+        if args.reaction_columns or (args.smiles_columns and len(args.smiles_columns) > 1):
+            raise ArgumentError(
+                argument=None,
+                message="cuik-molmaker featurization only supports single component molecule datasets.",
+            )
+        if args.molecule_featurizers is not None:
+            logger.warning(
+                f"using molecule featurizers requires creating `rdkit.Chem.Mol`s for each datapoint. This reduces the memory savings of `--use-cuikmolmaker-featurization`."
+            )
 
 
 def find_models(model_paths: list[Path]):
