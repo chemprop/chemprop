@@ -1,12 +1,13 @@
 from dataclasses import InitVar, dataclass
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Mol
 
 from chemprop.data.molgraph import MolGraph
-from chemprop.featurizers.base import GraphFeaturizer
+from chemprop.featurizers.base import Featurizer, GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.utils.utils import is_cuikmolmaker_available
 
@@ -151,8 +152,10 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
     extra_bond_fdim: int = 0
     add_h: bool = False
 
-    def __post_init__(self, atom_featurizer_mode: str = "V2", add_h: bool = False):
-        super().__post_init__()
+    atom_fdim: int = field(init=False)
+    bond_fdim: int = field(init=False)
+
+    def __post_init__(self):
         if not is_cuikmolmaker_available():
             raise ImportError(
                 "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
@@ -160,7 +163,9 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
             )
         atom_props_float = ["aromatic", "mass"]
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
+        self.bond_fdim = 14
 
+        self.atom_featurizer_mode = self.atom_featurizer_mode.upper()
         if self.atom_featurizer_mode == "V1":
             atom_props_onehot = [
                 "atomic-number",
@@ -170,6 +175,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
                 "num-hydrogens",
                 "hybridization",
             ]
+            self.atom_fdim = 133
         elif self.atom_featurizer_mode == "V2":
             atom_props_onehot = [
                 "atomic-number-common",
@@ -179,6 +185,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
                 "num-hydrogens",
                 "hybridization-expanded",
             ]
+            self.atom_fdim = 72
         elif self.atom_featurizer_mode == "ORGANIC":
             atom_props_onehot = [
                 "atomic-number-organic",
@@ -188,12 +195,15 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
                 "num-hydrogens",
                 "hybridization-organic",
             ]
+            self.atom_fdim = 44
         elif self.atom_featurizer_mode == "RIGR":
             atom_props_onehot = ["atomic-number-common", "total-degree", "num-hydrogens"]
             atom_props_float = ["mass"]
             bond_props = ["is-null", "in-ring"]
+            self.atom_fdim = 52
+            self.bond_fdim = 2
         else:
-            raise ValueError(f"Invalid atom featurizer mode: {atom_featurizer_mode}")
+            raise ValueError(f"Invalid atom featurizer mode: {self.atom_featurizer_mode}")
 
         self.atom_property_list_onehot = cuik_molmaker.atom_onehot_feature_names_to_tensor(
             atom_props_onehot
@@ -204,6 +214,9 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
         )
 
         self.bond_property_list = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+
+        self.atom_fdim += self.extra_atom_fdim
+        self.bond_fdim += self.extra_bond_fdim
 
     def __call__(
         self,
