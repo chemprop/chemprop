@@ -1576,12 +1576,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:
