@@ -377,6 +377,11 @@ class CuikmolmakerDataset(MoleculeDataset):
     def smiles(self) -> list[str]:
         return [d.smiles for d in self.data]
 
+    def __getitem__(self, idx: int) -> Datum:
+        d = self.data[idx]
+        mg = MolGraph(*self.featurizer(d.smiles, self.V_fs[idx], self.E_fs[idx])[:4])
+
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
         smiles_list = [self.data[idx].smiles for idx in indexes]
         bmg = self.featurizer(smiles_list) 
