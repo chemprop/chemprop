@@ -1,4 +1,4 @@
-from dataclasses import InitVar, dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -38,14 +38,11 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         features of each bond
     """
 
-    extra_atom_fdim: InitVar[int] = 0
-    extra_bond_fdim: InitVar[int] = 0
+    extra_atom_fdim: int = 0
+    extra_bond_fdim: int = 0
 
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
+    def __post_init__(self):
         super().__post_init__()
-
-        self.extra_atom_fdim = extra_atom_fdim
-        self.extra_bond_fdim = extra_bond_fdim
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
 
@@ -161,7 +158,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
         if not is_cuikmolmaker_available():
             raise ImportError(
                 "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
-                f"Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
+                f"Please install it using `python {Path(__file__).parents[2] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
             )
         atom_props_float = ["aromatic", "mass"]
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
