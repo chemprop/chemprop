@@ -306,6 +306,17 @@ def process_hpopt_args(args: Namespace) -> Namespace:
             "bond_ffn_num_layers",
         ]:
             search_parameters.discard(param)
+    
+    if args.from_foundation is not None:
+        for param in [
+            "activation",
+            "dropout",
+            "depth",
+            "aggregation",
+            "aggregation_norm",
+            "message_hidden_dim",
+        ]:
+            search_parameters.discard(param)
 
     if args.constraints_path is None:
         for param in [
@@ -325,6 +336,8 @@ def process_hpopt_args(args: Namespace) -> Namespace:
 
 
 def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
+    
+    
     if "warmup_epochs" in search_parameters and SEARCH_SPACE.get("warmup_epochs", None) is None:
         assert (
             train_epochs >= 6
