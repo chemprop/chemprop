@@ -341,12 +341,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class CuikmolmakerDataset(MoleculeDataset):
-    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a :class:`CuikmolmakerMolGraphFeaturizer`
+    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a
+    :class:`CuikmolmakerMolGraphFeaturizer`
 
-    A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion by a
-    :class:`MPNN` model. Data featurization is always performed on-the-fly
-    and using the cuik-molmaker package. This batched processing is significantly faster and consumes less memory than the default featurization method. This is enabled by setting the
-    ``use_cuikmolmaker_featurization`` flag to ``True``.
+    A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion
+    by a :class:`MPNN` model. Data featurization is always performed on-the-fly and using the
+    cuik-molmaker package. This batched processing is significantly faster and consumes less memory
+    than the default featurization method.
 
     Parameters
     ----------
@@ -356,30 +357,23 @@ class CuikmolmakerDataset(MoleculeDataset):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
+    data: list[LazyMoleculeDatapoint]
     featurizer: CuikmolmakerMolGraphFeaturizer = field(
         default_factory=CuikmolmakerMolGraphFeaturizer
     )
 
-    def __post_init__(self):
-        super().__post_init__()
-        self.cache = False
-
-    # caching should always be false for CuikmolmakerDataset
-    @property
-    def cache(self) -> bool:
-        return self.__cache
-
-    @cache.setter
+    @MoleculeDataset.cache.setter
     def cache(self, cache: bool = False):
         if cache:
             logger.warning(
-                "This option no longer does anything and is deprecated. --use-cuikmolmaker-featurization is meant to be used without caching!"
+                "not caching CuikmolmakerDataset as it is meant to be used without caching!"
             )
-        self.__cache = cache
+        self.__cache = False
 
-    def __getitems__(self, indexes: list[int]):
-        # TODO(sveccham): Remove in final PR
-        print("__getitems__ called")
+    def _init_cache(self):
+        pass
+
+
         smiles_list = [self.data[idx].smiles for idx in indexes]
         batch_feats = self.featurizer(smiles_list)
 

@@ -174,12 +174,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Use ``cuik-molmaker`` package for accelerated atom and bond featurization.",
     )
-    # TODO: Add in v2.2
-    # parser.add_argument(
-    #     "--constraints-path",
-    #     help="Path to constraints applied to atomic/bond properties prediction.",
-    # )
-
     return parser
 
 
@@ -234,7 +228,6 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    # Validation that cuik-molmaker is installed if the flag is used
     if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
         raise ArgumentError(
             argument=None,
