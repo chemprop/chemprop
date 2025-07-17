@@ -125,6 +125,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "-i",
         "--data-path",
         type=Path,
+        nargs="*",
         help="Path to an input CSV file containing SMILES and the associated target values",
     )
     parser.add_argument(
@@ -565,19 +566,20 @@ def process_train_args(args: Namespace) -> Namespace:
 
 
 def validate_train_args(args):
-    if args.config_path is None and args.data_path is None:
+    if args.config_path is None and not args.data_path:
         raise ArgumentError(argument=None, message="Data path must be provided for training.")
 
     if args.output_dir is None:
-        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path.stem / NOW
+        args.output_dir = CHEMPROP_TRAIN_DIR / args.data_path[0].stem / NOW
 
     if args.num_folds is not None:  # i.e. user-specified
         raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
 
-    if args.data_path.suffix not in [".csv"]:
-        raise ArgumentError(
-            argument=None, message=f"Input data must be a CSV file. Got {args.data_path}"
-        )
+    for path in args.data_path:
+        if path.suffix not in [".csv"]:
+            raise ArgumentError(
+                argument=None, message=f"Input data must be a CSV file. Got {path}"
+            )
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
@@ -691,7 +693,7 @@ def validate_train_args(args):
         )
 
     input_cols, target_cols = get_column_names(
-        args.data_path,
+        args.data_path[0],
         args.smiles_columns,
         args.reaction_columns,
         args.target_columns,
@@ -922,79 +924,129 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
-    logger.info(f"Pulling data from file: {args.data_path}")
-    if any(
-        cols is not None
-        for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
-    ):
-        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
-            format_kwargs.pop(key, None)
-        featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
-        all_data = build_MAB_data_from_files(
-            args.data_path,
-            p_descriptors=args.descriptors_path,
-            p_atom_feats=args.atom_features_path,
-            p_bond_feats=args.bond_features_path,
-            p_atom_descs=args.atom_descriptors_path,
-            p_bond_descs=args.bond_descriptors_path,
-            **format_kwargs,
-            mol_target_cols=args.mol_target_columns,
-            atom_target_cols=args.atom_target_columns,
-            bond_target_cols=args.bond_target_columns,
-            p_constraints=args.constraints_path,
-            constraints_cols_to_target_cols={
-                col: i for i, col in enumerate(args.constraints_to_targets)
-            }
-            if args.constraints_to_targets is not None
-            else None,
-            **featurization_kwargs,
-        )
-    else:
-        all_data = build_data_from_files(
-            args.data_path,
-            p_descriptors=args.descriptors_path,
-            p_atom_feats=args.atom_features_path,
-            p_bond_feats=args.bond_features_path,
-            p_atom_descs=args.atom_descriptors_path,
-            **format_kwargs,
-            **featurization_kwargs,
-        )
+    logger.info(f"Pulling data from file(s): {args.data_path}")
 
-    if args.splits_column is not None:
-        df = pd.read_csv(
-            args.data_path, header=None if args.no_header_row else "infer", index_col=False
-        )
-        grouped = df.groupby(df[args.splits_column].str.lower())
-        train_indices = grouped.groups.get("train", pd.Index([])).tolist()
-        val_indices = grouped.groups.get("val", pd.Index([])).tolist()
-        test_indices = grouped.groups.get("test", pd.Index([])).tolist()
-        train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
-
-    elif args.splits_file is not None:
-        with open(args.splits_file, "rb") as json_file:
-            split_idxss = json.load(json_file)
-        train_indices = [parse_indices(d["train"]) for d in split_idxss]
-        val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
-        args.num_replicates = len(split_idxss)
-
-    else:
-        splitting_data = all_data[args.split_key_molecule]
-
-        if isinstance(splitting_data[0], ReactionDatapoint):
-            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+    def make_data(data_path):
+        if any(
+            cols is not None
+            for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+        ):
+            for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+                format_kwargs.pop(key, None)
+            featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
+            return build_MAB_data_from_files(
+                data_path,
+                p_descriptors=args.descriptors_path,
+                p_atom_feats=args.atom_features_path,
+                p_bond_feats=args.bond_features_path,
+                p_atom_descs=args.atom_descriptors_path,
+                p_bond_descs=args.bond_descriptors_path,
+                **format_kwargs,
+                mol_target_cols=args.mol_target_columns,
+                atom_target_cols=args.atom_target_columns,
+                bond_target_cols=args.bond_target_columns,
+                p_constraints=args.constraints_path,
+                constraints_cols_to_target_cols={
+                    col: i for i, col in enumerate(args.constraints_to_targets)
+                }
+                if args.constraints_to_targets is not None
+                else None,
+                **featurization_kwargs,
+            )
         else:
-            splitting_mols = [datapoint.mol for datapoint in splitting_data]
-        train_indices, val_indices, test_indices = make_split_indices(
-            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
+            return build_data_from_files(
+                data_path,
+                p_descriptors=args.descriptors_path,
+                p_atom_feats=args.atom_features_path,
+                p_bond_feats=args.bond_features_path,
+                p_atom_descs=args.atom_descriptors_path,
+                **format_kwargs,
+                **featurization_kwargs,
+            )
+        
+    if len(args.data_path)>3:
+        raise ValueError(f"More than 3 data_files provided:{args.data_path}")
+
+    if len(args.data_path)==3:
+        train_data = [make_data(args.data_path[0])]
+        val_data = [make_data(args.data_path[1])]
+        test_data = [make_data(args.data_path[2])]
+
+    elif len(args.data_path) == 2:
+        train_val_data = make_data(args.data_path[0])
+
+        if args.splits_column is not None:
+            df = pd.read_csv(
+                args.data_path[0], header=None if args.no_header_row else "infer", index_col=False
+            )
+            grouped = df.groupby(df[args.splits_column].str.lower())
+            train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+            val_indices   = grouped.groups.get("val",   pd.Index([])).tolist()
+            train_indices, val_indices = [train_indices], [val_indices]
+
+        elif args.splits_file is not None:
+            with open(args.splits_file, "rb") as json_file:
+                split_idxss = json.load(json_file)
+            train_indices = [parse_indices(d["train"]) for d in split_idxss]
+            val_indices   = [parse_indices(d["val"])   for d in split_idxss]
+            args.num_replicates = len(split_idxss)
+
+        else:
+            splitting_data = train_val_data[args.split_key_molecule]
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [d.rct for d in splitting_data]
+            else:
+                splitting_mols = [d.mol for d in splitting_data]
+            if args.split_sizes[2] != 0:
+                logger.warning("Get nonzero size for test, defaulted to 9:1 test-val split.")
+                args.split_sizes = [0.9, 0.1, 0]
+            train_indices, val_indices, _ = make_split_indices(
+                splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
+            )
+
+        train_data, val_data, _ = split_data_by_indices(
+            train_val_data, train_indices, val_indices, None
         )
 
-    train_data, val_data, test_data = split_data_by_indices(
-        all_data, train_indices, val_indices, test_indices
-    )
-    for i_split in range(len(train_data)):
-        sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
-        logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
+        test_data = [make_data(args.data_path[1]) for _ in range(args.num_replicates)]
+
+    else:
+        all_data = make_data(args.data_path[0])
+        if args.splits_column is not None:
+            df = pd.read_csv(
+                args.data_path[0], header=None if args.no_header_row else "infer", index_col=False
+            )
+            grouped = df.groupby(df[args.splits_column].str.lower())
+            train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+            val_indices = grouped.groups.get("val", pd.Index([])).tolist()
+            test_indices = grouped.groups.get("test", pd.Index([])).tolist()
+            train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
+
+        elif args.splits_file is not None:
+            with open(args.splits_file, "rb") as json_file:
+                split_idxss = json.load(json_file)
+            train_indices = [parse_indices(d["train"]) for d in split_idxss]
+            val_indices = [parse_indices(d["val"]) for d in split_idxss]
+            test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
+            args.num_replicates = len(split_idxss)
+
+        else:
+            splitting_data = all_data[args.split_key_molecule]
+
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            else:
+                splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            train_indices, val_indices, test_indices = make_split_indices(
+                splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
+            )
+
+        train_data, val_data, test_data = split_data_by_indices(
+            all_data, train_indices, val_indices, test_indices
+        )
+        for i_split in range(len(train_data)):
+            sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
+            logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
 
