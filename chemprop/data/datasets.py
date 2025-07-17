@@ -373,6 +373,10 @@ class CuikmolmakerDataset(MoleculeDataset):
     def _init_cache(self):
         pass
 
+    @property
+    def smiles(self) -> list[str]:
+        return [d.smiles for d in self.data]
+
 
         smiles_list = [self.data[idx].smiles for idx in indexes]
         bmg = self.featurizer(smiles_list) 
