@@ -10,10 +10,16 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import (
+    LazyMoleculeDatapoint,
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    ReactionDatapoint,
+)
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
+    BatchCuikMolGraph,
     CGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
@@ -48,6 +54,18 @@ class MolAtomBondDatum(NamedTuple):
     lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     constraints: tuple[np.ndarray | None, np.ndarray | None]
+
+
+class CuikBatchedDatum(NamedTuple):
+    """a cuik-molmaker batch of data points"""
+
+    bmg: BatchCuikMolGraph
+    V_d: np.ndarray
+    X_d: np.ndarray
+    Y: np.ndarray
+    weights: np.ndarray
+    lt_mask: np.ndarray
+    gt_mask: np.ndarray
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -383,28 +401,20 @@ class CuikmolmakerDataset(MoleculeDataset):
 
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
+    def __getitems__(self, indexes: list[int]) -> CuikBatchedDatum:
         smiles_list = [self.data[idx].smiles for idx in indexes]
         V_f = np.concat([self.V_fs[idx] for idx in indexes]) if self.V_fs[0] is not None else None
         E_f = np.concat([self.E_fs[idx] for idx in indexes]) if self.E_fs[0] is not None else None
-        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
         bmg = self.featurizer(smiles_list, V_f, E_f)
 
-        batch_size = len(indexes)
-        X_d_batch = self.X_d[indexes]
-        Y_batch = self.Y[indexes]
-        weight_batch = [self.data[idx].weight for idx in indexes]
-        lt_mask_batch = [self.data[idx].lt_mask for idx in indexes]
-        gt_mask_batch = [self.data[idx].gt_mask for idx in indexes]
+        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
+        X_d = self.X_d[indexes] if self.X_d[0] is not None else None
+        Y = self.Y[indexes] if self.Y[0] is not None else None
+        weights = self.weights[indexes]
+        lt_mask = self.lt_mask[indexes] if self.lt_mask[0] is not None else None
+        gt_mask = self.gt_mask[indexes] if self.gt_mask[0] is not None else None
 
-        return (
-            *batch_feats,
-            [None] * batch_size,
-            X_d_batch,
-            Y_batch,
-            weight_batch,
-            lt_mask_batch,
-            gt_mask_batch,
-        )
+        return CuikBatchedDatum(bmg, V_d, X_d, Y, weights, lt_mask, gt_mask)
 
 
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from chemprop.data.datasets import Datum, MolAtomBondDatum
+from chemprop.data.datasets import CuikBatchedDatum, Datum, MolAtomBondDatum
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.molecule import BatchCuikMolGraph
 
@@ -97,34 +97,16 @@ def collate_batch(batch: Iterable[Datum]) -> TrainingBatch:
     )
 
 
-def collate_cuik_batch(batch: Iterable[Datum]) -> TrainingBatch:
-    (
-        atom_feats,
-        bond_feats,
-        edge_index,
-        rev_edge_index,
-        _batch,
-        V_ds,
-        x_ds,
-        ys,
-        weights,
-        lt_masks,
-        gt_masks,
-    ) = batch
+def collate_cuik_batch(batch: CuikBatchedDatum) -> TrainingBatch:
+    bmg, V_d, X_d, Y, weights, lt_mask, gt_mask = batch
     return TrainingBatch(
-        BatchCuikMolGraph(
-            V=atom_feats,
-            E=bond_feats,
-            edge_index=edge_index,
-            rev_edge_index=rev_edge_index,
-            batch=_batch,
-        ),
-        None if V_ds[0] is None else torch.from_numpy(np.concatenate(V_ds)).float(),
-        None if x_ds[0] is None else torch.from_numpy(np.array(x_ds)).float(),
-        None if ys[0] is None else torch.from_numpy(np.array(ys)).float(),
+        bmg,
+        None if V_d is None else torch.from_numpy(V_d).float(),
+        None if X_d is None else torch.from_numpy(X_d).float(),
+        None if Y is None else torch.from_numpy(Y).float(),
         torch.tensor(weights, dtype=torch.float).unsqueeze(1),
-        None if lt_masks[0] is None else torch.from_numpy(np.array(lt_masks)),
-        None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
+        None if lt_mask is None else torch.from_numpy(lt_mask),
+        None if gt_mask is None else torch.from_numpy(gt_mask),
     )
 
 
