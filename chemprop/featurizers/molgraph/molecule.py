@@ -96,30 +96,59 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         return MolGraph(V, E, edge_index, rev_edge_index)
 
 
+@dataclass(repr=False, eq=False, slots=True)
+class BatchCuikMolGraph:
+    V: Tensor
+    """the atom feature matrix"""
+    E: Tensor
+    """the bond feature matrix"""
+    edge_index: Tensor
+    """an tensor of shape ``2 x E`` containing the edges of the graph in COO format"""
+    rev_edge_index: Tensor
+    """A tensor of shape ``E`` that maps from an edge index to the index of the source of the
+    reverse edge in the ``edge_index`` attribute."""
+    batch: Tensor
+    """the index of the parent :class:`MolGraph` in the batched graph"""
+
+    __size: int = field(init=False)
+
+    def __post_init__(self):
+        self.__size = self.batch[-1].item() + 1
+
+    def __len__(self) -> int:
+        """the number of individual :class:`MolGraph`\s in this batch"""
+        return self.__size
+
+    def to(self, device: str | torch.device):
+        self.V = self.V.to(device)
+        self.E = self.E.to(device)
+        self.edge_index = self.edge_index.to(device)
+        self.rev_edge_index = self.rev_edge_index.to(device)
+        self.batch = self.batch.to(device)
+
+
 @dataclass
-class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
-    """A :class:`CuikmolmakerMolGraphFeaturizer` is the default implementation of a
-    :class:`_MolGraphFeaturizerMixin`. This class featurizes a list of molecules at once instead of one molecule at a time for efficiency.
+class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
+    """A :class:`CuikmolmakerMolGraphFeaturizer` featurizes a list of molecules at once instead of
+    one molecule at a time for efficiency.
 
     Parameters
     ----------
-    atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
-        the featurizer with which to calculate feature representations of the atoms in a given
-        molecule
-    bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
-        the featurizer with which to calculate feature representations of the bonds in a given
-        molecule
+    atom_featurizer_mode: str, default="V2"
+        The mode of the atom featurizer (V1, V2, ORGANIC, RIGR) to use.
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
-    atom_featurizer_mode: str, default="V2"
-        The mode of the atom featurizer (V1, V2, ORGANIC) to use.
+    add_h: bool, default=False
+        whether to add hydrogens to the `Chem.Mol` objects created from the input SMILES strings
     """
 
-    atom_featurizer_mode: str = "V2"
+    atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2"
+    extra_atom_fdim: int = 0
+    extra_bond_fdim: int = 0
     add_h: bool = False
 
     def __post_init__(self, atom_featurizer_mode: str = "V2", add_h: bool = False):
@@ -180,7 +209,7 @@ class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[M
         smiles_list: list[str],
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
-    ):
+    ) -> BatchCuikMolGraph:
         offset_carbon, duplicate_edges, add_self_loop = False, True, False
 
         (
@@ -208,4 +237,10 @@ class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[M
             bond_features_extra = torch.tensor(bond_features_extra, dtype=torch.float32)
             bond_feats = torch.cat((bond_feats, bond_features_extra), dim=1)
 
-        return batch_feats
+        return BatchCuikMolGraph(
+            V=atom_feats,
+            E=bond_feats,
+            edge_index=edge_index,
+            rev_edge_index=rev_edge_index,
+            batch=batch,
+        )

@@ -7,6 +7,7 @@ from torch import Tensor
 
 from chemprop.data.datasets import Datum, MolAtomBondDatum
 from chemprop.data.molgraph import MolGraph
+from chemprop.featurizers.molgraph.molecule import BatchCuikMolGraph
 
 
 @dataclass(repr=False, eq=False, slots=True)
@@ -59,37 +60,6 @@ class BatchMolGraph:
         self.edge_index = torch.from_numpy(np.hstack(edge_indexes)).long()
         self.rev_edge_index = torch.from_numpy(np.concatenate(rev_edge_indexes)).long()
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
-
-    def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`\s in this batch"""
-        return self.__size
-
-    def to(self, device: str | torch.device):
-        self.V = self.V.to(device)
-        self.E = self.E.to(device)
-        self.edge_index = self.edge_index.to(device)
-        self.rev_edge_index = self.rev_edge_index.to(device)
-        self.batch = self.batch.to(device)
-
-
-@dataclass(repr=False, eq=False, slots=True)
-class BatchCuikMolGraph:
-    V: Tensor
-    """the atom feature matrix"""
-    E: Tensor
-    """the bond feature matrix"""
-    edge_index: Tensor
-    """an tensor of shape ``2 x E`` containing the edges of the graph in COO format"""
-    rev_edge_index: Tensor
-    """A tensor of shape ``E`` that maps from an edge index to the index of the source of the
-    reverse edge in the ``edge_index`` attribute."""
-    batch: Tensor
-    """the index of the parent :class:`MolGraph` in the batched graph"""
-
-    __size: int = field(init=False)
-
-    def __post_init__(self):
-        self.__size = self.V.shape[0]
 
     def __len__(self) -> int:
         """the number of individual :class:`MolGraph`\s in this batch"""

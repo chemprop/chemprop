@@ -375,7 +375,7 @@ class CuikmolmakerDataset(MoleculeDataset):
 
 
         smiles_list = [self.data[idx].smiles for idx in indexes]
-        batch_feats = self.featurizer(smiles_list)
+        bmg = self.featurizer(smiles_list) 
 
         batch_size = len(indexes)
         X_d_batch = self.X_d[indexes]
