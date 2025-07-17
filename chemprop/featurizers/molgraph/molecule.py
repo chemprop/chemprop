@@ -183,7 +183,13 @@ class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[M
     ):
         offset_carbon, duplicate_edges, add_self_loop = False, True, False
 
-        batch_feats = cuik_molmaker.batch_mol_featurizer(
+        (
+            atom_feats,
+            bond_feats,
+            edge_index,
+            rev_edge_index,
+            batch,
+        ) = cuik_molmaker.batch_mol_featurizer(
             smiles_list,
             self.atom_property_list_onehot,
             self.atom_property_list_float,
@@ -193,4 +199,13 @@ class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[M
             duplicate_edges,
             add_self_loop,
         )
+
+        if atom_features_extra is not None:
+            atom_features_extra = torch.tensor(atom_features_extra, dtype=torch.float32)
+            atom_feats = torch.cat((atom_feats, atom_features_extra), dim=1)
+        if bond_features_extra is not None:
+            bond_features_extra = np.repeat(bond_features_extra, repeats=2, axis=0)
+            bond_features_extra = torch.tensor(bond_features_extra, dtype=torch.float32)
+            bond_feats = torch.cat((bond_feats, bond_features_extra), dim=1)
+
         return batch_feats
