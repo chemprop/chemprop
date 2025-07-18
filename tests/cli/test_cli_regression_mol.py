@@ -50,6 +50,11 @@ def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
 
 
+@pytest.fixture
+def augmented_data_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "augmented_mol.csv")
+
+
 def test_train_quick(monkeypatch, data_path):
     input_path, *_ = data_path
 
@@ -717,6 +722,26 @@ def test_empty_testset(monkeypatch, data_path):
         "0.5",
         "0.5",
         "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_extra_descriptors_columns(monkeypatch, augmented_data_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        augmented_data_path,
+        "--target-columns",
+        "y",
+        "--descriptors-columns",
+        "temperature",
+        "pressure",
+        "--splits-column",
+        "split",
     ]
 
     with monkeypatch.context() as m:
