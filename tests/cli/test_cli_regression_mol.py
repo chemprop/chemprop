@@ -743,6 +743,7 @@ def test_extra_feature_augmentation(monkeypatch, augmented_data_path):
         "--splits-column",
         "split",
     ]
+
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
