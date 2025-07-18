@@ -409,8 +409,8 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     splits_file = str(tmp_path / "splits.json")
     splits = [
-        {"train": [1, 2], "val": "3-5", "test": "6,7"},
-        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+        {"train": [0, 1], "val": "2-3", "test": "4,5"},
+        {"val": [0, 1], "test": "2-3", "train": "4,5"},
     ]
 
     with open(splits_file, "w") as f:
@@ -700,6 +700,28 @@ def test_custom_activation_quick(monkeypatch, data_path):
         "--activation-args",
         "1.0",
         "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_empty_testset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "0.5",
+        "0.5",
+        "0",
     ]
 
     with monkeypatch.context() as m:

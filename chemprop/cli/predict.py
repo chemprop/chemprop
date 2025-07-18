@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 class PredictSubcommand(Subcommand):
     COMMAND = "predict"
-    HELP = "use a pretrained chemprop model for prediction"
+    HELP = "use a pretrained Chemprop model for prediction"
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -70,7 +70,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, Chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -243,6 +243,7 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         datas = build_data_from_files(
             data_path,
             **format_kwargs,
@@ -254,7 +255,15 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
 
-    dsets = [make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in datas]
+    dsets = [
+        make_dataset(
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        for d in datas
+    ]
     dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
     return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)

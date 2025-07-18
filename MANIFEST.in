@@ -1,0 +1,12 @@
+# required to make the tarball distrbution ignore unnecessary files
+include pyproject.toml
+include README.md
+recursive-include chemprop *
+global-exclude *.pyc
+global-exclude __pycache__/
+prune tests
+prune docs
+prune notebooks
+prune examples
+prune requirements
+prune .github

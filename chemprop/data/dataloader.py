@@ -2,8 +2,14 @@ import logging
 
 from torch.utils.data import DataLoader
 
-from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
+from chemprop.data.collate import (
+    collate_batch,
+    collate_cuik_batch,
+    collate_mol_atom_bond_batch,
+    collate_multicomponent,
+)
 from chemprop.data.datasets import (
+    CuikmolmakerDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
@@ -15,7 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 def build_dataloader(
-    dataset: MoleculeDataset | MolAtomBondDataset | ReactionDataset | MulticomponentDataset,
+    dataset: MoleculeDataset
+    | CuikmolmakerDataset
+    | MolAtomBondDataset
+    | ReactionDataset
+    | MulticomponentDataset,
     batch_size: int = 64,
     num_workers: int = 0,
     class_balance: bool = False,
@@ -52,6 +62,8 @@ def build_dataloader(
 
     if isinstance(dataset, MulticomponentDataset):
         collate_fn = collate_multicomponent
+    elif isinstance(dataset, CuikmolmakerDataset):
+        collate_fn = collate_cuik_batch
     elif isinstance(dataset, MolAtomBondDataset):
         collate_fn = collate_mol_atom_bond_batch
     else:
