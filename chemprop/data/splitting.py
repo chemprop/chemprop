@@ -164,7 +164,7 @@ def make_split_indices(
                 raise RuntimeError("Unreachable code reached!")
 
         # flip val and test back if test size is 0
-        if sizes[2] == 0:
+        if sizes[2] == 0.0:
             val, test = test, val
         train_replicates.append(train)
         val_replicates.append(val)
