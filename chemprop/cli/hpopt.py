@@ -545,6 +545,7 @@ def main(args: Namespace):
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
