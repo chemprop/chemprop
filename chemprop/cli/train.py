@@ -1185,7 +1185,6 @@ def build_model(
         list[ScaleTransform | None],
         list[ScaleTransform | None],
     ],
-    from_foundation: FoundationModels | None = None,
 ) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
     activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
@@ -1200,24 +1199,24 @@ def build_model(
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
-    if from_foundation is not None:
-        if Path(from_foundation).exists():  # local model
+    if args.from_foundation is not None:
+        if Path(args.from_foundation).exists():  # local model
             if is_multi:
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        from_foundation
+                        args.from_foundation
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
                     mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
-                foundation = MPNN.load_from_file(from_foundation)
+                foundation = MPNN.load_from_file(args.from_foundation)
                 mp_block = foundation.message_passing
             agg = foundation.agg
         else:  # remote model
-            match FoundationModels.get(from_foundation):
+            match FoundationModels.get(args.from_foundation):
                 case FoundationModels.CHEMELEON:
                     ckpt_dir = Path().home() / ".chemprop"
                     ckpt_dir.mkdir(exist_ok=True)
@@ -1577,13 +1576,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
-                    args.from_foundation,
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:
