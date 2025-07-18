@@ -19,7 +19,6 @@ def build_MAB_data_from_files(
     weight_col: str | None,
     bounded: bool,
     p_descriptors: PathLike | None,
-    descriptor_cols: Sequence[str] | None,
     p_atom_feats: dict[int, PathLike] | None,
     p_bond_feats: dict[int, PathLike] | None,
     p_atom_descs: dict[int, PathLike] | None,
@@ -27,6 +26,7 @@ def build_MAB_data_from_files(
     p_constraints: PathLike | None,
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
+    descriptor_cols: Sequence[str] | None = None,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
