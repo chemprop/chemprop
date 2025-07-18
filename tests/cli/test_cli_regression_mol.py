@@ -729,7 +729,7 @@ def test_empty_testset(monkeypatch, data_path):
         main()
 
 
-def test_extra_feature_augmentation(monkeypatch, augmented_data_path):
+def test_extra_descriptors_columns(monkeypatch, augmented_data_path):
     args = [
         "chemprop",
         "train",

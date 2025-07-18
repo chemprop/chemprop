@@ -453,7 +453,7 @@ def build_data_from_files(
 
     X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
     if X_extra is not None:
-        if X_ds[0] is None:
+        if X_ds is None:
             X_ds = X_extra
         else:
             X_ds = np.hstack([X_ds, X_extra])
