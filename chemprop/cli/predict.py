@@ -25,7 +25,7 @@ from chemprop.cli.utils import (
 )
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.metrics import BoundedMixin
-from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN, QuantileFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,
     NoUncertaintyEstimator,
@@ -354,8 +354,8 @@ def make_prediction_for_models(
                 metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
             logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
-    if args.uncertainty_method == "none" and (
-        isinstance(models[0].predictor, MveFFN) or isinstance(models[0].predictor, EvidentialFFN)
+    if args.uncertainty_method == "none" and isinstance(
+        models[0].predictor, (MveFFN, EvidentialFFN, QuantileFFN)
     ):
         test_preds = test_preds[..., 0]
         test_individual_preds = test_individual_preds[..., 0]
@@ -586,9 +586,8 @@ def make_MAB_prediction_for_models(
                     metric_value = evaluator.evaluate(test_uncs, test_targets, test_mask)
                 logger.info(f"{evaluator.alias} ({kind}): {metric_value.tolist()}")
 
-    if args.uncertainty_method == "none" and (
-        isinstance(next(p for p in models[0].predictors if p is not None), MveFFN)
-        or isinstance(next(p for p in models[0].predictors if p is not None), EvidentialFFN)
+    if args.uncertainty_method == "none" and isinstance(
+        next(p for p in models[0].predictors if p is not None), (MveFFN, EvidentialFFN, QuantileFFN)
     ):
         test_predss = [
             test_preds[..., 0] if test_preds is not None else None for test_preds in test_predss
