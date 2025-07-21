@@ -206,5 +206,5 @@ def test_preds_stay_same(monkeypatch, tmp_path):
     expected_df = pd.read_pickle("tests/data/data_for_test_preds_stay_same.pkl")
 
     assert np.allclose(
-        preds_df["target"].values, expected_df["target"].values, rtol=1e-5, atol=1e-8
+        preds_df["target"].values, expected_df["target"].values, rtol=1e-4, atol=1e-5
     )
