@@ -126,7 +126,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-path",
         type=Path,
         nargs="*",
-        help="Path to an input CSV file containing SMILES and the associated target values",
+        help="Path to one, two, or three input CSV file containing SMILES and the associated target values. If one data file is supplied, it will undergo train-val-test split; if two are supplied, the first will undergo train-val split and the second will be taken as test data; if three are supplied, they will be taken as train, val, test data respectively",
     )
     parser.add_argument(
         "-o",
