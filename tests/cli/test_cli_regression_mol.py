@@ -727,26 +727,13 @@ def test_empty_testset(monkeypatch, data_path):
 def test_multiple_data_files(monkeypatch, data_path):
     input_path, *_ = data_path
 
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        input_path,
-        input_path,
-    ]
+    args = ["chemprop", "train", "-i", input_path, input_path, input_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
 
-    args = [
-        "chemprop",
-        "train",
-        "-i",
-        input_path,
-        input_path,
-    ]
+    args = ["chemprop", "train", "-i", input_path, input_path]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

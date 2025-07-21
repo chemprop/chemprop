@@ -577,9 +577,7 @@ def validate_train_args(args):
 
     for path in args.data_path:
         if path.suffix not in [".csv"]:
-            raise ArgumentError(
-                argument=None, message=f"Input data must be a CSV file. Got {path}"
-            )
+            raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
@@ -929,7 +927,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     def make_data(data_path):
         if any(
             cols is not None
-            for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
+            for cols in [
+                args.mol_target_columns,
+                args.atom_target_columns,
+                args.bond_target_columns,
+            ]
         ):
             for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
                 format_kwargs.pop(key, None)
@@ -963,11 +965,15 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 **format_kwargs,
                 **featurization_kwargs,
             )
-        
-    if len(args.data_path)>3:
-        raise ValueError(f"More than 3 data_files provided:{args.data_path}")
 
-    if len(args.data_path)==3:
+    if len(args.data_path) > 3:
+        raise ValueError(f"More than 3 data_files provided: {args.data_path}")
+
+    if len(args.data_path) == 3:
+        if args.num_replicates > 1:
+            logger.warning(
+                "num_replicates is fixed to 1 when train, val, test data are supplied in 3 separate files."
+            )
         train_data = [make_data(args.data_path[0])]
         val_data = [make_data(args.data_path[1])]
         test_data = [make_data(args.data_path[2])]
@@ -981,14 +987,14 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             )
             grouped = df.groupby(df[args.splits_column].str.lower())
             train_indices = grouped.groups.get("train", pd.Index([])).tolist()
-            val_indices   = grouped.groups.get("val",   pd.Index([])).tolist()
+            val_indices = grouped.groups.get("val", pd.Index([])).tolist()
             train_indices, val_indices = [train_indices], [val_indices]
 
         elif args.splits_file is not None:
             with open(args.splits_file, "rb") as json_file:
                 split_idxss = json.load(json_file)
             train_indices = [parse_indices(d["train"]) for d in split_idxss]
-            val_indices   = [parse_indices(d["val"])   for d in split_idxss]
+            val_indices = [parse_indices(d["val"]) for d in split_idxss]
             args.num_replicates = len(split_idxss)
 
         else:
@@ -998,7 +1004,9 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             else:
                 splitting_mols = [d.mol for d in splitting_data]
             if args.split_sizes[2] != 0:
-                logger.warning("Get nonzero size for test, defaulted to 9:1 test-val split.")
+                logger.warning(
+                    "Get nonzero test size along with 2 data paths, defaulted to 9:1 test-val split."
+                )
                 args.split_sizes = [0.9, 0.1, 0]
             train_indices, val_indices, _ = make_split_indices(
                 splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
@@ -1020,7 +1028,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             train_indices = grouped.groups.get("train", pd.Index([])).tolist()
             val_indices = grouped.groups.get("val", pd.Index([])).tolist()
             test_indices = grouped.groups.get("test", pd.Index([])).tolist()
-            train_indices, val_indices, test_indices = [train_indices], [val_indices], [test_indices]
+            train_indices, val_indices, test_indices = (
+                [train_indices],
+                [val_indices],
+                [test_indices],
+            )
 
         elif args.splits_file is not None:
             with open(args.splits_file, "rb") as json_file:
@@ -1045,7 +1057,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             all_data, train_indices, val_indices, test_indices
         )
         for i_split in range(len(train_data)):
-            sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
+            sizes = [
+                len(train_data[i_split][0]),
+                len(val_data[i_split][0]),
+                len(test_data[i_split][0]),
+            ]
             logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
