@@ -237,21 +237,9 @@ def make_datapoints(
     #     X_d = [None] * N
 
     if use_cuikmolmaker_featurization:
-        if X_d is None and molecule_featurizers is None:
-            X_d = [None] * N
-        elif molecule_featurizers is None:
-            pass
-        else:
-            molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
-            mols = [make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smiss[0]]
-            mol_descriptors = np.vstack(
-                [np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols]
-            )
-            X_d = mol_descriptors if X_d is None else np.hstack([X_d, mol_descriptors])
-
         mol_data = [
             LazyMoleculeDatapoint(
-                smiles=smiss[0][i],
+                smiles=smiss[0][i],  # cuikmolmaker only supports single molecule datapoints
                 _keep_h=keep_h,
                 _add_h=add_h,
                 _ignore_stereo=ignore_stereo,
@@ -261,7 +249,7 @@ def make_datapoints(
                 weight=weights[i],
                 gt_mask=gt_mask[i],
                 lt_mask=lt_mask[i],
-                x_d=X_d[i],
+                # x_d=X_d[i],
                 x_phase=None,
                 V_f=V_fss[0][i],
                 E_f=E_fss[0][i],
@@ -269,6 +257,22 @@ def make_datapoints(
             )
             for i in range(N)
         ]
+
+        # LazyMoleculeDatapoint makes the mol when dp.mol is called instead of accepting it as an
+        # argument, so we can't use molecule featurizers until after making the datapoints.
+        if X_d is None and molecule_featurizers is None:
+            X_d = [None] * N
+        elif molecule_featurizers is None:
+            pass
+        else:
+            molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
+            mol_descriptors = np.vstack(
+                [np.hstack([mf(dp.mol) for mf in molecule_featurizers]) for dp in mol_data]
+            )
+            X_d = mol_descriptors if X_d is None else np.hstack([X_d, mol_descriptors])
+        for dp, desc in zip(mol_data, X_d):
+            setattr(dp, "x_d", desc)
+
         return [mol_data], []
 
     if len(smiss) > 0:
