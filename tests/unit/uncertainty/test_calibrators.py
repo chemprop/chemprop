@@ -301,11 +301,11 @@ def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_unc
     [
         (
             torch.arange(100).unsqueeze(1),
-            torch.arange(100).unsqueeze(1) / 10,
+            torch.arange(100).unsqueeze(1) / 20,
             torch.arange(10, 110).unsqueeze(1),
             torch.ones([100, 1], dtype=torch.bool),
-            torch.arange(100, 200).unsqueeze(1) / 10,
-            torch.arange(29.2, 39.1, 0.1).unsqueeze(1),
+            torch.arange(100, 200).unsqueeze(1) / 20,
+            torch.arange(14.6, 19.55, 0.05).unsqueeze(1),
         ),
         (
             torch.arange(100).unsqueeze(1),
@@ -313,7 +313,7 @@ def test_MultilabelConformalCalibrator(cal_uncs, cal_targets, cal_mask, test_unc
             torch.arange(10, 110).unsqueeze(1),
             torch.ones([100, 1], dtype=torch.bool),
             torch.zeros(100, 1),
-            torch.ones(100, 1) * 20,
+            torch.ones(100, 1) * 10,
         ),
     ],
 )

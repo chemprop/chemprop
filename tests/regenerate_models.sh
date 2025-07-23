@@ -88,7 +88,15 @@ chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol/mol.csv --accelerator
 
 cp -L test_cli_regression_evidential_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_evidential_mol.pt
 
-test_cli_classification_dirichlet_mol
+# test_cli_regression_quantile_mol
+
+rm -rf test_cli_regression_quantile_mol
+
+chemprop train -i $CHEMPROP_PATH/tests/data/regression/mol/mol.csv --accelerator cpu --epochs 3 --num-workers 0 --save-dir test_cli_regression_quantile_mol --task-type regression-quantile --alpha 0.1
+
+cp -L test_cli_regression_quantile_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_quantile_mol.pt
+
+# test_cli_classification_dirichlet_mol
 
 rm -rf test_cli_classification_dirichlet_mol
 
