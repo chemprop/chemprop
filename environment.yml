@@ -10,7 +10,7 @@ dependencies:
   - lightning>=2.0
   - numpy
   - pandas
-  - rdkit
+  - rdkit<=2025.03.2
   - scikit-learn
   - scipy
   - rich

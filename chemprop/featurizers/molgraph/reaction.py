@@ -118,11 +118,12 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
 
         V = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
         V_w = np.ones((1, len(V)), dtype=np.single).flatten()
-        # Check to ensure the length of V = V_w
+
         if V.shape[0] != len(V_w):
             raise ValueError(
-                f"Lengths of V and V_w are not equal: got V={V.shape[0]}, V_w={len(V_w)}"
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
             )
+
         E = []
         edge_index = [[], []]
         E_w = []
@@ -146,7 +147,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         # Check E and E_w are of equal length and equal the number of bonds
         if len(E) != len(E_w):
             raise ValueError(
-                f"Arrays E and E_w have incorrect lengths expected {len(E)}, got E={len(E)} and E_w={len(E_w)}"
+                f"Arrays E and E_w have incorrect lengths: expected {len(E)}, got E={len(E)} and E_w={len(E_w)}"
             )
         E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()

@@ -506,6 +506,7 @@ def main(args: Namespace):
                 _temp_dir=args.raytune_temp_dir,
                 num_cpus=args.raytune_num_cpus,
                 num_gpus=args.raytune_num_gpus,
+                runtime_env={'excludes': ["../../.git/", "../../.github/"]}
             )
         except OSError as e:
             if "AF_UNIX path length cannot exceed 107 bytes" in str(e):
@@ -535,6 +536,7 @@ def main(args: Namespace):
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)

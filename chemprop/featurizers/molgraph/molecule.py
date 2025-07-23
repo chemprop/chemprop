@@ -1,4 +1,5 @@
 from dataclasses import InitVar, dataclass
+from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
@@ -7,6 +8,10 @@ from rdkit.Chem import Mol
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.utils.utils import is_cuikmolmaker_available
+
+if is_cuikmolmaker_available():
+    import cuik_molmaker
 
 
 @dataclass
@@ -68,11 +73,11 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
             V_w = np.ones((1, n_atoms), dtype=np.single).flatten()
 
-        # Check to ensure the length of V = V_w
         if V.shape[0] != len(V_w):
             raise ValueError(
-                f"Lengths of V and V_w are not equal: got V={V.shape[0]}, V_w={len(V_w)}"
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
             )
+
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
         E_w = []
@@ -93,13 +98,113 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             edge_index[1].extend([v, u])
             E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
             i += 2
-                # Check E and E_w are of equal length and equal the number of bonds
+        # Check E and E_w are of equal length and equal the number of bonds
         if E.shape[0] != i or len(E_w) != i:
             raise ValueError(
-                f"Arrays E and E_w have incorrect lengths expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
+                f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
             )
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
         E_w = np.array(E_w, float)
 
         return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, 1)
+
+
+@dataclass
+class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
+    """A :class:`CuikmolmakerMolGraphFeaturizer` is the default implementation of a
+    :class:`_MolGraphFeaturizerMixin`. This class featurizes a list of molecules at once instead of one molecule at a time for efficiency.
+
+    Parameters
+    ----------
+    atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
+        the featurizer with which to calculate feature representations of the atoms in a given
+        molecule
+    bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
+        the featurizer with which to calculate feature representations of the bonds in a given
+        molecule
+    extra_atom_fdim : int, default=0
+        the dimension of the additional features that will be concatenated onto the calculated
+        features of each atom
+    extra_bond_fdim : int, default=0
+        the dimension of the additional features that will be concatenated onto the calculated
+        features of each bond
+    atom_featurizer_mode: str, default="V2"
+        The mode of the atom featurizer (V1, V2, ORGANIC) to use.
+    """
+
+    atom_featurizer_mode: str = "V2"
+    add_h: bool = False
+
+    def __post_init__(self, atom_featurizer_mode: str = "V2", add_h: bool = False):
+        super().__post_init__()
+        if not is_cuikmolmaker_available():
+            raise ImportError(
+                "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
+                f"Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
+            )
+        bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
+
+        if self.atom_featurizer_mode == "V1":
+            atom_props_onehot = [
+                "atomic-number",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization",
+            ]
+        elif self.atom_featurizer_mode == "V2":
+            atom_props_onehot = [
+                "atomic-number-common",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization-expanded",
+            ]
+        elif self.atom_featurizer_mode == "ORGANIC":
+            atom_props_onehot = [
+                "atomic-number-organic",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization-organic",
+            ]
+        elif self.atom_featurizer_mode == "RIGR":
+            atom_props_onehot = ["atomic-number-common", "total-degree", "num-hydrogens"]
+            bond_props = ["is-null", "in-ring"]
+        else:
+            raise ValueError(f"Invalid atom featurizer mode: {atom_featurizer_mode}")
+
+        self.atom_property_list_onehot = cuik_molmaker.atom_onehot_feature_names_to_tensor(
+            atom_props_onehot
+        )
+
+        atom_props_float = ["aromatic", "mass"]
+        self.atom_property_list_float = cuik_molmaker.atom_float_feature_names_to_tensor(
+            atom_props_float
+        )
+
+        self.bond_property_list = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+
+    def __call__(
+        self,
+        smiles_list: list[str],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ):
+        offset_carbon, duplicate_edges, add_self_loop = False, True, False
+
+        batch_feats = cuik_molmaker.batch_mol_featurizer(
+            smiles_list,
+            self.atom_property_list_onehot,
+            self.atom_property_list_float,
+            self.bond_property_list,
+            self.add_h,
+            offset_carbon,
+            duplicate_edges,
+            add_self_loop,
+        )
+        return batch_feats

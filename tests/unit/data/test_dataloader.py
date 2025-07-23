@@ -1,4 +1,3 @@
-from networkx import degree_histogram
 import numpy as np
 import pytest
 import torch
@@ -12,8 +11,8 @@ from chemprop.data.molgraph import MolGraph
 def datum_1():
     mol_graph1 = MolGraph(
         V=np.array([[1.0], [2.0], [3.0]]),
-        E=np.array([[0.5], [1.5]]),
         V_w=np.array([1.0, 1.0, 1.0]),
+        E=np.array([[0.5], [1.5]]),
         E_w=np.array([1.0, 1.0]),
         edge_index=np.array([[0, 1, 0, 2], [1, 0, 2, 0]]),
         rev_edge_index=np.array([1, 0, 3, 2]),
@@ -34,8 +33,8 @@ def datum_1():
 def datum_2():
     mol_graph2 = MolGraph(
         V=np.array([[4.0], [5.0]]),
-        E=np.array([[2.5]]),
         V_w=np.array([1.0, 1.0]),
+        E=np.array([[2.5]]),
         E_w=np.array([1.0, 1.0]),
         edge_index=np.array([[0, 1], [1, 0]]),
         rev_edge_index=np.array([1, 0]),
@@ -95,7 +94,7 @@ def test_collate_batch_multiple_graphs(datum_1, datum_2):
 def mol_atom_bond_datum_1():
     mol_graph1 = MolGraph(
         V=np.array([[1.0], [2.0], [3.0]]),
-        V_w=np.array([1.0, 1.0]),
+        V_w=np.array([1.0, 1.0, 1.0]),
         E=np.array([[0.5], [1.5]]),
         E_w=np.array([1.0, 1.0]),
         edge_index=np.array([[0, 1, 0, 2], [1, 0, 2, 0]]),
