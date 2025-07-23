@@ -15,6 +15,7 @@ from chemprop.nn.metrics import (
     MulticlassMCCLoss,
     MVELoss,
     Wasserstein,
+    NLogProbEnrichment,
 )
 
 
@@ -501,4 +502,44 @@ def test_Wasserstein(
     torch.testing.assert_close(loss, expected_loss)
 
 
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,weights,task_weights,expected_loss",
+    [
+        (
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.tensor(0.75000, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.tensor(1.5000, dtype=torch.float),
+        ),
+        (
+            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.zeros([2, 2], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.tensor(2.25000, dtype=torch.float),
+        ),
+    ],
+)
+def test_NLL(preds, targets, mask, weights, task_weights, expected_loss):
+    """
+    Testing the NLL loss function
+    """
+    nll_loss = NLogProbEnrichment(task_weights, n1=1000, n2=1000)
+    loss = nll_loss(preds, targets, mask, weights)
+    torch.testing.assert_close(loss, expected_loss)
+
+
 # TODO: Add quantile loss tests
+
