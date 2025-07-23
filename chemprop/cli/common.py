@@ -115,7 +115,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     featurization_args.add_argument(
         "--descriptors-columns",
         nargs="+",
-        help="Extra datapoint descriptors, like temperature and pressure, to be included in datasets",
+        help="Column names in the input CSV containing extra datapoint descriptors, like temperature and pressure. See also `--descriptors-path`.",
     )
     # TODO: Add in v2.1
     # featurization_args.add_argument(
