@@ -49,7 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
-    "nlogprob-enrichment"
+    "nlogprob_enrichment"
 ]
 
 
@@ -575,7 +575,7 @@ class QuantileLoss(ChempropMetric):
         return f"alpha={self.alpha}"
 
 
-@LossFunctionRegistry.register("nlogprob-enrichment")
+@LossFunctionRegistry.register("nlogprob_enrichment")
 class NLogProbEnrichment(ChempropMetric):
 
     def __init__(
