@@ -49,6 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
+    "nlogprob-enrichment"
 ]
 
 
@@ -572,3 +573,51 @@ class QuantileLoss(ChempropMetric):
 
     def extra_repr(self) -> str:
         return f"alpha={self.alpha}"
+
+
+@LossFunctionRegistry.register("nlogprob-enrichment")
+class NLogProbEnrichment(ChempropMetric):
+
+    def __init__(
+        self,
+        task_weights: ArrayLike = 1.0,
+        n1: int = 1,
+        n2: int = 1,
+        method: str = "sqrt",
+        zscale: float = 1.0,
+
+    ):
+        super().__init__(task_weights)
+        self.n1 = n1
+        self.n2 = n2
+        self.method = method
+        self.zscale = zscale
+
+
+
+    def _calc_unreduced_loss(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor,
+        weights: Tensor,
+        *args
+    ) -> Tensor:
+        # Assuming `preds` are enrichment values R
+        R = preds.squeeze()
+        #print('R:', R)
+
+
+        k1 = targets[:, 0]
+        k2 = targets[:, 1]
+
+        zstat = get_zstats(R, k1, k2, self.n1, self.n2, method=self.method)
+        zstat = torch.clamp(zstat / self.zscale, -5, 5)
+        zstat = torch.abs(zstat)
+        sf = 1 - torch.erf(zstat / np.sqrt(2))
+        loss = -torch.log(sf)
+        return loss.unsqueeze(1)
+
+    def extra_repr(self):
+        return f"n1={self.n1}, n2={self.n2}, method='{self.method}', zscale={self.zscale}"
+
