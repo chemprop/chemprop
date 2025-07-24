@@ -49,7 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
-    "nlogprob_enrichment"
+    "NLogProbEnrichment",
 ]
 
 
@@ -577,7 +577,6 @@ class QuantileLoss(ChempropMetric):
 
 @LossFunctionRegistry.register("nlogprob_enrichment")
 class NLogProbEnrichment(ChempropMetric):
-
     def __init__(
         self,
         task_weights: ArrayLike = 1.0,
@@ -585,7 +584,6 @@ class NLogProbEnrichment(ChempropMetric):
         n2: int = 1,
         method: str = "sqrt",
         zscale: float = 1.0,
-
     ):
         super().__init__(task_weights)
         self.n1 = n1
@@ -597,29 +595,24 @@ class NLogProbEnrichment(ChempropMetric):
     def get_zstats(R, k1, k2, n1, n2, method):
         d = n2 / n1
         R_d = R / d
-        if method == 'score':
+        if method == "score":
             zstat = (k1 - k2 * R_d) / torch.sqrt((k1 + k2) * R_d)
-        elif method == 'wald':
+        elif method == "wald":
             zstat = (k1 - k2 * R_d) / torch.sqrt(k1 + k2 * R_d**2)
-        elif method == 'sqrt':
-            zstat =  2 *(torch.sqrt(k1 + 3/8.) - torch.sqrt((k2 + 3/8.) * R_d))
-            zstat = zstat / torch.sqrt(1 + R_d)  
+        elif method == "sqrt":
+            zstat = 2 * (torch.sqrt(k1 + 3 / 8.0) - torch.sqrt((k2 + 3 / 8.0) * R_d))
+            zstat = zstat / torch.sqrt(1 + R_d)
         else:
             raise NotImplementedError
         return zstat
 
     def _calc_unreduced_loss(
-        self,
-        preds: Tensor,
-        targets: Tensor,
-        mask: Tensor,
-        weights: Tensor,
-        *args
+        self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args
     ) -> Tensor:
         # Assuming `preds` are enrichment values R
         R = preds.squeeze()
-        #print('R:', R)
-        #print(targets)
+        # print('R:', R)
+        # print(targets)
 
         k1 = targets[:, 0]
         k2 = targets[:, 1]
@@ -633,4 +626,3 @@ class NLogProbEnrichment(ChempropMetric):
 
     def extra_repr(self):
         return f"n1={self.n1}, n2={self.n2}, method='{self.method}', zscale={self.zscale}"
-

@@ -502,7 +502,6 @@ def test_Wasserstein(
     torch.testing.assert_close(loss, expected_loss)
 
 
-
 @pytest.mark.parametrize(
     "preds,targets,mask,weights,task_weights,expected_loss",
     [
@@ -542,4 +541,3 @@ def test_NLL(preds, targets, mask, weights, task_weights, expected_loss):
 
 
 # TODO: Add quantile loss tests
-
