@@ -1,5 +1,5 @@
 from abc import abstractmethod
-
+import numpy as np
 from numpy.typing import ArrayLike
 import torch
 from torch import Tensor
@@ -593,6 +593,7 @@ class NLogProbEnrichment(ChempropMetric):
         self.method = method
         self.zscale = zscale
 
+    @staticmethod
     def get_zstats(R, k1, k2, n1, n2, method):
         d = n2 / n1
         R_d = R / d
@@ -618,12 +619,12 @@ class NLogProbEnrichment(ChempropMetric):
         # Assuming `preds` are enrichment values R
         R = preds.squeeze()
         #print('R:', R)
-        print(targets)
+        #print(targets)
 
         k1 = targets[:, 0]
         k2 = targets[:, 1]
 
-        zstat = get_zstats(R, k1, k2, self.n1, self.n2, method=self.method)
+        zstat = self.get_zstats(R, k1, k2, self.n1, self.n2, method=self.method)
         zstat = torch.clamp(zstat / self.zscale, -5, 5)
         zstat = torch.abs(zstat)
         sf = 1 - torch.erf(zstat / np.sqrt(2))
