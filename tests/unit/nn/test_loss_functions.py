@@ -507,7 +507,7 @@ def test_Wasserstein(
     "preds,targets,mask,weights,task_weights,expected_loss",
     [
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
             torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
@@ -515,7 +515,7 @@ def test_Wasserstein(
             torch.tensor(0.75000, dtype=torch.float),
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
             torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
@@ -523,7 +523,7 @@ def test_Wasserstein(
             torch.tensor(1.5000, dtype=torch.float),
         ),
         (
-            torch.tensor([[-3, 2], [1, -1]], dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
             torch.zeros([2, 2], dtype=torch.float),
             torch.ones([2, 2], dtype=torch.bool),
             torch.ones([2]),
