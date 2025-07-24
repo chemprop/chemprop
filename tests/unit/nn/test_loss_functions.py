@@ -14,8 +14,8 @@ from chemprop.nn.metrics import (
     EvidentialLoss,
     MulticlassMCCLoss,
     MVELoss,
-    Wasserstein,
     NLogProbEnrichment,
+    Wasserstein,
 )
 
 
