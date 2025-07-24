@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
+import os
 from typing import Iterable, Iterator
 
 import numpy as np
+import psutil
 from rdkit import Chem
 
 
@@ -99,3 +101,25 @@ def pretty_shape(shape: Iterable[int]) -> str:
     '10 x 4'
     """
     return " x ".join(map(str, shape))
+
+
+def get_memory_usage():
+    # Get the current process
+    process = psutil.Process(os.getpid())
+
+    # Get memory info in bytes
+    memory_info = process.memory_info()
+
+    # Convert to MB for readability
+    memory_mb = memory_info.rss / 1024 / 1024
+
+    return f"Memory usage: {memory_mb:.2f} MB"
+
+
+def is_cuikmolmaker_available():
+    try:
+        import cuik_molmaker  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
