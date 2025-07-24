@@ -593,7 +593,19 @@ class NLogProbEnrichment(ChempropMetric):
         self.method = method
         self.zscale = zscale
 
-
+    def get_zstats(R, k1, k2, n1, n2, method):
+        d = n2 / n1
+        R_d = R / d
+        if method == 'score':
+            zstat = (k1 - k2 * R_d) / torch.sqrt((k1 + k2) * R_d)
+        elif method == 'wald':
+            zstat = (k1 - k2 * R_d) / torch.sqrt(k1 + k2 * R_d**2)
+        elif method == 'sqrt':
+            zstat =  2 *(torch.sqrt(k1 + 3/8.) - torch.sqrt((k2 + 3/8.) * R_d))
+            zstat = zstat / torch.sqrt(1 + R_d)  
+        else:
+            raise NotImplementedError
+        return zstat
 
     def _calc_unreduced_loss(
         self,
@@ -606,7 +618,7 @@ class NLogProbEnrichment(ChempropMetric):
         # Assuming `preds` are enrichment values R
         R = preds.squeeze()
         #print('R:', R)
-
+        print(targets)
 
         k1 = targets[:, 0]
         k2 = targets[:, 1]
