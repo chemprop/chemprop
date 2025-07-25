@@ -64,7 +64,7 @@ def parse_csv(
         input_cols = [df.columns[0]]
 
     descriptor_cols = list(descriptor_cols or [])
-    X_extra = df[descriptor_cols].to_numpy(np.single) if descriptor_cols else None
+    X_d_extra = df[descriptor_cols].to_numpy(np.single) if descriptor_cols else None
 
     if target_cols is None:
         target_cols = list(
@@ -89,7 +89,7 @@ def parse_csv(
         lt_mask = None
         gt_mask = None
 
-    return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_extra
+    return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra
 
 
 def get_column_names(
