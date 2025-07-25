@@ -196,12 +196,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
-        "--message-hidden-dim", type=int, default=300, help="Hidden dimension of the messages"
+        "--message-hidden-dim", type=int, default=[300], nargs="+", help="Hidden dimension of the messages"
     )
     mp_args.add_argument(
         "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
-    mp_args.add_argument("--depth", type=int, default=3, help="Number of message passing steps")
+    mp_args.add_argument("--depth", type=int, default=[3], nargs="+", help="Number of message passing steps")
     mp_args.add_argument(
         "--undirected",
         action="store_true",
@@ -1256,18 +1256,26 @@ def build_model(
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
+            if len(args.message_hidden_dim)==1:
+                args.message_hidden_dim = [args.message_hidden_dim[0] for _ in range(train_dset.n_components)]
+            elif len(args.message_hidden_dim)!=train_dset.n_components:
+                raise ValueError("Inconsistent n_component and message_hidden_dim input size.")
+            if len(args.depth)==1:
+                args.depth = [args.depth[0] for _ in range(train_dset.n_components)]
+            elif len(args.depth)!=train_dset.n_components:
+                raise ValueError("Inconsistent n_component and depth input size.")
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
                     train_dset.datasets[i].featurizer.bond_fdim,
-                    d_h=args.message_hidden_dim,
+                    d_h=args.message_hidden_dim[i],
                     d_vd=(
                         train_dset.datasets[i].d_vd
                         if isinstance(train_dset.datasets[i], MoleculeDataset)
                         else 0
                     ),
                     bias=args.message_bias,
-                    depth=args.depth,
+                    depth=args.depth[i],
                     undirected=args.undirected,
                     dropout=args.dropout,
                     activation=activation,
@@ -1290,10 +1298,10 @@ def build_model(
             mp_block = mp_cls(
                 train_dset.featurizer.atom_fdim,
                 train_dset.featurizer.bond_fdim,
-                d_h=args.message_hidden_dim,
+                d_h=args.message_hidden_dim[0],
                 d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
                 bias=args.message_bias,
-                depth=args.depth,
+                depth=args.depth[0],
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=activation,
@@ -1371,11 +1379,11 @@ def build_MAB_model(
     mp = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
-        d_h=args.message_hidden_dim,
+        d_h=args.message_hidden_dim[0],
         d_vd=train_dset.d_vd,
         d_ed=train_dset.d_ed,
         bias=args.message_bias,
-        depth=args.depth,
+        depth=args.depth[0],
         undirected=args.undirected,
         dropout=args.dropout,
         activation=args.activation,

@@ -144,3 +144,29 @@ def test_train_molecule_featurizers(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_custom_multiple_MPNN(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "rxn_smiles",
+        "--smiles-columns",
+        "solvent_smiles",
+        "--message-hidden-dim",
+        "100",
+        "200",
+        "--depth",
+        "3",
+        "5",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
