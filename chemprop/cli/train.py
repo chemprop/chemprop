@@ -920,6 +920,24 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
+def save_data_splits(args: Namespace, train_indices, val_indices, test_indices,) -> None:
+    no_header_row = args.no_header_row
+    df = pd.read_csv(args.data_path, header=None if no_header_row else "infer", index_col=False)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if train_indices and isinstance(train_indices[0], int):
+        train_indices = [train_indices]
+        val_indices = [val_indices]
+        test_indices = [test_indices]
+
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        suffix = f"_{i}" if len(train_indices) > 1 else ""
+        df.iloc[train].to_csv(output_dir / f"train{suffix}.csv", index=False, header=not no_header_row)
+        df.iloc[val].to_csv(output_dir / f"val{suffix}.csv",   index=False, header=not no_header_row)
+        df.iloc[test].to_csv(output_dir / f"test{suffix}.csv",  index=False, header=not no_header_row)
+
+
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
@@ -995,6 +1013,16 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     for i_split in range(len(train_data)):
         sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
         logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
+
+    if args.save_smiles_splits:
+        splits = [
+            {"train": train, "val": val, "test": test}
+            for train, val, test in zip(train_indices, val_indices, test_indices)
+        ]
+        with open(Path(args.output_dir) / "splits.json", "w") as f:
+            json.dump(splits[0] if len(splits) == 1 else splits, f)
+            
+        save_data_splits(args, train_indices, val_indices, test_indices)
 
     return train_data, val_data, test_data
 
