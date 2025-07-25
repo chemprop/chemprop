@@ -537,7 +537,7 @@ def test_Wasserstein(
         ),
     ],
 )
-def test_NLL(preds, targets, mask, weights, task_weights, expected_loss):
+def test_NLL(preds, targets, mask, weights, task_weights, n1, n2, expected_loss):
     """
     Testing the NLL loss function
     """
