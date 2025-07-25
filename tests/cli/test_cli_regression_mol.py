@@ -46,6 +46,11 @@ def evidential_model_path(data_dir):
 
 
 @pytest.fixture
+def quantile_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_quantile_mol.pt")
+
+
+@pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
 
@@ -289,6 +294,33 @@ def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path)
         "miscalibration_area",
         "ence",
         "spearman",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_quantile_quick(monkeypatch, data_path, quantile_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        quantile_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "quantile-regression",
+        "--calibration-method",
+        "conformal-regression",
+        "--conformal-alpha",
+        "0.1",
+        "--evaluation-methods",
+        "spearman",
+        "conformal-coverage-regression",
     ]
 
     with monkeypatch.context() as m:
