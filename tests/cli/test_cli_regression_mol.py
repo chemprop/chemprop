@@ -51,8 +51,8 @@ def config_path(data_dir):
 
 
 @pytest.fixture
-def augmented_data_path(data_dir):
-    return str(data_dir / "regression" / "mol" / "augmented_mol.csv")
+def data_with_descriptors_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "mol_with_descriptors.csv")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -729,12 +729,12 @@ def test_empty_testset(monkeypatch, data_path):
         main()
 
 
-def test_extra_descriptors_columns(monkeypatch, augmented_data_path):
+def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
     args = [
         "chemprop",
         "train",
         "-i",
-        augmented_data_path,
+        data_with_descriptors_path,
         "--target-columns",
         "y",
         "--descriptors-columns",
@@ -742,6 +742,30 @@ def test_extra_descriptors_columns(monkeypatch, augmented_data_path):
         "pressure",
         "--splits-column",
         "split",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_descriptors_multisource(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--target-columns",
+        "lipo",
+        "--descriptors-columns",
+        "lipo",
+        "--descriptors-path",
+        descriptors_path,
+        "--epochs",
+        "3",
     ]
 
     with monkeypatch.context() as m:

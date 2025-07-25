@@ -436,7 +436,7 @@ def build_data_from_files(
     descriptor_cols: Sequence[str] | None = None,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, Y, weights, lt_mask, gt_mask, X_extra = parse_csv(
+    smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,
@@ -452,11 +452,11 @@ def build_data_from_files(
     n_datapoints = len(Y)
 
     X_ds = load_input_feats_and_descs(p_descriptors, None, None, feat_desc="X_d")
-    if X_extra is not None:
+    if X_d_extra is not None:
         if X_ds is None:
-            X_ds = X_extra
+            X_ds = X_d_extra
         else:
-            X_ds = np.hstack([X_ds, X_extra])
+            X_ds = np.hstack([X_ds, X_d_extra])
 
     V_fss = load_input_feats_and_descs(p_atom_feats, n_molecules, n_datapoints, feat_desc="V_f")
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
