@@ -693,6 +693,7 @@ def validate_train_args(args):
     input_cols, target_cols = get_column_names(
         args.data_path,
         args.smiles_columns,
+        args.polymer_columns,
         args.reaction_columns,
         args.target_columns,
         args.ignore_columns,
@@ -927,7 +928,14 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         cols is not None
         for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
     ):
-        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+        for key in [
+            "no_header_row",
+            "polymer_cols",
+            "rxn_cols",
+            "ignore_cols",
+            "splits_col",
+            "target_cols",
+        ]:
             format_kwargs.pop(key, None)
         featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
         all_data = build_MAB_data_from_files(
@@ -1973,6 +1981,7 @@ def main(args):
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
+        polymer_cols=args.polymer_columns,
         rxn_cols=args.reaction_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,

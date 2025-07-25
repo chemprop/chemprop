@@ -166,14 +166,16 @@ cython_debug/
 *.csv
 *.pkl
 *.pt
+*.csv
 *.json
 *.sqlite3
 *.yaml
 *.tfevents.*
 *.ckpt
 chemprop/_version.py
-*.ckpt
 *.ipynb
 config.toml
+.python-version
+uv.lock
 
 !tests/data/*
