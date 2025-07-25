@@ -1016,7 +1016,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
 
     if args.save_smiles_splits:
         splits = [
-            {"train": train, "val": val, "test": test}
+            {"train": [int(i) for i in train], "val": [int(i) for i in val], "test":[int(i) for i in test]}
             for train, val, test in zip(train_indices, val_indices, test_indices)
         ]
         with open(Path(args.output_dir) / "splits.json", "w") as f:

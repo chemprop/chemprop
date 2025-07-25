@@ -713,7 +713,7 @@ def test_save_smiles_splits(monkeypatch, data_path):
         "--save-smiles-splits",
         "--output-dir",
         "saved_splits",
-        "--num-epochs",
+        "--epochs",
         "3",
     ]
 
