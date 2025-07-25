@@ -504,31 +504,37 @@ def test_Wasserstein(
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,weights,task_weights,expected_loss",
+    "preds,targets,mask,weights,task_weights,n1,n2,expected_loss",
     [
         (
-            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
-            torch.zeros([2, 2], dtype=torch.float),
-            torch.ones([2, 2], dtype=torch.bool),
-            torch.ones([2]),
-            torch.ones([2]),
-            torch.tensor(0.75000, dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float), #preds
+            torch.zeros([2, 2], dtype=torch.float), # targets
+            torch.ones([2, 2], dtype=torch.bool), #mask
+            torch.ones([2]), # weights
+            torch.ones([2]), # task_weights
+            torch.tensor(900, dtype=torch.int), # n1
+            torch.tensor(800, dtype=torch.int), # n2
+            torch.tensor(1.68638, dtype=torch.float), #exptected_loss
         ),
         (
-            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
-            torch.zeros([2, 2], dtype=torch.float),
-            torch.ones([2, 2], dtype=torch.bool),
-            torch.ones([2]),
-            torch.ones([2]),
-            torch.tensor(1.5000, dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float), #preds
+            torch.zeros([2, 2], dtype=torch.float), # targets
+            torch.ones([2, 2], dtype=torch.bool), #mask
+            torch.ones([2]), # weights
+            torch.ones([2]), # task_weights
+            torch.tensor(500, dtype=torch.int), # n1
+            torch.tensor(600, dtype=torch.int), # n2
+            torch.tensor(1.63835, dtype=torch.float), #exptected_loss
         ),
         (
-            torch.tensor([[0, 2], [0, 1]], dtype=torch.float),
-            torch.zeros([2, 2], dtype=torch.float),
-            torch.ones([2, 2], dtype=torch.bool),
-            torch.ones([2]),
-            torch.ones([2]),
-            torch.tensor(2.25000, dtype=torch.float),
+            torch.tensor([[0, 2], [0, 1]], dtype=torch.float), #preds
+            torch.zeros([2, 2], dtype=torch.float), # targets
+            torch.ones([2, 2], dtype=torch.bool), #mask
+            torch.ones([2]), # weights
+            torch.ones([2]), # task_weights
+            torch.tensor(10, dtype=torch.int), # n1
+            torch.tensor(1000, dtype=torch.int), # n2
+            torch.tensor(2.7664, dtype=torch.float), #exptected_loss
         ),
     ],
 )
@@ -536,7 +542,7 @@ def test_NLL(preds, targets, mask, weights, task_weights, expected_loss):
     """
     Testing the NLL loss function
     """
-    nll_loss = NLogProbEnrichment(task_weights, n1=1000, n2=1000)
+    nll_loss = NLogProbEnrichment(task_weights, n1=n1, n2=n2)
     loss = nll_loss(preds, targets, mask, weights)
     torch.testing.assert_close(loss, expected_loss)
 
