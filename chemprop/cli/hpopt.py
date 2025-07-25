@@ -412,11 +412,10 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         )
         trainer = prepare_trainer(trainer)
     except ValueError as e:
-        logger.info(f"Initializing Ray + Lightning failed - switching to CPU and plain Lightning. Original Error: {e}")
-        trainer = pl.Trainer(
-            accelerator="cpu",
-            **trainer_kwargs,
+        logger.info(
+            f"Initializing Ray + Lightning failed - switching to CPU and plain Lightning. Original Error: {e}"
         )
+        trainer = pl.Trainer(accelerator="cpu", **trainer_kwargs)
     trainer.fit(model, train_loader, val_loader)
 
 
