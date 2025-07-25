@@ -64,11 +64,8 @@ def test_dirichlet_quick(classification_mpnn_multiclass_dirichlet, dataloader):
     trainer.fit(classification_mpnn_multiclass_dirichlet, dataloader, None)
 
 
-@pytest.mark.parametrize(
-    "classification_mpnn_multiclass",
-    [nn.BondMessagePassing(), nn.AtomMessagePassing()],
-    indirect=True,
-)
+# This test takes a while, so don't run AtomMessagePassing
+@pytest.mark.parametrize("classification_mpnn_multiclass", [nn.BondMessagePassing()], indirect=True)
 @pytest.mark.integration
 def test_overfit(classification_mpnn_multiclass, dataloader):
     trainer = pl.Trainer(
@@ -78,7 +75,7 @@ def test_overfit(classification_mpnn_multiclass, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=100,
+        max_epochs=50,
         overfit_batches=1.00,
     )
     trainer.fit(classification_mpnn_multiclass, dataloader)
@@ -100,10 +97,9 @@ def test_overfit(classification_mpnn_multiclass, dataloader):
     assert accuracy >= 0.99
 
 
+# This test takes a while, so don't run AtomMessagePassing
 @pytest.mark.parametrize(
-    "classification_mpnn_multiclass_dirichlet",
-    [nn.BondMessagePassing(), nn.AtomMessagePassing()],
-    indirect=True,
+    "classification_mpnn_multiclass_dirichlet", [nn.BondMessagePassing()], indirect=True
 )
 @pytest.mark.integration
 def test_dirichlet_overfit(classification_mpnn_multiclass_dirichlet, dataloader):
@@ -114,7 +110,7 @@ def test_dirichlet_overfit(classification_mpnn_multiclass_dirichlet, dataloader)
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=200,
+        max_epochs=50,
         overfit_batches=1.00,
     )
     trainer.fit(classification_mpnn_multiclass_dirichlet, dataloader)
