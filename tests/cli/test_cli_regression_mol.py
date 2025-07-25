@@ -700,3 +700,23 @@ def test_custom_activation_quick(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_save_smiles_splits(monkeypatch, data_path):
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--save-smiles-splits",
+        "--output-dir",
+        "saved_splits",
+        "--num-epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
