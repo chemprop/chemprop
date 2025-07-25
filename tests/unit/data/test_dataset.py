@@ -5,7 +5,8 @@ import pytest
 from rdkit import Chem
 from sklearn.preprocessing import StandardScaler
 
-from chemprop.data.datasets import CuikmolmakerDataset, MoleculeDatapoint, MoleculeDataset
+from chemprop.data.datapoints import LazyMoleculeDatapoint, MoleculeDatapoint
+from chemprop.data.datasets import CuikmolmakerDataset, MoleculeDataset
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.molecule import (
     CuikmolmakerMolGraphFeaturizer,
@@ -62,6 +63,19 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     ]
 
 
+@pytest.mark.parametrize(
+    "X_d, V_fs, E_fs, V_ds",
+    [(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")],
+    indirect=True,
+)
+@pytest.fixture
+def lazy_data(smis, targets, X_d, V_fs, E_fs, V_ds):
+    return [
+        LazyMoleculeDatapoint(smi, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
+        for smi, target, x_d, V_f, E_f, V_d in zip(smis, targets, X_d, V_fs, E_fs, V_ds)
+    ]
+
+
 @pytest.fixture(params=[False, True])
 def cache(request):
     return request.param
@@ -84,10 +98,10 @@ def dataset(data, cache):
 
 
 @pytest.fixture
-def cuik_molecule_dataset(data):
+def cuik_molecule_dataset(lazy_data):
     if is_cuikmolmaker_available():
         featurizer = CuikmolmakerMolGraphFeaturizer(atom_featurizer_mode="V2")
-        dset = CuikmolmakerDataset(data, featurizer)
+        dset = CuikmolmakerDataset(lazy_data, featurizer)
         return dset
     else:
         return None
