@@ -36,7 +36,7 @@ __all__ = [
     "MulticlassClassificationFFN",
     "MulticlassDirichletFFN",
     "SpectralFFN",
-    "regression_softplus"
+    "RegressionSoftplusFFN",
 ]
 
 
@@ -384,4 +384,3 @@ class RegressionSoftplusFFN(_FFNPredictorBase):
         return self.output_transform(output)
 
     train_step = forward
-
