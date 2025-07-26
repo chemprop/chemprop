@@ -933,6 +933,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -953,6 +954,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -1557,7 +1559,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
