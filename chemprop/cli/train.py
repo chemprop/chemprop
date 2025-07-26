@@ -196,12 +196,18 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
-        "--message-hidden-dim", type=int, default=[300], nargs="+", help="Hidden dimension of the messages"
+        "--message-hidden-dim",
+        type=int,
+        default=[300],
+        nargs="+",
+        help="Hidden dimension of the messages",
     )
     mp_args.add_argument(
         "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
-    mp_args.add_argument("--depth", type=int, default=[3], nargs="+", help="Number of message passing steps")
+    mp_args.add_argument(
+        "--depth", type=int, default=[3], nargs="+", help="Number of message passing steps"
+    )
     mp_args.add_argument(
         "--undirected",
         action="store_true",
@@ -1256,14 +1262,16 @@ def build_model(
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
-            if len(args.message_hidden_dim)==1:
-                args.message_hidden_dim = [args.message_hidden_dim[0] for _ in range(train_dset.n_components)]
-            elif len(args.message_hidden_dim)!=train_dset.n_components:
-                raise ValueError("Inconsistent n_component and message_hidden_dim input size.")
-            if len(args.depth)==1:
-                args.depth = [args.depth[0] for _ in range(train_dset.n_components)]
-            elif len(args.depth)!=train_dset.n_components:
-                raise ValueError("Inconsistent n_component and depth input size.")
+            if len(args.message_hidden_dim) == 1:
+                args.message_hidden_dim = [args.message_hidden_dim[0]] * train_dset.n_components
+            elif len(args.message_hidden_dim) != train_dset.n_components:
+                raise ValueError(
+                    "Inconsistent number of components and message_hidden_dim input size."
+                )
+            if len(args.depth) == 1:
+                args.depth = [args.depth[0]] * train_dset.n_components
+            elif len(args.depth) != train_dset.n_components:
+                raise ValueError("Inconsistent number of components and depth input size.")
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
@@ -1295,6 +1303,14 @@ def build_model(
                 mp_blocks, train_dset.n_components, args.mpn_shared
             )
         else:
+            if len(args.message_hidden_dim) > 1:
+                logger.warning(
+                    "Single-component data only takes in one message_hiddem_dim value, subsequent inputted values are ignored."
+                )
+            if len(args.depth) > 1:
+                logger.warning(
+                    "Single-component data only takes in one depth value, subsequent inputted values are ignored."
+                )
             mp_block = mp_cls(
                 train_dset.featurizer.atom_fdim,
                 train_dset.featurizer.bond_fdim,
@@ -1376,6 +1392,15 @@ def build_MAB_model(
     mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
+
+    if len(args.message_hidden_dim) > 1:
+        logger.warning(
+            "Single-component data only takes in one message_hiddem_dim value, subsequent inputted values are ignored."
+        )
+    if len(args.depth) > 1:
+        logger.warning(
+            "Single-component data only takes in one depth value, subsequent inputted values are ignored."
+        )
     mp = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
