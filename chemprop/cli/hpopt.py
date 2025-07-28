@@ -582,15 +582,20 @@ def main(args: Namespace):
     train_loader = build_dataloader(
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
-
-    if isinstance(train_loader.dataset, MolAtomBondDataset):
-        model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = (
-            "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
-        )
+    
+    if args.tracking_metric != "val_loss":  # i.e. non-default
+        T_tracking_metric = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
+        monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     else:
-        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+        if isinstance(train_loader.dataset, MolAtomBondDataset):
+            model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = (
+                "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
+            )
+        else:
+            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
