@@ -943,6 +943,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -963,6 +964,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -985,7 +987,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             split_idxss = json.load(json_file)
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
         args.num_replicates = len(split_idxss)
 
     else:
@@ -1181,8 +1183,13 @@ def build_datasets(args, train_data, val_data, test_data):
             for dataset, label in zip(
                 [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
             ):
-                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                if dataset is not None:
+                    column_headers, table_rows = summarize(
+                        args.target_columns, args.task_type, dataset
+                    )
+                    output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                else:
+                    output = label + " set is empty."
                 logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
@@ -1198,7 +1205,6 @@ def build_model(
         list[ScaleTransform | None],
         list[ScaleTransform | None],
     ],
-    from_foundation: FoundationModels | None = None,
 ) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
     activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
@@ -1213,24 +1219,24 @@ def build_model(
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
-    if from_foundation is not None:
-        if Path(from_foundation).exists():  # local model
+    if args.from_foundation is not None:
+        if Path(args.from_foundation).exists():  # local model
             if is_multi:
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        from_foundation
+                        args.from_foundation
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
                     mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
-                foundation = MPNN.load_from_file(from_foundation)
+                foundation = MPNN.load_from_file(args.from_foundation)
                 mp_block = foundation.message_passing
             agg = foundation.agg
         else:  # remote model
-            match FoundationModels.get(from_foundation):
+            match FoundationModels.get(args.from_foundation):
                 case FoundationModels.CHEMELEON:
                     ckpt_dir = Path().home() / ".chemprop"
                     ckpt_dir.mkdir(exist_ok=True)
@@ -1566,7 +1572,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
@@ -1590,13 +1596,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
-                    args.from_foundation,
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:

@@ -262,7 +262,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
     def __init__(self, alpha: float):
         super().__init__()
         self.alpha = alpha
-        self.bounds = torch.tensor([-1 / 2, 1 / 2]).view(-1, 1)
+        self.bounds = torch.tensor([-1, 1]).view(-1, 1)
         if not 0 <= self.alpha <= 1:
             raise ValueError(f"arg `alpha` must be between 0 and 1. got: {alpha}.")
 
@@ -272,9 +272,9 @@ class RegressionConformalCalibrator(RegressionCalibrator):
             mask_j = mask[:, j]
             targets_j = targets[:, j][mask_j]
             preds_j = preds[:, j][mask_j]
-            interval_j = uncs[:, j][mask_j]
+            half_interval_j = uncs[:, j][mask_j]
 
-            interval_bounds = self.bounds * interval_j.unsqueeze(0)
+            interval_bounds = self.bounds * half_interval_j.unsqueeze(0)
             pred_bounds = preds_j.unsqueeze(0) + interval_bounds
 
             calibration_scores = torch.max(pred_bounds[0] - targets_j, targets_j - pred_bounds[1])
@@ -296,7 +296,7 @@ class RegressionConformalCalibrator(RegressionCalibrator):
 
     def apply(self, uncs: Tensor) -> tuple[Tensor, Tensor]:
         """
-        Apply this calibrator to the input uncertainties.
+        Apply this calibrator to the input uncertainties (half intervals).
 
         Parameters
         ----------
@@ -306,11 +306,9 @@ class RegressionConformalCalibrator(RegressionCalibrator):
         Returns
         -------
         Tensor
-            the calibrated intervals
+            the calibrated half intervals
         """
-        cal_intervals = uncs + 2 * self.qhats
-
-        return cal_intervals
+        return uncs + self.qhats
 
 
 class BinaryClassificationCalibrator(CalibratorBase):
