@@ -365,7 +365,7 @@ class CuikmolmakerDataset(MoleculeDataset):
     A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion
     by a :class:`MPNN` model. Data featurization is always performed on-the-fly and using the
     cuik-molmaker package. This batched processing is significantly faster and consumes less memory
-    than the default featurization method.
+    than the default featurization method when caching is not possible.
 
     Parameters
     ----------

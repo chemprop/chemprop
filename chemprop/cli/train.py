@@ -697,7 +697,7 @@ def validate_train_args(args):
         and args.split != "random"
     ):
         logger.warning(
-            f"using split type: {args.split} requires creating `rdkit.Chem.Mol`s for each datapoint. This reduces the memory savings of `--use-cuikmolmaker-featurization`."
+            f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
     input_cols, target_cols = get_column_names(
