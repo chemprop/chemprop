@@ -1,4 +1,6 @@
+from html.parser import HTMLParser
 import os
+import re
 import subprocess
 import sys
 
@@ -150,15 +152,30 @@ if response.status_code != 200:
     )
     print("2. Reach out to cuik-molmaker developers at cuik_molmaker_dev@nvidia.com")
     print("3. Use conda to install one of these combinations of RDKit and PyTorch:")
-    possible_rdkit_versions = ["2024.03.4", "2024.09.4", "2025.03.2"]
-    possible_torch_versions = ["2.6.0", "2.7.0"]
-    for possible_rdkit_version in possible_rdkit_versions:
-        for possible_torch_version in possible_torch_versions:
-            response = requests.head(
-                f"https://pypi.nvidia.com/rdkit-{possible_rdkit_version}_torch-{possible_torch_version}/"
-            )
-            if response.status_code == 200:
-                print(f"   - RDKit {possible_rdkit_version} with PyTorch {possible_torch_version}")
+
+    class LinkExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "a":
+                for name, value in attrs:
+                    if name == "href":
+                        self.links.append(value)
+
+    url = "https://pypi.nvidia.com/"
+    response = requests.get(url)
+    response.raise_for_status()
+
+    parser = LinkExtractor()
+    parser.feed(response.text)
+    pattern = re.compile(r"rdkit-(\d{4}\.\d{2}\.\d+)_torch-(\d+\.\d+\.\d+)")
+    for link in parser.links:
+        match = pattern.search(link)
+        if match:
+            rdkit_version, torch_version = match.groups()
+            print(f"   - RDKit: {rdkit_version}, Torch: {torch_version}")
     exit(1)
 
 # Install cuik-molmaker from correct wheel
