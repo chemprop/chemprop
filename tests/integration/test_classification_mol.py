@@ -2,6 +2,8 @@
 data. A small enough dataset should be memorizable by even a moderately sized model, so this test
 should generally pass."""
 
+import sys
+
 from lightning import pytorch as pl
 import pytest
 import torch
@@ -65,6 +67,10 @@ def test_dirichlet_quick(classification_mpnn_dirichlet, dataloader):
 # This test takes a while, so don't run AtomMessagePassing
 @pytest.mark.parametrize("classification_mpnn", [nn.BondMessagePassing()], indirect=True)
 @pytest.mark.integration
+@pytest.mark.skipif(
+    sys.platform == "darwin" or (sys.platform == "win32" and sys.version_info[:2] == (3, 11)),
+    reason="overfit is slow, run only on some systems",
+)
 def test_overfit(classification_mpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
@@ -99,6 +105,10 @@ def test_overfit(classification_mpnn, dataloader):
 # This test takes a while, so don't run AtomMessagePassing
 @pytest.mark.parametrize("classification_mpnn_dirichlet", [nn.BondMessagePassing()], indirect=True)
 @pytest.mark.integration
+@pytest.mark.skipif(
+    sys.platform == "darwin" or (sys.platform == "win32" and sys.version_info[:2] == (3, 12)),
+    reason="overfit is slow, run only on some systems",
+)
 def test_dirichlet_overfit(classification_mpnn_dirichlet, dataloader):
     trainer = pl.Trainer(
         logger=False,
