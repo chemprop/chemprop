@@ -585,7 +585,6 @@ def main(args: Namespace):
     
     if args.tracking_metric != "val_loss":  # i.e. non-default
         T_tracking_metric = MetricRegistry[args.tracking_metric]
-        args.tracking_metric = "val/" + args.tracking_metric
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     else:
         if isinstance(train_loader.dataset, MolAtomBondDataset):
