@@ -383,10 +383,7 @@ class CuikmolmakerDataset(MoleculeDataset):
     @MoleculeDataset.cache.setter
     def cache(self, cache: bool = False):
         if cache:
-            logger.warning(
-                "not caching CuikmolmakerDataset as it is meant to be used without caching!"
-            )
-        self.__cache = False
+            raise NotImplementedError("CuikmolmakerDataset is meant to be used without caching!")
 
     def _init_cache(self):
         pass

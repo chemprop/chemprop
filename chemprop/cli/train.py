@@ -2067,8 +2067,14 @@ def main(args):
                     output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
-            train_dset.cache = True
-            val_dset.cache = True
+            if args.use_cuikmolmaker_featurization:
+                logger.warning(
+                    "not caching CuikmolmakerDataset as it is meant to be used without caching!"
+                )
+            else:
+                logger.info("Caching training and validation datasets...")
+                train_dset.cache = True
+                val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,
