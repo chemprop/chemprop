@@ -387,8 +387,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         else:
             T_tracking_metric = model.criterion.__class__
     else:
-        T_tracking_metric = MetricRegistry[args.tracking_metric]
-        args.tracking_metric = "val/" + args.tracking_metric
+        T_tracking_metric = MetricRegistry[args.tracking_metric.split("/")[1]]
 
     monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
@@ -585,6 +584,7 @@ def main(args: Namespace):
 
     if args.tracking_metric != "val_loss":  # i.e. non-default
         T_tracking_metric = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     else:
         if isinstance(train_loader.dataset, MolAtomBondDataset):
