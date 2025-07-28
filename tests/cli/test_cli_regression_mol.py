@@ -2,6 +2,7 @@
 """
 
 import json
+import sys
 
 import pytest
 import torch
@@ -608,6 +609,10 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
+@pytest.mark.skipif(
+    sys.platform == "win32" or (sys.platform == "darwin" and sys.version_info[:2] == (3, 11)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_optuna_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
@@ -656,6 +661,10 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+@pytest.mark.skipif(
+    sys.platform == "win32" or (sys.platform == "darwin" and sys.version_info[:2] == (3, 12)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     (
         input_path,
