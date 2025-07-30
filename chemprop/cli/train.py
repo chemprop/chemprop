@@ -1596,7 +1596,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
