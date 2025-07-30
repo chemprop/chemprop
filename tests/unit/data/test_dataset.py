@@ -145,6 +145,14 @@ def test_num_tasks(dataset, cuik_molecule_dataset, targets):
         assert cuik_molecule_dataset.t == targets.shape[1]
 
 
+#  __getitem__ is slower than __getitems__ for CuikmolmakerDataset, so we don't use it in our
+# examples, but we still define it for completeness, so test it here.
+@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
+def test_getitem(cuik_molecule_dataset):
+    datum = cuik_molecule_dataset[0]
+    assert datum is not None
+
+
 @pytest.mark.skipif(
     not all([x is None for x in ["X_d", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
 )
