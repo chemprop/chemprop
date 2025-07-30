@@ -582,6 +582,15 @@ def validate_train_args(args):
     if len(args.data_path) > 3:
         raise ArgumentError(f"More than 3 data_files provided. Got: {args.data_path}")
 
+    if (
+        len(args.data_path) == 2
+        and args.split_sizes != [0.8, 0.1, 0.1]
+        and args.split_sizes[2] != 0
+    ):
+        raise ArgumentError(
+            f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}"
+        )
+
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
             argument=None,
@@ -1012,9 +1021,9 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             else:
                 splitting_mols = [datapoint.mol for datapoint in splitting_data]
 
-            if len(args.data_path) == 2 and args.split_sizes[2] != 0:
-                logger.warning(
-                    "got nonzero test size along with 2 data paths! defaulting to 90:10 test-val split."
+            if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
+                logger.info(
+                    "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
                 )
                 args.split_sizes = [0.9, 0.1, 0]
             train_indices, val_indices, test_indices = make_split_indices(
