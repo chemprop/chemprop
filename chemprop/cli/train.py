@@ -126,7 +126,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-path",
         type=Path,
         nargs="*",
-        help="Path to one, two, or three input CSV file containing SMILES and the associated target values. If one data file is supplied, it will undergo train-val-test split; if two are supplied, the first will undergo train-val split and the second will be taken as test data; if three are supplied, they will be taken as train, val, test data respectively",
+        help="Path to one, two, or three input CSV files containing SMILES and the associated target values. If one data file is supplied, it will undergo train-val-test split; if two are supplied, the first will undergo train-val split and the second will be taken as test data; if three are supplied, they will be taken as train, val, test data respectively",
     )
     parser.add_argument(
         "-o",
@@ -578,6 +578,9 @@ def validate_train_args(args):
     for path in args.data_path:
         if path.suffix not in [".csv"]:
             raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
+    
+    if len(args.data_path) > 3:
+        raise ArgumentError(f"More than 3 data_files provided. Got: {args.data_path}")
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
         raise ArgumentError(
@@ -966,8 +969,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 **featurization_kwargs,
             )
 
-    if len(args.data_path) > 3:
-        raise ValueError(f"More than 3 data_files provided: {args.data_path}")
 
     if len(args.data_path) == 3:
         if args.num_replicates > 1:
@@ -977,46 +978,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         train_data = [make_data(args.data_path[0])]
         val_data = [make_data(args.data_path[1])]
         test_data = [make_data(args.data_path[2])]
-
-    elif len(args.data_path) == 2:
-        train_val_data = make_data(args.data_path[0])
-
-        if args.splits_column is not None:
-            df = pd.read_csv(
-                args.data_path[0], header=None if args.no_header_row else "infer", index_col=False
-            )
-            grouped = df.groupby(df[args.splits_column].str.lower())
-            train_indices = grouped.groups.get("train", pd.Index([])).tolist()
-            val_indices = grouped.groups.get("val", pd.Index([])).tolist()
-            train_indices, val_indices = [train_indices], [val_indices]
-
-        elif args.splits_file is not None:
-            with open(args.splits_file, "rb") as json_file:
-                split_idxss = json.load(json_file)
-            train_indices = [parse_indices(d["train"]) for d in split_idxss]
-            val_indices = [parse_indices(d["val"]) for d in split_idxss]
-            args.num_replicates = len(split_idxss)
-
-        else:
-            splitting_data = train_val_data[args.split_key_molecule]
-            if isinstance(splitting_data[0], ReactionDatapoint):
-                splitting_mols = [d.rct for d in splitting_data]
-            else:
-                splitting_mols = [d.mol for d in splitting_data]
-            if args.split_sizes[2] != 0:
-                logger.warning(
-                    "Get nonzero test size along with 2 data paths, defaulted to 9:1 test-val split."
-                )
-                args.split_sizes = [0.9, 0.1, 0]
-            train_indices, val_indices, _ = make_split_indices(
-                splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
-            )
-
-        train_data, val_data, _ = split_data_by_indices(
-            train_val_data, train_indices, val_indices, None
-        )
-
-        test_data = [make_data(args.data_path[1]) for _ in range(args.num_replicates)]
 
     else:
         all_data = make_data(args.data_path[0])
@@ -1049,6 +1010,12 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 splitting_mols = [datapoint.rct for datapoint in splitting_data]
             else:
                 splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            
+            if len(args.data_path)==2 and args.split_sizes[2] != 0:
+                logger.warning(
+                    "got nonzero test size along with 2 data paths! defaulting to 90:10 test-val split."
+                )
+                args.split_sizes = [0.9, 0.1, 0]
             train_indices, val_indices, test_indices = make_split_indices(
                 splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
             )
@@ -1056,13 +1023,17 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         train_data, val_data, test_data = split_data_by_indices(
             all_data, train_indices, val_indices, test_indices
         )
-        for i_split in range(len(train_data)):
-            sizes = [
-                len(train_data[i_split][0]),
-                len(val_data[i_split][0]),
-                len(test_data[i_split][0]),
-            ]
-            logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
+
+        if len(args.data_path)==2:
+            test_data = [make_data(args.data_path[1]) for _ in range(args.num_replicates)]
+
+    for i_split in range(len(train_data)):
+        sizes = [
+            len(train_data[i_split][0]),
+            len(val_data[i_split][0]),
+            len(test_data[i_split][0]),
+        ]
+        logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
 
