@@ -506,7 +506,7 @@ def main(args: Namespace):
                 _temp_dir=args.raytune_temp_dir,
                 num_cpus=args.raytune_num_cpus,
                 num_gpus=args.raytune_num_gpus,
-                runtime_env={'excludes': ["../../.git/", "../../.github/"]}
+                runtime_env={"excludes": ["../../.git/", "../../.github/"]},
             )
         except OSError as e:
             if "AF_UNIX path length cannot exceed 107 bytes" in str(e):

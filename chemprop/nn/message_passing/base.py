@@ -193,7 +193,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         return H
 
-    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None,) -> Tensor:
+    def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 

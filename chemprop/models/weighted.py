@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import TypeAlias
 
-from lightning import pytorch as pl
 import torch
 from torch import Tensor
 
@@ -18,7 +17,7 @@ BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 class wMPNN(MPNN):
     r"""An :class:`wMPNN` is a sequence of message passing layers, an aggregation routine, and a
     predictor routine. Messages are weighted based on bond and atom weights. The final
-    result is multiplied by the degree of polymerisation. 
+    result is multiplied by the degree of polymerisation.
 
     The first two modules calculate learned fingerprints from an input molecule or
     reaction graph, and the final module takes these learned fingerprints as input to calculate a
@@ -56,7 +55,7 @@ class wMPNN(MPNN):
     ValueError
         if the output dimension of the message passing block does not match the input dimension of
         the predictor function
-    """        
+    """
 
     def fingerprint(
         self, bmg: BatchWeightedMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None
@@ -69,12 +68,6 @@ class wMPNN(MPNN):
 
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), dim=1)
 
-
     def weight(self, H: Tensor, degree_of_poly: Tensor) -> Tensor:
         """weights the final molecular representation by the degree of polymerization"""
         return torch.mul(degree_of_poly.unsqueeze(1), H)
-
-
-
-
-

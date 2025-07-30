@@ -74,9 +74,9 @@ class MeanAggregation(Aggregation):
         dim_size = batch.max().int() + 1
         index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
         if V_w is None:
-            return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device
-                               ).scatter_reduce_(self.dim, index_torch, H, reduce="mean",
-                                                 include_self=False)
+            return torch.zeros(
+                dim_size, H.shape[1], dtype=H.dtype, device=H.device
+            ).scatter_reduce_(self.dim, index_torch, H, reduce="mean", include_self=False)
         else:
             sum_node_embeddings = torch.zeros(
                 dim_size, H.shape[1], dtype=H.dtype, device=H.device

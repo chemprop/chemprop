@@ -82,7 +82,9 @@ def test_overfit(wmpnn, dataloader):
 
 
 @pytest.mark.parametrize(
-    "regression_wmpnn_mve", [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+    "regression_wmpnn_mve",
+    [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()],
+    indirect=True,
 )
 @pytest.mark.integration
 def test_mve_quick(regression_wmpnn_mve, dataloader):
@@ -99,7 +101,9 @@ def test_mve_quick(regression_wmpnn_mve, dataloader):
 
 
 @pytest.mark.parametrize(
-    "regression_wmpnn_evidential", [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+    "regression_wmpnn_evidential",
+    [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()],
+    indirect=True,
 )
 @pytest.mark.integration
 def test_evidential_quick(regression_wmpnn_evidential, dataloader):

@@ -52,7 +52,7 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
-from chemprop.data.datasets import _MolGraphDatasetMixin, PolymerDataset
+from chemprop.data.datasets import PolymerDataset, _MolGraphDatasetMixin
 from chemprop.featurizers.atom import AtomFeatureMode
 from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
 from chemprop.models.weighted import wMPNN
@@ -1449,6 +1449,7 @@ def build_weighted_model(
         X_d_transform=X_d_transform,
     )
 
+
 def build_MAB_model(
     args,
     train_dset: MolAtomBondDataset,
@@ -1679,10 +1680,7 @@ def train_model(
                 )
             elif isinstance(train_loader.dataset, PolymerDataset):
                 model = build_weighted_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
+                    args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
                 model = build_model(

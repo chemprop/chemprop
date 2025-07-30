@@ -8,7 +8,6 @@ from rdkit.Chem import AllChem as Chem
 from chemprop.utils import make_mol, make_polymer_mol
 
 
-
 @dataclass
 class _MixinObj:
     def __post_init__(self):
@@ -44,7 +43,7 @@ class _DatapointMixin(_MixinObj):
     @property
     def t(self) -> int | None:
         return len(self.y) if self.y is not None else None
-    
+
 
 @dataclass
 class _VEMixin(_MixinObj):
@@ -121,14 +120,15 @@ class _LazyMoleculeDatapointMixin:
 @dataclass
 class MoleculeDatapoint(_VEMixin, _DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
+
     def __post_init__(self):
         super(MoleculeDatapoint, self).__post_init__()
-    
 
 
 @dataclass
 class LazyMoleculeDatapoint(_VEMixin, _DatapointMixin, _LazyMoleculeDatapointMixin):
     """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+
     def __post_init__(self):
         super(LazyMoleculeDatapoint, self).__post_init__()
 
@@ -239,7 +239,7 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
 
     def __len__(self) -> int:
         return 2
-    
+
 
 @dataclass
 class _PolymerDatapointMixin:
@@ -269,14 +269,15 @@ class _PolymerDatapointMixin:
 @dataclass(kw_only=True)
 class PolymerDatapoint(_VEMixin, _DatapointMixin, _PolymerDatapointMixin):
     """A :class:`PolymerDatapoint` contains a single polymer and its associated features and targets."""
+
     fragment_weights: list[str] = field(default_factory=list)
     """the fragment weights associated with each monomer"""
     edge_rules: list[str] | None = None
     """the directed edges between monomers"""
-    
+
     def __post_init__(self):
         super(PolymerDatapoint, self).__post_init__()
-    
+
     @property
     def polymer(self) -> tuple[Chem.Mol, list[str], list[str]]:
         return (self.mol, self.fragment_weights, self.edge_rules)

@@ -5,7 +5,6 @@ from rdkit import Chem
 from chemprop.data.datapoints import PolymerDatapoint
 from chemprop.featurizers.atom import MultiHotAtomFeaturizer
 from chemprop.featurizers.molgraph import PolymerMolGraphFeaturizer
-from chemprop.utils import make_polymer_mol
 
 
 @pytest.fixture(params=[0, 10, 100])

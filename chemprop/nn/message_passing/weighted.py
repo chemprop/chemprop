@@ -103,7 +103,7 @@ class _WeightedMessagePassingBase(_MessagePassingBase):
 
         return H
 
-    def forward(self, bmg: BatchWeightedMolGraph, V_d: Tensor | None = None,) -> Tensor:
+    def forward(self, bmg: BatchWeightedMolGraph, V_d: Tensor | None = None) -> Tensor:
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 
@@ -142,7 +142,7 @@ class WeightedBondMessagePassing(_WeightedBondMessagePassingMixin, _WeightedMess
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
     :math:`w_{uv}` is the bond weight of the bond :math:`u \rightarrow v`, according to the probability of :math:`v` being a neighbor of :math:`u`; :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v \to w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of message passing iterations.
     """
-    
+
     def setup(
         self,
         d_v: int = DEFAULT_ATOM_FDIM,

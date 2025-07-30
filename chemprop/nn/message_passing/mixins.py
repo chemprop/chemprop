@@ -16,7 +16,7 @@ class _BondMessagePassingMixin:
         M_rev = H[bmg.rev_edge_index]
 
         return M_all - M_rev
-    
+
 
 class _WeightedBondMessagePassingMixin:
     def initialize(self, bmg: BatchWeightedMolGraph) -> Tensor:

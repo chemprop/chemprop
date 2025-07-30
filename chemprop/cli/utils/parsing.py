@@ -113,7 +113,7 @@ def get_column_names(
     if no_header_row:
         return ["SMILES"], ["pred_" + str(i) for i in range((len(df_cols) - 1))]
 
-    input_cols = (smiles_cols or [])  + (rxn_cols or []) + (polymer_cols or [])
+    input_cols = (smiles_cols or []) + (rxn_cols or []) + (polymer_cols or [])
 
     if len(input_cols) == 0:
         input_cols = [df_cols[0]]
@@ -150,11 +150,11 @@ def make_datapoints(
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
 ) -> tuple[
-    list[list[MoleculeDatapoint | LazyMoleculeDatapoint]], 
-    list[list[ReactionDatapoint]], 
-    list[list[PolymerDatapoint]]
+    list[list[MoleculeDatapoint | LazyMoleculeDatapoint]],
+    list[list[ReactionDatapoint]],
+    list[list[PolymerDatapoint]],
 ]:
-    """Make the :class:`MoleculeDatapoint`s, :class:`ReactionDatapoint`s and 
+    """Make the :class:`MoleculeDatapoint`s, :class:`ReactionDatapoint`s and
     :class: `PolymerDatapoint`s for a given dataset.
 
     Parameters
@@ -170,7 +170,7 @@ def make_datapoints(
     polyss : list[list[str]] | None
         a list of ``j`` lists of ``n`` polymer SMILES strings, where ``j`` is the number of polymers
         per datapoint and ``n`` is the number of datapoints. If ``None``, the corresponding list of
-        :class: `PolymerDatapoint`\s will be empty.   
+        :class: `PolymerDatapoint`\s will be empty.
     Y : np.ndarray
         the target values of shape ``n x m``, where ``m`` is the number of targets
     weights : np.ndarray | None
@@ -387,36 +387,27 @@ def make_datapoints(
     if len(polyss) > 0:
         poly_molss = [
             [
-                (make_polymer_mol(
-                    smi.split("|")[0],
-                    keep_h,
-                    add_h,
-                    ignore_stereo,
-                    reorder_atoms,
-                ),
-                smi.split("|")[1:-1],
-                smi.split("<")[1:],
-                ) 
+                (
+                    make_polymer_mol(
+                        smi.split("|")[0], keep_h, add_h, ignore_stereo, reorder_atoms
+                    ),
+                    smi.split("|")[1:-1],
+                    smi.split("<")[1:],
+                )
                 for smi in smis
             ]
             for smis in polyss
         ]
 
     if molecule_featurizers is not None:
-        molecule_featurizers_fns = [
-            MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers
-        ]
+        molecule_featurizers_fns = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
         if len(rxnss) > 0:
             rct_pdt_descriptors = np.hstack(
                 [
                     np.vstack(
                         [
                             np.hstack(
-                                [
-                                    mf(mol)
-                                    for mf in molecule_featurizers_fns
-                                    for mol in (rct, pdt)
-                                ]
+                                [mf(mol) for mf in molecule_featurizers_fns for mol in (rct, pdt)]
                             )
                             for rct, pdt in zip(rcts, pdts)
                         ]
@@ -487,7 +478,7 @@ def make_datapoints(
         ]
         for rxn_idx, rxns in enumerate(rxnss)
     ]
-    
+
     poly_data = [
         [
             PolymerDatapoint(
@@ -565,7 +556,7 @@ def build_data_from_files(
         **featurization_kwargs,
     )
 
-    return mol_data + rxn_data + poly_data 
+    return mol_data + rxn_data + poly_data
 
 
 def load_input_feats_and_descs(
@@ -615,7 +606,7 @@ def make_dataset(
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
-) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset | PolymerDataset :
+) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset | PolymerDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":

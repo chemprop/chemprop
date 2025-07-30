@@ -112,7 +112,7 @@ class BatchWeightedMolGraph(BatchMolGraph):
     degree_of_poly: Tensor = field(init=False)
     """the degree of polymerisation matrix in the form 1 + log(Xn),
     default 1 for a non-polymer molecule"""
-    
+
     def __post_init__(self, mgs: Sequence[WeightedMolGraph]):
         super(BatchWeightedMolGraph, self).__post_init__(mgs)
         Vw = []
@@ -122,12 +122,13 @@ class BatchWeightedMolGraph(BatchMolGraph):
             Vw.append(mg.V_w)
             Ew.append(mg.E_w)
             degree_of_polys.append(mg.degree_of_poly)
-        self.V_w = torch.from_numpy(np.concatenate(Vw)
-            #np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)
+        self.V_w = torch.from_numpy(
+            np.concatenate(Vw)
+            # np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)
         ).float()
         self.E_w = torch.from_numpy(np.concatenate(Ew)).float()
         self.degree_of_poly = torch.tensor(degree_of_polys).float()
-        
+
     def to(self, device: str | torch.device):
         super(BatchWeightedMolGraph, self).to(device)
         self.V_w = self.V_w.to(device)

@@ -792,7 +792,13 @@ def save_MAB_predictions(
 
 
 def main(args):
-    n_components = sum(len(cols) if cols is not None else 0 for cols in (args.smiles_columns, args.reaction_columns, args.polymer_columns)) or 1
+    n_components = (
+        sum(
+            len(cols) if cols is not None else 0
+            for cols in (args.smiles_columns, args.reaction_columns, args.polymer_columns)
+        )
+        or 1
+    )
 
     multicomponent = n_components > 1
 

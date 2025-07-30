@@ -31,14 +31,16 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
     weighted : bool, default=False
-        whether to compute extra atom and bond weight matrixes and return a WeightedMolGraph for use with weighted models e.g. wMPNN 
+        whether to compute extra atom and bond weight matrixes and return a WeightedMolGraph for use with weighted models e.g. wMPNN
     """
 
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
     weighted: bool = False
 
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0, weighted: bool = False):
+    def __post_init__(
+        self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0, weighted: bool = False
+    ):
         super().__post_init__()
 
         self.extra_atom_fdim = extra_atom_fdim
@@ -71,7 +73,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
         else:
             V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
-        
+
         if self.weighted is True:
             if n_atoms == 0:
                 V_w = np.ones((self.atom_fdim), dtype=np.single)
@@ -101,12 +103,12 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             edge_index[0].extend([u, v])
             edge_index[1].extend([v, u])
             if self.weighted is True:
-                E_w.extend([1.0, 1.0]) # Edge weights of 1 for a standard molecule
+                E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
             i += 2
 
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
-        
+
         if self.weighted is True:
             if E.shape[0] != i or len(E_w) != i:
                 raise ValueError(

@@ -1,6 +1,6 @@
 from collections import Counter
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from rdkit import Chem
@@ -21,32 +21,29 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         polymer
     bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
-        polymer  
+        polymer
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
-    
+
     References
     ----------
-    .. [1] A graph representation of molecular ensembles for polymer property prediction 
-            (Chem. Sci. 2022,13, 10486-10498) 
+    .. [1] A graph representation of molecular ensembles for polymer property prediction
+            (Chem. Sci. 2022,13, 10486-10498)
             https://pubs.rsc.org/en/content/articlelanding/2022/SC/D2SC02839E
     """
 
     extra_atom_fdim: int = 0
     extra_bond_fdim: int = 0
-    
-    def __post_init__(
-        self,
-    ):
+
+    def __post_init__(self):
         super().__post_init__()
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
-        
-        
+
     def __call__(
         self,
         polymer: Polymer,
@@ -70,12 +67,12 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             rwmol, r_bond_types, bond_features_extra
         )
 
-        return WeightedMolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)    
+        return WeightedMolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)
 
     def tag_atoms_in_repeating_unit(self, mol: Chem.Mol):
         """
-        Tag atoms that are part of the core units, as well as atoms serving to identify attachment 
-        points. In addition, create a map of bond types based on what bonds are connected to R 
+        Tag atoms that are part of the core units, as well as atoms serving to identify attachment
+        points. In addition, create a map of bond types based on what bonds are connected to R
         groups in the input.
         """
         atoms = [a for a in mol.GetAtoms()]
@@ -118,7 +115,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # Check the input is correct. We need the same number of fragments and their weights.
         if len(fragment_weights) != len(frag_ids):
             raise ValueError(
-                f"""The number of input monomers/fragments ({len(frag_ids)}) does not match the 
+                f"""The number of input monomers/fragments ({len(frag_ids)}) does not match the
                 number of input weights ({len(fragment_weights)})"""
             )
         for frag_ids, w in zip(frag_ids, fragment_weights):
@@ -162,10 +159,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
 
         return polymer_info, 1.0 + np.log10(Xn)
 
-
     def _get_atoms(self, rwmol: Chem.Mol, atom_features_extra: np.ndarray | None):
         """
-        Generates atom features for all 'core' atoms, i.e not R groups as previously tagged. 
+        Generates atom features for all 'core' atoms, i.e not R groups as previously tagged.
         This is done here to ensure that atoms linked to R groups have the correct bond
         numbers, as wildcard atoms are subsequently removed.
         """
@@ -241,8 +237,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         Get the bond features for bonds between repeating units
         -------------------------------------------------------
         we duplicate the monomers present to allow (i) creating bonds that exist already within the
-        same molecule and (ii) collect the correct bond features, e.g., for bonds that would 
-        otherwise be considered in a ring when they are not, when e.g. creating a bond between 
+        same molecule and (ii) collect the correct bond features, e.g., for bonds that would
+        otherwise be considered in a ring when they are not, when e.g. creating a bond between
         two atoms in the same ring.
         """
         rwmol_copy = deepcopy(rwmol)
@@ -253,8 +249,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         # Create an editable combined Mol
         cm = Chem.CombineMols(rwmol, rwmol_copy)
         cm = Chem.RWMol(cm)
-        # The combined molecule now has double the bonds, therefore we must duplicate the extra 
-        # atom bond features not relating to the bonds between monomers then append the extra 
+        # The combined molecule now has double the bonds, therefore we must duplicate the extra
+        # atom bond features not relating to the bonds between monomers then append the extra
         # bond features relating to the bonds between monomers
         if bond_features_extra is not None:
             combined_bond_features_extra = np.concatenate(

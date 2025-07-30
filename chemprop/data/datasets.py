@@ -701,7 +701,9 @@ class PolymerDataset(MoleculeDataset):
     """
 
     data: list[PolymerDatapoint]
-    featurizer: Featurizer[Polymer, WeightedMolGraph] = field(default_factory=PolymerMolGraphFeaturizer)
+    featurizer: Featurizer[Polymer, WeightedMolGraph] = field(
+        default_factory=PolymerMolGraphFeaturizer
+    )
 
     def _init_cache(self):
         """initialize the cache"""
@@ -795,5 +797,3 @@ class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     @property
     def d_vd(self) -> list[int]:
         return sum(dset.d_vd for dset in self.datasets)
-
-
