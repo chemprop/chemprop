@@ -578,7 +578,7 @@ def validate_train_args(args):
     for path in args.data_path:
         if path.suffix not in [".csv"]:
             raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
-    
+
     if len(args.data_path) > 3:
         raise ArgumentError(f"More than 3 data_files provided. Got: {args.data_path}")
 
@@ -969,7 +969,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 **featurization_kwargs,
             )
 
-
     if len(args.data_path) == 3:
         if args.num_replicates > 1:
             logger.warning(
@@ -1010,8 +1009,8 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 splitting_mols = [datapoint.rct for datapoint in splitting_data]
             else:
                 splitting_mols = [datapoint.mol for datapoint in splitting_data]
-            
-            if len(args.data_path)==2 and args.split_sizes[2] != 0:
+
+            if len(args.data_path) == 2 and args.split_sizes[2] != 0:
                 logger.warning(
                     "got nonzero test size along with 2 data paths! defaulting to 90:10 test-val split."
                 )
@@ -1024,15 +1023,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             all_data, train_indices, val_indices, test_indices
         )
 
-        if len(args.data_path)==2:
+        if len(args.data_path) == 2:
             test_data = [make_data(args.data_path[1]) for _ in range(args.num_replicates)]
 
     for i_split in range(len(train_data)):
-        sizes = [
-            len(train_data[i_split][0]),
-            len(val_data[i_split][0]),
-            len(test_data[i_split][0]),
-        ]
+        sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
         logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
     return train_data, val_data, test_data
