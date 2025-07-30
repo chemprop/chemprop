@@ -32,7 +32,7 @@ def mols():
 
 @pytest.fixture
 def polymers():
-    return _POLY.smiles
+    return _POLY.polymer
 
 
 @pytest.fixture

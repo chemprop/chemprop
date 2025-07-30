@@ -166,7 +166,6 @@ cython_debug/
 *.csv
 *.pkl
 *.pt
-*.csv
 *.json
 *.sqlite3
 *.yaml

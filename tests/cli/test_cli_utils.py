@@ -36,7 +36,7 @@ def test_find_models(data_dir):
 
 
 @pytest.mark.parametrize(
-    "path,smiles_cols,polymer_cols,rxn_cols,target_cols,ignore_cols,splits_col,weight_col,no_header_row,expected",
+    "path,smiles_cols,rxn_cols,polymer_cols,target_cols,ignore_cols,splits_col,weight_col,no_header_row,expected",
     [
         (
             "classification/mol.csv",
@@ -125,8 +125,8 @@ def test_find_models(data_dir):
         (
             "regression/rxn/rxn.csv",
             None,
-            None,
             ["smiles"],
+            None,
             ["ea"],
             None,
             None,
@@ -176,8 +176,8 @@ def test_get_column_names(
     data_dir,
     path,
     smiles_cols,
-    polymer_cols,
     rxn_cols,
+    polymer_cols,
     target_cols,
     ignore_cols,
     splits_col,
@@ -191,8 +191,8 @@ def test_get_column_names(
     input_cols, target_cols = get_column_names(
         data_dir / path,
         smiles_cols,
-        polymer_cols,
         rxn_cols,
+        polymer_cols,
         target_cols,
         ignore_cols,
         splits_col,

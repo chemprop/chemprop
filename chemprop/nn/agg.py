@@ -37,7 +37,7 @@ class Aggregation(nn.Module, HasHParams):
         self.hparams = {"dim": dim, "cls": self.__class__}
 
     @abstractmethod
-    def forward(self, H: Tensor, batch: Tensor, *args) -> Tensor:
+    def forward(self, H: Tensor, batch: Tensor, *args, **kwargs) -> Tensor:
         """Aggregate the graph-level representations of a batch of graphs into their respective
         global representations
 

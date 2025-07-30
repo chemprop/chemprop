@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TypeAlias
 
 import torch
 from torch import Tensor
 
-from chemprop.data import BatchWeightedMolGraph, MulticomponentTrainingBatch, TrainingBatch
+from chemprop.data import BatchWeightedMolGraph
 from chemprop.models.model import MPNN
 
 logger = logging.getLogger(__name__)
-
-BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
 class wMPNN(MPNN):
