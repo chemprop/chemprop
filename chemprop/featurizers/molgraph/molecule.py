@@ -5,7 +5,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Mol
 
-from chemprop.data.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph, WeightedMolGraph
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.utils.utils import is_cuikmolmaker_available
@@ -16,10 +16,7 @@ if is_cuikmolmaker_available():
 
 @dataclass
 class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
-    """A :class:`SimpleMoleculeMolGraphFeaturizer` is the default implementation of a
-    :class:`MoleculeMolGraphFeaturizer`
-
-    Parameters
+    """Parameters
     ----------
     atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
@@ -33,18 +30,22 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
+    weighted : bool, default=False
+        whether to compute extra atom and bond weight matrixes and return a WeightedMolGraph for use with weighted models e.g. wMPNN 
     """
 
     extra_atom_fdim: InitVar[int] = 0
     extra_bond_fdim: InitVar[int] = 0
+    weighted: bool = False
 
-    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0):
+    def __post_init__(self, extra_atom_fdim: int = 0, extra_bond_fdim: int = 0, weighted: bool = False):
         super().__post_init__()
 
         self.extra_atom_fdim = extra_atom_fdim
         self.extra_bond_fdim = extra_bond_fdim
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
+        self.weighted = weighted
 
     def __call__(
         self,
@@ -68,19 +69,22 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
-            V_w = np.ones((1, self.atom_fdim), dtype=np.single).flatten()
         else:
             V = np.array([self.atom_featurizer(a) for a in mol.GetAtoms()], dtype=np.single)
-            V_w = np.ones((1, n_atoms), dtype=np.single).flatten()
-
-        if V.shape[0] != len(V_w):
-            raise ValueError(
-                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
-            )
+        
+        if self.weighted is True:
+            if n_atoms == 0:
+                V_w = np.ones((self.atom_fdim), dtype=np.single)
+            else:
+                V_w = np.array((n_atoms), dtype=np.single)
+            if V.shape[0] != len(V_w):
+                raise ValueError(
+                    f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
+                )
+            E_w = []
 
         E = np.empty((2 * n_bonds, self.bond_fdim))
         edge_index = [[], []]
-        E_w = []
 
         if atom_features_extra is not None:
             V = np.hstack((V, atom_features_extra))
@@ -96,25 +100,27 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index[0].extend([u, v])
             edge_index[1].extend([v, u])
-            E_w.extend([1.0, 1.0])  # Edge weights of 1 for a standard molecule
+            if self.weighted is True:
+                E_w.extend([1.0, 1.0]) # Edge weights of 1 for a standard molecule
             i += 2
-        # Check E and E_w are of equal length and equal the number of bonds
-        if E.shape[0] != i or len(E_w) != i:
-            raise ValueError(
-                f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
-            )
+
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
-        E_w = np.array(E_w, float)
+        
+        if self.weighted is True:
+            if E.shape[0] != i or len(E_w) != i:
+                raise ValueError(
+                    f"Arrays E and E_w have incorrect lengths: expected {i}, got E={E.shape[0]} and E_w={len(E_w)}"
+                )
+            E_w = np.array(E_w, float)
+            return WeightedMolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, 1)
 
-        return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, 1)
+        return MolGraph(V, E, edge_index, rev_edge_index)
 
 
 @dataclass
 class CuikmolmakerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Mol]):
-    """A :class:`CuikmolmakerMolGraphFeaturizer` is the default implementation of a
-    :class:`_MolGraphFeaturizerMixin`. This class featurizes a list of molecules at once instead of one molecule at a time for efficiency.
-
+    """This class featurizes a list of molecules at once instead of one molecule at a time for efficiency.
     Parameters
     ----------
     atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()

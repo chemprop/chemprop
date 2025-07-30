@@ -19,16 +19,16 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         help="Column names in the input CSV containing SMILES strings (uses the 0th column by default)",
     )
     data_args.add_argument(
-        "-p",
-        "--polymer-columns",
-        nargs="+",
-        help="Column names in the input CSV containing polymer SMILES strings",
-    )
-    data_args.add_argument(
         "-r",
         "--reaction-columns",
         nargs="+",
         help="Column names in the input CSV containing reaction SMILES in the format ``REACTANT>AGENT>PRODUCT``, where 'AGENT' is optional",
+    )
+    data_args.add_argument(
+        "-p",
+        "--polymer-columns",
+        nargs="+",
+        help="Column names in the input CSV containing polymer SMILES strings",
     )
     data_args.add_argument(
         "--no-header-row",

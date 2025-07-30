@@ -6,7 +6,7 @@ import pytest
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.train import TrainSubcommand
-from chemprop.models.model import MPNN
+from chemprop.models.weighted import wMPNN
 
 pytestmark = pytest.mark.CLI
 
@@ -236,7 +236,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = wMPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
 
 
@@ -267,7 +267,7 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = wMPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
 
 

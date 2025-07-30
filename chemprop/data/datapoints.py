@@ -5,15 +5,19 @@ from dataclasses import dataclass, field
 import numpy as np
 from rdkit.Chem import AllChem as Chem
 
-from chemprop.featurizers import Featurizer
 from chemprop.utils import make_mol, make_polymer_mol
 
-MoleculeFeaturizer = Featurizer[Chem.Mol, np.ndarray]
+
+
+@dataclass
+class _MixinObj:
+    def __post_init__(self):
+        pass
 
 
 @dataclass(slots=True)
-class _DatapointMixin:
-    """A mixin class for both molecule-, polymer-, reaction- and multicomponent-type data"""
+class _DatapointMixin(_MixinObj):
+    """A mixin class for both molecule-, reaction-, polymer- and multicomponent-type data"""
 
     y: np.ndarray | None = None
     """the targets for the molecule with unknown targets indicated by `nan`s"""
@@ -32,6 +36,7 @@ class _DatapointMixin:
     """A string identifier for the datapoint."""
 
     def __post_init__(self):
+        super(_DatapointMixin, self).__post_init__()
         NAN_TOKEN = 0
         if self.x_d is not None:
             self.x_d[np.isnan(self.x_d)] = NAN_TOKEN
@@ -39,6 +44,35 @@ class _DatapointMixin:
     @property
     def t(self) -> int | None:
         return len(self.y) if self.y is not None else None
+    
+
+@dataclass
+class _VEMixin(_MixinObj):
+    V_f: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
+    *before* message passing"""
+    E_f: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ef`` is the number of additional features  containing additional features that will be
+    concatenated to bond-level features *before* message passing"""
+    V_d: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
+    descriptors *after* message passing"""
+
+    def __post_init__(self):
+        super(_VEMixin, self).__post_init__()
+        NAN_TOKEN = 0
+        if self.V_f is not None:
+            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
+        if self.E_f is not None:
+            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
+        if self.V_d is not None:
+            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
+
+    def __len__(self) -> int:
+        return 1
 
 
 @dataclass
@@ -85,67 +119,18 @@ class _LazyMoleculeDatapointMixin:
 
 
 @dataclass
-class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
+class MoleculeDatapoint(_VEMixin, _DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
-
-    V_f: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
-    *before* message passing"""
-    E_f: np.ndarray | None = None
-    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
-    ``d_ef`` is the number of additional features  containing additional features that will be
-    concatenated to bond-level features *before* message passing"""
-    V_d: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
-    descriptors *after* message passing"""
-
     def __post_init__(self):
-        NAN_TOKEN = 0
-        if self.V_f is not None:
-            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
-        if self.E_f is not None:
-            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
-        if self.V_d is not None:
-            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
-
-        super().__post_init__()
-
-    def __len__(self) -> int:
-        return 1
+        super(MoleculeDatapoint, self).__post_init__()
+    
 
 
 @dataclass
-class LazyMoleculeDatapoint(_DatapointMixin, _LazyMoleculeDatapointMixin):
+class LazyMoleculeDatapoint(_VEMixin, _DatapointMixin, _LazyMoleculeDatapointMixin):
     """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
-
-    V_f: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
-    *before* message passing"""
-    E_f: np.ndarray | None = None
-    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
-    ``d_ef`` is the number of additional features  containing additional features that will be
-    concatenated to bond-level features *before* message passing"""
-    V_d: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
-    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
-    descriptors *after* message passing"""
-
     def __post_init__(self):
-        NAN_TOKEN = 0
-        if self.V_f is not None:
-            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
-        if self.E_f is not None:
-            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
-        if self.V_d is not None:
-            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
-
-        super().__post_init__()
-
-    def __len__(self) -> int:
-        return 1
+        super(LazyMoleculeDatapoint, self).__post_init__()
 
 
 @dataclass
@@ -202,66 +187,6 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
 
 
 @dataclass
-class _PolymerDatapointMixin:
-    mol: Chem.Mol | None
-    """the polymer associated with this datapoint"""
-    fragment_weights: list = field(default_factory=list)
-    """the fragment weights associated with each monomer"""
-    edges: str = None
-    """the directed edges between monomers"""
-
-    @classmethod
-    def from_smi(
-        cls,
-        smi: str,
-        *args,
-        keep_h: bool = False,
-        add_h: bool = False,
-        ignore_stereo: bool = False,
-        **kwargs,
-    ) -> _PolymerDatapointMixin:
-        frag_weights = smi.split("|")[1:-1]
-        edges = smi.split("<")[1:]
-        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo=ignore_stereo)
-
-        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
-
-        return cls(mol, frag_weights, edges, *args, **kwargs)
-
-
-@dataclass
-class PolymerDatapoint(_DatapointMixin, _PolymerDatapointMixin):
-    """A :class:`PolymerDatapoint` contains a single polymer and its associated features and targets."""
-
-    V_f: np.ndarray | None = None
-    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the polymer, and
-    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
-    *before* message passing"""
-    E_f: np.ndarray | None = None
-    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the polymer, and
-    ``d_ef`` is the number of additional features  containing additional features that will be
-    concatenated to bond-level features *before* message passing"""
-    V_d: np.ndarray | None = None
-    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the polymer, and
-    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
-    descriptors *after* message passing"""
-
-    def __post_init__(self):
-        NAN_TOKEN = 0
-        if self.V_f is not None:
-            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
-        if self.E_f is not None:
-            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
-        if self.V_d is not None:
-            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
-
-        super().__post_init__()
-
-    def __len__(self) -> int:
-        return 1
-
-
-@dataclass
 class _ReactionDatapointMixin:
     rct: Chem.Mol
     """the reactant associated with this datapoint"""
@@ -314,3 +239,44 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
 
     def __len__(self) -> int:
         return 2
+    
+
+@dataclass
+class _PolymerDatapointMixin:
+    mol: Chem.Mol
+    """the polymer associated with this datapoint"""
+
+    @classmethod
+    def from_smi(
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
+        **kwargs,
+    ) -> _PolymerDatapointMixin:
+        frag_weights = smi.split("|")[1:-1]
+        edge_rules = smi.split("<")[1:]
+        mol = make_polymer_mol(smi.split("|")[0], keep_h, add_h, ignore_stereo, reorder_atoms)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, fragment_weights=frag_weights, edge_rules=edge_rules, *args, **kwargs)
+
+
+@dataclass(kw_only=True)
+class PolymerDatapoint(_VEMixin, _DatapointMixin, _PolymerDatapointMixin):
+    """A :class:`PolymerDatapoint` contains a single polymer and its associated features and targets."""
+    fragment_weights: list[str] = field(default_factory=list)
+    """the fragment weights associated with each monomer"""
+    edge_rules: list[str] | None = None
+    """the directed edges between monomers"""
+    
+    def __post_init__(self):
+        super(PolymerDatapoint, self).__post_init__()
+    
+    @property
+    def polymer(self) -> tuple[Chem.Mol, list[str], list[str]]:
+        return (self.mol, self.fragment_weights, self.edge_rules)

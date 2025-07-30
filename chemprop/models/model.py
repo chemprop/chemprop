@@ -127,8 +127,7 @@ class MPNN(pl.LightningModule):
     ) -> Tensor:
         """the learned fingerprints for the input molecules"""
         H_v = self.message_passing(bmg, V_d)
-        H = self.agg(H_v, bmg.batch, bmg.V_w)
-        H = self.weight(H, bmg.degree_of_poly)
+        H = self.agg(H_v, bmg.batch)
         H = self.bn(H)
 
         return H if X_d is None else torch.cat((H, self.X_d_transform(X_d)), dim=1)
@@ -144,10 +143,6 @@ class MPNN(pl.LightningModule):
     ) -> Tensor:
         """Generate predictions for the input molecules/reactions"""
         return self.predictor(self.fingerprint(bmg, V_d, X_d))
-
-    def weight(self, H: Tensor, degree_of_poly: Tensor) -> Tensor:
-        """weights the final molecular representation by the degree of polymerization, default=1 for a small molecule"""
-        return torch.mul(degree_of_poly.unsqueeze(1), H)
 
     def training_step(self, batch: BatchType, batch_idx):
         batch_size = self.get_batch_size(batch)

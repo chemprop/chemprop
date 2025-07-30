@@ -220,7 +220,7 @@ class MolAtomBondMPNN(pl.LightningModule):
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None]:
         """the learned fingerprints for the input molecules"""
         H_v, H_e = self.message_passing(bmg, V_d, E_d)
-        H_g = self.agg(H_v, bmg.batch, bmg.V_w) if self.agg is not None else None
+        H_g = self.agg(H_v, bmg.batch) if self.agg is not None else None
 
         H_g = self.bns[0](H_g) if H_g is not None else None
         H_v = self.bns[1](H_v) if H_v is not None else None

@@ -1,11 +1,11 @@
 from collections import Counter
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit import Chem
 
-from chemprop.data.molgraph import MolGraph
+from chemprop.data.molgraph import WeightedMolGraph
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from chemprop.types import Polymer
@@ -14,46 +14,72 @@ from chemprop.utils import remove_wildcard_atoms
 
 @dataclass
 class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polymer]):
-    """A :class:`PolymerMolGraphFeaturizer` is the default implementation of a
-    :class:`PolymerMolGraphFeaturizer`
-
-    Parameters
+    """Parameters
     ----------
     atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
         the featurizer with which to calculate feature representations of the atoms in a given
-        molecule
+        polymer
     bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
         the featurizer with which to calculate feature representations of the bonds in a given
-        molecule
+        polymer  
     extra_atom_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each atom
     extra_bond_fdim : int, default=0
         the dimension of the additional features that will be concatenated onto the calculated
         features of each bond
-    degree_of_polym: int, default=1
-        the degree of polymerization of the polymer
-    polymer_info: list
-        the list of polymer information from the input string
-
+    
     References
     ----------
-    .. [1] A graph representation of molecular ensembles for polymer property prediction (Chem. Sci. 2022,13, 10486-10498)
-           https://pubs.rsc.org/en/content/articlelanding/2022/SC/D2SC02839E
+    .. [1] A graph representation of molecular ensembles for polymer property prediction 
+            (Chem. Sci. 2022,13, 10486-10498) 
+            https://pubs.rsc.org/en/content/articlelanding/2022/SC/D2SC02839E
     """
 
-    extra_atom_fdim: InitVar[int] = 0
-    extra_bond_fdim: InitVar[int] = 0
-    degree_of_poly: InitVar[int] = 1
-    polymer_info: list = field(default_factory=list)
+    extra_atom_fdim: int = 0
+    extra_bond_fdim: int = 0
+    
+    def __post_init__(
+        self,
+    ):
+        super().__post_init__()
+        self.atom_fdim += self.extra_atom_fdim
+        self.bond_fdim += self.extra_bond_fdim
+        
+        
+    def __call__(
+        self,
+        polymer: Polymer,
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
+    ) -> WeightedMolGraph:
+        mol = polymer[0]
+        frag_weights = polymer[1]
+        edge_rules = polymer[2]
+        self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(edge_rules)
+        # We apply atom weights here rather than in make_polymer_mol to avoid key errors when the
+        # WeightedMolGraph's are cached
+        mol = self.apply_atom_weights(mol, frag_weights)
+        # Make the molecule editable
+        rwmol = Chem.rdchem.RWMol(mol)
+        # tag (i) attachment atoms and (ii) atoms for which features need to be computed
+        # also get the map of R groups to bond types, e.g. r_bond_types[*1] -> SINGLE
+        rwmol, r_bond_types = self.tag_atoms_in_repeating_unit(rwmol)
+        rwmol, V, V_w = self._get_atoms(rwmol, atom_features_extra)
+        rwmol, E, E_w, edge_index, rev_edge_index = self._get_bonds(
+            rwmol, r_bond_types, bond_features_extra
+        )
 
-    def tag_atoms_in_repeating_unit(self, mol):
+        return WeightedMolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)    
+
+    def tag_atoms_in_repeating_unit(self, mol: Chem.Mol):
         """
-        Tag atoms that are part of the core units, as well as atoms serving to identify attachment points. In addition,
-        create a map of bond types based on what bonds are connected to R groups in the input.
+        Tag atoms that are part of the core units, as well as atoms serving to identify attachment 
+        points. In addition, create a map of bond types based on what bonds are connected to R 
+        groups in the input.
         """
         atoms = [a for a in mol.GetAtoms()]
-        neighbor_map = {}  # Map the R group index of the atom its attached to
+        neighbor_map = {}  # Map the R group index of the atom it's attached to
         r_bond_types = {}  # Map the R group to bond type
 
         # Go through each atom and: i) get index of attachment atoms, ii) tag all non-R atoms
@@ -62,7 +88,8 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             if "*" in atom.GetSmarts():
                 # Get the index of the atom it's attached to
                 neighbors = atom.GetNeighbors()
-                assert len(neighbors) == 1
+                if len(neighbors) != 1:
+                    raise ValueError("monomer attachment points can only have one connection")
                 neighbor_idx = neighbors[0].GetIdx()
                 r_tag = atom.GetSmarts().strip("[]").replace(":", "")  # *1, *2, ...
                 neighbor_map[r_tag] = neighbor_idx
@@ -86,47 +113,33 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         return mol, r_bond_types
 
     def apply_atom_weights(self, mol: Chem.Mol, fragment_weights: list[str]):
-        """
-        applies fragment weights to atoms in each monomer
-        """
-        # Convert fragment weights to floats
         fragment_weights = [float(x) for x in fragment_weights]
-        # Split mol into its fragments
-        mols = Chem.GetMolFrags(mol, asMols=True)
+        frag_ids = Chem.GetMolFrags(mol)
         # Check the input is correct. We need the same number of fragments and their weights.
-        num_frags = len(mols)
-        if len(fragment_weights) != num_frags:
+        if len(fragment_weights) != len(frag_ids):
             raise ValueError(
-                f"The number of input monomers/fragments ({num_frags}) does not match the number of input weights ({len(fragment_weights)})"
+                f"""The number of input monomers/fragments ({len(frag_ids)}) does not match the 
+                number of input weights ({len(fragment_weights)})"""
             )
-        new_mols = []
-        for s, w in zip(mols, fragment_weights):
-            for a in s.GetAtoms():
-                a.SetDoubleProp("w_frag", float(w))
-            new_mols.append(s)
-        # Recombine all the mols into a single mol object
-        mol = new_mols.pop(0)
-        while len(new_mols) > 0:
-            m2 = new_mols.pop(0)
-            mol = Chem.CombineMols(mol, m2)
+        for frag_ids, w in zip(frag_ids, fragment_weights):
+            for frag_id in frag_ids:
+                mol.GetAtomWithIdx(frag_id).SetDoubleProp("w_frag", float(w))
 
         return mol
 
-    def parse_polymer_rules(self, rules):
-        """
-        parses the polymer rules provided in the polymer input string
-        """
+    def parse_polymer_rules(self, rules: list[str]):
         polymer_info = []
         counter = Counter()  # Used for validating the input
-
+        # Create a copy of the polymer edge rules to prevent altering PolymerDatapoint.edge_rules
+        bond_weight_rules = rules.copy()
         # Check if the degree of polymerisation is provided
-        if "~" in rules[-1]:
-            Xn = float(rules[-1].split("~")[1])
-            rules[-1] = rules[-1].split("~")[0]
+        if "~" in bond_weight_rules[-1]:
+            Xn = float(bond_weight_rules[-1].split("~")[1])
+            bond_weight_rules[-1] = bond_weight_rules[-1].split("~")[0]
         else:
             Xn = 1
 
-        for rule in rules:
+        for rule in bond_weight_rules:
             # Handle the edge case where we have no rules, and rule is an empty string
             if rule == "":
                 continue
@@ -134,9 +147,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             if len(rule.split(":")) != 3:
                 raise ValueError(f"Incorrect format for input information {rule}")
             idx1, idx2 = rule.split(":")[0].split("-")
-            w12 = float(rule.split(":")[1])  # Weight for bond R_idx1 -> R_idx2
-            w21 = float(rule.split(":")[2])  # Weight for bond R_idx2 -> R_idx1
-            polymer_info.append((idx1, idx2, w12, w21))
+            w12 = rule.split(":")[1]  # Weight for bond R_idx1 -> R_idx2
+            w21 = rule.split(":")[2]  # Weight for bond R_idx2 -> R_idx1
+            polymer_info.append((int(idx1), int(idx2), float(w12), float(w21)))
             counter[idx1] += float(w21)
             counter[idx2] += float(w12)
 
@@ -149,55 +162,17 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
 
         return polymer_info, 1.0 + np.log10(Xn)
 
-    def __post_init__(
-        self,
-        extra_atom_fdim: int = 0,
-        extra_bond_fdim: int = 0,
-        degree_of_poly: int = 1,
-        polymer_info: list = [],
-    ):
-        super().__post_init__()
-
-        self.extra_atom_fdim = extra_atom_fdim
-        self.extra_bond_fdim = extra_bond_fdim
-        self.atom_fdim += self.extra_atom_fdim
-        self.bond_fdim += self.extra_bond_fdim
-        self.degree_of_poly = degree_of_poly
-        self.polymer_info = polymer_info
-
-    def __call__(
-        self,
-        polymer: Polymer,
-        atom_features_extra: np.ndarray | None = None,
-        bond_features_extra: np.ndarray | None = None,
-    ) -> MolGraph:
-        mol = polymer.mol
-        frag_weights = polymer.fragment_weights
-        rules = polymer.edges
-        self.polymer_info, self.degree_of_poly = self.parse_polymer_rules(rules)
-        # We apply atom weights here rather than in make_polymer_mol to avoid key errors when caching the atom properties
-        mol = self.apply_atom_weights(mol, frag_weights)
-        # Make the molecule editable
-        rwmol = Chem.rdchem.RWMol(mol)
-        # tag (i) attachment atoms and (ii) atoms for which features need to be computed
-        # also get the map of R groups to bond types, e.g. r_bond_types[*1] -> SINGLE
-        rwmol, r_bond_types = self.tag_atoms_in_repeating_unit(rwmol)
-        rwmol, V, V_w = self._get_atoms(rwmol, atom_features_extra)
-        rwmol, E, E_w, edge_index, rev_edge_index = self._get_bonds(
-            rwmol, r_bond_types, bond_features_extra
-        )
-
-        return MolGraph(V, E, V_w, E_w, edge_index, rev_edge_index, self.degree_of_poly)
 
     def _get_atoms(self, rwmol: Chem.Mol, atom_features_extra: np.ndarray | None):
         """
-        generates atom features for all 'core' atoms, i.e not R groups as previously tagged. This is done here to ensure that atoms linked to R groups
-        # have the correct saturation
+        Generates atom features for all 'core' atoms, i.e not R groups as previously tagged. 
+        This is done here to ensure that atoms linked to R groups have the correct bond
+        numbers, as wildcard atoms are subsequently removed.
         """
         n_atoms = rwmol.GetNumAtoms()
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
-            V_w = np.ones((1, self.atom_fdim), dtype=np.single).flatten()
+            V_w = np.ones((self.atom_fdim), dtype=np.single)
         else:
             V = np.array(
                 [
@@ -220,9 +195,6 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
             raise ValueError(
                 f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
             )
-        # Concatenate the extra atoms features to the atom features (V)
-        if atom_features_extra is not None:
-            V = np.hstack((V, atom_features_extra))
         # Check to ensure that the number of atoms equals the length of the extra atom features
         n_atoms = len(V)
         if atom_features_extra is not None and len(atom_features_extra) != n_atoms:
@@ -230,6 +202,9 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
                 "Input molecule must have same number of atoms as `len(atom_features_extra)`!"
                 f"got: {n_atoms} and {len(atom_features_extra)}, respectively"
             )
+        # Concatenate the extra atoms features to the atom features (V)
+        if atom_features_extra is not None:
+            V = np.hstack((V, atom_features_extra))
         # Remove R groups -> now atoms in the RDKit Mol object have the same order as V
         rwmol = remove_wildcard_atoms(rwmol)
 
@@ -238,20 +213,13 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
     def _get_bonds(
         self, rwmol: Chem.Mol, r_bond_types: list[str], bond_features_extra: np.ndarray | None
     ):
-        """
-        generates the edge (bond) features
-        """
         n_bonds = rwmol.GetNumBonds()
         # Initialize atom to bond mapping for each atom
         E = np.empty((2 * n_bonds + 2 * len(self.polymer_info), self.bond_fdim))
         edge_index = [[], []]
         # Initalize bond weight array
         E_w = []
-        """
-        ---------------------------------------
-        Get bond features for separate monomers
-        ---------------------------------------
-        """
+        # Get bond features for separate monomers
         # Create counter for the number of bonds (i)
         i = 0
         for bond in rwmol.GetBonds():
@@ -272,18 +240,22 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         -------------------------------------------------------
         Get the bond features for bonds between repeating units
         -------------------------------------------------------
-        we duplicate the monomers present to allow (i) creating bonds that exist already within the same molecule and
-        (ii) collect the correct bond features, e.g., for bonds that would otherwise be considered in a ring when they are not,
-        when e.g. creating a bond between two atoms in the same ring.
+        we duplicate the monomers present to allow (i) creating bonds that exist already within the
+        same molecule and (ii) collect the correct bond features, e.g., for bonds that would 
+        otherwise be considered in a ring when they are not, when e.g. creating a bond between 
+        two atoms in the same ring.
         """
         rwmol_copy = deepcopy(rwmol)
-        _ = [a.SetBoolProp("OriginalMol", True) for a in rwmol.GetAtoms()]
-        _ = [a.SetBoolProp("OriginalMol", False) for a in rwmol_copy.GetAtoms()]
+        for a in rwmol.GetAtoms():
+            a.SetBoolProp("OriginalMol", True)
+        for a in rwmol_copy.GetAtoms():
+            a.SetBoolProp("OriginalMol", False)
         # Create an editable combined Mol
         cm = Chem.CombineMols(rwmol, rwmol_copy)
         cm = Chem.RWMol(cm)
-        # The combined molecule now has double the bonds, therefore we must duplicate the extra atom bond features not relating to the
-        # bonds between monomers then append the extra bond features relating to the bonds between monomers
+        # The combined molecule now has double the bonds, therefore we must duplicate the extra 
+        # atom bond features not relating to the bonds between monomers then append the extra 
+        # bond features relating to the bonds between monomers
         if bond_features_extra is not None:
             combined_bond_features_extra = np.concatenate(
                 (
@@ -298,7 +270,7 @@ class PolymerMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[Polyme
         for r1, r2, w_bond12, w_bond21 in self.polymer_info:
             # Get the index of the attachment atoms
             a1 = None  # The index of atom 1 in rwmol
-            a2 = None  # The index of atom 1 in rwmol -> to be used by MolGraph
+            a2 = None  # The index of atom 1 in rwmol -> to be used by WeightedMolGraph
             _a2 = None  # The index of atom 1 in cm -> to be used by RDKit
             for atom in cm.GetAtoms():
                 # Take a1 from the fragement in the original molecule object

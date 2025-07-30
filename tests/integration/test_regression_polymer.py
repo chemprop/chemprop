@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop import nn
-from chemprop.data import PolymerDatapoint, PolymerDataset, collate_batch
+from chemprop.data import PolymerDatapoint, PolymerDataset, collate_polymer_batch
 
 
 @pytest.fixture
@@ -19,20 +19,20 @@ def dataloader(data):
     dset = PolymerDataset(data)
     dset.normalize_targets()
 
-    return DataLoader(dset, 32, collate_fn=collate_batch)
+    return DataLoader(dset, 32, collate_fn=collate_polymer_batch)
 
 
 @pytest.mark.parametrize(
-    "mpnn",
+    "wmpnn",
     [
-        (nn.BondMessagePassing(), nn.MeanAggregation()),
+        (nn.WeightedBondMessagePassing(), nn.MeanAggregation()),
         (nn.AtomMessagePassing(), nn.SumAggregation()),
-        (nn.BondMessagePassing(), nn.NormAggregation()),
+        (nn.WeightedBondMessagePassing(), nn.NormAggregation()),
     ],
     indirect=True,
 )
 @pytest.mark.integration
-def test_quick(mpnn, dataloader):
+def test_quick(wmpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -42,20 +42,21 @@ def test_quick(mpnn, dataloader):
         devices=1,
         fast_dev_run=True,
     )
-    trainer.fit(mpnn, dataloader, None)
+    trainer.fit(wmpnn, dataloader, None)
 
 
 @pytest.mark.parametrize(
-    "mpnn",
+    "wmpnn",
     [
-        (nn.BondMessagePassing(), nn.MeanAggregation()),
-        (nn.AtomMessagePassing(), nn.SumAggregation()),
-        (nn.BondMessagePassing(), nn.NormAggregation()),
+        (nn.WeightedBondMessagePassing(), nn.MeanAggregation()),
+        (nn.AtomMessagePassing(), nn.MeanAggregation()),
+        (nn.WeightedBondMessagePassing(), nn.NormAggregation()),
+        (nn.WeightedBondMessagePassing(), nn.SumAggregation()),
     ],
     indirect=True,
 )
 @pytest.mark.integration
-def test_overfit(mpnn, dataloader):
+def test_overfit(wmpnn, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -66,12 +67,12 @@ def test_overfit(mpnn, dataloader):
         max_epochs=100,
         overfit_batches=1.00,
     )
-    trainer.fit(mpnn, dataloader)
+    trainer.fit(wmpnn, dataloader)
 
     errors = []
     for batch in dataloader:
         bmg, _, _, targets, *_ = batch
-        preds = mpnn(bmg)
+        preds = wmpnn(bmg)
         errors.append(preds - targets)
 
     errors = torch.cat(errors)
@@ -81,10 +82,10 @@ def test_overfit(mpnn, dataloader):
 
 
 @pytest.mark.parametrize(
-    "regression_mpnn_mve", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+    "regression_wmpnn_mve", [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()], indirect=True
 )
 @pytest.mark.integration
-def test_mve_quick(regression_mpnn_mve, dataloader):
+def test_mve_quick(regression_wmpnn_mve, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -94,14 +95,14 @@ def test_mve_quick(regression_mpnn_mve, dataloader):
         devices=1,
         fast_dev_run=True,
     )
-    trainer.fit(regression_mpnn_mve, dataloader, None)
+    trainer.fit(regression_wmpnn_mve, dataloader, None)
 
 
 @pytest.mark.parametrize(
-    "regression_mpnn_evidential", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+    "regression_wmpnn_evidential", [nn.WeightedBondMessagePassing(), nn.AtomMessagePassing()], indirect=True
 )
 @pytest.mark.integration
-def test_evidential_quick(regression_mpnn_evidential, dataloader):
+def test_evidential_quick(regression_wmpnn_evidential, dataloader):
     trainer = pl.Trainer(
         logger=False,
         enable_checkpointing=False,
@@ -111,4 +112,4 @@ def test_evidential_quick(regression_mpnn_evidential, dataloader):
         devices=1,
         fast_dev_run=True,
     )
-    trainer.fit(regression_mpnn_evidential, dataloader, None)
+    trainer.fit(regression_wmpnn_evidential, dataloader, None)
