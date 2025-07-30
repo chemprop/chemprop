@@ -942,6 +942,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             return build_MAB_data_from_files(
                 data_path,
                 p_descriptors=args.descriptors_path,
+                descriptor_cols=args.descriptors_columns,
                 p_atom_feats=args.atom_features_path,
                 p_bond_feats=args.bond_features_path,
                 p_atom_descs=args.atom_descriptors_path,
@@ -962,6 +963,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             return build_data_from_files(
                 data_path,
                 p_descriptors=args.descriptors_path,
+                descriptor_cols=args.descriptors_columns,
                 p_atom_feats=args.atom_features_path,
                 p_bond_feats=args.bond_features_path,
                 p_atom_descs=args.atom_descriptors_path,
