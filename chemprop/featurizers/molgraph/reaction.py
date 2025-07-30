@@ -118,6 +118,11 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
 
         V = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
 
+        if V.shape[0] != len(V_w):
+            raise ValueError(
+                f"Lengths of V and V_w are not equal: got V={V.shape[0]} and V_w={len(V_w)}"
+            )
+
         E = []
         edge_index = [[], []]
 
