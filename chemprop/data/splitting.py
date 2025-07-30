@@ -85,7 +85,10 @@ def make_split_indices(
         train_size=sizes[0], test_size=sizes[2], return_indices=True, random_state=seed
     )
     # if no validation set, reassign the splitting functions
-    if sizes[1] == 0.0:
+    if sizes[1] == 0.0 or sizes[2] == 0.0:
+        # flip val and test size if test size is 0 (to bypass astartes check)
+        if sizes[2] == 0.0:
+            astartes_kwargs["test_size"] = sizes[1]
         include_val = False
         split_fun = train_test_split
         mol_split_fun = train_test_split_molecules
@@ -159,6 +162,10 @@ def make_split_indices(
 
             case _:
                 raise RuntimeError("Unreachable code reached!")
+
+        # flip val and test back if test size is 0
+        if sizes[2] == 0.0:
+            val, test = test, val
         train_replicates.append(train)
         val_replicates.append(val)
         test_replicates.append(test)

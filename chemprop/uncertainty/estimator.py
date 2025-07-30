@@ -842,16 +842,16 @@ class QuantileRegressionEstimator(UncertaintyEstimator):
             else (mol_individual_preds, atom_individual_preds, bond_individual_preds)
         )
         means = []
-        intervals = []
+        half_intervals = []
         for individual_preds in individual_preds_tuple:
             if individual_preds:
                 stacked_preds = torch.stack(individual_preds).float()
-                mean, interval = stacked_preds.unbind(2)
+                mean, interval = stacked_preds.unbind(-1)
                 means.append(mean)
-                intervals.append(interval)
+                half_intervals.append(interval / 2)
             else:
                 means.append(None)
-                intervals.append(None)
+                half_intervals.append(None)
         if not_mol_atom_bond:
-            return means[0], intervals[0]
-        return means, intervals
+            return means[0], half_intervals[0]
+        return means, half_intervals

@@ -25,7 +25,7 @@ from chemprop.cli.utils import (
 )
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.metrics import BoundedMixin
-from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN, QuantileFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,
     NoUncertaintyEstimator,
@@ -229,6 +229,7 @@ def prepare_data_loader(
             data_path,
             **format_kwargs,
             p_descriptors=descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
@@ -247,6 +248,7 @@ def prepare_data_loader(
             data_path,
             **format_kwargs,
             p_descriptors=descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
@@ -356,7 +358,7 @@ def make_prediction_for_models(
             logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
     if args.uncertainty_method == "none" and (
-        isinstance(models[0].predictor, MveFFN) or isinstance(models[0].predictor, EvidentialFFN)
+        isinstance(models[0].predictor, (MveFFN, EvidentialFFN, QuantileFFN))
     ):
         test_preds = test_preds[..., 0]
         test_individual_preds = test_individual_preds[..., 0]

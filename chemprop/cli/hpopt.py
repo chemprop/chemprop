@@ -307,6 +307,17 @@ def process_hpopt_args(args: Namespace) -> Namespace:
         ]:
             search_parameters.discard(param)
 
+    if args.from_foundation is not None:
+        for param in [
+            "activation",
+            "dropout",
+            "depth",
+            "aggregation",
+            "aggregation_norm",
+            "message_hidden_dim",
+        ]:
+            search_parameters.discard(param)
+
     if args.constraints_path is None:
         for param in [
             "atom_constrainer_ffn_hidden_dim",
