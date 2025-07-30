@@ -383,7 +383,7 @@ def make_datapoints(
                             np.hstack(
                                 [
                                     mf(remove_wildcard_atoms(RWMol(poly[0])))
-                                    for mf in molecule_featurizers_fns
+                                    for mf in molecule_featurizers
                                 ]
                             )
                             for poly in poly_mols
