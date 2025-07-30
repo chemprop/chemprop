@@ -8,7 +8,7 @@ from astartes.molecules import train_test_split_molecules, train_val_test_split_
 import numpy as np
 from rdkit import Chem
 
-from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import MoleculeDatapoint, ReactionDatapoint, _DatapointMixin
 from chemprop.utils.utils import EnumMapping
 
 logger = logging.getLogger(__name__)
@@ -222,7 +222,7 @@ def _splitter_helper(data, indices):
     if indices is None:
         return None
 
-    if isinstance(data[0], (MoleculeDatapoint, ReactionDatapoint)):
+    if isinstance(data[0], _DatapointMixin):
         datapoints = data
         idxss = indices
         return [[datapoints[idx] for idx in idxs] for idxs in idxss]

@@ -5,11 +5,12 @@ import torch
 from chemprop.models.model import MPNN
 from chemprop.models.mol_atom_bond import MolAtomBondMPNN
 from chemprop.models.multi import MulticomponentMPNN
+from chemprop.models.weighted import wMPNN
 
 
 def save_model(
     path: PathLike,
-    model: MPNN | MolAtomBondMPNN | MulticomponentMPNN,
+    model: MPNN | MolAtomBondMPNN | MulticomponentMPNN | wMPNN,
     output_columns: list[str]
     | tuple[list[str] | None, list[str] | None, list[str] | None]
     | None = None,
@@ -26,9 +27,9 @@ def save_model(
 
 def load_model(
     path: PathLike, multicomponent: bool = False, mol_atom_bond: bool = False
-) -> MPNN | MulticomponentMPNN | MolAtomBondMPNN:
+) -> MPNN | MulticomponentMPNN | MolAtomBondMPNN | wMPNN:
     model_cls = [
-        [MPNN, MulticomponentMPNN],
+        [MPNN, MulticomponentMPNN, wMPNN],
         [MolAtomBondMPNN, "Atom/Bond predictions not supported for multicomponent"],
     ][mol_atom_bond][multicomponent]
 

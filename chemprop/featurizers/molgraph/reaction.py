@@ -117,6 +117,7 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
         r2p_idx_map, pdt_idxs, reac_idxs = self.map_reac_to_prod(reac, pdt)
 
         V = self._calc_node_feature_matrix(reac, pdt, r2p_idx_map, pdt_idxs, reac_idxs)
+
         E = []
         edge_index = [[], []]
 
@@ -135,7 +136,6 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
                 E.extend([x_e, x_e])
                 edge_index[0].extend([u, v])
                 edge_index[1].extend([v, u])
-
         E = np.array(E) if len(E) > 0 else np.empty((0, self.bond_fdim))
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)

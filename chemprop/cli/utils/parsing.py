@@ -4,18 +4,21 @@ from typing import Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from rdkit.Chem.rdchem import RWMol
 from torch import nn
 
 from chemprop.data.datapoints import (
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
+    PolymerDatapoint,
     ReactionDatapoint,
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
     MolAtomBondDataset,
     MoleculeDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from chemprop.featurizers.atom import get_multi_hot_atom_featurizer
@@ -24,10 +27,12 @@ from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
+    PolymerMolGraphFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils import make_mol
+from chemprop.utils import make_mol, make_polymer_mol
+from chemprop.utils.utils import remove_wildcard_atoms
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,7 @@ def parse_csv(
     path: PathLike,
     smiles_cols: Sequence[str] | None,
     rxn_cols: Sequence[str] | None,
+    polymer_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
@@ -46,22 +52,25 @@ def parse_csv(
 ):
     df = pd.read_csv(path, header=None if no_header_row else "infer", index_col=False)
 
-    if smiles_cols is not None and rxn_cols is not None:
+    input_cols = []
+    if smiles_cols is not None:
         smiss = df[smiles_cols].T.values.tolist()
-        rxnss = df[rxn_cols].T.values.tolist()
-        input_cols = [*smiles_cols, *rxn_cols]
-    elif smiles_cols is not None and rxn_cols is None:
-        smiss = df[smiles_cols].T.values.tolist()
-        rxnss = None
-        input_cols = smiles_cols
-    elif smiles_cols is None and rxn_cols is not None:
-        smiss = None
-        rxnss = df[rxn_cols].T.values.tolist()
-        input_cols = rxn_cols
+        input_cols.append([*smiles_cols])
     else:
-        smiss = df.iloc[:, [0]].T.values.tolist()
+        smiss = None
+    if rxn_cols is not None:
+        rxnss = df[rxn_cols].T.values.tolist()
+        input_cols.append([*rxn_cols])
+    else:
         rxnss = None
-        input_cols = [df.columns[0]]
+    if polymer_cols is not None:
+        polyss = df[polymer_cols].T.values.tolist()
+        input_cols.append([*polymer_cols])
+    else:
+        polyss = None
+    if smiss is None and rxnss is None and polyss is None:
+        smiss = df.iloc[:, [0]].T.values.tolist()
+        input_cols.append(df.columns[0])
 
     descriptor_cols = list(descriptor_cols or [])
     X_d_extra = df[descriptor_cols].to_numpy(np.single) if descriptor_cols else None
@@ -89,13 +98,14 @@ def parse_csv(
         lt_mask = None
         gt_mask = None
 
-    return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra
+    return smiss, rxnss, polyss, Y, weights, lt_mask, gt_mask, X_d_extra
 
 
 def get_column_names(
     path: PathLike,
     smiles_cols: Sequence[str] | None,
     rxn_cols: Sequence[str] | None,
+    polymer_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
@@ -107,7 +117,7 @@ def get_column_names(
     if no_header_row:
         return ["SMILES"], ["pred_" + str(i) for i in range((len(df_cols) - 1))]
 
-    input_cols = (smiles_cols or []) + (rxn_cols or [])
+    input_cols = (smiles_cols or []) + (rxn_cols or []) + (polymer_cols or [])
 
     if len(input_cols) == 0:
         input_cols = [df_cols[0]]
@@ -128,6 +138,7 @@ def get_column_names(
 def make_datapoints(
     smiss: list[list[str]] | None,
     rxnss: list[list[str]] | None,
+    polyss: list[list[str]] | None,
     Y: np.ndarray,
     weights: np.ndarray | None,
     lt_mask: np.ndarray | None,
@@ -142,9 +153,13 @@ def make_datapoints(
     ignore_stereo: bool,
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
-) -> tuple[list[list[MoleculeDatapoint | LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]]:
-    """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
-    dataset.
+) -> tuple[
+    list[list[MoleculeDatapoint | LazyMoleculeDatapoint]],
+    list[list[ReactionDatapoint]],
+    list[list[PolymerDatapoint]],
+]:
+    """Make the :class:`MoleculeDatapoint`s, :class:`ReactionDatapoint`s and
+    :class: `PolymerDatapoint`s for a given dataset.
 
     Parameters
     ----------
@@ -156,6 +171,10 @@ def make_datapoints(
         a list of ``k`` lists of ``n`` reaction SMILES strings, where ``k`` is the number of
         reactions per datapoint. If ``None``, the corresponding list of :class:`ReactionDatapoint`\s
         will be empty.
+    polyss : list[list[str]] | None
+        a list of ``j`` lists of ``n`` polymer SMILES strings, where ``j`` is the number of polymers
+        per datapoint and ``n`` is the number of datapoints. If ``None``, the corresponding list of
+        :class: `PolymerDatapoint`\s will be empty.
     Y : np.ndarray
         the target values of shape ``n x m``, where ``m`` is the number of targets
     weights : np.ndarray | None
@@ -206,34 +225,33 @@ def make_datapoints(
         a list of ``j`` lists of ``n`` :class:`MoleculeDatapoint`\s
     list[list[ReactionDatapoint]]
         a list of ``k`` lists of ``n`` :class:`ReactionDatapoint`\s
+    list[list[PolymerDatapoint]]
+        a list of ``j`` lists of ``n`` :class:`PolymerDatapoint`\s
     .. note::
         either ``j`` or ``k`` may be 0, in which case the corresponding list will be empty.
 
     Raises
     ------
     ValueError
-        if both ``smiss`` and ``rxnss`` are ``None``.
-        if ``smiss`` and ``rxnss`` are both given and have different lengths.
+        if ``smiss``, ``rxnss`` and ``polyss`` are all ``None``.
+        if at least two of ``smiss``, ``rxnss`` and ``polyss`` are given and have different lengths.
     """
-    if smiss is None and rxnss is None:
-        raise ValueError("args 'smiss' and 'rnxss' were both `None`!")
-    elif rxnss is None:
-        N = len(smiss[0])
-        rxnss = []
-    elif smiss is None:
-        N = len(rxnss[0])
-        smiss = []
-    elif len(smiss[0]) != len(rxnss[0]):
-        raise ValueError(
-            f"args 'smiss' and 'rxnss' must have same length! got {len(smiss[0])} and {len(rxnss[0])}"
-        )
+    N = [len(cols[0]) for cols in (smiss, rxnss, polyss) if cols is not None]
+    if len(set(N)) != 1:
+        raise ValueError("2 or more of args 'smiss', 'rxnss' or 'polyss' are not equal")
+    elif len(N) == 0:
+        raise ValueError("args 'smiss', 'rxnss' and 'polyss' are all `None`!")
     else:
-        N = len(smiss[0])
+        N = N[0]
+    smiss = smiss if smiss is not None else []
+    rxnss = rxnss if rxnss is not None else []
+    polyss = polyss if polyss is not None else []
 
     weights = np.ones(N, dtype=np.single) if weights is None else weights
     gt_mask = [None] * N if gt_mask is None else gt_mask
     lt_mask = [None] * N if lt_mask is None else lt_mask
-    n_mols = len(smiss) if smiss else 0
+    n_mols = len(smiss) if smiss else 0 + len(polyss) if polyss else 0
+    num_molecules = len(smiss) if smiss else 0
     V_fss = [[None] * N] * n_mols if V_fss is None else V_fss
     E_fss = [[None] * N] * n_mols if E_fss is None else E_fss
     V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
@@ -306,7 +324,20 @@ def make_datapoints(
             ]
             for rxns in rxnss
         ]
-
+    if len(polyss) > 0:
+        poly_molss = [
+            [
+                (
+                    make_polymer_mol(
+                        smi.split("|")[0], keep_h, add_h, ignore_stereo, reorder_atoms
+                    ),
+                    smi.split("|")[1:-1],
+                    smi.split("<")[1:],
+                )
+                for smi in smis
+            ]
+            for smis in polyss
+        ]
     if X_d is None and molecule_featurizers is None:
         X_d = [None] * N
     elif molecule_featurizers is None:
@@ -344,6 +375,27 @@ def make_datapoints(
                 X_d = rct_pdt_descriptors
             else:
                 X_d = np.hstack([X_d, rct_pdt_descriptors])
+        if len(polyss) > 0:
+            poly_descriptors = np.hstack(
+                [
+                    np.vstack(
+                        [
+                            np.hstack(
+                                [
+                                    mf(remove_wildcard_atoms(RWMol(poly[0])))
+                                    for mf in molecule_featurizers
+                                ]
+                            )
+                            for poly in poly_mols
+                        ]
+                    )
+                    for poly_mols in poly_molss
+                ]
+            )
+            if X_d is None:
+                X_d = poly_descriptors
+            else:
+                X_d = np.hstack([X_d, poly_descriptors])
 
     mol_data = [
         [
@@ -383,7 +435,29 @@ def make_datapoints(
         for rxn_idx, rxns in enumerate(rxnss)
     ]
 
-    return mol_data, rxn_data
+    poly_data = [
+        [
+            PolymerDatapoint(
+                mol=poly_molss[poly_idx][i][0],
+                fragment_weights=poly_molss[poly_idx][i][1],
+                edge_rules=poly_molss[poly_idx][i][2],
+                name=polys[i],
+                y=Y[i],
+                weight=weights[i],
+                gt_mask=gt_mask[i],
+                lt_mask=lt_mask[i],
+                x_d=X_d[i],
+                x_phase=None,
+                V_f=V_fss[num_molecules + poly_idx][i],
+                E_f=E_fss[num_molecules + poly_idx][i],
+                V_d=V_dss[num_molecules + poly_idx][i],
+            )
+            for i in range(N)
+        ]
+        for poly_idx, polys in enumerate(polyss)
+    ]
+
+    return mol_data, rxn_data, poly_data
 
 
 def build_data_from_files(
@@ -391,6 +465,7 @@ def build_data_from_files(
     no_header_row: bool,
     smiles_cols: Sequence[str] | None,
     rxn_cols: Sequence[str] | None,
+    polymer_cols: Sequence[str] | None,
     target_cols: Sequence[str] | None,
     ignore_cols: Sequence[str] | None,
     splits_col: str | None,
@@ -402,11 +477,12 @@ def build_data_from_files(
     p_atom_descs: dict[int, PathLike],
     descriptor_cols: Sequence[str] | None = None,
     **featurization_kwargs: Mapping,
-) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
+) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]] | list[PolymerDatapoint]:
+    smiss, rxnss, polyss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
         p_data,
         smiles_cols,
         rxn_cols,
+        polymer_cols,
         target_cols,
         ignore_cols,
         splits_col,
@@ -429,9 +505,10 @@ def build_data_from_files(
     E_fss = load_input_feats_and_descs(p_bond_feats, n_molecules, n_datapoints, feat_desc="E_f")
     V_dss = load_input_feats_and_descs(p_atom_descs, n_molecules, n_datapoints, feat_desc="V_d")
 
-    mol_data, rxn_data = make_datapoints(
+    mol_data, rxn_data, poly_data = make_datapoints(
         smiss,
         rxnss,
+        polyss,
         Y,
         weights,
         lt_mask,
@@ -443,7 +520,7 @@ def build_data_from_files(
         **featurization_kwargs,
     )
 
-    return mol_data + rxn_data
+    return mol_data + rxn_data + poly_data
 
 
 def load_input_feats_and_descs(
@@ -488,11 +565,12 @@ def load_input_feats_and_descs(
 def make_dataset(
     data: Sequence[MoleculeDatapoint]
     | Sequence[MolAtomBondDatapoint]
-    | Sequence[ReactionDatapoint],
+    | Sequence[ReactionDatapoint]
+    | Sequence[PolymerDatapoint],
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
-) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
+) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset | PolymerDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":
@@ -535,6 +613,17 @@ def make_dataset(
             extra_bond_fdim=extra_bond_fdim,
         )
         return MoleculeDataset(data, featurizer)
+
+    elif isinstance(data[0], PolymerDatapoint):
+        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
+        featurizer = PolymerMolGraphFeaturizer(
+            atom_featurizer=atom_featurizer,
+            bond_featurizer=bond_featurizer,
+            extra_atom_fdim=extra_atom_fdim,
+            extra_bond_fdim=extra_bond_fdim,
+        )
+        return PolymerDataset(data, featurizer)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
         mode_=reaction_mode, atom_featurizer=atom_featurizer, bond_featurizer=bond_featurizer

@@ -280,6 +280,7 @@ def make_prediction_for_models(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        polymer_cols=args.polymer_columns,
         ignore_cols=None,
         splits_col=None,
         weight_col=None,
@@ -793,15 +794,13 @@ def save_MAB_predictions(
 
 
 def main(args):
-    match (args.smiles_columns, args.reaction_columns):
-        case [None, None]:
-            n_components = 1
-        case [_, None]:
-            n_components = len(args.smiles_columns)
-        case [None, _]:
-            n_components = len(args.reaction_columns)
-        case _:
-            n_components = len(args.smiles_columns) + len(args.reaction_columns)
+    n_components = (
+        sum(
+            len(cols) if cols is not None else 0
+            for cols in (args.smiles_columns, args.reaction_columns, args.polymer_columns)
+        )
+        or 1
+    )
 
     multicomponent = n_components > 1
 

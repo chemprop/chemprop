@@ -15,6 +15,7 @@ from .message_passing import (
     MABMessagePassing,
     MessagePassing,
     MulticomponentMessagePassing,
+    WeightedBondMessagePassing,
 )
 from .metrics import (
     MAE,
@@ -116,6 +117,7 @@ __all__ = [
     "MABBondMessagePassing",
     "MABMessagePassing",
     "MulticomponentMessagePassing",
+    "WeightedBondMessagePassing",
     "Predictor",
     "PredictorRegistry",
     "QuantileFFN",

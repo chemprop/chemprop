@@ -7,12 +7,14 @@ from chemprop.data.collate import (
     collate_cuik_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
+    collate_polymer_batch,
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
@@ -25,6 +27,7 @@ def build_dataloader(
     | CuikmolmakerDataset
     | MolAtomBondDataset
     | ReactionDataset
+    | PolymerDataset
     | MulticomponentDataset,
     batch_size: int = 64,
     num_workers: int = 0,
@@ -37,7 +40,7 @@ def build_dataloader(
 
     Parameters
     ----------
-    dataset : MoleculeDataset | ReactionDataset | MulticomponentDataset
+    dataset : MoleculeDataset | CuikmolmakeDataset | MolAtomBondDataset | ReactionDataset | PolymerDataset | MulticomponentDataset
         The dataset containing the molecules or reactions to load.
     batch_size : int, default=64
         the batch size to load.
@@ -66,6 +69,8 @@ def build_dataloader(
         collate_fn = collate_cuik_batch
     elif isinstance(dataset, MolAtomBondDataset):
         collate_fn = collate_mol_atom_bond_batch
+    elif isinstance(dataset, PolymerDataset):
+        collate_fn = collate_polymer_batch
     else:
         collate_fn = collate_batch
 

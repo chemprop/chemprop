@@ -532,6 +532,7 @@ def main(args: Namespace):
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        polymer_cols=args.polymer_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
         splits_col=args.splits_column,

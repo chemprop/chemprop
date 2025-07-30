@@ -1,18 +1,23 @@
 from .collate import (
+    BatchCuikMolGraph,
     BatchMolAtomBondGraph,
     BatchMolGraph,
+    BatchWeightedMolGraph,
     MolAtomBondTrainingBatch,
     MulticomponentTrainingBatch,
     TrainingBatch,
     collate_batch,
+    collate_cuik_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
+    collate_polymer_batch,
 )
 from .dataloader import build_dataloader
 from .datapoints import (
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
+    PolymerDatapoint,
     ReactionDatapoint,
 )
 from .datasets import (
@@ -23,17 +28,22 @@ from .datasets import (
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
+    PolymerDataset,
     ReactionDataset,
 )
-from .molgraph import MolGraph
+from .molgraph import MolGraph, WeightedMolGraph
 from .samplers import ClassBalanceSampler, SeededSampler
 from .splitting import SplitType, make_split_indices, split_data_by_indices
 
 __all__ = [
     "BatchMolAtomBondGraph",
     "BatchMolGraph",
+    "BatchCuikMolGraph",
+    "BatchWeightedMolGraph",
     "TrainingBatch",
     "collate_batch",
+    "collate_cuik_batch",
+    "collate_polymer_batch",
     "MolAtomBondTrainingBatch",
     "collate_mol_atom_bond_batch",
     "MulticomponentTrainingBatch",
@@ -41,16 +51,19 @@ __all__ = [
     "build_dataloader",
     "MoleculeDatapoint",
     "MolAtomBondDatapoint",
+    "PolymerDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
     "CuikmolmakerDataset",
     "ReactionDataset",
+    "PolymerDataset",
     "Datum",
     "MolAtomBondDatum",
     "MolAtomBondDataset",
     "MulticomponentDataset",
     "MolGraphDataset",
     "MolGraph",
+    "WeightedMolGraph",
     "ClassBalanceSampler",
     "SeededSampler",
     "SplitType",
