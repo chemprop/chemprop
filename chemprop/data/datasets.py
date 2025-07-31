@@ -395,7 +395,9 @@ class CuikmolmakerDataset(MoleculeDataset):
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
         bmg = self.featurizer([d.smiles], self.V_fs[idx], self.E_fs[idx])
-        mg = MolGraph(bmg.V, bmg.E, bmg.edge_index, bmg.rev_edge_index)
+        mg = MolGraph(
+            bmg.V.numpy(), bmg.E.numpy(), bmg.edge_index.numpy(), bmg.rev_edge_index.numpy()
+        )
 
         return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
