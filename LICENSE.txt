@@ -6,7 +6,8 @@ William Green, Kevin Greenman, Yanfei Guan, Esther Heid, Lior Hirschfeld,
 Tommi Jaakkola, Wengong Jin, Olivier Lafontant-Joseph, Shih-Cheng Li, 
 Mengjie Liu, Joel Manu, Charles McGill, Angiras Menon, Nathan Morgan, 
 Hao-Wei Pang, Kevin Spiekermann, Kyle Swanson, Allison Tam, 
-Florence Vermeire, Haoyang Wu, and Kevin Yang, Jonathan Zheng)
+Florence Vermeire, Haoyang Wu, and Kevin Yang, Jonathan Zheng) and other 
+Chemprop contributors.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -46,8 +46,18 @@ def evidential_model_path(data_dir):
 
 
 @pytest.fixture
+def quantile_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_quantile_mol.pt")
+
+
+@pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
+
+
+@pytest.fixture
+def data_with_descriptors_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "mol_with_descriptors.csv")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -291,6 +301,33 @@ def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path)
         main()
 
 
+def test_predict_quantile_quick(monkeypatch, data_path, quantile_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        quantile_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "quantile-regression",
+        "--calibration-method",
+        "conformal-regression",
+        "--conformal-alpha",
+        "0.1",
+        "--evaluation-methods",
+        "spearman",
+        "conformal-coverage-regression",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 @pytest.mark.parametrize("ffn_block_index", ["0", "1"])
 def test_fingerprint_quick(monkeypatch, data_path, model_path, ffn_block_index):
     input_path, *_ = data_path
@@ -404,8 +441,8 @@ def test_train_splits_file(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
     splits_file = str(tmp_path / "splits.json")
     splits = [
-        {"train": [1, 2], "val": "3-5", "test": "6,7"},
-        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+        {"train": [0, 1], "val": "2-3", "test": "4,5"},
+        {"val": [0, 1], "test": "2-3", "train": "4,5"},
     ]
 
     with open(splits_file, "w") as f:
@@ -695,6 +732,72 @@ def test_custom_activation_quick(monkeypatch, data_path):
         "--activation-args",
         "1.0",
         "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_empty_testset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "0.5",
+        "0.5",
+        "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_with_descriptors_path,
+        "--target-columns",
+        "y",
+        "--descriptors-columns",
+        "temperature",
+        "pressure",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_descriptors_multisource(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--target-columns",
+        "lipo",
+        "--descriptors-columns",
+        "lipo",
+        "--descriptors-path",
+        descriptors_path,
+        "--epochs",
+        "3",
     ]
 
     with monkeypatch.context() as m:

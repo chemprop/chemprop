@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script iterates through all ChemProp Docker image versions, runs pip freeze in each,
+# This script iterates through all Chemprop Docker image versions, runs pip freeze in each,
 # and saves the output to a file named after the version.
 
 # Check for required tools

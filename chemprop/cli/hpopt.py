@@ -307,6 +307,17 @@ def process_hpopt_args(args: Namespace) -> Namespace:
         ]:
             search_parameters.discard(param)
 
+    if args.from_foundation is not None:
+        for param in [
+            "activation",
+            "dropout",
+            "depth",
+            "aggregation",
+            "aggregation_norm",
+            "message_hidden_dim",
+        ]:
+            search_parameters.discard(param)
+
     if args.constraints_path is None:
         for param in [
             "atom_constrainer_ffn_hidden_dim",
@@ -534,6 +545,7 @@ def main(args: Namespace):
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)

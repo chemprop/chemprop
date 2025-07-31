@@ -25,7 +25,7 @@ from chemprop.cli.utils import (
 )
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.metrics import BoundedMixin
-from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN
+from chemprop.nn.predictors import EvidentialFFN, MulticlassClassificationFFN, MveFFN, QuantileFFN
 from chemprop.uncertainty import (
     MVEWeightingCalibrator,
     NoUncertaintyEstimator,
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 class PredictSubcommand(Subcommand):
     COMMAND = "predict"
-    HELP = "use a pretrained chemprop model for prediction"
+    HELP = "use a pretrained Chemprop model for prediction"
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -70,7 +70,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--output",
         "--preds-path",
         type=Path,
-        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
+        help="Specify path to which predictions will be saved. If the file extension is .pkl, it will be saved as a pickle file. Otherwise, Chemprop will save predictions as a CSV. If multiple models are used to make predictions, the average predictions will be saved in the file, and another file ending in '_individual' with the same file extension will save the predictions for each individual model, with the column names being the target names appended with the model index (e.g., '_model_<index>').",
     )
     parser.add_argument(
         "--drop-extra-columns",
@@ -230,6 +230,7 @@ def prepare_data_loader(
             data_path,
             **format_kwargs,
             p_descriptors=descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
@@ -243,10 +244,12 @@ def prepare_data_loader(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         datas = build_data_from_files(
             data_path,
             **format_kwargs,
             p_descriptors=descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
@@ -256,7 +259,11 @@ def prepare_data_loader(
 
     dsets = [
         make_dataset(
-            d, args.rxn_mode, args.multi_hot_atom_featurizer_mode, n_workers=args.num_workers
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         for d in datas
     ]
@@ -353,7 +360,7 @@ def make_prediction_for_models(
             logger.info(f"{evaluator.alias}: {metric_value.tolist()}")
 
     if args.uncertainty_method == "none" and (
-        isinstance(models[0].predictor, MveFFN) or isinstance(models[0].predictor, EvidentialFFN)
+        isinstance(models[0].predictor, (MveFFN, EvidentialFFN, QuantileFFN))
     ):
         test_preds = test_preds[..., 0]
         test_individual_preds = test_individual_preds[..., 0]
