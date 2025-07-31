@@ -27,7 +27,7 @@ from chemprop.featurizers.molgraph import (
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils import make_mol
+from chemprop.utils import created_and_call_object, make_mol, parallel_execute
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +142,7 @@ def make_datapoints(
     ignore_stereo: bool,
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
+    n_workers: int = 1,
 ) -> tuple[list[list[MoleculeDatapoint | LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]]:
     """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
@@ -199,6 +200,8 @@ def make_datapoints(
         whether to add hydrogen atoms
     ignore_stereo : bool
         whether to ignore stereo information
+    n_workers : bool
+        number of workers to use to prepare molecules
 
     Returns
     -------
@@ -281,29 +284,42 @@ def make_datapoints(
 
     if len(smiss) > 0:
         molss = [
-            [make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis]
+            parallel_execute(
+                make_mol,
+                [(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis],
+                n_workers=n_workers,
+            )
             for smis in smiss
         ]
 
     if len(rxnss) > 0:
         rctss = [
-            [
-                make_mol(
-                    f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
-                    keep_h,
-                    add_h,
-                    ignore_stereo,
-                    reorder_atoms,
-                )
-                for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
-            ]
+            parallel_execute(
+                make_mol,
+                [
+                    (
+                        f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                        keep_h,
+                        add_h,
+                        ignore_stereo,
+                        reorder_atoms,
+                    )
+                    for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
+                ],
+                n_workers=n_workers,
+            )
             for rxns in rxnss
         ]
+
         pdtss = [
-            [
-                make_mol(pdt_smi, keep_h, add_h, ignore_stereo, reorder_atoms)
-                for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
-            ]
+            parallel_execute(
+                make_mol,
+                [
+                    (pdt_smi, keep_h, add_h, ignore_stereo, reorder_atoms)
+                    for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
+                ],
+                n_workers=n_workers,
+            )
             for rxns in rxnss
         ]
 
@@ -317,7 +333,18 @@ def make_datapoints(
         if len(smiss) > 0:
             mol_descriptors = np.hstack(
                 [
-                    np.vstack([np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols])
+                    np.hstack(
+                        [
+                            np.vstack(
+                                parallel_execute(
+                                    created_and_call_object,
+                                    [(mf.__class__, mol) for mol in mols],
+                                    n_workers=n_workers,
+                                )
+                            )
+                            for mf in molecule_featurizers
+                        ]
+                    )
                     for mols in molss
                 ]
             )
@@ -327,15 +354,24 @@ def make_datapoints(
                 X_d = np.hstack([X_d, mol_descriptors])
 
         if len(rxnss) > 0:
+
+            def construct_row(rct, pdt, molecule_featurizers):
+                return np.hstack(
+                    [
+                        created_and_call_object(mf.__class__, mol)
+                        for mf in molecule_featurizers
+                        for mol in (rct, pdt)
+                    ]
+                )
+
             rct_pdt_descriptors = np.hstack(
                 [
                     np.vstack(
-                        [
-                            np.hstack(
-                                [mf(mol) for mf in molecule_featurizers for mol in (rct, pdt)]
-                            )
-                            for rct, pdt in zip(rcts, pdts)
-                        ]
+                        parallel_execute(
+                            construct_row,
+                            [(rct, pdt, molecule_featurizers) for rct, pdt in zip(rcts, pdts)],
+                            n_workers=n_workers,
+                        )
                     )
                     for rcts, pdts in zip(rctss, pdtss)
                 ]
@@ -401,6 +437,7 @@ def build_data_from_files(
     p_bond_feats: dict[int, PathLike],
     p_atom_descs: dict[int, PathLike],
     descriptor_cols: Sequence[str] | None = None,
+    n_workers: int = 1,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
@@ -440,6 +477,7 @@ def build_data_from_files(
         V_fss,
         E_fss,
         V_dss,
+        n_workers=n_workers,
         **featurization_kwargs,
     )
 
@@ -492,6 +530,7 @@ def make_dataset(
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
+    n_workers: int = 1,
 ) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
@@ -513,7 +552,7 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        return MolAtomBondDataset(data, featurizer)
+        return MolAtomBondDataset(data, featurizer, n_workers=n_workers)
 
     if isinstance(data[0], MoleculeDatapoint) or isinstance(data[0], LazyMoleculeDatapoint):
         if cuikmolmaker_featurization:
@@ -534,13 +573,13 @@ def make_dataset(
             extra_atom_fdim=extra_atom_fdim,
             extra_bond_fdim=extra_bond_fdim,
         )
-        return MoleculeDataset(data, featurizer)
+        return MoleculeDataset(data, featurizer, n_workers=n_workers)
 
     featurizer = CondensedGraphOfReactionFeaturizer(
         mode_=reaction_mode, atom_featurizer=atom_featurizer, bond_featurizer=bond_featurizer
     )
 
-    return ReactionDataset(data, featurizer)
+    return ReactionDataset(data, featurizer, n_workers=n_workers)
 
 
 def parse_indices(idxs):

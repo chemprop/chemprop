@@ -224,6 +224,7 @@ def prepare_data_loader(
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
     )
+
     if mol_atom_bond:
         datas = build_MAB_data_from_files(
             data_path,
@@ -252,6 +253,7 @@ def prepare_data_loader(
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
 
@@ -261,6 +263,7 @@ def prepare_data_loader(
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         for d in datas
     ]
