@@ -583,6 +583,17 @@ def main(args: Namespace):
     )
 
     if args.tracking_metric != "val_loss":  # i.e. non-default
+        if any(
+            cols is not None
+            for cols in [
+                args.mol_target_columns,
+                args.atom_target_columns,
+                args.bond_target_columns,
+            ]
+        ):
+            raise NotImplementedError(
+                "`val_loss` is the only implemented tracking metric for hpopt when training on atom and bond targets. Open an issue on the GitHub repo if you would like us to add support for other tracking metrics in hpopt: https://github.com/chemprop/chemprop/issues"
+            )
         T_tracking_metric = MetricRegistry[args.tracking_metric]
         args.tracking_metric = "val/" + args.tracking_metric
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
