@@ -1,4 +1,6 @@
+from html.parser import HTMLParser
 import os
+import re
 import subprocess
 import sys
 
@@ -128,19 +130,6 @@ if not libtorch_compiled_with_cxx_abi:
 else:
     print("LibTorch was likely compiled with _GLIBCXX_USE_CXX11_ABI=1 (C++11 ABI)")
 
-# Get python version
-python_version = sys.version
-print(f"Python version: {python_version}")
-
-# Get python major version
-python_major_version = python_version.split(".")[0]
-print(f"Python major version: {python_major_version}")
-
-# Get python minor version
-python_minor_version = python_version.split(".")[1]
-print(f"Python minor version: {python_minor_version}")
-
-python_version_digits = f"{python_major_version}{python_minor_version}"
 
 rdkit_version = rdkit.__version__
 print(f"RDKit version: {rdkit_version}")
@@ -162,6 +151,31 @@ if response.status_code != 200:
         "1. Install from source. Follow instructions at https://github.com/NVIDIA-Digital-Bio/cuik-molmaker"
     )
     print("2. Reach out to cuik-molmaker developers at cuik_molmaker_dev@nvidia.com")
+    print("3. Use conda to install one of these combinations of RDKit and PyTorch:")
+
+    class LinkExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "a":
+                for name, value in attrs:
+                    if name == "href":
+                        self.links.append(value)
+
+    url = "https://pypi.nvidia.com/"
+    response = requests.get(url)
+    response.raise_for_status()
+
+    parser = LinkExtractor()
+    parser.feed(response.text)
+    pattern = re.compile(r"rdkit-(\d{4}\.\d{2}\.\d+)_torch-(\d+\.\d+\.\d+)")
+    for link in parser.links:
+        match = pattern.search(link)
+        if match:
+            rdkit_version, torch_version = match.groups()
+            print(f"   - RDKit: {rdkit_version}, Torch: {torch_version}")
     exit(1)
 
 # Install cuik-molmaker from correct wheel
