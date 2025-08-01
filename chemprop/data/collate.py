@@ -122,10 +122,7 @@ class BatchWeightedMolGraph(BatchMolGraph):
             Vw.append(mg.V_w)
             Ew.append(mg.E_w)
             degree_of_polys.append(mg.degree_of_poly)
-        self.V_w = torch.from_numpy(
-            np.concatenate(Vw)
-            # np.concatenate(np.array(Vw, dtype=np.object_)).astype(np.float64)
-        ).float()
+        self.V_w = torch.from_numpy(np.concatenate(Vw)).float()
         self.E_w = torch.from_numpy(np.concatenate(Ew)).float()
         self.degree_of_poly = torch.tensor(degree_of_polys).float()
 

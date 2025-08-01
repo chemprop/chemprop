@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 class wMPNN(MPNN):
     r"""An :class:`wMPNN` is a sequence of message passing layers, an aggregation routine, and a
     predictor routine. Messages are weighted based on bond and atom weights. The final
-    result is multiplied by the degree of polymerisation.
+    result is multiplied by a scaling factor (e.g. the degree of polymerisation).
 
     The first two modules calculate learned fingerprints from an input molecule or
-    reaction graph, and the final module takes these learned fingerprints as input to calculate a
+    polymer graph, and the final module takes these learned fingerprints as input to calculate a
     final prediction. I.e., the following operation:
 
     .. math::
-        \mathtt{MPNN}(\mathcal{G}) =
+        \mathtt{wMPNN}(\mathcal{G}) =
             \mathtt{predictor}(\mathtt{agg}(\mathtt{message\_passing}(\mathcal{G})))
 
     The full model is trained end-to-end.

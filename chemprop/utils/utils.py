@@ -97,7 +97,7 @@ def make_polymer_mol(
     reorder_atoms: bool = False,
 ) -> Chem.Mol:
     """
-    Builds an RDKit molecule from a SMILES string.
+    Builds an RDKit molecule from a SMILES string containing multiple components (e.g. monomers).
 
     Parameters
     ----------

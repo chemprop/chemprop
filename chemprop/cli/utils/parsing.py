@@ -477,7 +477,7 @@ def build_data_from_files(
     p_atom_descs: dict[int, PathLike],
     descriptor_cols: Sequence[str] | None = None,
     **featurization_kwargs: Mapping,
-) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]] | list[PolymerDatapoint]:
+) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint] | list[PolymerDatapoint]]:
     smiss, rxnss, polyss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
         p_data,
         smiles_cols,

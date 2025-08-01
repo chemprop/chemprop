@@ -9,7 +9,7 @@ from chemprop.nn.message_passing.mixins import _WeightedBondMessagePassingMixin
 
 
 class _WeightedMessagePassingBase(_MessagePassingBase):
-    """The base message-passing block for atom- and bond-based weighted message-passing schemes
+    """The base message-passing block for weighted atom- and bond-based message-passing schemes
 
     NOTE: this class is an abstract base class and cannot be instantiated
 
@@ -125,7 +125,7 @@ class _WeightedMessagePassingBase(_MessagePassingBase):
 
 
 class WeightedBondMessagePassing(_WeightedBondMessagePassingMixin, _WeightedMessagePassingBase):
-    r"""A :class:`Weighted BondMessagePassing` encodes a batch of molecular graphs by passing weighted messages along directed bonds.
+    r"""A :class:`WeightedBondMessagePassing` encodes a batch of weighted molecular graphs by passing weighted messages along directed bonds.
 
     It implements the following operation:
 
@@ -140,7 +140,8 @@ class WeightedBondMessagePassing(_WeightedBondMessagePassingMixin, _WeightedMess
     where :math:`\tau` is the activation function; :math:`\mathbf W_i`, :math:`\mathbf W_h`, and
     :math:`\mathbf W_o` are learned weight matrices; :math:`e_{vw}` is the feature vector of the
     bond between atoms :math:`v` and :math:`w`; :math:`x_v` is the feature vector of atom :math:`v`;
-    :math:`w_{uv}` is the bond weight of the bond :math:`u \rightarrow v`, according to the probability of :math:`v` being a neighbor of :math:`u`; :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at iteration :math:`t`; :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v \to w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of message passing iterations.
+    :math:`w_{uv}` is the bond weight of the bond :math:`u \rightarrow v`, according to the probability of :math:`v` being a neighbor of :math:`u`; :math:`h_{vw}^{(t)}` is the hidden representation of the bond :math:`v \rightarrow w` at iteration :math:`t`;
+    :math:`m_{vw}^{(t)}` is the message received by the bond :math:`v \to w` at iteration :math:`t`; and :math:`t \in \{1, \dots, T-1\}` is the number of message passing iterations.
     """
 
     def setup(
