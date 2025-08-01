@@ -703,7 +703,13 @@ def test_custom_activation_quick(monkeypatch, data_path):
 
 
 def test_save_data_splits(monkeypatch, data_path):
-    input_path, descriptors_path, atom_features_path, bond_features_path, atom_descriptors_path = data_path
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
 
     args = [
         "chemprop",
