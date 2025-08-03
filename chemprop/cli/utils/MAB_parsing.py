@@ -7,7 +7,7 @@ import pandas as pd
 
 from chemprop.data import MolAtomBondDatapoint
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.utils import make_mol, parallel_execute
+from chemprop.utils import create_and_call_object, make_mol, parallel_execute
 
 
 def build_MAB_data_from_files(
@@ -78,8 +78,17 @@ def build_MAB_data_from_files(
 
     if molecule_featurizers is not None:
         molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
-        mol_descriptors = np.vstack(
-            [np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols]
+        mol_descriptors = np.hstack(
+            [
+                np.vstack(
+                    parallel_execute(
+                        create_and_call_object,
+                        [(mf.__class__, mol) for mol in mols],
+                        n_workers=n_workers,
+                    )
+                )
+                for mf in molecule_featurizers
+            ]
         )
         if X_ds[0] is not None:
             X_ds = np.hstack([X_ds, mol_descriptors])

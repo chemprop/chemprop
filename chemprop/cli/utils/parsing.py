@@ -27,7 +27,7 @@ from chemprop.featurizers.molgraph import (
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils import created_and_call_object, make_mol, parallel_execute
+from chemprop.utils import create_and_call_object, make_mol, parallel_execute
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +338,7 @@ def make_datapoints(
                         [
                             np.vstack(
                                 parallel_execute(
-                                    created_and_call_object,
+                                    create_and_call_object,
                                     [(mf.__class__, mol) for mol in mols],
                                     n_workers=n_workers,
                                 )
@@ -359,7 +359,7 @@ def make_datapoints(
             def construct_row(rct, pdt, molecule_featurizers):
                 return np.hstack(
                     [
-                        created_and_call_object(mf.__class__, mol)
+                        create_and_call_object(mf.__class__, mol)
                         for mf in molecule_featurizers
                         for mol in (rct, pdt)
                     ]

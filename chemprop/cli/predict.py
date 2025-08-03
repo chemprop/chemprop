@@ -241,6 +241,7 @@ def prepare_data_loader(
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:

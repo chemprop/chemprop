@@ -90,7 +90,7 @@ def make_mol(
     return mol
 
 
-def created_and_call_object(class_definition: Type, object_input):
+def create_and_call_object(class_definition: Type, object_input):
     """Creates object from class_definition and calls it with object_input.
     This is useful for parallel calls to methods that contain boost functions.
     """
