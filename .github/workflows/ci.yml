@@ -93,13 +93,13 @@ jobs:
       - name: Test with pytest
         shell: bash -l {0}
         run: |
-          pytest -v tests
+          pytest --durations=0 -v tests
       - name: Test notebooks 
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
-          pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
+          pytest --durations=0 --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
+          pytest --durations=0 --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
   pypi:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
