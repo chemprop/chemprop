@@ -111,3 +111,13 @@ rm -rf test_cli_multiclass_dirichlet_mol
 chemprop train -i $CHEMPROP_PATH/tests/data/classification/mol_multiclass.csv --accelerator cpu --epochs 3 --num-workers 0 --save-dir test_cli_multiclass_dirichlet_mol --task-type multiclass-dirichlet
 
 cp -L test_cli_multiclass_dirichlet_mol/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_multiclass_dirichlet_mol.pt
+
+# test_cli_regression_mol+mol+rxn_check_predictions
+
+rm -rf test_cli_regression_mol+mol+rxn_check_predictions
+
+chemprop train -i tests/data/regression/rxn+mol/rxn+mol.csv --accelerator cpu --epochs 3 --num-workers 0 --reaction-columns rxn_smiles --smiles-columns solvent_smiles solvent_smiles --atom-features-path 1 tests/data/regression/rxn+mol/atom_features.npz --no-atom-feature-scaling --atom-descriptors-path tests/data/regression/rxn+mol/atom_descriptors.npz --bond-features-path tests/data/regression/rxn+mol/bond_features.npz --descriptors-path tests/data/regression/rxn+mol/descriptors.npz --rxn-mode REAC_DIFF_BALANCE --multi-hot-atom-featurizer-mode RIGR --keep-h --molecule-featurizers morgan_count --save-dir test_cli_regression_mol+mol+rxn_check_predictions
+
+cp -L test_cli_regression_mol+mol+rxn_check_predictions/model_0/best.pt $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol+mol+rxn_check_predictions.pt
+
+chemprop predict -i tests/data/regression/rxn+mol/rxn+mol.csv --accelerator cpu --num-workers 0 --reaction-columns rxn_smiles --smiles-columns solvent_smiles solvent_smiles --atom-features-path 1 tests/data/regression/rxn+mol/atom_features.npz --no-atom-feature-scaling --atom-descriptors-path tests/data/regression/rxn+mol/atom_descriptors.npz --bond-features-path tests/data/regression/rxn+mol/bond_features.npz --descriptors-path tests/data/regression/rxn+mol/descriptors.npz --rxn-mode REAC_DIFF_BALANCE --multi-hot-atom-featurizer-mode RIGR --keep-h --molecule-featurizers morgan_count --model-path $CHEMPROP_PATH/tests/data/example_model_v2_regression_mol+mol+rxn_check_predictions.pt -o tests/data/data_for_test_preds_stay_same.pkl

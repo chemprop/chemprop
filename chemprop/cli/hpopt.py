@@ -391,8 +391,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         else:
             T_tracking_metric = model.criterion.__class__
     else:
-        T_tracking_metric = MetricRegistry[args.tracking_metric]
-        args.tracking_metric = "val/" + args.tracking_metric
+        T_tracking_metric = MetricRegistry[args.tracking_metric.split("/")[1]]
 
     monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
@@ -587,14 +586,32 @@ def main(args: Namespace):
         train_dset, args.batch_size, args.num_workers, seed=args.data_seed
     )
 
-    if isinstance(train_loader.dataset, MolAtomBondDataset):
-        model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = (
-            "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
-        )
+    if args.tracking_metric != "val_loss":  # i.e. non-default
+        if any(
+            cols is not None
+            for cols in [
+                args.mol_target_columns,
+                args.atom_target_columns,
+                args.bond_target_columns,
+            ]
+        ):
+            raise NotImplementedError(
+                "`val_loss` is the only implemented tracking metric for hpopt when training on atom and bond targets. Open an issue on the GitHub repo if you would like us to add support for other tracking metrics in hpopt: https://github.com/chemprop/chemprop/issues"
+            )
+        T_tracking_metric = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
+        monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     else:
-        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+        if isinstance(train_loader.dataset, MolAtomBondDataset):
+            model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = (
+                "max"
+                if next(m[0].higher_is_better for m in model.metricss if m is not None)
+                else "min"
+            )
+        else:
+            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms

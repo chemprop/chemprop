@@ -10,6 +10,8 @@ _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
 _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
 _DF["smi"] = _DF["mol"].map(Chem.MolToSmiles)
+# Ensure atom numbering is consistent between mol and smi for `test_same_featurization`
+_DF["mol"] = _DF["smi"].map(Chem.MolFromSmiles)
 
 
 @pytest.fixture
