@@ -866,9 +866,9 @@ def test_restart_training(monkeypatch, data_path, extra_model_path):
         "train",
         "-i",
         input_path,
-        "--resume-from-checkpoint",
+        "--checkpoint",
         extra_model_path,
-        "--restart",
+        "--resume-from-checkpoint",
         "--epochs",
         "3",
     ]
