@@ -156,6 +156,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Path to checkpoint(s) or model file(s) for loading and overwriting weights. Accepts a single pre-trained model checkpoint (.ckpt), a single model file (.pt), a directory containing such files, or a list of paths and directories. If a directory is provided, it will recursively search for and use all (.pt) files found for prediction.",
     )
     transfer_args.add_argument(
+        "--resume-from-checkpoint",
+        action="store_true",
+        help="Resume training from the checkpoint supplied via --checkpoint.",
+    )
+    transfer_args.add_argument(
         "--freeze-encoder",
         action="store_true",
         help="Freeze the message passing layer from the checkpoint model (specified by ``--checkpoint``).",
@@ -648,6 +653,11 @@ def validate_train_args(args):
         raise ArgumentError(
             argument=None,
             message="`--checkpoint` and `--model-frzn` cannot be used at the same time.",
+        )
+
+    if args.resume_from_checkpoint and args.checkpoint is None:
+        raise ArgumentError(
+            argument=None, message="`--checkpoint` has to be specified if `--restart` is used"
         )
 
     if "--model-frzn" in sys.argv:
@@ -1572,9 +1582,12 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
+            if not args.resume_from_checkpoint:
+                model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
+            else:
+                model = mpnn_cls.load_from_checkpoint(model_path, map_location=torch.device("cpu"))
 
-            if args.checkpoint:
+            if args.checkpoint and not args.resume_from_checkpoint:
                 model.apply(
                     lambda m: setattr(m, "p", args.dropout)
                     if isinstance(m, torch.nn.Dropout)
@@ -1687,7 +1700,8 @@ def train_model(
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
         )
-        trainer.fit(model, train_loader, val_loader)
+        ckpt_path = model_paths[model_idx] if args.resume_from_checkpoint else None
+        trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
 
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
@@ -1701,9 +1715,15 @@ def train_model(
                     devices=1,
                 )
                 model = model.load_from_checkpoint(best_ckpt_path)
-                predss = trainer.predict(model, dataloaders=test_loader)
+                if args.resume_from_checkpoint:
+                    predss = trainer.predict(model, dataloaders=test_loader, ckpt_path=None)
+                else:
+                    predss = trainer.predict(dataloaders=test_loader)
             else:
-                predss = trainer.predict(dataloaders=test_loader)
+                if args.resume_from_checkpoint:
+                    predss = trainer.predict(model, dataloaders=test_loader, ckpt_path=None)
+                else:
+                    predss = trainer.predict(dataloaders=test_loader)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
@@ -1739,7 +1759,8 @@ def train_model(
                 )
 
         best_model_path = checkpointing.best_model_path
-        model = model.__class__.load_from_checkpoint(best_model_path)
+        if not args.resume_from_checkpoint:
+            model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
         output_columns = (
             [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]

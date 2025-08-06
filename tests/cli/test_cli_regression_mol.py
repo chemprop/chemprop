@@ -857,3 +857,22 @@ def test_descriptors_multisource(monkeypatch, data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_restart_training(monkeypatch, data_path, extra_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--resume-from-checkpoint",
+        extra_model_path,
+        "--restart",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
