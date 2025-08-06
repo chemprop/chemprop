@@ -70,8 +70,8 @@ try:
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
         "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
-        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
-        "depth": tune.randint(lower=1, upper=6 + 1),  # `+ 1` because upper bound is exclusive
+        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100).map(lambda v:[v]),
+        "depth": tune.randint(lower=2, upper=6 + 1).map(lambda v:[v]),  # `+ 1` because upper bound is exclusive
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.randint(lower=1, upper=200 + 1),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
@@ -342,12 +342,7 @@ def build_search_space(search_parameters: list[str], train_epochs: int) -> dict:
         ), "Training epochs must be at least 6 to perform hyperparameter optimization for warmup_epochs."
         SEARCH_SPACE["warmup_epochs"] = tune.randint(lower=1, upper=train_epochs // 2 + 1)
 
-    return {
-        param: [SEARCH_SPACE[param]]
-        if param in ["message_hidden_dim", "depth"]
-        else SEARCH_SPACE[param]
-        for param in search_parameters
-    }
+    return {param: SEARCH_SPACE[param] for param in search_parameters}
 
 
 def update_args_with_config(args: Namespace, config: dict) -> Namespace:
