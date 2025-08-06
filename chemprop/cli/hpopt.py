@@ -70,8 +70,12 @@ try:
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
         "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
-        "message_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
-        "depth": tune.randint(lower=2, upper=6 + 1),  # `+ 1` because upper bound is exclusive
+        "message_hidden_dim": tune.sample_from(
+            lambda _: [tune.qrandint(lower=300, upper=2400, q=100).sample(None)]
+        ),
+        "depth": tune.sample_from(
+            lambda _: [tune.randint(lower=2, upper=6 + 1).sample(None)]
+        ),  # `+ 1` because upper bound is exclusive
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.randint(lower=1, upper=200 + 1),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
