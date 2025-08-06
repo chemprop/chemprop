@@ -27,7 +27,7 @@ RUN apt-get update && \
 WORKDIR /opt/chemprop
 
 # build an empty conda environment with appropriate Python version
-RUN conda create --name chemprop_env python=3.11*
+RUN conda create --name chemprop_env python=3.11* rdkit=2025.3.2 pytorch=2.6.0 -c pytorch
 
 # This runs all subsequent commands inside the chemprop_env conda environment
 #
