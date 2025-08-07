@@ -36,6 +36,11 @@ class ConvertSubcommand(Subcommand):
             type=Path,
             help="Path to which the converted model will be saved (``CURRENT_DIRECTORY/STEM_OF_INPUT_newversion.pt`` by default)",
         )
+        parser.add_argument(
+            "--ignore-unsupported-metrics",
+            action="store_true",
+            help="Ignore Chemprop v1 metrics that are not supported by Chemprop v2",
+        )
         return parser
 
     @classmethod
@@ -56,7 +61,9 @@ class ConvertSubcommand(Subcommand):
             f"Converting model checkpoint '{args.input_path}' to model checkpoint '{args.output_path}'..."
         )
         if args.conversion == "v1_to_v2":
-            convert_model_file_v1_to_v2(args.input_path, args.output_path)
+            convert_model_file_v1_to_v2(
+                args.input_path, args.output_path, args.ignore_unsupported_metrics
+            )
         elif args.conversion == "v2_0_to_v2_1":
             convert_model_file_v2_0_to_v2_1(args.input_path, args.output_path)
 

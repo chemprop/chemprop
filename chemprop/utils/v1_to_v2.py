@@ -15,7 +15,72 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
-def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
+UNSUPPORTED_METRICS = {"balanced_accuracy", "precision", "quantile", "recall", "cross_entropy"}
+RENAMED_LOSS_FUNCTIONS = {"quantile_interval": "quantile"}
+
+
+def get_ffn_info(model_v1_dict: dict) -> dict:
+    """Get information about the FFN from the v1 model dictionary"""
+    loss_fn_defaults = {
+        "classification": "bce",
+        "regression": "mse",
+        "multiclass": "ce",
+        "spectra": "sid",
+    }
+    args_v1 = model_v1_dict["args"]
+
+    # loss_function was added in #238
+    loss_function = getattr(args_v1, "loss_function", None)
+    loss_function = RENAMED_LOSS_FUNCTIONS.get(loss_function, loss_function)
+    if loss_function in ["mve", "evidential", "quantile"]:
+        predictor = f"regression-{loss_function}"
+    elif loss_function == "dirichlet":
+        predictor = f"{args_v1.dataset_type}-dirichlet"
+    else:
+        predictor = args_v1.dataset_type
+        loss_function = loss_fn_defaults.get(predictor, loss_function)
+
+    # target_weights was added in #183
+    target_weights = getattr(args_v1, "target_weights", None)
+    num_tasks = args_v1.num_tasks
+    data_scaler = model_v1_dict["data_scaler"]
+
+    if loss_function == "quantile":
+        num_tasks = num_tasks // 2
+        if target_weights is not None:
+            target_weights = target_weights[0::2]
+        if data_scaler is not None:
+            data_scaler = {k: v[0::2] for k, v in data_scaler.items()}
+
+    if target_weights is not None:
+        task_weights = torch.tensor(target_weights).unsqueeze(0)
+    else:
+        task_weights = torch.ones(num_tasks).unsqueeze(0)
+
+    kwargs = {}
+    loss_vars = {}
+    if loss_function == "quantile":
+        alpha = args_v1.quantile_loss_alpha
+        q = alpha / 2
+        kwargs["alpha"] = alpha
+        loss_vars["bounds"] = torch.tensor([-1 / 2, 1 / 2]).view(2, 1, 1)
+        loss_vars["tau"] = torch.tensor([[q, 1 - q], [q - 1, -q]]).view(2, 2, 1, 1)
+    elif loss_function in ["evidential", "dirichlet"]:
+        kwargs["v_kl"] = args_v1.evidential_regularization
+
+    return {
+        "predictor_class": PredictorRegistry[predictor],
+        "criterion": Factory.build(
+            LossFunctionRegistry[loss_function], task_weights=task_weights, **kwargs
+        ),
+        "num_tasks": num_tasks,
+        "task_weights": task_weights,
+        "loss_vars": loss_vars,
+        "data_scaler": data_scaler,
+    }
+
+
+def convert_state_dict_v1_to_v2(model_v1_dict: dict, ffn_info: dict) -> dict:
     """Converts v1 model dictionary to a v2 state dictionary"""
 
     state_dict_v2 = {}
@@ -49,25 +114,26 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
 
     if args_v1.dataset_type == "regression":
         state_dict_v2["predictor.output_transform.mean"] = torch.tensor(
-            model_v1_dict["data_scaler"]["means"], dtype=torch.float32
+            ffn_info["data_scaler"]["means"], dtype=torch.float32
         ).unsqueeze(0)
         state_dict_v2["predictor.output_transform.scale"] = torch.tensor(
-            model_v1_dict["data_scaler"]["stds"], dtype=torch.float32
+            ffn_info["data_scaler"]["stds"], dtype=torch.float32
         ).unsqueeze(0)
 
-    # target_weights was added in #183
-    if getattr(args_v1, "target_weights", None) is not None:
-        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
-    else:
-        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
-
-    state_dict_v2["predictor.criterion.task_weights"] = task_weights
+    n_metrics = len(set(args_v1.metrics) - UNSUPPORTED_METRICS) or 1
+    state_dict_v2[f"metrics.{n_metrics}.task_weights"] = ffn_info["task_weights"]
+    state_dict_v2["predictor.criterion.task_weights"] = ffn_info["task_weights"]
+    for key, value in ffn_info["loss_vars"].items():
+        state_dict_v2[f"metrics.{n_metrics}.{key}"] = value
+        state_dict_v2[f"predictor.criterion.{key}"] = value
 
     return state_dict_v2
 
 
-def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
+def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict, ffn_info: dict) -> dict:
     """Converts v1 model dictionary to v2 hyper_parameters dictionary"""
+    args_v1 = model_v1_dict["args"]
+
     hyper_parameters_v2 = {}
     renamed_metrics = {
         "auc": "roc",
@@ -75,16 +141,14 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "cross_entropy": "ce",
         "binary_cross_entropy": "bce",
         "mcc": "binary-mcc",
-        "recall": "recall is not in v2",
-        "precision": "precision is not in v2",
-        "balanced_accuracy": "balanced_accuracy is not in v2",
     }
-
-    args_v1 = model_v1_dict["args"]
     hyper_parameters_v2["batch_norm"] = False
+    removed_metrics = set(args_v1.metrics).intersection(UNSUPPORTED_METRICS)
     hyper_parameters_v2["metrics"] = [
-        Factory.build(MetricRegistry[renamed_metrics.get(args_v1.metric, args_v1.metric)])
-    ]
+        Factory.build(MetricRegistry[renamed_metrics.get(metric, metric)])
+        for metric in args_v1.metrics
+        if metric not in removed_metrics
+    ] or None
     hyper_parameters_v2["warmup_epochs"] = args_v1.warmup_epochs
     hyper_parameters_v2["init_lr"] = args_v1.init_lr
     hyper_parameters_v2["max_lr"] = args_v1.max_lr
@@ -126,40 +190,27 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     fgs = args_v1.features_generator or []
     d_xd = sum((200 if "rdkit" in fg else 0) + (2048 if "morgan" in fg else 0) for fg in fgs)
 
-    if getattr(args_v1, "target_weights", None) is not None:
-        task_weights = torch.tensor(args_v1.target_weights).unsqueeze(0)
-    else:
-        task_weights = torch.ones(args_v1.num_tasks).unsqueeze(0)
-
-    # loss_function was added in #238
-    loss_fn_defaults = {
-        "classification": "bce",
-        "regression": "mse",
-        "multiclass": "ce",
-        "specitra": "sid",
-    }
-    T_loss_fn = LossFunctionRegistry[
-        getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
-    ]
-
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
             "activation": args_v1.activation,
-            "cls": PredictorRegistry[args_v1.dataset_type],
-            "criterion": Factory.build(T_loss_fn, task_weights=task_weights),
+            "cls": ffn_info["predictor_class"],
+            "criterion": ffn_info["criterion"],
             "task_weights": None,
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
             "input_dim": args_v1.hidden_size + args_v1.atom_descriptors_size + d_xd,
             "n_layers": args_v1.ffn_num_layers - 1,
-            "n_tasks": args_v1.num_tasks,
+            "n_tasks": ffn_info["num_tasks"],
         }
     )
 
     if args_v1.dataset_type == "regression":
-        hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(
-            model_v1_dict["data_scaler"]["means"], model_v1_dict["data_scaler"]["stds"]
-        )
+        means = ffn_info["data_scaler"]["means"]
+        stds = ffn_info["data_scaler"]["stds"]
+        hyper_parameters_v2["predictor"]["output_transform"] = UnscaleTransform(means, stds)
+
+    if args_v1.dataset_type == "multiclass":
+        hyper_parameters_v2["predictor"]["n_classes"] = args_v1.multiclass_num_classes
 
     return hyper_parameters_v2
 
@@ -167,26 +218,39 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
 def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     """Converts a v1 model dictionary from a loaded .pt file to a v2 model dictionary"""
 
+    ffn_info = get_ffn_info(model_v1_dict)
+
     model_v2_dict = {}
 
     model_v2_dict["epoch"] = None
     model_v2_dict["global_step"] = None
     model_v2_dict["pytorch-lightning_version"] = __version__
-    model_v2_dict["state_dict"] = convert_state_dict_v1_to_v2(model_v1_dict)
+    model_v2_dict["state_dict"] = convert_state_dict_v1_to_v2(model_v1_dict, ffn_info)
     model_v2_dict["loops"] = None
     model_v2_dict["callbacks"] = None
     model_v2_dict["optimizer_states"] = None
     model_v2_dict["lr_schedulers"] = None
     model_v2_dict["hparams_name"] = "kwargs"
-    model_v2_dict["hyper_parameters"] = convert_hyper_parameters_v1_to_v2(model_v1_dict)
+    model_v2_dict["hyper_parameters"] = convert_hyper_parameters_v1_to_v2(model_v1_dict, ffn_info)
 
     return model_v2_dict
 
 
-def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
+def convert_model_file_v1_to_v2(
+    model_v1_file: PathLike, model_v2_file: PathLike, ignore_unsupported_metrics: bool = False
+) -> None:
     """Converts a v1 model .pt file to a v2 model .pt file"""
 
     model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"), weights_only=False)
+
+    unsupported = set(model_v1_dict["args"].metrics) & UNSUPPORTED_METRICS
+    if unsupported:
+        msg = f"The model contains unsupported metrics: {', '.join(unsupported)}."
+        if ignore_unsupported_metrics:
+            logger.warning(f"{msg} Ignoring them.")
+        else:
+            raise ValueError(f"{msg} Use --ignore-unsupported-metrics to ignore them.")
+
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
     logger.warning(
         "Remember to use the same featurizers which were used when training the model. The default "
