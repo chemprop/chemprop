@@ -9,8 +9,14 @@ from .collate import (
     collate_multicomponent,
 )
 from .dataloader import build_dataloader
-from .datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from .datapoints import (
+    LazyMoleculeDatapoint,
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    ReactionDatapoint,
+)
 from .datasets import (
+    CuikmolmakerDataset,
     Datum,
     MolAtomBondDataset,
     MolAtomBondDatum,
@@ -33,10 +39,12 @@ __all__ = [
     "MulticomponentTrainingBatch",
     "collate_multicomponent",
     "build_dataloader",
+    "LazyMoleculeDatapoint",
     "MoleculeDatapoint",
     "MolAtomBondDatapoint",
     "ReactionDatapoint",
     "MoleculeDataset",
+    "CuikmolmakerDataset",
     "ReactionDataset",
     "Datum",
     "MolAtomBondDatum",

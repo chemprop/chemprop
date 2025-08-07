@@ -91,7 +91,7 @@ class FoundationModels(EnumMapping):
 
 class TrainSubcommand(Subcommand):
     COMMAND = "train"
-    HELP = "Train a chemprop model."
+    HELP = "Train a Chemprop model."
     parser = None
 
     @classmethod
@@ -463,12 +463,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
-        help="Specify the evaluation metrics. If unspecified, chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
+        help="Specify the evaluation metrics. If unspecified, Chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
     )
     train_args.add_argument(
         "--tracking-metric",
         default="val_loss",
-        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
+        help="The metric to track for early stopping, checkpointing, and hyperparameter optimization. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -688,6 +688,16 @@ def validate_train_args(args):
             message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
             f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
             "the `--metrics` flag.",
+        )
+
+    if (
+        args.use_cuikmolmaker_featurization
+        and args.splits_column is None
+        and args.splits_file is None
+        and args.split != "random"
+    ):
+        logger.warning(
+            f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
     input_cols, target_cols = get_column_names(
@@ -929,9 +939,11 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     ):
         for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
             format_kwargs.pop(key, None)
+        featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -952,6 +964,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -974,15 +987,19 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             split_idxss = json.load(json_file)
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
         args.num_replicates = len(split_idxss)
 
     else:
         splitting_data = all_data[args.split_key_molecule]
-        if isinstance(splitting_data[0], ReactionDatapoint):
-            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+
+        if args.split == "random":
+            splitting_mols = range(len(splitting_data))
         else:
-            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            else:
+                splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
@@ -1087,18 +1104,33 @@ def build_datasets(args, train_data, val_data, test_data):
     multicomponent = len(train_data) > 1
     if multicomponent:
         train_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
             for data in train_data
         ]
         val_dsets = [
-            make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            make_dataset(
+                data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
             for data in val_data
         ]
         train_dset = MulticomponentDataset(train_dsets)
         val_dset = MulticomponentDataset(val_dsets)
         if len(test_data[0]) > 0:
             test_dsets = [
-                make_dataset(data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+                make_dataset(
+                    data,
+                    args.rxn_mode,
+                    args.multi_hot_atom_featurizer_mode,
+                    args.use_cuikmolmaker_featurization,
+                )
                 for data in test_data
             ]
             test_dset = MulticomponentDataset(test_dsets)
@@ -1108,10 +1140,25 @@ def build_datasets(args, train_data, val_data, test_data):
         train_data = train_data[0]
         val_data = val_data[0]
         test_data = test_data[0]
-        train_dset = make_dataset(train_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
-        val_dset = make_dataset(val_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+        train_dset = make_dataset(
+            train_data,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        val_dset = make_dataset(
+            val_data,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
         if len(test_data) > 0:
-            test_dset = make_dataset(test_data, args.rxn_mode, args.multi_hot_atom_featurizer_mode)
+            test_dset = make_dataset(
+                test_data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+            )
         else:
             test_dset = None
     if args.task_type != "spectral":
@@ -1136,8 +1183,13 @@ def build_datasets(args, train_data, val_data, test_data):
             for dataset, label in zip(
                 [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
             ):
-                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                if dataset is not None:
+                    column_headers, table_rows = summarize(
+                        args.target_columns, args.task_type, dataset
+                    )
+                    output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                else:
+                    output = label + " set is empty."
                 logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
@@ -1153,7 +1205,6 @@ def build_model(
         list[ScaleTransform | None],
         list[ScaleTransform | None],
     ],
-    from_foundation: FoundationModels | None = None,
 ) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
     activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
@@ -1168,24 +1219,24 @@ def build_model(
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
-    if from_foundation is not None:
-        if Path(from_foundation).exists():  # local model
+    if args.from_foundation is not None:
+        if Path(args.from_foundation).exists():  # local model
             if is_multi:
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        from_foundation
+                        args.from_foundation
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
                     mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
-                foundation = MPNN.load_from_file(from_foundation)
+                foundation = MPNN.load_from_file(args.from_foundation)
                 mp_block = foundation.message_passing
             agg = foundation.agg
         else:  # remote model
-            match FoundationModels.get(from_foundation):
+            match FoundationModels.get(args.from_foundation):
                 case FoundationModels.CHEMELEON:
                     ckpt_dir = Path().home() / ".chemprop"
                     ckpt_dir.mkdir(exist_ok=True)
@@ -1200,7 +1251,7 @@ def build_model(
                     else:
                         logger.info(f"Loading cached CheMeleon from {model_path}")
                     logger.info(
-                        "Please cite DOI: 10.5281/zenodo.15426600 when using CheMeleon in published work"
+                        "Please cite DOI: 10.48550/arXiv.2506.15792 when using CheMeleon in published work"
                     )
                     chemeleon_mp = torch.load(model_path, weights_only=True)
                     if is_multi:
@@ -1521,7 +1572,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
@@ -1545,13 +1596,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
-                    args.from_foundation,
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:
@@ -1957,10 +2002,10 @@ def main(args):
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
     )
 
     splits = build_splits(args, format_kwargs, featurization_kwargs)
-
     for replicate_idx, (train_data, val_data, test_data) in enumerate(zip(*splits)):
         if args.num_replicates == 1:
             output_dir = args.output_dir
@@ -2022,8 +2067,14 @@ def main(args):
                     output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
-            train_dset.cache = True
-            val_dset.cache = True
+            if args.use_cuikmolmaker_featurization:
+                logger.warning(
+                    "not caching CuikmolmakerDataset as it is meant to be used without caching!"
+                )
+            else:
+                logger.info("Caching training and validation datasets...")
+                train_dset.cache = True
+                val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,
