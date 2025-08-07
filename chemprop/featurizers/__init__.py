@@ -13,8 +13,10 @@ from .molecule import (
     V1RDKit2DNormalizedFeaturizer,
 )
 from .molgraph import (
+    BatchCuikMolGraph,
     CGRFeaturizer,
     CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerMolGraphFeaturizer,
     MolGraphCache,
     MolGraphCacheFacade,
     MolGraphCacheOnTheFly,
@@ -36,7 +38,9 @@ __all__ = [
     "MolGraphCache",
     "MolGraphCacheOnTheFly",
     "SimpleMoleculeMolGraphFeaturizer",
+    "BatchCuikMolGraph",
     "CondensedGraphOfReactionFeaturizer",
+    "CuikmolmakerMolGraphFeaturizer",
     "CGRFeaturizer",
     "RxnMode",
     "MoleculeFeaturizer",

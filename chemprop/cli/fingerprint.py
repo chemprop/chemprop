@@ -123,6 +123,7 @@ def make_fingerprint_for_model(
             atom_target_cols=None,
             bond_target_cols=None,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -132,10 +133,12 @@ def make_fingerprint_for_model(
             **featurization_kwargs,
         )
     else:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         test_data = build_data_from_files(
             args.test_path,
             **format_kwargs,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -144,7 +147,13 @@ def make_fingerprint_for_model(
     logger.info(f"test size: {len(test_data[0])}")
 
     test_dsets = [
-        make_dataset(d, args.rxn_mode, args.multi_hot_atom_featurizer_mode) for d in test_data
+        make_dataset(
+            d,
+            args.rxn_mode,
+            args.multi_hot_atom_featurizer_mode,
+            args.use_cuikmolmaker_featurization,
+        )
+        for d in test_data
     ]
 
     if multicomponent:

@@ -228,10 +228,18 @@ Unlike Transfer Learning, this does **not** require that the downstream task's F
 
 Users can access pretrained foundation models by using the :code:`--from-foundation <name>` command line argument. Currently, the following foundation models are available in Chemprop:
 
- * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1MM molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
+ * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1M molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
  * :code:`<your-model>.pt` specify a filepath for a Chemprop model trained via the CLI and the Message Passing will be re-used with a new FFN
 
 The first time a given model is requested it will automatically be downloaded for you and saved to a directory called `.chemprop` in your home directory (except for your own models).
+
+.. _performant-training:
+
+Performant Training
+^^^^^^^^^^^^^^^^^^^
+
+Training can be accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
+
 
 .. _train-on-reactions:
 
