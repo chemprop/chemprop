@@ -1,5 +1,6 @@
 import warnings
 
+from lightning import pytorch as pl
 import pytest
 
 from chemprop import models, nn
@@ -10,10 +11,22 @@ warnings.filterwarnings("ignore", module=r"lightning.*", append=True)
 
 @pytest.fixture(scope="session")
 def mpnn(request):
-    message_passing, agg = request.param
-    ffn = nn.RegressionFFN()
-
+    message_passing, agg, *act = request.param
+    ffn = nn.RegressionFFN(activation=act[0] if len(act) > 0 else "RELU")
     return models.MPNN(message_passing, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
+def mol_atom_bond_mpnn(request):
+    pl.seed_everything(0)
+    message_passing, agg = request.param
+    mol_ffn = nn.RegressionFFN()
+    atom_ffn = nn.RegressionFFN()
+    bond_ffn = nn.RegressionFFN(input_dim=600)
+
+    return models.MolAtomBondMPNN(
+        message_passing, agg, mol_ffn, atom_ffn, bond_ffn, batch_norm=True
+    )
 
 
 @pytest.fixture(scope="session")
@@ -28,6 +41,14 @@ def regression_mpnn_mve(request):
 def regression_mpnn_evidential(request):
     agg = nn.SumAggregation()
     ffn = nn.EvidentialFFN()
+
+    return models.MPNN(request.param, agg, ffn, True)
+
+
+@pytest.fixture(scope="session")
+def regression_mpnn_quantile(request):
+    agg = nn.SumAggregation()
+    ffn = nn.QuantileFFN()
 
     return models.MPNN(request.param, agg, ffn, True)
 

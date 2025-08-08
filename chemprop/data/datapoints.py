@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit.Chem import AllChem as Chem
@@ -54,9 +54,10 @@ class _MoleculeDatapointMixin:
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_stereo)
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -64,11 +65,31 @@ class _MoleculeDatapointMixin:
 
 
 @dataclass
+class _LazyMoleculeDatapointMixin:
+    smiles: str
+    """the SMILES string associated with this datapoint"""
+    _keep_h: bool = False
+    _add_h: bool = False
+    _ignore_stereo: bool = False
+    _reorder_atoms: bool = False
+    _mol_cache: Chem.Mol = field(default=None, repr=False, compare=False)
+
+    @property
+    def mol(self) -> Chem.Mol:
+        """Lazily compute the molecule only when accessed"""
+        if self._mol_cache is None:
+            self._mol_cache = make_mol(
+                self.smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
+            )
+        return self._mol_cache
+
+
+@dataclass
 class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
     """A :class:`MoleculeDatapoint` contains a single molecule and its associated features and targets."""
 
     V_f: np.ndarray | None = None
-    """a numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
     ``d_vf`` is the number of additional features that will be concatenated to atom-level features
     *before* message passing"""
     E_f: np.ndarray | None = None
@@ -93,6 +114,93 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 
     def __len__(self) -> int:
         return 1
+
+
+@dataclass
+class LazyMoleculeDatapoint(_DatapointMixin, _LazyMoleculeDatapointMixin):
+    """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to
+    form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed.
+    """
+
+    V_f: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vf`` is the number of additional features that will be concatenated to atom-level features
+    *before* message passing"""
+    E_f: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ef``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ef`` is the number of additional features  containing additional features that will be
+    concatenated to bond-level features *before* message passing"""
+    V_d: np.ndarray | None = None
+    """A numpy array of shape ``V x d_vd``, where ``V`` is the number of atoms in the molecule, and
+    ``d_vd`` is the number of additional descriptors that will be concatenated to atom-level
+    descriptors *after* message passing"""
+
+    def __post_init__(self):
+        NAN_TOKEN = 0
+        if self.V_f is not None:
+            self.V_f[np.isnan(self.V_f)] = NAN_TOKEN
+        if self.E_f is not None:
+            self.E_f[np.isnan(self.E_f)] = NAN_TOKEN
+        if self.V_d is not None:
+            self.V_d[np.isnan(self.V_d)] = NAN_TOKEN
+
+        super().__post_init__()
+
+    def __len__(self) -> int:
+        return 1
+
+
+@dataclass
+class MolAtomBondDatapoint(MoleculeDatapoint):
+    E_d: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
+    descriptors *after* message passing"""
+    atom_y: np.ndarray | None = None
+    """A numpy array of shape ``V x v_t``, where ``V`` is the number of atoms in the molecule, and
+    ``v_t`` is the number of atom targets. The order of atoms in the array should match the order of
+    atoms in the mol. Unknown targets are indicated by `nan`s."""
+    atom_gt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `<x`"""
+    atom_lt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `>x`"""
+    bond_y: np.ndarray | None = None
+    """A numpy array of shape ``E x e_t``, where ``V`` is the number of bonds in the molecule, and
+    ``e_t`` is the number of bond targets. The order of bonds in the array should match the order of
+    bonds in the mol. Unknown targets are indicated by `nan`s."""
+    bond_gt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `<x`"""
+    bond_lt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `>x`"""
+    atom_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x v_t`` containing the values that the atom property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
+    bond_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x e_t`` containing the values that the bond property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        NAN_TOKEN = 0
+        if self.E_d is not None:
+            self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
+
+    @classmethod
+    def from_smi(
+        cls,
+        smi: str,
+        *args,
+        keep_h: bool = False,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = True,
+        **kwargs,
+    ) -> MolAtomBondDatapoint:
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms=reorder_atoms)
+
+        kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
+
+        return cls(mol, *args, **kwargs)
 
 
 @dataclass

@@ -5,6 +5,7 @@ from pathlib import Path
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
     )
-
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
         "-n",
@@ -89,7 +89,12 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
     data_args.add_argument(
         "--ignore-stereo",
         action="store_true",
-        help="Ignore stereochemical information in the input SMILES",
+        help="Ignore stereochemical information (R/S and Cis/Trans) in the input SMILES",
+    )
+    data_args.add_argument(
+        "--reorder-atoms",
+        action="store_true",
+        help="Reorder atoms in the Chem.Mol object using the specified atom map numbers",
     )
     featurization_args.add_argument(
         "--molecule-featurizers",
@@ -106,6 +111,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--descriptors-path",
         type=Path,
         help="Path to extra descriptors to concatenate to learned representation",
+    )
+    featurization_args.add_argument(
+        "--descriptors-columns",
+        nargs="+",
+        help="Column names in the input CSV containing extra datapoint descriptors, like temperature and pressure. See also `--descriptors-path`.",
     )
     # TODO: Add in v2.1
     # featurization_args.add_argument(
@@ -127,6 +137,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--no-bond-feature-scaling", action="store_true", help="Turn off extra bond feature scaling"
     )
     featurization_args.add_argument(
+        "--no-bond-descriptor-scaling",
+        action="store_true",
+        help="Turn off extra bond descriptor scaling",
+    )
+    featurization_args.add_argument(
         "--atom-features-path",
         nargs="+",
         action="extend",
@@ -144,12 +159,26 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="extend",
         help="If a single path is given, it is assumed to correspond to the 0-th molecule. Alternatively, it can be a two-tuple of molecule index and path to additional bond features to supply before message passing (e.g., ``--bond-features-path 0 /path/to/features_0.npz`` indicates that the features at the given path should be supplied to the 0-th component. To supply additional features for multiple components, repeat this argument on the command line for each component's respective values (e.g., ``--bond-features-path 0 path_zero --bond-features-path 1 path_one``) or pass each two-tuple in a series (e.g., ``--bond-features-path 0 path_zero 1 path_one``).",
     )
-    # TODO: Add in v2.2
-    # parser.add_argument(
-    #     "--constraints-path",
-    #     help="Path to constraints applied to atomic/bond properties prediction.",
-    # )
-
+    featurization_args.add_argument(
+        "--bond-descriptors-path",
+        nargs="+",
+        action="extend",
+        help="Path to additional bond descriptors to use with the learned bond representations after message passing. The file follows the same format as `--atom-descriptors-path`, i.e. the file is created using `np.savez('bond_descriptors.npz', *E_ds)` where `E_ds` is a list of 2D numpy arrays with shape `n_bonds x n_descriptors`.",
+    )
+    parser.add_argument(
+        "--constraints-path",
+        help="Path to a CSV file containing the constraints for atomic/bond properties prediction. The file should have one column for each property being constrained with no SMILES column. The order of the rows should match the order of the SMILES in the input CSV. See also `--constraints-to-targets` for how to specify which constraint applies to which prediction.",
+    )
+    parser.add_argument(
+        "--constraints-to-targets",
+        nargs="+",
+        help="The column names of the atom or bond targets that correspond to each constraint column in the constraints CSV.",
+    )
+    featurization_args.add_argument(
+        "--use-cuikmolmaker-featurization",
+        action="store_true",
+        help="Use ``cuik-molmaker`` package for accelerated atom and bond featurization.",
+    )
     return parser
 
 
@@ -161,7 +190,13 @@ def process_common_args(args: Namespace) -> Namespace:
     #         message="`--features-generators` has been renamed to `--molecule-featurizers`.",
     #     )
 
-    for key in ["atom_features_path", "atom_descriptors_path", "bond_features_path"]:
+    # Bond descriptors are not supported for multi-component, but we treat it like atom descriptors
+    for key in [
+        "atom_features_path",
+        "atom_descriptors_path",
+        "bond_features_path",
+        "bond_descriptors_path",
+    ]:
         inds_paths = getattr(args, key)
 
         if not inds_paths:
@@ -198,7 +233,37 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    pass
+    if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
+        raise ArgumentError(
+            argument=None,
+            message=f"cuik-molmaker is not installed. Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}` before using the `--use-cuikmolmaker-featurization` flag.",
+        )
+
+    if args.use_cuikmolmaker_featurization:
+        if args.keep_h:
+            raise ArgumentError(
+                argument=None,
+                message="`--keep-h` is not supported when using cuik-molmaker featurization.",
+            )
+        if args.ignore_stereo:
+            raise ArgumentError(
+                argument=None,
+                message="`--ignore-stereo` is not supported when using cuik-molmaker featurization.",
+            )
+        if args.reorder_atoms:
+            raise ArgumentError(
+                argument=None,
+                message="`--reorder-atoms` is not supported when using cuik-molmaker featurization.",
+            )
+        if args.reaction_columns or (args.smiles_columns and len(args.smiles_columns) > 1):
+            raise ArgumentError(
+                argument=None,
+                message="cuik-molmaker featurization only supports single component molecule datasets.",
+            )
+        if args.molecule_featurizers is not None:
+            logger.warning(
+                "Molecule featurizers reduce the memory savings of `--use-cuikmolmaker-featurization`. Consider pre-computing the features manually and providing them via `--descriptors-path`"
+            )
 
 
 def find_models(model_paths: list[Path]):

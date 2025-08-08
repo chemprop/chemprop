@@ -32,6 +32,7 @@ def dataloader(data):
         (nn.BondMessagePassing(), nn.MeanAggregation()),
         (nn.AtomMessagePassing(), nn.SumAggregation()),
         (nn.BondMessagePassing(), nn.NormAggregation()),
+        (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
     ],
     indirect=True,
 )
@@ -55,6 +56,7 @@ def test_quick(mpnn, dataloader):
         (nn.BondMessagePassing(), nn.MeanAggregation()),
         (nn.AtomMessagePassing(), nn.SumAggregation()),
         (nn.BondMessagePassing(), nn.NormAggregation()),
+        (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
     ],
     indirect=True,
 )
@@ -116,3 +118,20 @@ def test_evidential_quick(regression_mpnn_evidential, dataloader):
         fast_dev_run=True,
     )
     trainer.fit(regression_mpnn_evidential, dataloader, None)
+
+
+@pytest.mark.parametrize(
+    "regression_mpnn_quantile", [nn.BondMessagePassing(), nn.AtomMessagePassing()], indirect=True
+)
+@pytest.mark.integration
+def test_quantile_quick(regression_mpnn_quantile, dataloader):
+    trainer = pl.Trainer(
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        accelerator="cpu",
+        devices=1,
+        fast_dev_run=True,
+    )
+    trainer.fit(regression_mpnn_quantile, dataloader, None)

@@ -6,7 +6,7 @@ Training
 To train a model, run:
 
 .. code-block::
-   
+
     chemprop train --data-path <input_path> --task-type <task> --output-dir <dir>
 
 where ``<input_path>`` is the path to a CSV file containing a dataset, ``<task>`` is the type of modeling task, and ``<dir>`` is the directory where model checkpoints will be saved.
@@ -70,7 +70,7 @@ Our code supports several methods of splitting data into train, validation, and 
 .. list-table:: data.csv
     :widths: 10 10 10
     :header-rows: 1
-    
+
     * - smiles
       - property
       - split
@@ -97,12 +97,15 @@ Our code supports several methods of splitting data into train, validation, and 
 
     chemprop train --splits-file splits.json -i data.csv -t regression
 
+.. note::
+    Use zero-indexing when assigning data indices to different sets. Additionally note that ranges have inclusive ends (ie. [0,1] / "0-1" / "0,1" are equivalent).
+
 .. code-block:: JSON
     :caption: splits.json
 
     [
-        {"train": [1, 2], "val": "3-5", "test": "6,7"},
-        {"val": [1, 2], "test": "3-5", "train": "6,7"},
+        {"train": [0, 1], "val": "2-3", "test": "4,5"},
+        {"val": [0, 1], "test": "2-3", "train": "4,5"},
     ]
 
 .. note::
@@ -130,7 +133,7 @@ Model performance is often highly dependent on the hyperparameters used. Below i
  * :code:`--message-hidden-dim <n>` Hidden dimension of the messages in the MPNN (default 300)
  * :code:`--depth <n>` Number of message-passing steps (default 3)
  * :code:`--dropout <n>` Dropout probability in the MPNN & FFN layers (default 0)
- * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Options include :code:`relu`, :code:`leakyrelu`, :code:`prelu`, :code:`tanh`, :code:`selu`, and :code:`elu`. (default :code:`relu`)
+ * :code:`--activation <activation_type>` The activation function used in the MPNN and FNN layers. Run :code:`chemprop train -h` to see the full list of activation functions supported via CLI.
  * :code:`--epochs <n>` How many epochs to train over (default 50)
  * :code:`--warmup-epochs <n>`: The number of epochs during which the learning rate is linearly incremented from :code:`init_lr` to :code:`max_lr` (default 2)
  * :code:`--init-lr <n>` Initial learning rate (default 0.0001)
@@ -154,13 +157,13 @@ The loss function can be specified using the :code:`--loss-function <function>` 
 
  * :code:`bce` Binary cross-entropy (default)
  * :code:`binary-mcc` Binary Matthews correlation coefficient
- * :code:`dirichlet` Dirichlet 
+ * :code:`dirichlet` Dirichlet
 
 
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
- * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
+ * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient
  * :code:`dirichlet` Dirichlet
 
 **Spectral**:
@@ -182,7 +185,7 @@ The following evaluation metrics are supported during training:
  * :code:`bounded-mae` Bounded mean absolute error
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`bounded-rmse` Bounded root mean squared error
- * :code:`r2` R squared metric 
+ * :code:`r2` R squared metric
 
 **Classification**:
 
@@ -196,7 +199,7 @@ The following evaluation metrics are supported during training:
 **Multiclass**:
 
  * :code:`ce` Cross-entropy (default)
- * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient 
+ * :code:`multiclass-mcc` Multiclass Matthews correlation coefficient
 
 **Spectral**:
 
@@ -223,12 +226,20 @@ During finetuning one can pretrain a model on an unrelated task and then re-use 
 
 Unlike Transfer Learning, this does **not** require that the downstream task's FFN has the same architecture as the pretrained model. When finetuning, the Message Passing (depth, hidden size, activation function, etc.) and Aggregation configurations are fixed to be whatever they were during pretraining, but the FNN is initialized from scratch according to the users request and then trained.
 
-Users can access pretrained foundation models by using the :code:`--from-foundation <name>` command line argument. Currently, the following foundation models are available in ChemProp:
+Users can access pretrained foundation models by using the :code:`--from-foundation <name>` command line argument. Currently, the following foundation models are available in Chemprop:
 
- * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1MM molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
- * :code:`<your-model>.pt` specify a filepath for a ChemProp model trained via the CLI and the Message Passing will be re-used with a new FFN
+ * :code:`CheMeleon` Mordred-descriptor based foundation model pretrained on 1M molecules from PubChem, suitable for many tasks and especially small datasets. See the `CheMeleon GitHub repository <https://github.com/JacksonBurns/chemeleon>`_ for more information.
+ * :code:`<your-model>.pt` specify a filepath for a Chemprop model trained via the CLI and the Message Passing will be re-used with a new FFN
 
 The first time a given model is requested it will automatically be downloaded for you and saved to a directory called `.chemprop` in your home directory (except for your own models).
+
+.. _performant-training:
+
+Performant Training
+^^^^^^^^^^^^^^^^^^^
+
+Training can be accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
+
 
 .. _train-on-reactions:
 
@@ -243,9 +254,9 @@ Specify columns in the input file with reaction SMILES using the option :code:`-
  * :code:`reac_prod` Featurize with both the reactant and product
  * :code:`prod_diff` Featurize with the product and the difference upon reaction
 
-Each of these arguments can be modified to balance imbalanced reactions by appending :code:`_balance`, e.g. :code:`reac_diff_balance`. 
+Each of these arguments can be modified to balance imbalanced reactions by appending :code:`_balance`, e.g. :code:`reac_diff_balance`.
 
-In reaction mode, Chemprop concatenates information to each atomic and bond feature vector. For example, using :code:`--reaction-mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product. Agents are featurized with but not connected to the reactants. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only. 
+In reaction mode, Chemprop concatenates information to each atomic and bond feature vector. For example, using :code:`--reaction-mode reac_prod`, each atomic feature vector holds information on the state of the atom in the reactant (similar to default Chemprop), and concatenates information on the state of the atom in the product. Agents are featurized with but not connected to the reactants. Functions incompatible with a reaction as input (scaffold splitting and feature generation) are carried out on the reactants only.
 
 If the atom-mapped reaction SMILES contain mapped hydrogens, enable explicit hydrogens via :code:`--keep-h`.
 
@@ -289,7 +300,7 @@ You can provide additional atom features via :code:`--atom-features-path /path/t
 
 Similarly, you can provide additional atom descriptors via :code:`--atom-descriptors-path /path/to/atom/descriptors.npz` as a numpy :code:`.npz` file. This command concatenates the new features to the embedded atomic features after the D-MPNN with an additional linear layer. This file can be saved using :code:`np.savez("atom_descriptors.npz", *V_ds)`, where :code:`V_ds` has the same format as :code:`V_fs` above.
 
-The order of the atom features and atom descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object. 
+The order of the atom features and atom descriptors for each atom per molecule must match the ordering of atoms in the RDKit molecule object.
 
 The atom-level features and descriptors are scaled by default. This can be disabled with the option :code:`--no-atom-feature-scaling` or :code:`--no-atom-descriptor-scaling`.
 
@@ -301,7 +312,7 @@ Bond-level features can be provided using the option :code:`--bond-features-path
 
 The order of the bond features for each molecule must match the bond ordering in the RDKit molecule object.
 
-Note that bond descriptors are not currently supported because the post message passing readout function aggregates atom descriptors. 
+Note that bond descriptors are not currently supported because the post message passing readout function aggregates atom descriptors.
 
 The bond-level features are scaled by default. This can be disabled with the option :code:`--no-bond-features-scaling`.
 
@@ -311,7 +322,7 @@ Extra Datapoint Descriptors
 
 Additional datapoint descriptors can be concatenated to the learned representation after aggregation. These extra descriptors could be molecule-level features. If you install from source, you can modify the code to load custom descriptors as follows:
 
-1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features. 
+1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features.
 2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` where the descriptors are saved as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
 
 
@@ -329,7 +340,7 @@ Chemprop provides several molecule featurizers that automatically calculate mole
 .. note::
    The Morgan fingerprints should not be scaled. Use :code:`--no-descriptor-scaling` to ensure this.
 
-   The RDKit 2D features are not normalized. The :code:`StandardScaler` used in the CLI to normalize is non-optimal for some of the RDKit features. It is recommended to precompute and scale these features outside of the CLI using an appropriate scaler and then provide them using :code:`--descriptors-path` and :code:`--no-descriptor-scaling` as described above. 
+   The RDKit 2D features are not normalized. The :code:`StandardScaler` used in the CLI to normalize is non-optimal for some of the RDKit features. It is recommended to precompute and scale these features outside of the CLI using an appropriate scaler and then provide them using :code:`--descriptors-path` and :code:`--no-descriptor-scaling` as described above.
 
    In Chemprop v1, :code:`descriptastorus` was used to calculate RDKit 2D features. This package offers normalization of the features, with the normalizations fit to a set of molecules randomly selected from ChEMBL. Several descriptors have been added to :code:`rdkit` recently which are not included in :code:`descriptastorus` including 'AvgIpc', 'BCUT2D_CHGHI', 'BCUT2D_CHGLO', 'BCUT2D_LOGPHI', 'BCUT2D_LOGPLOW', 'BCUT2D_MRHI', 'BCUT2D_MRLOW', 'BCUT2D_MWHI', 'BCUT2D_MWLOW', and 'SPS'.
 
@@ -337,7 +348,7 @@ Chemprop provides several molecule featurizers that automatically calculate mole
 Missing Target Values
 ^^^^^^^^^^^^^^^^^^^^^
 
-When training multitask models (models which predict more than one target simultaneously), sometimes not all target values are known for all molecules in the dataset. Chemprop automatically handles missing entries in the dataset by masking out the respective values in the loss function, so that partial data can be utilized. 
+When training multitask models (models which predict more than one target simultaneously), sometimes not all target values are known for all molecules in the dataset. Chemprop automatically handles missing entries in the dataset by masking out the respective values in the loss function, so that partial data can be utilized.
 
 The loss function is rescaled according to all non-missing values, and missing values do not contribute to validation or test errors. Training on partial data is therefore possible and encouraged (versus taking out datapoints with missing target entries). No keyword is needed for this behavior, it is the default.
 
@@ -345,5 +356,5 @@ The loss function is rescaled according to all non-missing values, and missing v
 TensorBoard
 ^^^^^^^^^^^
 
-During training, TensorBoard logs are automatically saved to the output directory under :code:`model_{i}/trainer_logs/version_0/`. 
+During training, TensorBoard logs are automatically saved to the output directory under :code:`model_{i}/trainer_logs/version_0/`.
 .. To view TensorBoard logs, run :code:`tensorboard --logdir=<dir>` where :code:`<dir>` is the path to the checkpoint directory. Then navigate to `<http://localhost:6006>`_.
