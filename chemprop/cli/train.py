@@ -468,7 +468,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--tracking-metric",
         default="val_loss",
-        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
+        help="The metric to track for early stopping, checkpointing, and hyperparameter optimization. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -688,6 +688,16 @@ def validate_train_args(args):
             message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
             f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
             "the `--metrics` flag.",
+        )
+
+    if (
+        args.use_cuikmolmaker_featurization
+        and args.splits_column is None
+        and args.splits_file is None
+        and args.split != "random"
+    ):
+        logger.warning(
+            f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
     input_cols, target_cols = get_column_names(
@@ -933,6 +943,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -953,6 +964,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -981,10 +993,13 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     else:
         splitting_data = all_data[args.split_key_molecule]
 
-        if isinstance(splitting_data[0], ReactionDatapoint):
-            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        if args.split == "random":
+            splitting_mols = range(len(splitting_data))
         else:
-            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            else:
+                splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
@@ -1557,7 +1572,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
@@ -2052,8 +2067,14 @@ def main(args):
                     output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
-            train_dset.cache = True
-            val_dset.cache = True
+            if args.use_cuikmolmaker_featurization:
+                logger.warning(
+                    "not caching CuikmolmakerDataset as it is meant to be used without caching!"
+                )
+            else:
+                logger.info("Caching training and validation datasets...")
+                train_dset.cache = True
+                val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,

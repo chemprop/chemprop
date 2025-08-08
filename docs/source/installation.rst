@@ -72,7 +72,7 @@ Option 3: Installing from source using environment.yml
     pip install -e .
 
 .. note::
-    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It can be installed using the python scripts ``check_and_install_cuik_molmaker.py``. This script finds a compatible version of ``cuik-molmaker`` depending on the version of ``RDkit`` and ``PyTorch`` and installs it. Currently, ``cuik-molmaker`` is compatible with installation :ref:`install-from-source-using-environment-yml` :ref:`install-via-docker`.
+    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It can be installed using the python script ``check_and_install_cuik_molmaker.py``. This script finds a compatible version of ``cuik-molmaker`` depending on the version of ``RDKit`` and ``PyTorch`` and installs it. Currently, ``cuik-molmaker`` is compatible with installation :ref:`install-from-source-using-environment-yml` and :ref:`install-via-docker`.
 
 .. _`cuik-molmaker`: https://github.com/NVIDIA-Digital-Bio/cuik-molmaker
 

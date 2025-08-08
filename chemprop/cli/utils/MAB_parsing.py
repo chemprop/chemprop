@@ -26,9 +26,12 @@ def build_MAB_data_from_files(
     p_constraints: PathLike | None,
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
+    descriptor_cols: Sequence[str] | None = None,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
+
+    X_d_extra = df[descriptor_cols] if descriptor_cols else None
 
     smis = df[smiles_cols[0]].values if smiles_cols is not None else df.iloc[:, 0].values
     mols = [make_mol(smi, **make_mol_kwargs) for smi in smis]
@@ -39,6 +42,12 @@ def build_MAB_data_from_files(
     )
 
     X_ds = np.load(p_descriptors)["arr_0"] if p_descriptors else [None] * n_datapoints
+    if X_d_extra is not None:
+        if X_ds[0] is None:
+            X_ds = X_d_extra
+        else:
+            X_ds = np.hstack([X_ds, X_d_extra])
+
     loaded_arrays = np.load(p_atom_feats[0]) if p_atom_feats else None
     V_fs = (
         [loaded_arrays[f"arr_{i}"] for i in range(n_datapoints)]

@@ -1,5 +1,8 @@
+import numpy as np
+import pandas as pd
 import pytest
 
+from chemprop.cli.main import main
 from chemprop.cli.utils import build_MAB_data_from_files, make_dataset
 from chemprop.data import MolAtomBondDatapoint, MolAtomBondDataset
 
@@ -155,3 +158,53 @@ def test_MAB_parsing_constrained_error(data_dir):
             reorder_atoms=True,
             ignore_stereo=False,
         )
+
+
+def test_preds_stay_same(monkeypatch, tmp_path):
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        "tests/data/regression/rxn+mol/rxn+mol.csv",
+        "--accelerator",
+        "cpu",
+        "--num-workers",
+        "0",
+        "--reaction-columns",
+        "rxn_smiles",
+        "--smiles-columns",
+        "solvent_smiles",
+        "solvent_smiles",
+        "--atom-features-path",
+        "1",
+        "tests/data/regression/rxn+mol/atom_features.npz",
+        "--no-atom-feature-scaling",
+        "--atom-descriptors-path",
+        "tests/data/regression/rxn+mol/atom_descriptors.npz",
+        "--bond-features-path",
+        "tests/data/regression/rxn+mol/bond_features.npz",
+        "--descriptors-path",
+        "tests/data/regression/rxn+mol/descriptors.npz",
+        "--rxn-mode",
+        "REAC_DIFF_BALANCE",
+        "--multi-hot-atom-featurizer-mode",
+        "RIGR",
+        "--keep-h",
+        "--molecule-featurizers",
+        "morgan_count",
+        "--model-path",
+        "tests/data/example_model_v2_regression_mol+mol+rxn_check_predictions.pt",
+        "-o",
+        str(tmp_path / "preds.csv"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    preds_df = pd.read_csv(tmp_path / "preds.csv")
+    expected_df = pd.read_pickle("tests/data/data_for_test_preds_stay_same.pkl")
+
+    assert np.allclose(
+        preds_df["target"].values, expected_df["target"].values, rtol=1e-4, atol=1e-5
+    )
