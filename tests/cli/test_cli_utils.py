@@ -174,6 +174,9 @@ def test_get_column_names(
 
 @pytest.mark.parametrize("string,expected_output", [(1, "1.000000e+00"), (1e-77, "1.000000e-77")])
 def test__to_str(string: float, expected_output: str):
+    """
+    Testing numeric conversion to scientific notation string format.
+    """
     assert _to_str(string) == expected_output
 
 
@@ -194,7 +197,10 @@ def test__to_str(string: float, expected_output: str):
     ],
 )
 def test_format_probability_string(test_predictions: np.ndarray, expected_output: np.ndarray):
-    assert (format_probability_string(test_predictions) == expected_output).all()
+    """
+    Testing conversion of prediction arrays to comma-separated string format.
+    """
+    np.testing.assert_array_equal(format_probability_string(test_predictions), expected_output)
 
 
 @pytest.mark.parametrize(
@@ -204,5 +210,8 @@ def test_format_probability_string(test_predictions: np.ndarray, expected_output
 def test_format_probability_string__various_dimensions(
     input_shape: int, expected_output_shape: int
 ):
+    """
+    Testing dimensional consistency across arrays of varying shapes.
+    """
     expected_output = np.full(expected_output_shape, "1.000000e+00,1.000000e+00,1.000000e+00")
-    assert (format_probability_string(np.ones(input_shape)) == expected_output).all()
+    np.testing.assert_array_equal(format_probability_string(np.ones(input_shape)), expected_output)
