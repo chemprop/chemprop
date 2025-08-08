@@ -1,5 +1,4 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
-from copy import deepcopy
 import logging
 from pathlib import Path
 import sys
