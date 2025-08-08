@@ -8,7 +8,42 @@ from chemprop.featurizers.base import MultiHotFeaturizer, OneHotFeaturizer, Valu
 from chemprop.utils.utils import EnumMapping
 
 
-class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
+class NumOnlyMixin:
+    """A mixin to extend the featurizer to only featurize the atomic number."""
+
+    def num_only(self, a: Atom | None) -> np.ndarray:
+        """Featurize the atom by setting only the atomic number bit
+
+        Parameters
+        ----------
+        a : Atom
+            the atom to featurize
+
+        Returns
+        -------
+        np.ndarray
+            the featurized atom
+
+        Example
+        -------
+        >>> from rdkit import Chem
+        >>> mol = Chem.MolFromSmiles("C[C@H](O)c1ccccc1")
+        >>> atom = mol.GetAtomWithIdx(0)
+        >>> featurizer = MultiHotAtomFeaturizer.v1()
+        >>> vector = featurizer.num_only(atom)
+        >>> vector[atom.GetAtomicNum() - 1]
+        1.0
+        >>> sum(vector)
+        1.0
+        >>> len(vector) == len(featurizer)
+        True
+
+        """
+        vector = self.subfeats[0](a)
+        return np.concatenate([vector, np.zeros(len(self) - len(vector))])
+
+
+class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom], NumOnlyMixin):
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.
 
     .. seealso::
@@ -89,37 +124,6 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
             ValueFeaturizer(lambda a: a.GetIsAromatic(), int),
             ValueFeaturizer(lambda a: 0.01 * a.GetMass(), float),
         )
-
-    def num_only(self, a: Atom | None) -> np.ndarray:
-        """Featurize the atom by setting only the atomic number bit
-
-        Parameters
-        ----------
-        a : Atom
-            the atom to featurize
-
-        Returns
-        -------
-        np.ndarray
-            the featurized atom
-
-        Example
-        -------
-        >>> from rdkit import Chem
-        >>> mol = Chem.MolFromSmiles("C[C@H](O)c1ccccc1")
-        >>> atom = mol.GetAtomWithIdx(0)
-        >>> featurizer = MultiHotAtomFeaturizer.v1()
-        >>> vector = featurizer.num_only(atom)
-        >>> vector[atom.GetAtomicNum() - 1]
-        1.0
-        >>> sum(vector)
-        1.0
-        >>> len(vector) == len(featurizer)
-        True
-
-        """
-        num_subfeat = self.subfeats[0]
-        return np.concatenate([num_subfeat(a), np.zeros(len(self) - len(num_subfeat))])
 
     @classmethod
     def v1(cls, max_atomic_num: int = 100):
@@ -215,7 +219,7 @@ class MultiHotAtomFeaturizer(MultiHotFeaturizer[Atom]):
         )
 
 
-class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom]):
+class RIGRAtomFeaturizer(MultiHotFeaturizer[Atom], NumOnlyMixin):
     """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
 
     The generated atom features are ordered as follows:
