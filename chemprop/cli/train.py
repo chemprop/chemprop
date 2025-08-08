@@ -1700,8 +1700,7 @@ def train_model(
             gradient_clip_val=args.grad_clip,
             deterministic=deterministic,
         )
-        ckpt_path = model_paths[model_idx] if args.resume_from_checkpoint else None
-        trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
+        trainer.fit(model, train_loader, val_loader)
 
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
