@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Hashable, Sized
-from typing import Any, Callable, Generic, Sequence, TypeVar
+from typing import Any, Callable, Generic, Sequence, Type, TypeVar
 
 import numpy as np
 
@@ -30,7 +30,7 @@ class GraphFeaturizer(Featurizer[S, MolGraph]):
 
 
 class OneHotFeaturizer(VectorFeaturizer[S]):
-    """Extract a one-hot encoding from an input object.
+    """Create a one-hot encoding from an input object.
 
     This class uses a getter function to extract an attribute from an input object and converts
     the attribute into a one-hot encoded vector.
@@ -38,7 +38,7 @@ class OneHotFeaturizer(VectorFeaturizer[S]):
     Parameters
     ----------
     getter : Callable[[S], Hashable]
-        A function that extracts the attribute to be encoded from an input object.
+        A function that retrieves the attribute from an input object.
     choices : Sequence[Hashable]
         A sequence of unique possible values.
     padding : bool, default=False
@@ -80,9 +80,9 @@ class OneHotFeaturizer(VectorFeaturizer[S]):
         self, getter: Callable[[S], Hashable], choices: Sequence[Hashable], padding: bool = False
     ):
         self.getter = getter
-        self.choices = choices
+        self.choices = {choice: i for i, choice in enumerate(choices)}
         self.padding = padding
-        if len(self.choices) != len(set(self.choices)):
+        if len(self.choices) != len(choices):
             raise ValueError("choices must be unique")
 
     def __len__(self) -> int:
@@ -107,14 +107,12 @@ class OneHotFeaturizer(VectorFeaturizer[S]):
         if input is None:
             return vector
         option = self.getter(input)
-        try:
-            vector[self.choices.index(option)] = 1
-        except ValueError:
-            if self.padding:
-                vector[-1] = 1
+        index = self.choices.get(option, -1)
+        if self.padding or index != -1:
+            vector[index] = 1
         return vector
 
-    def to_string(self, input: S | None, _: int = 3) -> str:
+    def to_string(self, input: S | None) -> str:
         """Return a string representation of the feature encoding.
 
         Parameters
@@ -201,10 +199,8 @@ class ValueFeaturizer(VectorFeaturizer[S]):
         str
             The string encoding of the feature vector.
         """
-        if input is None:
-            return "0"
-        x = self(input).item()
-        if isinstance(x, float):
+        x = 0 if input is None else self.getter(input)
+        if issubclass(self.dtype, float):
             return f"{x:.{decimals}f}"
         return str(int(x))
 
@@ -218,7 +214,7 @@ class NullityFeaturizer(VectorFeaturizer[Any]):
     def __call__(self, input: Any) -> np.ndarray:
         return np.array([int(input is None)], dtype=int)
 
-    def to_string(self, input: Any, _: int = 3) -> str:
+    def to_string(self, input: Any) -> str:
         return "1" if input is None else "0"
 
 
@@ -249,7 +245,7 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
     >>> featurizer.to_string(atom)
     '0 1000 0.120'
     >>> featurizer.to_string(None)
-    '1 0000 0'
+    '1 0000 0.000'
     """
 
     def __init__(self, *subfeats: OneHotFeaturizer[S] | ValueFeaturizer[S] | NullityFeaturizer):
@@ -270,6 +266,8 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
         ----------
         input : S | None
             The input object.
+        decimals : int, default=3
+            The number of decimal places to round float-valued features to.
 
         Returns
         -------
@@ -278,4 +276,7 @@ class MultiHotFeaturizer(VectorFeaturizer[S]):
             subfeature.
 
         """
-        return " ".join(f.to_string(input, decimals) for f in self.subfeats)
+        return " ".join(
+            f.to_string(input, decimals) if isinstance(f, ValueFeaturizer) else f.to_string(input)
+            for f in self.subfeats
+        )

@@ -68,6 +68,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         mol: Chem.Mol,
         atom_features_extra: np.ndarray | None = None,
         bond_features_extra: np.ndarray | None = None,
+        backward_bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         n_atoms = mol.GetNumAtoms()
         n_bonds = mol.GetNumBonds()
@@ -82,6 +83,17 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
                 "Input molecule must have same number of bonds as `len(bond_features_extra)`!"
                 f"got: {n_bonds} and {len(bond_features_extra)}, respectively"
             )
+        if backward_bond_features_extra is None:
+            backward_bond_features_extra = bond_features_extra
+        elif bond_features_extra is None:
+            raise ValueError(
+                "`backward_bond_features_extra` requires `bond_features_extra` to be provided!"
+            )
+        elif backward_bond_features_extra.shape != bond_features_extra.shape:
+            raise ValueError(
+                "`backward_bond_features_extra` and `bond_features_extra` must have the same shape!"
+                f"got: {backward_bond_features_extra.shape} and {bond_features_extra.shape}"
+            )
 
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
@@ -95,16 +107,26 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
         i = 0
         for bond in mol.GetBonds():
+            idx = bond.GetIdx()
             x_e_forward = self.bond_featurizer(bond)
+            E[i] = (
+                x_e_forward
+                if bond_features_extra is None
+                else np.concatenate((x_e_forward, bond_features_extra[idx]), dtype=np.single)
+            )
+
             x_e_backward = (
                 self.backward_bond_featurizer(bond)
                 if self.backward_bond_featurizer is not None
                 else x_e_forward
             )
-            for j, x_e in enumerate([x_e_forward, x_e_backward]):
-                if bond_features_extra is not None:
-                    x_e = np.concatenate((x_e, bond_features_extra[bond.GetIdx()]), dtype=np.single)
-                E[i + j] = x_e
+            E[i + 1] = (
+                x_e_backward
+                if backward_bond_features_extra is None
+                else np.concatenate(
+                    (x_e_backward, backward_bond_features_extra[idx]), dtype=np.single
+                )
+            )
 
             u, v = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index[0].extend([u, v])
