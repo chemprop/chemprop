@@ -190,57 +190,70 @@ def check_featurizer_matches_model(data_loader, model):
     common mistake and point users to the fix.
     Additionally, in v1 there was a mode for reaction-in-solvent data. The order of the message
     passing blocks was reaction + solvent. In v2 the CLI always does molecule datasets + reaction
-    datasets. We also try to detect this and fix it automatically for the user, as there is no flag
-    for this.
+    datasets. We also try to detect this and fix it automatically for the user, as there is no v2
+    flag for this.
     """
-    datasets = getattr(data_loader.dataset, "datasets", [data_loader.dataset])
-    mps = getattr(model.message_passing, "blocks", [model.message_passing])
-    current_dims = []
-    v1_default_dims = []
+    if isinstance(data_loader.dataset, data.MulticomponentDataset):
+        datasets = data_loader.dataset.datasets
+        mps = model.message_passing.blocks
+    else:
+        datasets = [data_loader.dataset]
+        mps = [model.message_passing]
+
+    current_feat_output_dims = []
+    v1_default_feat_output_dims = []
     mp_input_dims = []
+    v1_atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+    v1_atom_fdims = []
+
     for dataset, mp in zip(datasets, mps):
         featurizer = dataset.featurizer
-        v1_default_featurizer = deepcopy(featurizer)
-        v1_default_featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+        atom_fdim = featurizer.atom_fdim
+        bond_fdim = featurizer.bond_fdim
 
-        datapoint = dataset.data[0]
-        mol_s = datapoint.mol if hasattr(datapoint, "mol") else (datapoint.rct, datapoint.pdt)
-        mg = featurizer(mol_s)
-        v1_default_mg = v1_default_featurizer(mol_s)
+        if isinstance(featurizer, featurizers.CondensedGraphOfReactionFeaturizer):
+            v1_atom_fdim = 2 * len(v1_atom_featurizer) - len(v1_atom_featurizer.atomic_nums) - 1
+        else:
+            v1_atom_fdim = len(v1_atom_featurizer) + featurizer.extra_atom_fdim
 
         if isinstance(mp, BondMessagePassing):
-            current_dims.append(mg.V.shape[1] + mg.E.shape[1])
-            v1_default_dims.append(v1_default_mg.V.shape[1] + v1_default_mg.E.shape[1])
-        else:
-            current_dims.append(mg.V.shape[1])
-            v1_default_dims.append(v1_default_mg.V.shape[1])
-        mp_input_dims.append(mp.W_i.in_features)
+            current_feat_output_dims.append(atom_fdim + bond_fdim)
+            v1_default_feat_output_dims.append(v1_atom_fdim + bond_fdim)
+        else:  # AtomMessagePassing
+            current_feat_output_dims.append(atom_fdim)
+            v1_default_feat_output_dims.append(v1_atom_fdim)
 
-    if current_dims == mp_input_dims:
+        mp_input_dims.append(mp.W_i.in_features)
+        v1_atom_fdims.append(v1_atom_fdim)
+
+    if current_feat_output_dims == mp_input_dims:
         return data_loader
 
-    if v1_default_dims == mp_input_dims or (
-        len(v1_default_dims) == 2 and v1_default_dims[::-1] == mp_input_dims
+    if v1_default_feat_output_dims == mp_input_dims or (
+        len(datasets) == 2
+        and v1_default_feat_output_dims[::-1] == mp_input_dims
+        and current_feat_output_dims != v1_default_feat_output_dims
     ):
         logger.warning(
             "The featurizer output dimension(s) did not match the model input dimension(s), but "
             "the v1 default featurizer output dimensions(s) do match. Using the v1 default "
             "featurizer! To remove this warning, pass `--multi-hot-atom-featurizer-mode v1`."
         )
-        for dataset in datasets:
+        for dataset, v1_atom_fdim in zip(datasets, v1_atom_fdims):
             dataset.featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
-        current_dims = v1_default_dims
+            dataset.featurizer.atom_fdim = v1_atom_fdim
+        current_feat_output_dims = v1_default_feat_output_dims
 
-    if len(current_dims) == 2 and current_dims[::-1] == mp_input_dims:
+    if len(datasets) == 2 and current_feat_output_dims[::-1] == mp_input_dims:
         dataset = data.MulticomponentDataset([datasets[1], datasets[0]])
         return data.build_dataloader(
             dataset, data_loader.batch_size, data_loader.num_workers, shuffle=False
         )
 
-    if current_dims != mp_input_dims:
+    if current_feat_output_dims != mp_input_dims:
         raise ArgumentError(
             argument=None,
-            message=f"The featurizer output dimension(s) ({current_dims}) and the model input "
+            message=f"The featurizer output dimension(s) ({current_feat_output_dims}) and the model input "
             f"dimension(s) ({mp_input_dims}) are different. Check that you are using the same "
             "featurization arguments that were used when training the model.",
         )
