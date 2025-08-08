@@ -10,7 +10,7 @@ from .parsing import (
     parse_activation,
     parse_indices,
 )
-from .utils import _pop_attr, _pop_attr_d, pop_attr
+from .utils import _pop_attr, _pop_attr_d, format_probability_string, pop_attr
 
 __all__ = [
     "activation_function_argument",
@@ -27,6 +27,7 @@ __all__ = [
     "actions",
     "args",
     "command",
+    "format_probability_string",
     "parsing",
     "utils",
     "pop_attr",

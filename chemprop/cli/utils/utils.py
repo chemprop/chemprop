@@ -1,5 +1,7 @@
 from typing import Any
 
+import numpy as np
+
 __all__ = ["pop_attr"]
 
 
@@ -29,3 +31,15 @@ def _pop_attr_d(o: object, attr: str, default: Any | None = None) -> Any | None:
         val = default
 
     return val
+
+
+def _to_str(number: float) -> str:
+    return f"{number:.6e}"
+
+
+def format_probability_string(test_preds: np.ndarray) -> np.ndarray:
+    axis = test_preds.ndim - 1
+    formatted_probability_strings = np.apply_along_axis(
+        lambda x: ",".join(map(_to_str, x)), axis, test_preds
+    )
+    return formatted_probability_strings

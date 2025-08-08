@@ -35,6 +35,7 @@ from chemprop.cli.utils import (
     activation_function_argument,
     build_data_from_files,
     build_MAB_data_from_files,
+    format_probability_string,
     get_column_names,
     make_dataset,
     parse_activation,
@@ -1805,9 +1806,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, preds
-        )
+        formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
             list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
@@ -1899,23 +1898,15 @@ def evaluate_and_save_MAB_predictions(
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
-            if mol_preds is not None
-            else [None] * len(names)
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
         atomss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * len(names)
         )
         bondss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * len(names)
         )
