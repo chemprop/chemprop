@@ -134,7 +134,7 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
             A string representation of the molecule featurization, with each atom
             and bond represented on a separate line. The atom lines are of the form
             "i: <atom_features>" and the bond lines are of the form
-            "i-j: <bond_features>".
+            "i→j: <bond_features>" (forward directional bond) and "i←j: <bond_features>" (reverse bond).
         """
         n = mol.GetNumAtoms()
         digits = len(str(n))

@@ -64,7 +64,7 @@ class OneHotFeaturizer(VectorFeaturizer[S]):
     >>> symbol_featurizer.to_string(atom)
     '1000'
 
-    >>> bond_type_featurizer = OneHotFeaturizer[Chem.Atom](
+    >>> bond_type_featurizer = OneHotFeaturizer[Chem.Bond](
     ...     getter=lambda bond: bond.GetBondType(),
     ...     choices=[Chem.BondType.SINGLE, Chem.BondType.DOUBLE],
     ... )
@@ -160,7 +160,7 @@ class ValueFeaturizer(VectorFeaturizer[S]):
 
     """
 
-    def __init__(self, getter: Callable[[S], bool | int | float], dtype: bool | int | float):
+    def __init__(self, getter: Callable[[S], bool | int | float], dtype: Type[bool | int | float]):
         self.getter = getter
         self.dtype = dtype
 
