@@ -339,7 +339,7 @@ def make_datapoints(
                             np.vstack(
                                 parallel_execute(
                                     create_and_call_object,
-                                    [(mf.__class__, mol) for mol in mols],
+                                    [(mf.__class__, (mol,)) for mol in mols],
                                     n_workers=n_workers,
                                 )
                             )
@@ -359,7 +359,7 @@ def make_datapoints(
             def construct_row(rct, pdt, molecule_featurizers):
                 return np.hstack(
                     [
-                        create_and_call_object(mf.__class__, mol)
+                        create_and_call_object(mf.__class__, (mol,))
                         for mf in molecule_featurizers
                         for mol in (rct, pdt)
                     ]
@@ -533,7 +533,6 @@ def make_dataset(
     cuikmolmaker_featurization: bool = False,
     n_workers: int = 1,
 ) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
-
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":

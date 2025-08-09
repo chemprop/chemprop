@@ -1,4 +1,9 @@
-from chemprop.utils import parallel_execute
+import os
+import time
+
+import pytest
+
+from chemprop.utils import make_mol, parallel_execute
 
 
 def test_parallel_execution():
@@ -13,7 +18,27 @@ def test_parallel_execution():
     results_multi_worker = parallel_execute(add_two, [[1, 2], [3, 4]], n_workers=2)
     assert results_multi_worker == expected_result
 
-    results_zipped_multi_worker = parallel_execute(
-        add_two, [[1, 3], [2, 4]], n_workers=2, zipped=False
+
+# @pytest.mark.skip(reason="Debuggers can slow down multiprocessing.")
+@pytest.mark.skipif(
+    os.cpu_count() < 4, reason="Speedup is expected if multiple threads are available."
+)
+def test_parallel_is_faster():
+    smis = ["C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(Cl)N=C1" * 100] * 4
+    keep_h, add_h, ignore_stereo, reorder_atoms = False, False, False, False
+
+    start_time = time.time()
+    parallel_results = parallel_execute(
+        make_mol, [(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis], n_workers=4
     )
-    assert results_zipped_multi_worker == expected_result
+    paralle_runtime = time.time() - start_time
+
+    start_time = time.time()
+    sequential_results = [
+        make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis
+    ]
+    sequential_runtime = time.time() - start_time
+
+    assert len(sequential_results) == len(parallel_results)
+    print(paralle_runtime, sequential_runtime)
+    assert paralle_runtime < sequential_runtime

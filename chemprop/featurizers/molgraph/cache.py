@@ -57,9 +57,7 @@ class MolGraphCache(MolGraphCacheFacade):
         featurizer: Featurizer[S, MolGraph],
         n_workers: int = 1,
     ):
-        self._mgs = parallel_execute(
-            featurizer, [inputs, V_fs, E_fs], n_workers=n_workers, zipped=False
-        )
+        self._mgs = parallel_execute(featurizer, zip(*[inputs, V_fs, E_fs]), n_workers=n_workers)
 
     def __len__(self) -> int:
         return len(self._mgs)

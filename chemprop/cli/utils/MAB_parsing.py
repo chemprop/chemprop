@@ -83,7 +83,7 @@ def build_MAB_data_from_files(
                 np.vstack(
                     parallel_execute(
                         create_and_call_object,
-                        [(mf.__class__, mol) for mol in mols],
+                        [(mf.__class__, (mol,)) for mol in mols],
                         n_workers=n_workers,
                     )
                 )
