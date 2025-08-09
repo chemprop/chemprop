@@ -1,6 +1,7 @@
 import logging
 
 from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
+import multiprocess
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Mol
@@ -51,11 +52,12 @@ class MorganCountFeaturizer(MorganFeaturizerMixin, CountFeaturizerMixin, VectorF
 @MoleculeFeaturizerRegistry("rdkit_2d")
 class RDKit2DFeaturizer(VectorFeaturizer[Mol]):
     def __init__(self):
-        logger.warning(
-            "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
-            "manually scaling them using an appropriate scaler before creating datapoints, rather "
-            "than using the scikit-learn `StandardScaler` (the default in Chemprop)."
-        )
+        if multiprocess.current_process().name == "MainProcess":
+            logger.warning(
+                "The RDKit 2D features can deviate signifcantly from a normal distribution. Consider "
+                "manually scaling them using an appropriate scaler before creating datapoints, rather "
+                "than using the scikit-learn `StandardScaler` (the default in Chemprop)."
+            )
 
     def __len__(self) -> int:
         return len(Descriptors.descList)
