@@ -36,7 +36,6 @@ __all__ = [
     "MulticlassClassificationFFN",
     "MulticlassDirichletFFN",
     "SpectralFFN",
-    "RegressionSoftplusFFN",
 ]
 
 
@@ -370,16 +369,3 @@ class SpectralFFN(_FFNPredictorBase):
 
     train_step = forward
 
-
-@PredictorRegistry.register("regression_softplus")
-class RegressionSoftplusFFN(_FFNPredictorBase):
-    n_targets = 1
-    _T_default_criterion = MSE
-    _T_default_metric = MSE
-
-    def forward(self, Z: Tensor) -> Tensor:
-        output = self.ffn(Z)
-        output = F.softplus(output)
-        return self.output_transform(output)
-
-    train_step = forward
