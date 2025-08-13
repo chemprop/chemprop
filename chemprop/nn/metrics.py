@@ -578,6 +578,27 @@ class QuantileLoss(ChempropMetric):
 
 @LossFunctionRegistry.register("nlogprob_enrichment")
 class NLogProbEnrichment(ChempropMetric):
+    """
+    Negative log probability enrichment loss function. 
+    Originally implemented by [lim2022]_ for DNA-encoded library screening data, but can be applied to any count-based data that can be assumed to follow a Poisson distribution.
+    This code is adapted from [coleyGithub]_
+
+    Additional arguments, k1, k2, n1 and n2, are needed for the loss function.
+    k1: counts for specific observation in positive sample
+    n2: total counts across observations in positive sample
+    k2: counts for specifc observation in the counter (negative) sample
+    n2: total counts across observations in counter (negative) sample
+
+    zinterval: the range of z-scores (+/-) that are used for calculating confidence interval. Defaults to 5 due application on DNA-encoded library screening data.
+    
+
+    References
+    ----------
+    .. [lim2022] Lim, Katherine S.; Reidenbach, Andrew G.; Hua, Bruce K.; Mason, Jeremy W.; Gerry, Christopher J.; Clemons, Paul A.; Coley, Connor W. "Machine Learning on DNA-Encoded Library Count Data Using an Uncertainty-Aware Probabilistic Loss Function" JCIM, 2022, 62. https://doi.org/10.1021/acs.jcim.2c00041
+    .. [coleyGithub] https://github.com/coleygroup/del_qsar/blob/main/losses.py
+    
+    
+    """
     def __init__(
         self,
         task_weights: ArrayLike = 1.0,
@@ -585,12 +606,14 @@ class NLogProbEnrichment(ChempropMetric):
         n2: int = 1,
         method: str = "sqrt",
         zscale: float = 1.0,
+        zinterval: int = 5
     ):
         super().__init__(task_weights)
         self.n1 = n1
         self.n2 = n2
         self.method = method
         self.zscale = zscale
+        self.zinterval = zinterval
 
     @staticmethod
     def get_zstats(R, k1, k2, n1, n2, method):
@@ -610,20 +633,17 @@ class NLogProbEnrichment(ChempropMetric):
     def _calc_unreduced_loss(
         self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args
     ) -> Tensor:
-        # Assuming `preds` are enrichment values R
         R = preds.squeeze()
-        # print('R:', R)
-        # print(targets)
 
         k1 = targets[:, 0]
         k2 = targets[:, 1]
 
         zstat = self.get_zstats(R, k1, k2, self.n1, self.n2, method=self.method)
-        zstat = torch.clamp(zstat / self.zscale, -5, 5)
+        zstat = torch.clamp(zstat / self.zscale, -self.zinterval, self.zinterval)
         zstat = torch.abs(zstat)
         sf = 1 - torch.erf(zstat / np.sqrt(2))
         loss = -torch.log(sf)
         return loss.unsqueeze(1)
 
     def extra_repr(self):
-        return f"n1={self.n1}, n2={self.n2}, method='{self.method}', zscale={self.zscale}"
+        return f"n1={self.n1}, n2={self.n2}, method='{self.method}', zscale={self.zscale}, zinterval={self.zinterval}"
