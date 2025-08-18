@@ -1715,15 +1715,10 @@ def train_model(
                     devices=1,
                 )
                 model = model.load_from_checkpoint(best_ckpt_path)
-                if args.resume_from_checkpoint:
-                    predss = trainer.predict(model, dataloaders=test_loader, ckpt_path=None)
-                else:
-                    predss = trainer.predict(model, dataloaders=test_loader)
+            if args.resume_from_checkpoint:
+                predss = trainer.predict(model, dataloaders=test_loader, ckpt_path=None)
             else:
-                if args.resume_from_checkpoint:
-                    predss = trainer.predict(dataloaders=test_loader, ckpt_path=None)
-                else:
-                    predss = trainer.predict(dataloaders=test_loader)
+                predss = trainer.predict(model, dataloaders=test_loader)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
