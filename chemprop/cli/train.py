@@ -1393,7 +1393,6 @@ def build_MAB_model(
     mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
-
     mp = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
