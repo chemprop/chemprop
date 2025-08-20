@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import pytest
@@ -6,6 +7,10 @@ import pytest
 from chemprop.utils import make_mol, parallel_execute
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32" or sys.platform == "darwin",
+    reason="Multiprocessing can hang on Windows and MacOS.",
+)
 def test_parallel_execution():
     def add_two(x, y):
         return x + y
@@ -22,6 +27,10 @@ def test_parallel_execution():
 # @pytest.mark.skip(reason="Debuggers can slow down multiprocessing.")
 @pytest.mark.skipif(
     os.cpu_count() < 4, reason="Speedup is expected if multiple threads are available."
+)
+@pytest.mark.skipif(
+    sys.platform == "win32" or sys.platform == "darwin",
+    reason="Multiprocessing can hang on Windows and MacOS.",
 )
 def test_parallel_is_faster():
     smis = ["C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(Cl)N=C1" * 100] * 4

@@ -238,7 +238,10 @@ The first time a given model is requested it will automatically be downloaded fo
 Performant Training
 ^^^^^^^^^^^^^^^^^^^
 
-By default, graph featurization occurs a single time at the beginning of the training run, and the results are cached for use during each training epoch. This saves time but requires more memory. This behavior can be turned off by specifying :code:`--no-cache`. In either case, graph featurization can be sped up by using more CPU cores, specified via :code:`--num-workers`. This will also convert SMILES strings to :code:`Chem.Mol`s in parallel and compute any molecule features specified with :code:`--molecule-featurizers` in parallel.
+By default, graph featurization occurs a single time at the beginning of the training run, and the results are cached for use during each training epoch. This saves time but requires more memory. This behavior can be turned off by specifying :code:`--no-cache`. In either case, graph featurization can be sped up by using more CPU cores, specified via :code:`--num-workers`. This will also convert SMILES strings to :code:`Chem.Mol` objects in parallel and compute any molecule features specified with :code:`--molecule-featurizers` in parallel.
+
+.. note::
+  Setting :code:`num_workers` to a value greater than 0 can cause hangs on Windows and MacOS
 
 Training can be further accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
 
