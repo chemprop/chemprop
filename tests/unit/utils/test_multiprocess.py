@@ -31,7 +31,7 @@ def test_parallel_is_faster():
     parallel_results = parallel_execute(
         make_mol, [(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis], n_workers=4
     )
-    paralle_runtime = time.time() - start_time
+    parallel_runtime = time.time() - start_time
 
     start_time = time.time()
     sequential_results = [
@@ -40,5 +40,4 @@ def test_parallel_is_faster():
     sequential_runtime = time.time() - start_time
 
     assert len(sequential_results) == len(parallel_results)
-    print(paralle_runtime, sequential_runtime)
-    assert paralle_runtime < sequential_runtime
+    assert parallel_runtime < sequential_runtime
