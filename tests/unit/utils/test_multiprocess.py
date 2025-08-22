@@ -8,8 +8,7 @@ from chemprop.utils import make_mol, parallel_execute
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32" or sys.platform == "darwin",
-    reason="Multiprocessing can hang on Windows and MacOS.",
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
 )
 def test_parallel_execution():
     def add_two(x, y):
@@ -29,8 +28,7 @@ def test_parallel_execution():
     os.cpu_count() < 4, reason="Speedup is expected if multiple threads are available."
 )
 @pytest.mark.skipif(
-    sys.platform == "win32" or sys.platform == "darwin",
-    reason="Multiprocessing can hang on Windows and MacOS.",
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
 )
 def test_parallel_is_faster():
     smis = ["C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(N=C1)C1=CC=C(Cl)N=C1" * 100] * 4

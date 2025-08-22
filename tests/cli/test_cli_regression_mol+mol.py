@@ -2,6 +2,7 @@
 """
 
 import json
+import sys
 
 import pytest
 
@@ -266,6 +267,9 @@ def test_train_multiprocess(monkeypatch, data_path):
         main()
 
 
+@pytest.mark.skipif(
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
+)
 def test_predict_multiprocess(monkeypatch, data_path, model_path):
     input_path, _, _, _, _, _ = data_path
 
