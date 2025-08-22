@@ -123,6 +123,8 @@ def parallel_execute(
         function to execute.
     func_args : Iterable
         arguments for each iteration of function execution.
+    func_kwargs : Iterable
+        keyword arguments for each iteration of function execution.
     n_workers : int, optional
         Number of parallel workers.
 
