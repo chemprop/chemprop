@@ -113,7 +113,7 @@ def parallel_execute(
     exe_func: Callable,
     func_args: Iterable[tuple] = (),
     func_kwargs: Iterable[dict] = (),
-    n_workers: int = 1,
+    n_workers: int = 0,
 ) -> list:
     """Optionally executes a function in parallel.
 

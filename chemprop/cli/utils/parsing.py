@@ -142,7 +142,7 @@ def make_datapoints(
     ignore_stereo: bool,
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
-    n_workers: int = 1,
+    n_workers: int = 0,
 ) -> tuple[
     list[list[MoleculeDatapoint]] | list[list[LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]
 ]:
@@ -438,7 +438,7 @@ def build_data_from_files(
     p_bond_feats: dict[int, PathLike],
     p_atom_descs: dict[int, PathLike],
     descriptor_cols: Sequence[str] | None = None,
-    n_workers: int = 1,
+    n_workers: int = 0,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
@@ -531,7 +531,7 @@ def make_dataset(
     reaction_mode: Literal[*tuple(RxnMode.keys())] = "REAC_DIFF",
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
-    n_workers: int = 1,
+    n_workers: int = 0,
 ) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:

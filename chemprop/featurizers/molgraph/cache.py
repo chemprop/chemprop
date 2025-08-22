@@ -55,7 +55,7 @@ class MolGraphCache(MolGraphCacheFacade):
         V_fs: Iterable[np.ndarray | None],
         E_fs: Iterable[np.ndarray | None],
         featurizer: Featurizer[S, MolGraph],
-        n_workers: int = 1,
+        n_workers: int = 0,
     ):
         self._mgs = parallel_execute(featurizer, zip(inputs, V_fs, E_fs), n_workers=n_workers)
 

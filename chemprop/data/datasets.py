@@ -208,7 +208,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     data: list[MoleculeDatapoint]
     featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
-    n_workers: int = 1
+    n_workers: int = 0
 
     def __post_init__(self):
         if self.data is None:
@@ -651,7 +651,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """the dataset from which to load"""
     featurizer: Featurizer[Rxn, MolGraph] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
-    n_workers: int = 1
+    n_workers: int = 0
     """number of workers to use for cache calculation"""
 
     def __post_init__(self):

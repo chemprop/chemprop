@@ -27,7 +27,7 @@ def build_MAB_data_from_files(
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
     descriptor_cols: Sequence[str] | None = None,
-    n_workers: int = 1,
+    n_workers: int = 0,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
