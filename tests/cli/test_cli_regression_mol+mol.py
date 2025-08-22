@@ -241,6 +241,9 @@ def test_train_molecule_featurizers(monkeypatch, data_path):
         main()
 
 
+@pytest.mark.skipif(
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
+)
 def test_train_multiprocess(monkeypatch, data_path):
     input_path, descriptors_path, *_ = data_path
 
