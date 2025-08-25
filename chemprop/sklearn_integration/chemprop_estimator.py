@@ -24,8 +24,9 @@ from chemprop.data.datasets import (
 )
 from chemprop.featurizers.molgraph.reaction import RxnMode
 from chemprop.models import MPNN, MulticomponentMPNN
-from chemprop.models.utils import save_model
+from chemprop.models import utils
 from chemprop.nn.transforms import UnscaleTransform
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ logger = logging.getLogger(__name__)
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -45,7 +45,6 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -61,19 +60,19 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def fit_transform(self, X: np.ndarray | Sequence[str] | PathLike, y=None, **_):
-        return self._build_dataset(X, y)
+        return self._build_dps(X, y)
 
     def transform(self, X: np.ndarray | Sequence[str] | PathLike):
-        return self._build_dataset(X, None)
+        return self._build_dps(X, None)
 
-    def _build_dataset(
+    def _build_dps(
         self,
         X: np.ndarray | Sequence[str] | PathLike,
         Y: Optional[np.ndarray],
         weights=None,
         lt_mask=None,
         gt_mask=None,
-    ) -> MoleculeDataset:
+    ):
         if isinstance(X, PathLike):
             smiss, _, Y, weights, lt_mask, gt_mask = parse_csv(
                 path=X,
@@ -86,7 +85,6 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
-
         else:
             smiss = [list(X)]
             if Y is None:
@@ -110,17 +108,14 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
             add_h=self.add_h,
             ignore_stereo=self.ignore_stereo,
             reorder_atoms=self.reorder_atoms,
+            use_cuikmolmaker_featurization=False,
         )
-        return make_dataset(
-            mol_data[0], multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode
-        )
+        return mol_data[0]
 
 
 class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
-        reaction_mode=RxnMode.REAC_DIFF,
-        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -132,8 +127,6 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         bounded: bool = False,
         no_header_row: bool = False,
     ):
-        self.reaction_mode = reaction_mode
-        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -149,19 +142,19 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def fit_transform(self, X: np.ndarray | Sequence[str] | PathLike, y=None, **__):
-        return self._build_dataset(X, y)
+        return self._build_dps(X, y)
 
     def transform(self, X: np.ndarray | Sequence[str] | PathLike):
-        return self._build_dataset(X, None)
+        return self._build_dps(X, None)
 
-    def _build_dataset(
+    def _build_dps(
         self,
         X: np.ndarray | Sequence[str] | PathLike,
         Y: Optional[Sequence[float]],
         weights=None,
         lt_mask=None,
         gt_mask=None,
-    ) -> ReactionDataset:
+    ):
         if isinstance(X, PathLike):
             _, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
                 path=X,
@@ -198,21 +191,15 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
             add_h=self.add_h,
             ignore_stereo=self.ignore_stereo,
             reorder_atoms=self.reorder_atoms,
+            use_cuikmolmaker_featurization=False,
         )
-
-        return make_dataset(
-            rxn_data[0],
-            reaction_mode=self.reaction_mode,
-            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
-        )
+        return rxn_data[0]
 
 
 class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         component_types: Sequence[Literal["molecule", "reaction"]] | None = None,
-        reaction_mode="REAC_DIFF",
-        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
@@ -226,8 +213,6 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         no_header_row: bool = False,
     ):
         self.component_types = component_types
-        self.reaction_mode = reaction_mode
-        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
         self.keep_h = keep_h
         self.add_h = add_h
         self.ignore_stereo = ignore_stereo
@@ -240,31 +225,22 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         self.bounded = bounded
         self.no_header_row = no_header_row
         self.mol_transformer = ChempropMoleculeTransformer(
-            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
-            keep_h=keep_h,
-            add_h=add_h,
-            ignore_stereo=ignore_stereo,
-            reorder_atoms=reorder_atoms,
+            keep_h=keep_h, add_h=add_h, ignore_stereo=ignore_stereo, reorder_atoms=reorder_atoms
         )
         self.rxn_transformer = ChempropReactionTransformer(
-            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
-            reaction_mode=reaction_mode,
-            keep_h=keep_h,
-            add_h=add_h,
-            ignore_stereo=ignore_stereo,
-            reorder_atoms=reorder_atoms,
+            keep_h=keep_h, add_h=add_h, ignore_stereo=ignore_stereo, reorder_atoms=reorder_atoms
         )
 
     def fit(self, X, y=None):
         return self
 
     def fit_transform(self, X: np.ndarray | Sequence[Sequence[str]] | PathLike, y=None, **__):
-        return self._build_dataset(X, y)
+        return self._build_dps(X, y)
 
     def transform(self, X: np.ndarray | Sequence[Sequence[str]] | PathLike):
-        return self._build_dataset(X, None)
+        return self._build_dps(X, None)
 
-    def _build_dataset(
+    def _build_dps(
         self, X: np.ndarray | Sequence[Sequence[str]] | PathLike, Y: Optional[Sequence[float]]
     ):
         if isinstance(X, PathLike):
@@ -279,22 +255,20 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
-            datasets = [
-                self.mol_transformer._build_dataset(
-                    X=smiss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-                ),
-                self.rxn_transformer._build_dataset(
-                    X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-                ),
-            ]
-
+            mol_dp_list = self.mol_transformer._build_dps(
+                X=smiss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+            )
+            rxn_dp_list = self.rxn_transformer._build_dps(
+                X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+            )
+            return [mol_dp_list, rxn_dp_list]
         else:
             if (
                 isinstance(X, (np.ndarray, list))
                 and np.ndim(X) == 2
-                and X.shape[1] == len(self.component_types)
+                and np.asarray(X).shape[1] == len(self.component_types)
             ):
-                X = [np.asarray(X)[:, i] for i in range(X.shape[1])]
+                X = [np.asarray(X)[:, i] for i in range(np.asarray(X).shape[1])]
             else:
                 X = list(X)
             if len(X) != len(self.component_types):
@@ -303,15 +277,15 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 )
             if Y is None:
                 Y = np.zeros((len(X[0]), 1), dtype=float)
-            elif Y.ndim == 1:
-                Y = Y.reshape(-1, 1)
-            datasets = [
-                self.mol_transformer._build_dataset(col, Y)
+            elif np.ndim(Y) == 1:
+                Y = np.asarray(Y).reshape(-1, 1)
+            dp_lists = [
+                self.mol_transformer._build_dps(col, Y)
                 if type == "molecule"
-                else self.rxn_transformer._build_dataset(col, Y)
+                else self.rxn_transformer._build_dps(col, Y)
                 for type, col in zip(self.component_types, X)
             ]
-        return MulticomponentDataset(datasets)
+            return dp_lists
 
 
 def add_train_defaults(args: Namespace) -> Namespace:
@@ -331,6 +305,16 @@ def pick_collate(dset):
     if isinstance(dset, MolAtomBondDataset):
         return collate_mol_atom_bond_batch
     return collate_batch
+
+
+def _split_indices(n: int, val_size: int):
+    if val_size <= 0:
+        return np.arange(n), np.array([], dtype=int)
+    rng = np.random.RandomState(0)
+    perm = rng.permutation(n)
+    val_idx = perm[:val_size]
+    train_idx = perm[val_size:]
+    return train_idx, val_idx
 
 
 class ChempropRegressor(BaseEstimator, RegressorMixin):
@@ -358,6 +342,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         task_type: str = "regression",
         loss_function: Optional[str] = None,
         metrics: Optional[List[str]] = None,
+        val_size: float = 0,
+        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
+        reaction_mode: RxnMode = RxnMode.REAC_DIFF,
     ):
         args = Namespace(
             num_workers=num_workers,
@@ -382,16 +369,12 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             task_type=task_type,
             loss_function=loss_function,
             metrics=metrics,
+            val_size=val_size,
+            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+            reaction_mode=reaction_mode,
         )
         self.args = add_train_defaults(args)
         self.model = None
-        patience = self.args.patience if self.args.patience is not None else self.args.epochs
-        self.trainer = Trainer(
-            accelerator=self.args.accelerator,
-            devices=self.args.devices,
-            max_epochs=self.args.epochs,
-            callbacks=[EarlyStopping(monitor="train_loss", patience=patience, mode="min")],
-        )
         for name, value in locals().items():
             if name not in {"self", "args"}:
                 setattr(self, name, value)
@@ -399,9 +382,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
     def __sklearn_is_fitted__(self):
         return True
 
-    def fit(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset, y=None):
-        if not self.args.no_cache:
-            X.cache = True
+    def fit(self, X, y=None):
         if self.args.checkpoint is not None:
             model_paths = find_models(self.args.checkpoint)
             if len(model_paths) != 1:
@@ -410,7 +391,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 )
             model_path = model_paths[0]
 
-            if isinstance(X, MulticomponentDataset):
+            if isinstance(X[0], list):
                 mpnn_cls = MulticomponentMPNN
             else:
                 mpnn_cls = MPNN
@@ -421,35 +402,145 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 if isinstance(m, torch.nn.Dropout)
                 else None
             )
+
+        if isinstance(X[0], list):
+            n = len(X[0])
+            train_idx, val_idx = _split_indices(n, self.args.val_size)
+
+            train_datasets = []
+            val_datasets = []
+
+            for dp_list in X:
+                train_dps = [dp_list[i] for i in train_idx]
+                val_dps = [dp_list[i] for i in val_idx]
+
+                train_ds = make_dataset(
+                    train_dps,
+                    reaction_mode=self.reaction_mode,
+                    multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+                )
+                train_datasets.append(train_ds)
+
+                if len(val_dps) > 0:
+                    val_ds = make_dataset(
+                        val_dps,
+                        reaction_mode=self.reaction_mode,
+                        multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+                    )
+                    val_datasets.append(val_ds)
+
+            train_set = MulticomponentDataset(train_datasets)
+            val_set = MulticomponentDataset(val_datasets) if len(val_datasets) > 0 else None
+
         else:
-            input_transforms = normalize_inputs(X, X, self.args)
+            if not isinstance(X, (list, tuple)):
+                raise ValueError("X must be a list of datapoints for non-multicomponent inputs")
+            n = len(X)
+            train_idx, val_idx = _split_indices(n, self.args.val_size)
+            train_dps = [X[i] for i in train_idx]
+            val_dps = [X[i] for i in val_idx]
+            train_set = make_dataset(
+                train_dps,
+                reaction_mode=self.reaction_mode,
+                multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+            )
+            val_ds = None
+            if len(val_dps) > 0:
+                val_set = make_dataset(
+                    val_dps,
+                    reaction_mode=self.reaction_mode,
+                    multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+                )
+
+        if not self.args.no_cache:
+            train_set.cache = True
+            if val_set is not None:
+                val_set.cache = True
+
+        if self.model is None:
+            input_transforms = normalize_inputs(
+                train_set, val_set if val_set is not None else train_set, self.args
+            )
             output_transform = None
             if "regression" in self.args.task_type:
-                output_scaler = X.normalize_targets()
+                output_scaler = train_set.normalize_targets()
                 output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
-            self.model = build_model(self.args, X, output_transform, input_transforms)
-        dl = DataLoader(
-            X,
-            batch_size=self.args.batch_size,
-            shuffle=True,
-            num_workers=self.args.num_workers,
-            collate_fn=pick_collate(X),
-            drop_last=True,
+            self.model = build_model(self.args, train_set, output_transform, input_transforms)
+
+        if val_set:
+            train_loader = DataLoader(
+                train_set,
+                batch_size=self.args.batch_size,
+                shuffle=True,
+                num_workers=self.args.num_workers,
+                collate_fn=pick_collate(train_set),
+                drop_last=True,
+            )
+            val_loader = DataLoader(
+                val_set,
+                batch_size=self.args.batch_size,
+                shuffle=False,
+                num_workers=self.args.num_workers,
+                collate_fn=pick_collate(val_set),
+                drop_last=False,
+            )
+        else:
+            train_loader = DataLoader(
+                train_set,
+                batch_size=self.args.batch_size,
+                shuffle=True,
+                num_workers=self.args.num_workers,
+                collate_fn=pick_collate(train_set),
+                drop_last=True,
+            )
+            val_loader = None
+
+        patience = self.args.patience if self.args.patience else self.args.epochs
+
+        trainer = Trainer(
+            accelerator=self.args.accelerator,
+            devices=self.args.devices,
+            max_epochs=self.args.epochs,
+            callbacks=[EarlyStopping(monitor="train_loss", patience=patience, mode="min")],
         )
-        self.trainer.fit(self.model, dl)
+
+        if val_loader is not None:
+            trainer.fit(self.model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+        else:
+            trainer.fit(self.model, train_dataloaders=train_loader)
+
         return self
 
-    def predict(self, X: MoleculeDataset | ReactionDataset | MulticomponentDataset):
-        if not self.args.no_cache:
-            X.cache = True
-        dl = DataLoader(
+    def predict(self, X):
+        if isinstance(X[0], list):
+            test_set = MulticomponentDataset(
+                [
+                    make_dataset(
+                        dps,
+                        reaction_mode=self.reaction_mode,
+                        multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+                    )
+                    for dps in X
+                ]
+            )
+        test_set = make_dataset(
             X,
+            reaction_mode=self.reaction_mode,
+            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+        )
+        if not self.args.no_cache:
+            test_set.cache = True
+        dl = DataLoader(
+            test_set,
             batch_size=self.args.batch_size,
             num_workers=self.args.num_workers,
             collate_fn=pick_collate(X),
             drop_last=True,
         )
-        preds = self.trainer.predict(dataloaders=dl)
+        eval_trainer = Trainer(
+            accelerator=self.args.accelerator, devices=1, enable_progress_bar=True
+        )
+        preds = eval_trainer.predict(self.model, dataloaders=dl, return_predictions=True)
         return torch.cat(preds, dim=0).view(-1).cpu().numpy()
 
     def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
@@ -471,12 +562,12 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         else:
             raise ValueError(f"Unsupported metric: {metric}")
 
-    def _save_model(self, output_dir: Optional[PathLike] = None):
+    def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
             if self.args.model_output_dir is None:
                 raise ValueError("model_output_dir is not specified")
             output_dir = self.args.model_output_dir
-        save_model(output_dir + "/best.pt", self.model, None)
+        utils.save_model(output_dir + "/best.pt", self.model, None)
         return self
 
 
@@ -535,13 +626,13 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         else:
             raise ValueError(f"Unsupported metric: {metric}")
 
-    def _save_model(self, output_dir: Optional[PathLike] = None):
+    def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
             if self.args.model_output_dir is None:
                 raise ValueError("no output directory specified")
             output_dir = self.args.model_output_dir
         for idx, model in enumerate(self.models):
-            save_model(output_dir + "/" + f"best_{idx}.pt", model, None)
+            utils.save_model(output_dir + "/" + f"best_{idx}.pt", model, None)
         return self
 
 
@@ -569,4 +660,4 @@ if __name__ == "__main__":
     sklearnPipeline.fit(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
     score = sklearnPipeline.score(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
     print(f"RMSE: {score}")
-    sklearnPipeline["regressor"]._save_model("checkpoints")
+    sklearnPipeline["regressor"].save_model("checkpoints")

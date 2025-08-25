@@ -1,4 +1,4 @@
-from .chemprop_estimator import(
+from .chemprop_estimator import (
     ChempropMoleculeTransformer,
     ChempropReactionTransformer,
     ChempropMulticomponentTransformer,
