@@ -238,7 +238,12 @@ The first time a given model is requested it will automatically be downloaded fo
 Performant Training
 ^^^^^^^^^^^^^^^^^^^
 
-Training can be accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
+By default, graph featurization occurs a single time at the beginning of the training run, and the results are cached for use during each training epoch. This saves time but requires more memory. This behavior can be turned off by specifying :code:`--no-cache`. In either case, graph featurization can be sped up by using more CPU cores, specified via :code:`--num-workers`. This will also convert SMILES strings to :code:`Chem.Mol` objects in parallel and compute any molecule features specified with :code:`--molecule-featurizers` in parallel.
+
+.. note::
+  Setting :code:`num_workers` to a value greater than 0 can cause hangs on Windows and MacOS
+
+Training can be further accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
 
 
 .. _train-on-reactions:
@@ -322,7 +327,7 @@ Extra Datapoint Descriptors
 
 Additional datapoint descriptors can be concatenated to the learned representation after aggregation. These extra descriptors could be molecule-level features. If you install from source, you can modify the code to load custom descriptors as follows:
 
-1. **Generate features:** If you want to generate molecule features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features.
+1. **Generate features:** If you want to generate molecular features in code, you can write a custom features generator function using the default featurizers in :code:`chemprop/featurizers/`. This also works for custom atom and bond features.
 2. **Load features:** Additional descriptors can be provided using :code:`--descriptors-path /path/to/descriptors.npz` where the descriptors are saved as a numpy :code:`.npz` file. This file can be saved using :code:`np.savez("/path/to/descriptors.npz", X_d)`, where :code:`X_d` is a 2D array with a shape of number of datapoints by number of additional descriptors. Note that the descriptors must be in the same order as the SMILES strings in your data file. The extra descriptors are scaled by default. This can be disabled with the option :code:`--no-descriptor-scaling`.
 
 
