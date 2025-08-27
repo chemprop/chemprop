@@ -16,10 +16,7 @@ from chemprop.cli.common import add_common_args, find_models
 from chemprop.cli.train import add_train_args, build_model, normalize_inputs
 from chemprop.cli.utils.parsing import make_datapoints, make_dataset, parse_csv
 from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
-from chemprop.data.datasets import (
-    MolAtomBondDataset,
-    MulticomponentDataset,
-)
+from chemprop.data.datasets import MolAtomBondDataset, MulticomponentDataset
 from chemprop.featurizers.molgraph.reaction import RxnMode
 from chemprop.models import MPNN, MulticomponentMPNN
 from chemprop.models import utils
