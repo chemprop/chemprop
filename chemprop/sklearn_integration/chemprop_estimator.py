@@ -255,13 +255,13 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
-            mol_dp_list = self.mol_transformer._build_dps(
+            mol_dps = self.mol_transformer._build_dps(
                 X=smiss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
             )
-            rxn_dp_list = self.rxn_transformer._build_dps(
+            rxn_dps = self.rxn_transformer._build_dps(
                 X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
             )
-            return [mol_dp_list, rxn_dp_list]
+            return [mol_dps, rxn_dps]
         else:
             if (
                 isinstance(X, (np.ndarray, list))
@@ -307,13 +307,16 @@ def pick_collate(dset):
     return collate_batch
 
 
-def _split_indices(n: int, val_size: int):
+def _split_indices(n: int, val_size: float):
     if val_size <= 0:
         return np.arange(n), np.array([], dtype=int)
+    if val_size >= 1:
+        raise ValueError("val_size should be a float less than 1")
+    n_val = int(n * val_size)
     rng = np.random.RandomState(0)
     perm = rng.permutation(n)
-    val_idx = perm[:val_size]
-    train_idx = perm[val_size:]
+    val_idx = perm[:n_val]
+    train_idx = perm[n_val:]
     return train_idx, val_idx
 
 
@@ -444,7 +447,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 reaction_mode=self.reaction_mode,
                 multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
             )
-            val_ds = None
+            val_set = None
             if len(val_dps) > 0:
                 val_set = make_dataset(
                     val_dps,
@@ -467,15 +470,15 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
             self.model = build_model(self.args, train_set, output_transform, input_transforms)
 
+        train_loader = DataLoader(
+            train_set,
+            batch_size=self.args.batch_size,
+            shuffle=True,
+            num_workers=self.args.num_workers,
+            collate_fn=pick_collate(train_set),
+            drop_last=True,
+        )
         if val_set:
-            train_loader = DataLoader(
-                train_set,
-                batch_size=self.args.batch_size,
-                shuffle=True,
-                num_workers=self.args.num_workers,
-                collate_fn=pick_collate(train_set),
-                drop_last=True,
-            )
             val_loader = DataLoader(
                 val_set,
                 batch_size=self.args.batch_size,
@@ -485,26 +488,18 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 drop_last=False,
             )
         else:
-            train_loader = DataLoader(
-                train_set,
-                batch_size=self.args.batch_size,
-                shuffle=True,
-                num_workers=self.args.num_workers,
-                collate_fn=pick_collate(train_set),
-                drop_last=True,
-            )
             val_loader = None
 
         patience = self.args.patience if self.args.patience else self.args.epochs
-
+        metric = "val_loss" if val_loader else "train_loss"
         trainer = Trainer(
             accelerator=self.args.accelerator,
             devices=self.args.devices,
             max_epochs=self.args.epochs,
-            callbacks=[EarlyStopping(monitor="train_loss", patience=patience, mode="min")],
+            callbacks=[EarlyStopping(monitor=metric, patience=patience, mode="min")],
         )
 
-        if val_loader is not None:
+        if val_loader:
             trainer.fit(self.model, train_dataloaders=train_loader, val_dataloaders=val_loader)
         else:
             trainer.fit(self.model, train_dataloaders=train_loader)
@@ -523,18 +518,21 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                     for dps in X
                 ]
             )
-        test_set = make_dataset(
-            X,
-            reaction_mode=self.reaction_mode,
-            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
-        )
+            self._y = test_set.datasets[0].Y
+        else:
+            test_set = make_dataset(
+                X,
+                reaction_mode=self.reaction_mode,
+                multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+            )
+            self._y = test_set.Y
         if not self.args.no_cache:
             test_set.cache = True
         dl = DataLoader(
             test_set,
             batch_size=self.args.batch_size,
             num_workers=self.args.num_workers,
-            collate_fn=pick_collate(X),
+            collate_fn=pick_collate(test_set),
             drop_last=True,
         )
         eval_trainer = Trainer(
@@ -545,10 +543,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
     def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-        if isinstance(X, MulticomponentDataset):
-            y = X.datasets[0].Y
-        else:
-            y = X.Y
+        y = self._y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -609,10 +604,7 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
     def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-        if isinstance(X, MulticomponentDataset):
-            y = X.datasets[0].Y
-        else:
-            y = X.Y
+        y = self.models[0]._y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -657,7 +649,6 @@ if __name__ == "__main__":
         ]
     )
 
-    sklearnPipeline.fit(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
-    score = sklearnPipeline.score(X=Path("../../tests/data/regression/rxn+mol/rxn+mol.csv"))
+    sklearnPipeline.fit(X=Path("tests/data/regression/rxn+mol/rxn+mol.csv"))
+    score = sklearnPipeline.score(X=Path("tests/data/regression/rxn+mol/rxn+mol.csv"))
     print(f"RMSE: {score}")
-    sklearnPipeline["regressor"].save_model("checkpoints")

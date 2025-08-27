@@ -17,8 +17,6 @@ from chemprop.data import (
     collate_multicomponent,
 )
 from chemprop.featurizers.molgraph import CondensedGraphOfReactionFeaturizer
-from chemprop.sklearn_integration import ChempropRegressor, ChempropMulticomponentTransformer
-from sklearn.pipeline import Pipeline
 
 N_COMPONENTS = 2
 SHAPE = CondensedGraphOfReactionFeaturizer().shape
@@ -90,28 +88,3 @@ def test_overfit(mcmpnn, dataloader):
     mse = errors.square().mean().item()
 
     assert mse <= 0.05
-
-
-@pytest.fixture
-def test_sklearn_pipeline(rxn_mol_regression_data):
-    sklearnPipeline = Pipeline(
-        [
-            (
-                "featurizer",
-                ChempropMulticomponentTransformer(
-                    smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
-                ),
-            ),
-            (
-                "regressor",
-                ChempropRegressor(
-                    epochs=10,
-                ),
-            ),
-        ]
-    )
-    rxns, smis, Y = rxn_mol_regression_data
-    sklearnPipeline.fit(X=[rxns,smis], y=Y)
-    score = sklearnPipeline.score(X=[rxns,smis], y=Y)
-    assert(score < 0.5)
-    sklearnPipeline["regressor"].save_model("checkpoints")
