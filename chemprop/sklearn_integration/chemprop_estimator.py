@@ -476,7 +476,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             shuffle=True,
             num_workers=self.args.num_workers,
             collate_fn=pick_collate(train_set),
-            drop_last=True,
         )
         if val_set:
             val_loader = DataLoader(
@@ -485,7 +484,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 shuffle=False,
                 num_workers=self.args.num_workers,
                 collate_fn=pick_collate(val_set),
-                drop_last=False,
             )
         else:
             val_loader = None
@@ -533,7 +531,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             batch_size=self.args.batch_size,
             num_workers=self.args.num_workers,
             collate_fn=pick_collate(test_set),
-            drop_last=True,
         )
         eval_trainer = Trainer(
             accelerator=self.args.accelerator, devices=1, enable_progress_bar=True
@@ -562,7 +559,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             if self.args.model_output_dir is None:
                 raise ValueError("model_output_dir is not specified")
             output_dir = self.args.model_output_dir
-        utils.save_model(output_dir + "/best.pt", self.model, None)
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        utils.save_model(str(output_dir / "best.pt"), self.model, None)
         return self
 
 
@@ -623,8 +622,10 @@ class ChempropEnsembleRegressor(ChempropRegressor):
             if self.args.model_output_dir is None:
                 raise ValueError("no output directory specified")
             output_dir = self.args.model_output_dir
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
         for idx, model in enumerate(self.models):
-            utils.save_model(output_dir + "/" + f"best_{idx}.pt", model, None)
+            utils.save_model(str(output_dir / f"best_{idx}.pt"), model.model, None)
         return self
 
 
@@ -643,7 +644,7 @@ if __name__ == "__main__":
             (
                 "regressor",
                 ChempropRegressor(
-                    epochs=10, checkpoint=[Path("example_model_v2_regression_rxn+mol.pt")]
+                    epochs=10,
                 ),
             ),
         ]
