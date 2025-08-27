@@ -10,10 +10,16 @@ from rdkit.Chem import Mol
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-from chemprop.data.datapoints import MolAtomBondDatapoint, MoleculeDatapoint, ReactionDatapoint
+from chemprop.data.datapoints import (
+    LazyMoleculeDatapoint,
+    MolAtomBondDatapoint,
+    MoleculeDatapoint,
+    ReactionDatapoint,
+)
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
+    BatchCuikMolGraph,
     CGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
@@ -48,6 +54,18 @@ class MolAtomBondDatum(NamedTuple):
     lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
     constraints: tuple[np.ndarray | None, np.ndarray | None]
+
+
+class CuikBatchedDatum(NamedTuple):
+    """a cuik-molmaker batch of data points"""
+
+    bmg: BatchCuikMolGraph
+    V_d: np.ndarray
+    X_d: np.ndarray
+    Y: np.ndarray
+    weights: np.ndarray
+    lt_mask: np.ndarray
+    gt_mask: np.ndarray
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -184,10 +202,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         the data from which to create a dataset
     featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the molecules
+    n_workers : int, optional
+        number of workers to use for cache calculation
     """
 
     data: list[MoleculeDatapoint]
     featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+    n_workers: int = 0
 
     def __post_init__(self):
         if self.data is None:
@@ -213,9 +234,12 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     def _init_cache(self):
         """initialize the cache"""
-        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
-            self.mols, self.V_fs, self.E_fs, self.featurizer
-        )
+        if self.cache:
+            self.mg_cache = MolGraphCache(
+                self.mols, self.V_fs, self.E_fs, self.featurizer, n_workers=self.n_workers
+            )
+        else:
+            self.mg_cache = MolGraphCacheOnTheFly(self.mols, self.V_fs, self.E_fs, self.featurizer)
 
     @property
     def smiles(self) -> list[str]:
@@ -341,12 +365,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class CuikmolmakerDataset(MoleculeDataset):
-    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a :class:`CuikmolmakerMolGraphFeaturizer`
+    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a
+    :class:`CuikmolmakerMolGraphFeaturizer`
 
-    A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion by a
-    :class:`MPNN` model. Data featurization is always performed on-the-fly
-    and using the cuik-molmaker package. This batched processing is significantly faster and consumes less memory than the default featurization method. This is enabled by setting the
-    ``use_cuikmolmaker_featurization`` flag to ``True``.
+    A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion
+    by a :class:`MPNN` model. Data featurization is always performed on-the-fly and using the
+    cuik-molmaker package. This batched processing is significantly faster and consumes less memory
+    than the default featurization method when caching is not possible.
 
     Parameters
     ----------
@@ -356,49 +381,46 @@ class CuikmolmakerDataset(MoleculeDataset):
         the featurizer with which to generate MolGraphs of the molecules
     """
 
+    data: list[LazyMoleculeDatapoint]
     featurizer: CuikmolmakerMolGraphFeaturizer = field(
         default_factory=CuikmolmakerMolGraphFeaturizer
     )
 
-    def __post_init__(self):
-        super().__post_init__()
-        self.cache = False
-
-    # caching should always be false for CuikmolmakerDataset
-    @property
-    def cache(self) -> bool:
-        return self.__cache
-
-    @cache.setter
+    @MoleculeDataset.cache.setter
     def cache(self, cache: bool = False):
         if cache:
-            logger.warning(
-                "This option no longer does anything and is deprecated. --use-cuikmolmaker-featurization is meant to be used without caching!"
-            )
-        self.__cache = cache
+            raise NotImplementedError("CuikmolmakerDataset is meant to be used without caching!")
 
-    def __getitems__(self, indexes: list[int]):
-        # TODO(sveccham): Remove in final PR
-        print("__getitems__ called")
-        smiles_list = [self.data[idx].smiles for idx in indexes]
-        batch_feats = self.featurizer(smiles_list)
+    def _init_cache(self):
+        pass
 
-        batch_size = len(indexes)
-        X_d_batch = self.X_d[indexes]
-        Y_batch = self.Y[indexes]
-        weight_batch = [self.data[idx].weight for idx in indexes]
-        lt_mask_batch = [self.data[idx].lt_mask for idx in indexes]
-        gt_mask_batch = [self.data[idx].gt_mask for idx in indexes]
+    @property
+    def smiles(self) -> list[str]:
+        return [d.smiles for d in self.data]
 
-        return (
-            *batch_feats,
-            [None] * batch_size,
-            X_d_batch,
-            Y_batch,
-            weight_batch,
-            lt_mask_batch,
-            gt_mask_batch,
+    def __getitem__(self, idx: int) -> Datum:
+        d = self.data[idx]
+        bmg = self.featurizer([d.smiles], self.V_fs[idx], self.E_fs[idx])
+        mg = MolGraph(
+            bmg.V.numpy(), bmg.E.numpy(), bmg.edge_index.numpy(), bmg.rev_edge_index.numpy()
         )
+
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+
+    def __getitems__(self, indexes: list[int]) -> CuikBatchedDatum:
+        smiles_list = [self.data[idx].smiles for idx in indexes]
+        V_f = np.concat([self.V_fs[idx] for idx in indexes]) if self.V_fs[0] is not None else None
+        E_f = np.concat([self.E_fs[idx] for idx in indexes]) if self.E_fs[0] is not None else None
+        bmg = self.featurizer(smiles_list, V_f, E_f)
+
+        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
+        X_d = self.X_d[indexes] if self.X_d[0] is not None else None
+        Y = self.Y[indexes] if self.Y[0] is not None else None
+        weights = self.weights[indexes]
+        lt_mask = self.lt_mask[indexes] if self.lt_mask[0] is not None else None
+        gt_mask = self.gt_mask[indexes] if self.gt_mask[0] is not None else None
+
+        return CuikBatchedDatum(bmg, V_d, X_d, Y, weights, lt_mask, gt_mask)
 
 
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
@@ -629,6 +651,8 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """the dataset from which to load"""
     featurizer: Featurizer[Rxn, MolGraph] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
+    n_workers: int = 0
+    """number of workers to use for cache calculation"""
 
     def __post_init__(self):
         if self.data is None:
@@ -644,9 +668,18 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @cache.setter
     def cache(self, cache: bool = False):
         self.__cache = cache
-        self.mg_cache = (MolGraphCache if cache else MolGraphCacheOnTheFly)(
-            self.mols, [None] * len(self), [None] * len(self), self.featurizer
-        )
+        if cache:
+            self.mg_cache = MolGraphCache(
+                self.mols,
+                [None] * len(self),
+                [None] * len(self),
+                self.featurizer,
+                n_workers=self.n_workers,
+            )
+        else:
+            self.mg_cache = MolGraphCacheOnTheFly(
+                self.mols, [None] * len(self), [None] * len(self), self.featurizer
+            )
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]

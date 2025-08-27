@@ -2,6 +2,7 @@
 """
 
 import json
+import sys
 
 import pytest
 
@@ -233,6 +234,60 @@ def test_train_molecule_featurizers(monkeypatch, data_path):
         descriptors_path,
         "--molecule-featurizers",
         "morgan_count",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.skipif(
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
+)
+def test_train_multiprocess(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--epochs",
+        "3",
+        "--num-workers",
+        "2",
+        "--descriptors-path",
+        descriptors_path,
+        "--molecule-featurizers",
+        "v1_rdkit_2d_normalized",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.skipif(
+    sys.platform in ["win32", "darwin"], reason="Multiprocessing can hang on Windows and MacOS."
+)
+def test_predict_multiprocess(monkeypatch, data_path, model_path):
+    input_path, _, _, _, _, _ = data_path
+
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "solvent",
+        "--model-path",
+        model_path,
+        "--num-workers",
+        "2",
     ]
 
     with monkeypatch.context() as m:
