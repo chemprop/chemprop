@@ -641,12 +641,7 @@ if __name__ == "__main__":
                     smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
                 ),
             ),
-            (
-                "regressor",
-                ChempropRegressor(
-                    epochs=10,
-                ),
-            ),
+            ("regressor", ChempropRegressor(epochs=10)),
         ]
     )
 
