@@ -1,5 +1,6 @@
-from chemprop.sklearn_integration import ChempropRegressor, ChempropMulticomponentTransformer
 from sklearn.pipeline import Pipeline
+
+from chemprop.sklearn_integration import ChempropMulticomponentTransformer, ChempropRegressor
 
 
 def test_sklearn_pipeline(rxn_mol_regression_data):
