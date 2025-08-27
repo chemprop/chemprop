@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import StrEnum
 import os
-from typing import Iterable, Iterator
+from typing import Any, Callable, Iterable, Iterator, Type
 
+import multiprocess
 import numpy as np
 import psutil
 from rdkit import Chem
@@ -87,6 +88,71 @@ def make_mol(
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
+
+
+def create_and_call_object(
+    cls: Type,
+    call_args: tuple = (),
+    call_kwargs: dict = None,
+    init_args: tuple = (),
+    init_kwargs: dict = None,
+) -> Any:
+    """
+    Instantiate a class with optional init args, then call the instance with args.
+    This is useful for parallel calls to methods that contain boost functions.
+    """
+    if call_kwargs is None:
+        call_kwargs = {}
+    if init_kwargs is None:
+        init_kwargs = {}
+
+    return cls(*init_args, **init_kwargs)(*call_args, **call_kwargs)
+
+
+def parallel_execute(
+    exe_func: Callable,
+    func_args: Iterable[tuple] = (),
+    func_kwargs: Iterable[dict] = (),
+    n_workers: int = 0,
+) -> list:
+    """Optionally executes a function in parallel.
+
+    Parameters
+    ----------
+    exe_func : Callable
+        function to execute.
+    func_args : Iterable
+        arguments for each iteration of function execution.
+    func_kwargs : Iterable
+        keyword arguments for each iteration of function execution.
+    n_workers : int, optional
+        Number of parallel workers.
+
+    Returns
+    -------
+    list
+        list of function outputs for each argument.
+    """
+    func_args = list(func_args)
+    func_kwargs = list(func_kwargs)
+
+    if not func_kwargs:
+        func_kwargs = [{}] * len(func_args)
+    if not func_args:
+        func_args = [()] * len(func_kwargs)
+
+    combined = list(zip(func_args, func_kwargs))
+
+    if n_workers >= 2:
+
+        def wrapped_call(args, kwargs):
+            return exe_func(*args, **kwargs)
+
+        with multiprocess.Pool(n_workers) as p:
+            results = p.starmap(wrapped_call, combined)
+    else:
+        results = [exe_func(*func_arg, **func_kwargs) for (func_arg, func_kwargs) in combined]
+    return results
 
 
 def pretty_shape(shape: Iterable[int]) -> str:
