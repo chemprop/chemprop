@@ -1,6 +1,7 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
 import logging
 from pathlib import Path
+import sys
 
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
@@ -264,6 +265,11 @@ def validate_common_args(args):
             logger.warning(
                 "Molecule featurizers reduce the memory savings of `--use-cuikmolmaker-featurization`. Consider pre-computing the features manually and providing them via `--descriptors-path`"
             )
+
+    if args.num_workers > 0 and (sys.platform == "win32" or sys.platform == "darwin"):
+        logger.warning(
+            "Multiprocessing can hang on Windows and MacOS. Consider using `--num-workers 0` to avoid this issue."
+        )
 
 
 def find_models(model_paths: list[Path]):
