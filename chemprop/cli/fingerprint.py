@@ -123,6 +123,7 @@ def make_fingerprint_for_model(
             atom_target_cols=None,
             bond_target_cols=None,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -137,6 +138,7 @@ def make_fingerprint_for_model(
             args.test_path,
             **format_kwargs,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -150,6 +152,7 @@ def make_fingerprint_for_model(
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         for d in test_data
     ]
