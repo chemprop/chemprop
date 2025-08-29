@@ -18,8 +18,10 @@ from chemprop.cli.utils.parsing import make_datapoints, make_dataset, parse_csv
 from chemprop.data.collate import collate_batch, collate_mol_atom_bond_batch, collate_multicomponent
 from chemprop.data.datasets import MolAtomBondDataset, MulticomponentDataset
 from chemprop.featurizers.molgraph.reaction import RxnMode
-from chemprop.models import MPNN, MulticomponentMPNN, utils
+from chemprop.models import MPNN, MulticomponentMPNN
+from chemprop.models import utils
 from chemprop.nn.transforms import UnscaleTransform
+
 
 logger = logging.getLogger(__name__)
 
