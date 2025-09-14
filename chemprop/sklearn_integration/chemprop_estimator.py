@@ -69,7 +69,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
         gt_mask=None,
     ):
         if isinstance(X, PathLike):
-            smiss, _, Y, weights, lt_mask, gt_mask = parse_csv(
+            smiss, _, Y, weights, lt_mask, gt_mask, _ = parse_csv(
                 path=X,
                 smiles_cols=self.smiles_cols,
                 rxn_cols=None,
@@ -77,6 +77,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
                 ignore_cols=self.ignore_cols,
                 splits_col=None,
                 weight_col=self.weight_col,
+                descriptor_cols=None,
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
@@ -151,7 +152,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
         gt_mask=None,
     ):
         if isinstance(X, PathLike):
-            _, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
+            _, rxnss, Y, weights, lt_mask, gt_mask, _ = parse_csv(
                 path=X,
                 smiles_cols=None,
                 rxn_cols=self.rxn_cols,
@@ -159,6 +160,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
                 ignore_cols=self.ignore_cols,
                 splits_cols=None,
                 weight_col=self.weight_col,
+                descriptor_cols=None,
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
@@ -239,7 +241,7 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
         self, X: np.ndarray | Sequence[Sequence[str]] | PathLike, Y: Optional[Sequence[float]]
     ):
         if isinstance(X, PathLike):
-            smiss, rxnss, Y, weights, lt_mask, gt_mask = parse_csv(
+            smiss, rxnss, Y, weights, lt_mask, gt_mask, _ = parse_csv(
                 path=X,
                 smiles_cols=self.smiles_cols,
                 rxn_cols=self.rxn_cols,
@@ -247,6 +249,7 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 ignore_cols=self.ignore_cols,
                 splits_col=None,
                 weight_col=self.weight_col,
+                descriptor_cols=None,
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
@@ -263,7 +266,7 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 and np.ndim(X) == 2
                 and np.asarray(X).shape[1] == len(self.component_types)
             ):
-                X = [np.asarray(X)[:, i] for i in range(np.asarray(X).shape[1])]
+                X = np.asarray(X).T.tolist()
             else:
                 X = list(X)
             if len(X) != len(self.component_types):
@@ -629,14 +632,14 @@ if __name__ == "__main__":
     from sklearn.pipeline import Pipeline
 
     sklearnPipeline = Pipeline(
-        [
+       [
             (
                 "featurizer",
                 ChempropMulticomponentTransformer(
                     smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
                 ),
             ),
-            ("regressor", ChempropRegressor(epochs=10)),
+            ("regressor", ChempropRegressor(epochs=200, patience=10, val_size=0.1)),
         ]
     )
 

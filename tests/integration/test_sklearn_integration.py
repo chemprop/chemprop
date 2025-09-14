@@ -10,7 +10,7 @@ def test_sklearn_pipeline(rxn_mol_regression_data):
                 "featurizer",
                 ChempropMulticomponentTransformer(component_types=["reaction", "molecule"]),
             ),
-            ("regressor", ChempropRegressor(epochs=50, batch_norm=True)),
+            ("regressor", ChempropRegressor(epochs=200)),
         ]
     )
     rxns, smis, Y = rxn_mol_regression_data
