@@ -78,6 +78,10 @@ jobs:
           conda-remove-defaults: "true"
           environment-file: environment.yml
           activate-environment: chemprop
+      - name: Install PyTorch (Windows, conda CPU)
+        if: matrix.os == 'windows-latest'
+        run: |
+          conda install -y -c pytorch -c conda-forge pytorch cpuonly
       - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
