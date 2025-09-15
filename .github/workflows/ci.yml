@@ -50,27 +50,24 @@ jobs:
       - run: flake8 .
       - run: isort --check .
 
-  test:
+    test:
     name: Execute Tests
     needs: lint
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        # run with a login shell (so that the conda environment is activated)
-        # and echo the commands we run as we do them (for debugging purposes)
         shell: bash -el {0}
     strategy:
-      # if one platform/python version fails, continue testing the others
       fail-fast: false
       matrix:
-        # test on all platforms with both supported versions of Python
         os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.11, 3.12]
     steps:
       - uses: actions/checkout@v4
-      # use a version of the conda virtual environment manager to set up an
-      # isolated environment with the Python version we want
+
+      # ===== Non-Windows (unchanged): conda env from environment.yml =====
       - uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os != 'windows-latest'
         with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
@@ -78,39 +75,57 @@ jobs:
           conda-remove-defaults: "true"
           environment-file: environment.yml
           activate-environment: chemprop
-      - name: Install PyTorch (Windows, conda CPU)
-        if: matrix.os == 'windows-latest'
-        run: |
-          conda install -y -c pytorch -c conda-forge pytorch cpuonly
-          python - <<'PY' > torch_version.txt
-          import importlib.metadata as m
-          print(m.version('torch'))
-          PY
+
       - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
-      - name: Create pip constraints (Windows)
+
+      # ===== Windows: pip-only setup to avoid conda/pip DLL conflicts =====
+      - name: Setup Python (Windows)
         if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Windows deps (pip-only: PyTorch CPU + RDKit)
+        if: matrix.os == 'windows-latest'
+        shell: bash
         run: |
-          echo "torch==$(cat torch_version.txt)" > constraints.txt
+          python -m pip install -U pip wheel setuptools
+          # Install PyTorch CPU wheel from the official index
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          # RDKit for Windows via pip wheels
+          python -m pip install rdkit-pypi
+          # Rest of project deps (don’t let pip swap torch)
+          python -m pip install --upgrade-strategy only-if-needed ".[dev,docs,test,hpopt]"
+          python - <<'PY'
+          import torch, sys
+          print("Torch OK:", torch.__version__, "from", torch.__file__)
+          PY
+
+      # ===== Common steps to install extra tooling & run tests =====
       - name: Install dependencies
+        if: matrix.os != 'windows-latest'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
           python -m pip install ".[dev,docs,test,hpopt]"
+
       - name: Test with pytest
         shell: bash -l {0}
         run: |
           pytest -v tests
+
       - name: Test notebooks 
         shell: bash -l {0}
         run: |
           python -m pip install matplotlib
           pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
+
   pypi:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
