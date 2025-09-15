@@ -82,13 +82,20 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           conda install -y -c pytorch -c conda-forge pytorch cpuonly
+          python - <<'PY' > torch_version.txt
+          import importlib.metadata as m
+          print(m.version('torch'))
+          PY
       - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
-        # cuik-molmaker is only compatible with linux and some versions of RDKit and PyTorch
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
+      - name: Create pip constraints (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "torch==$(cat torch_version.txt)" > constraints.txt
       - name: Install dependencies
         shell: bash -l {0}
         run: |
