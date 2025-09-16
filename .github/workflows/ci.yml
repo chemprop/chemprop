@@ -94,17 +94,33 @@ jobs:
           print("Torch OK:", torch.__version__, "from", torch.__file__)
           PY
 
-      # ---------- Common test steps ----------
-      - name: Test with pytest
-        shell: ${{ matrix.os == 'windows-latest' && 'bash' || 'bash -l {0}' }}
+      # ---------- Common test steps -----------
+      - name: Test with pytest (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
         run: pytest -v tests
 
-      - name: Test notebooks
-        shell: ${{ matrix.os == 'windows-latest' && 'bash' || 'bash -l {0}' }}
+      - name: Test with pytest (non-Windows)
+        if: matrix.os != 'windows-latest'
+        shell: bash -l {0}
+        run: pytest -v tests
+
+      - name: Test notebooks (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
         run: |
           python -m pip install matplotlib
           pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
           pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
+
+      - name: Test notebooks (non-Windows)
+        if: matrix.os != 'windows-latest'
+        shell: bash -l {0}
+        run: |
+          python -m pip install matplotlib
+          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
+          pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
+
 
   pypi:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
