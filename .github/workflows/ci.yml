@@ -1,39 +1,26 @@
-# ci.yml
-#
-# Continuous Integration for Chemprop - checks build, code formatting, and runs tests for all
-# proposed changes and on a regular schedule
-#
-# Note: this file contains extensive inline documentation to aid with knowledge transfer.
-
 name: Continuous Integration
 
 on:
-  # run on pushes/pull requests to/against main
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  # run this in the morning on weekdays to catch dependency issues
   schedule:
     - cron: "0 8 * * 1-5"
-  # allow manual runs
   workflow_dispatch:
 
-# cancel previously running tests if new commits are made
-# https://docs.github.com/en/actions/examples/using-concurrency-expressions-and-a-test-matrix
 concurrency:
   group: actions-id-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  USE_LIBUV: 0  # libuv doesn't work on GitHub actions Windows runner
+  USE_LIBUV: 0
 
 jobs:
   build:
     name: Check Build
     runs-on: ubuntu-latest
     steps:
-      # clone the repo, attempt to build
       - uses: actions/checkout@v4
       - run: python -m pip install build
       - run: python -m build .
@@ -43,7 +30,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      # clone the repo, run black and flake8 on it
       - uses: actions/checkout@v4
       - run: python -m pip install black==23.* flake8 isort
       - run: black --check .
@@ -54,9 +40,6 @@ jobs:
     name: Execute Tests
     needs: lint
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -65,62 +48,59 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ===== Non-Windows (unchanged): conda env from environment.yml =====
-      - uses: conda-incubator/setup-miniconda@v3
+      # ---------- Non-Windows: original conda-based flow ----------
+      - name: Setup conda (non-Windows)
         if: matrix.os != 'windows-latest'
+        uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
           show-channel-urls: true
-          conda-remove-defaults: "true"
+          conda-remove-defaults: true
           environment-file: environment.yml
           activate-environment: chemprop
 
-      - name: Install cuik-molmaker
+      - name: Install cuik-molmaker (Linux only)
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
 
-      # ===== Windows: pip-only setup to avoid conda/pip DLL conflicts =====
-      - name: Setup Python (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Windows deps (pip-only: PyTorch CPU + RDKit)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          python -m pip install -U pip wheel setuptools
-          # Install PyTorch CPU wheel from the official index
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
-          # RDKit for Windows via pip wheels
-          python -m pip install rdkit-pypi
-          # Rest of project deps (don’t let pip swap torch)
-          python -m pip install --upgrade-strategy only-if-needed ".[dev,docs,test,hpopt]"
-          python - <<'PY'
-          import torch, sys
-          print("Torch OK:", torch.__version__, "from", torch.__file__)
-          PY
-
-      # ===== Common steps to install extra tooling & run tests =====
-      - name: Install dependencies
+      - name: Install project deps (non-Windows)
         if: matrix.os != 'windows-latest'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
           python -m pip install ".[dev,docs,test,hpopt]"
 
-      - name: Test with pytest
-        shell: bash -l {0}
-        run: |
-          pytest -v tests
+      # ---------- Windows: pip-only to avoid DLL conflicts ----------
+      - name: Setup Python (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-      - name: Test notebooks 
-        shell: bash -l {0}
+      - name: Install project deps (Windows, pip-only)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          python -m pip install -U pip wheel setuptools
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install rdkit-pypi
+          python -m pip install --upgrade-strategy only-if-needed nbmake ".[dev,docs,test,hpopt]"
+          python - <<PY
+import torch, sys
+print("Torch OK:", torch.__version__, "from", torch.__file__)
+PY
+
+      # ---------- Common test steps ----------
+      - name: Test with pytest
+        shell: ${{ matrix.os == 'windows-latest' && 'bash' || 'bash -l {0}' }}
+        run: pytest -v tests
+
+      - name: Test notebooks
+        shell: ${{ matrix.os == 'windows-latest' && 'bash' || 'bash -l {0}' }}
         run: |
           python -m pip install matplotlib
           pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
@@ -129,63 +109,41 @@ jobs:
   pypi:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
-    # only run if the tests pass
     needs: [test]
-    # run only on pushes to main on chemprop
-    if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop' }}
     steps:
-      - uses: actions/checkout@master
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v3
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install pypa/build
-        run: >-
-          python -m
-          pip install
-          build
-          --user
+        run: python -m pip install build --user
       - name: Build a binary wheel and a source tarball
-        run: >-
-          python -m
-          build
-          --sdist
-          --wheel
-          --outdir dist/
-          .
+        run: python -m build --sdist --wheel --outdir dist/ .
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
           verbose: true
-  
+
   build-and-push-docker:
-    # shamelessly copied from:
-    # https://github.com/ReactionMechanismGenerator/RMG-Py/blob/bfaee1cad9909a17103a8e6ef9a22569c475964c/.github/workflows/CI.yml#L359C1-L386C54
-    # which is also shamelessly copied from somewhere
     runs-on: ubuntu-latest
-    # only run if the tests pass
     needs: [test]
-    # run only on pushes to main on chemprop
-    if:  ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop'}}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop' }}
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          # repository secretes managed by the maintainers
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
           push: true
           tags: chemprop/chemprop:latest
-        
