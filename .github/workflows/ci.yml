@@ -61,12 +61,18 @@ jobs:
           conda-remove-defaults: true
           environment-file: environment.yml
           activate-environment: chemprop
-      - name: Install PyTorch (Windows, conda CPU)
+      - name: Conda config (strict priority)
+        shell: bash -l {0}
+        run: conda config --set channel_priority strict
+      - name: Install PyTorch (Windows, conda-forge CPU)
         if: matrix.os == 'windows-latest'
         shell: bash -l {0}
+        env:
+          CONDA_DLL_SEARCH_MODIFICATION_ENABLE: "1"
         run: |
-          conda install -y -c pytorch -c conda-forge pytorch cpuonly
+          conda install -y -c conda-forge pytorch cpuonly
           python -c "import importlib.metadata as m; print(m.version('torch'))" > torch_version.txt
+          conda list pytorch
       - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
@@ -85,12 +91,15 @@ jobs:
           fi
       - name: Torch env check
         shell: bash -l {0}
+        env:
+          CONDA_DLL_SEARCH_MODIFICATION_ENABLE: "1"
         run: |
-          python -c "import torch, sys; print('Torch OK:', torch.__version__, 'from', torch.__file__)"
+          conda info
+          conda list | grep -Ei "pytorch|mkl|openmp|ucrt" || true
+          python -c "import torch, os; print('Torch OK:', torch.__version__, 'from', torch.__file__); print('PATH head:', os.environ['PATH'].split(';')[:5])"
       - name: Test with pytest
         shell: bash -l {0}
-        run: |
-          pytest -v tests
+        run: pytest -v tests
       - name: Test notebooks
         shell: bash -l {0}
         run: |
