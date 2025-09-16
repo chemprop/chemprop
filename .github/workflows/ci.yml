@@ -90,9 +90,9 @@ jobs:
           python -m pip install rdkit-pypi
           python -m pip install --upgrade-strategy only-if-needed nbmake ".[dev,docs,test,hpopt]"
           python - <<PY
-import torch, sys
-print("Torch OK:", torch.__version__, "from", torch.__file__)
-PY
+          import torch, sys
+          print("Torch OK:", torch.__version__, "from", torch.__file__)
+          PY
 
       # ---------- Common test steps ----------
       - name: Test with pytest
