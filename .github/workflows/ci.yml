@@ -50,7 +50,7 @@ jobs:
       - run: flake8 .
       - run: isort --check .
 
-    test:
+  test:
     name: Execute Tests
     needs: lint
     runs-on: ${{ matrix.os }}
