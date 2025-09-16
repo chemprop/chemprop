@@ -40,18 +40,20 @@ jobs:
     name: Execute Tests
     needs: lint
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-13, windows-latest]
         python-version: [3.11, 3.12]
+        exclude:
+          - os: windows-latest
+            python-version: 3.12
     steps:
       - uses: actions/checkout@v4
-
-      # ---------- Non-Windows: original conda-based flow ----------
-      - name: Setup conda (non-Windows)
-        if: matrix.os != 'windows-latest'
-        uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
@@ -59,107 +61,19 @@ jobs:
           conda-remove-defaults: true
           environment-file: environment.yml
           activate-environment: chemprop
-
-      - name: Install cuik-molmaker (Linux only)
+      - name: Install PyTorch (Windows, conda CPU)
+        if: matrix.os == 'windows-latest'
+        shell: bash -l {0}
+        run: |
+          conda install -y -c pytorch -c conda-forge pytorch cpuonly
+          python - <<'PY' > torch_version.txt
+          import importlib.metadata as m
+          print(m.version('torch'))
+          PY
+      - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
-
-      - name: Install project deps (non-Windows)
-        if: matrix.os != 'windows-latest'
-        shell: bash -l {0}
-        run: |
-          python -m pip install nbmake
-          python -m pip install ".[dev,docs,test,hpopt]"
-
-      # ---------- Windows: pip-only to avoid DLL conflicts ----------
-      - name: Setup Python (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install project deps (Windows, pip-only)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          python -m pip install -U pip wheel setuptools
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
-          python -m pip install rdkit-pypi
-          python -m pip install --upgrade-strategy only-if-needed nbmake ".[dev,docs,test,hpopt]"
-          python - <<PY
-          import torch, sys
-          print("Torch OK:", torch.__version__, "from", torch.__file__)
-          PY
-
-      # ---------- Common test steps -----------
-      - name: Test with pytest (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: pytest -v tests
-
-      - name: Test with pytest (non-Windows)
-        if: matrix.os != 'windows-latest'
-        shell: bash -l {0}
-        run: pytest -v tests
-
-      - name: Test notebooks (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
-          pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
-
-      - name: Test notebooks (non-Windows)
-        if: matrix.os != 'windows-latest'
-        shell: bash -l {0}
-        run: |
-          python -m pip install matplotlib
-          pytest --no-cov -v --nbmake $(find examples -name '*.ipynb' ! -name 'use_featurizer_with_other_libraries.ipynb' ! -name 'shapley_value_with_customized_featurizers.ipynb')
-          pytest --no-cov -v --nbmake $(find docs/source/tutorial/python -name "*.ipynb")
-
-
-  pypi:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install pypa/build
-        run: python -m pip install build --user
-      - name: Build a binary wheel and a source tarball
-        run: python -m build --sdist --wheel --outdir dist/ .
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          skip-existing: true
-          verbose: true
-
-  build-and-push-docker:
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'chemprop/chemprop' }}
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and Push
-        uses: docker/build-push-action@v4
-        with:
-          push: true
-          tags: chemprop/chemprop:latest
+      - name: Install
