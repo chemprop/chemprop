@@ -85,6 +85,11 @@ jobs:
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
+      - name: Install cuik-molmaker
+        if: matrix.os == 'windows-2022'
+        shell: bash -l {0}
+        run: |
+          conda install 'conda-forge::pytorch'
       - name: Install dependencies
         shell: bash -l {0}
         run: |
