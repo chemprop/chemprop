@@ -579,7 +579,7 @@ class QuantileLoss(ChempropMetric):
 @LossFunctionRegistry.register("nlogprob_enrichment")
 class NLogProbEnrichment(ChempropMetric):
     """
-    Negative log probability enrichment loss function. 
+    Negative log probability enrichment loss function.
     Originally implemented by [lim2022]_ for DNA-encoded library screening data, but can be applied to any count-based data that can be assumed to follow a Poisson distribution.
     This code is adapted from [coleyGithub]_
 
@@ -590,15 +590,16 @@ class NLogProbEnrichment(ChempropMetric):
     n2: total counts across observations in counter (negative) sample
 
     zinterval: the range of z-scores (+/-) that are used for calculating confidence interval. Defaults to 5 due application on DNA-encoded library screening data.
-    
+
 
     References
     ----------
     .. [lim2022] Lim, Katherine S.; Reidenbach, Andrew G.; Hua, Bruce K.; Mason, Jeremy W.; Gerry, Christopher J.; Clemons, Paul A.; Coley, Connor W. "Machine Learning on DNA-Encoded Library Count Data Using an Uncertainty-Aware Probabilistic Loss Function" JCIM, 2022, 62. https://doi.org/10.1021/acs.jcim.2c00041
     .. [coleyGithub] https://github.com/coleygroup/del_qsar/blob/main/losses.py
-    
-    
+
+
     """
+
     def __init__(
         self,
         task_weights: ArrayLike = 1.0,
@@ -606,7 +607,7 @@ class NLogProbEnrichment(ChempropMetric):
         n2: int = 1,
         method: str = "sqrt",
         zscale: float = 1.0,
-        zinterval: int = 5
+        zinterval: int = 5,
     ):
         super().__init__(task_weights)
         self.n1 = n1
