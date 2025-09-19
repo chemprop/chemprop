@@ -71,6 +71,7 @@ jobs:
       # use a version of the conda virtual environment manager to set up an
       # isolated environment with the Python version we want
       - uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os != 'windows-2022'
         with:
           python-version: ${{ matrix.python-version }}
           auto-update-conda: true
@@ -78,6 +79,11 @@ jobs:
           conda-remove-defaults: "true"
           environment-file: environment.yml
           activate-environment: chemprop
+      # use pip for windows instead, since conda doesn't work well with DLLs
+      - uses: actions/setup-python@v6
+        if: matrix.os == 'windows-2022'
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Install cuik-molmaker
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
@@ -85,11 +91,6 @@ jobs:
         run: |
           conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
           python chemprop/scripts/check_and_install_cuik_molmaker.py
-      - name: Install cuik-molmaker
-        if: matrix.os == 'windows-2022'
-        shell: bash -l {0}
-        run: |
-          conda install 'conda-forge::pytorch'
       - name: Install dependencies
         shell: bash -l {0}
         run: |
