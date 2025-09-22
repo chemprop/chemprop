@@ -95,7 +95,7 @@ jobs:
         if: matrix.os == 'windows-2022'
         shell: bash -l {0}
         run: |
-          pip install 'pytorch==2.7.0'
+          pip install 'torch==2.7.0'
       - name: Install dependencies
         shell: bash -l {0}
         run: |
