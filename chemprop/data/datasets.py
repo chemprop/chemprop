@@ -202,10 +202,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         the data from which to create a dataset
     featurizer : MoleculeFeaturizer
         the featurizer with which to generate MolGraphs of the molecules
+    n_workers : int, optional
+        number of workers to use for cache calculation
     """
 
     data: list[MoleculeDatapoint]
     featurizer: Featurizer[Mol, MolGraph] = field(default_factory=SimpleMoleculeMolGraphFeaturizer)
+    n_workers: int = 0
 
     def __post_init__(self):
         if self.data is None:
@@ -231,9 +234,12 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
     def _init_cache(self):
         """initialize the cache"""
-        self.mg_cache = (MolGraphCache if self.cache else MolGraphCacheOnTheFly)(
-            self.mols, self.V_fs, self.E_fs, self.featurizer
-        )
+        if self.cache:
+            self.mg_cache = MolGraphCache(
+                self.mols, self.V_fs, self.E_fs, self.featurizer, n_workers=self.n_workers
+            )
+        else:
+            self.mg_cache = MolGraphCacheOnTheFly(self.mols, self.V_fs, self.E_fs, self.featurizer)
 
     @property
     def smiles(self) -> list[str]:
@@ -645,6 +651,8 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     """the dataset from which to load"""
     featurizer: Featurizer[Rxn, MolGraph] = field(default_factory=CGRFeaturizer)
     """the featurizer with which to generate MolGraphs of the input"""
+    n_workers: int = 0
+    """number of workers to use for cache calculation"""
 
     def __post_init__(self):
         if self.data is None:
@@ -660,9 +668,18 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
     @cache.setter
     def cache(self, cache: bool = False):
         self.__cache = cache
-        self.mg_cache = (MolGraphCache if cache else MolGraphCacheOnTheFly)(
-            self.mols, [None] * len(self), [None] * len(self), self.featurizer
-        )
+        if cache:
+            self.mg_cache = MolGraphCache(
+                self.mols,
+                [None] * len(self),
+                [None] * len(self),
+                self.featurizer,
+                n_workers=self.n_workers,
+            )
+        else:
+            self.mg_cache = MolGraphCacheOnTheFly(
+                self.mols, [None] * len(self), [None] * len(self), self.featurizer
+            )
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]

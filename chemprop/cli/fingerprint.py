@@ -152,6 +152,7 @@ def make_fingerprint_for_model(
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         for d in test_data
     ]

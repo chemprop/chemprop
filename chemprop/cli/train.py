@@ -35,6 +35,7 @@ from chemprop.cli.utils import (
     activation_function_argument,
     build_data_from_files,
     build_MAB_data_from_files,
+    format_probability_string,
     get_column_names,
     make_dataset,
     parse_activation,
@@ -933,6 +934,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
+
     if any(
         cols is not None
         for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
@@ -958,6 +960,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:
@@ -968,6 +971,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
+            n_workers=args.num_workers,
             **format_kwargs,
             **featurization_kwargs,
         )
@@ -1109,6 +1113,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in train_data
         ]
@@ -1118,6 +1123,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in val_data
         ]
@@ -1130,6 +1136,7 @@ def build_datasets(args, train_data, val_data, test_data):
                     args.rxn_mode,
                     args.multi_hot_atom_featurizer_mode,
                     args.use_cuikmolmaker_featurization,
+                    n_workers=args.num_workers,
                 )
                 for data in test_data
             ]
@@ -1145,12 +1152,14 @@ def build_datasets(args, train_data, val_data, test_data):
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         val_dset = make_dataset(
             val_data,
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         if len(test_data) > 0:
             test_dset = make_dataset(
@@ -1158,6 +1167,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
         else:
             test_dset = None
@@ -1805,9 +1815,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, preds
-        )
+        formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
             list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
@@ -1899,23 +1907,15 @@ def evaluate_and_save_MAB_predictions(
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
-            if mol_preds is not None
-            else [None] * len(names)
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
         atomss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * len(names)
         )
         bondss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * len(names)
         )
