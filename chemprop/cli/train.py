@@ -1029,22 +1029,22 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         else:
             splitting_data = all_data[args.split_key_molecule]
 
-        if args.split == "random":
-            splitting_mols = range(len(splitting_data))
-        else:
-            if isinstance(splitting_data[0], ReactionDatapoint):
-                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            if args.split == "random":
+                splitting_mols = range(len(splitting_data))
             else:
-                splitting_mols = [datapoint.mol for datapoint in splitting_data]
+                if isinstance(splitting_data[0], ReactionDatapoint):
+                    splitting_mols = [datapoint.rct for datapoint in splitting_data]
+                else:
+                    splitting_mols = [datapoint.mol for datapoint in splitting_data]
 
-        if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
-            logger.info(
-                "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
+            if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
+                logger.info(
+                    "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
+                )
+                args.split_sizes = [0.9, 0.1, 0]
+            train_indices, val_indices, test_indices = make_split_indices(
+                splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
             )
-            args.split_sizes = [0.9, 0.1, 0]
-        train_indices, val_indices, test_indices = make_split_indices(
-            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
-        )
 
         train_data, val_data, test_data = split_data_by_indices(
             all_data, train_indices, val_indices, test_indices
