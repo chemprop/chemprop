@@ -10,6 +10,7 @@ from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 pytestmark = pytest.mark.CLI
 
@@ -200,9 +201,62 @@ def test_train_quick_features(monkeypatch, data_path):
             main()
 
 
+@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
+def test_train_quick_features_cuikmolmaker(monkeypatch, data_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+        "--use-cuikmolmaker-featurization",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
+def test_predict_quick_cuikmolmaker(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--use-cuikmolmaker-featurization",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

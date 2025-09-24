@@ -35,6 +35,7 @@ from chemprop.cli.utils import (
     activation_function_argument,
     build_data_from_files,
     build_MAB_data_from_files,
+    format_probability_string,
     get_column_names,
     make_dataset,
     parse_activation,
@@ -469,7 +470,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--tracking-metric",
         default="val_loss",
-        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
+        help="The metric to track for early stopping, checkpointing, and hyperparameter optimization. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -700,6 +701,16 @@ def validate_train_args(args):
             message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
             f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
             "the `--metrics` flag.",
+        )
+
+    if (
+        args.use_cuikmolmaker_featurization
+        and args.splits_column is None
+        and args.splits_file is None
+        and args.split != "random"
+    ):
+        logger.warning(
+            f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
     input_cols, target_cols = get_column_names(
@@ -966,6 +977,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 }
                 if args.constraints_to_targets is not None
                 else None,
+                n_workers=args.num_workers,
                 **featurization_kwargs,
             )
         else:
@@ -976,6 +988,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 p_atom_feats=args.atom_features_path,
                 p_bond_feats=args.bond_features_path,
                 p_atom_descs=args.atom_descriptors_path,
+                n_workers=args.num_workers,
                 **format_kwargs,
                 **featurization_kwargs,
             )
@@ -1016,19 +1029,22 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         else:
             splitting_data = all_data[args.split_key_molecule]
 
+        if args.split == "random":
+            splitting_mols = range(len(splitting_data))
+        else:
             if isinstance(splitting_data[0], ReactionDatapoint):
                 splitting_mols = [datapoint.rct for datapoint in splitting_data]
             else:
                 splitting_mols = [datapoint.mol for datapoint in splitting_data]
 
-            if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
-                logger.info(
-                    "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
-                )
-                args.split_sizes = [0.9, 0.1, 0]
-            train_indices, val_indices, test_indices = make_split_indices(
-                splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
+        if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
+            logger.info(
+                "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
             )
+            args.split_sizes = [0.9, 0.1, 0]
+        train_indices, val_indices, test_indices = make_split_indices(
+            splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
+        )
 
         train_data, val_data, test_data = split_data_by_indices(
             all_data, train_indices, val_indices, test_indices
@@ -1139,6 +1155,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in train_data
         ]
@@ -1148,6 +1165,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in val_data
         ]
@@ -1160,6 +1178,7 @@ def build_datasets(args, train_data, val_data, test_data):
                     args.rxn_mode,
                     args.multi_hot_atom_featurizer_mode,
                     args.use_cuikmolmaker_featurization,
+                    n_workers=args.num_workers,
                 )
                 for data in test_data
             ]
@@ -1175,12 +1194,14 @@ def build_datasets(args, train_data, val_data, test_data):
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         val_dset = make_dataset(
             val_data,
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         if len(test_data) > 0:
             test_dset = make_dataset(
@@ -1188,6 +1209,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
         else:
             test_dset = None
@@ -1835,9 +1857,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, preds
-        )
+        formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
             list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
@@ -1929,23 +1949,15 @@ def evaluate_and_save_MAB_predictions(
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
-            if mol_preds is not None
-            else [None] * len(names)
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
         atomss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * len(names)
         )
         bondss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * len(names)
         )
@@ -2097,8 +2109,14 @@ def main(args):
                     output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
-            train_dset.cache = True
-            val_dset.cache = True
+            if args.use_cuikmolmaker_featurization:
+                logger.warning(
+                    "not caching CuikmolmakerDataset as it is meant to be used without caching!"
+                )
+            else:
+                logger.info("Caching training and validation datasets...")
+                train_dset.cache = True
+                val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,

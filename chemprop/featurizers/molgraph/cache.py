@@ -6,6 +6,7 @@ import numpy as np
 
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer, S
+from chemprop.utils import parallel_execute
 
 
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
@@ -54,8 +55,9 @@ class MolGraphCache(MolGraphCacheFacade):
         V_fs: Iterable[np.ndarray | None],
         E_fs: Iterable[np.ndarray | None],
         featurizer: Featurizer[S, MolGraph],
+        n_workers: int = 0,
     ):
-        self._mgs = [featurizer(input, V_f, E_f) for input, V_f, E_f in zip(inputs, V_fs, E_fs)]
+        self._mgs = parallel_execute(featurizer, zip(inputs, V_fs, E_fs), n_workers=n_workers)
 
     def __len__(self) -> int:
         return len(self._mgs)

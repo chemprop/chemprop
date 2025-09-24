@@ -67,7 +67,7 @@ class _MoleculeDatapointMixin:
 @dataclass
 class _LazyMoleculeDatapointMixin:
     smiles: str
-    """A :class:`_LazyMoleculeDatapointMixin` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+    """the SMILES string associated with this datapoint"""
     _keep_h: bool = False
     _add_h: bool = False
     _ignore_stereo: bool = False
@@ -118,7 +118,9 @@ class MoleculeDatapoint(_DatapointMixin, _MoleculeDatapointMixin):
 
 @dataclass
 class LazyMoleculeDatapoint(_DatapointMixin, _LazyMoleculeDatapointMixin):
-    """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+    """A :class:`LazyMoleculeDatapoint` contains a single SMILES string, and all attributes need to
+    form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed.
+    """
 
     V_f: np.ndarray | None = None
     """A numpy array of shape ``V x d_vf``, where ``V`` is the number of atoms in the molecule, and

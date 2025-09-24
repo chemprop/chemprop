@@ -7,7 +7,7 @@ import pandas as pd
 
 from chemprop.data import MolAtomBondDatapoint
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
-from chemprop.utils import make_mol
+from chemprop.utils import create_and_call_object, make_mol, parallel_execute
 
 
 def build_MAB_data_from_files(
@@ -27,6 +27,7 @@ def build_MAB_data_from_files(
     constraints_cols_to_target_cols: dict[str, int] | None,
     molecule_featurizers: Sequence[str] | None,
     descriptor_cols: Sequence[str] | None = None,
+    n_workers: int = 0,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
@@ -34,7 +35,9 @@ def build_MAB_data_from_files(
     X_d_extra = df[descriptor_cols] if descriptor_cols else None
 
     smis = df[smiles_cols[0]].values if smiles_cols is not None else df.iloc[:, 0].values
-    mols = [make_mol(smi, **make_mol_kwargs) for smi in smis]
+    mols = parallel_execute(
+        make_mol, [(smi,) + tuple(make_mol_kwargs.values()) for smi in smis], n_workers=n_workers
+    )
     n_datapoints = len(mols)
 
     weights = (
@@ -75,8 +78,17 @@ def build_MAB_data_from_files(
 
     if molecule_featurizers is not None:
         molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
-        mol_descriptors = np.vstack(
-            [np.hstack([mf(mol) for mf in molecule_featurizers]) for mol in mols]
+        mol_descriptors = np.hstack(
+            [
+                np.vstack(
+                    parallel_execute(
+                        create_and_call_object,
+                        [(mf.__class__, (mol,)) for mol in mols],
+                        n_workers=n_workers,
+                    )
+                )
+                for mf in molecule_featurizers
+            ]
         )
         if X_ds[0] is not None:
             X_ds = np.hstack([X_ds, mol_descriptors])

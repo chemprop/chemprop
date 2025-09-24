@@ -1,7 +1,9 @@
+import numpy as np
 import pytest
 
 from chemprop.cli.common import find_models
 from chemprop.cli.utils.parsing import get_column_names, parse_indices
+from chemprop.cli.utils.utils import _to_str, format_probability_string
 
 
 def test_parse_indices():
@@ -168,3 +170,48 @@ def test_get_column_names(
     )
 
     assert input_cols + target_cols == expected
+
+
+@pytest.mark.parametrize("string,expected_output", [(1, "1.000000e+00"), (1e-77, "1.000000e-77")])
+def test__to_str(string: float, expected_output: str):
+    """
+    Testing numeric conversion to scientific notation string format.
+    """
+    assert _to_str(string) == expected_output
+
+
+@pytest.mark.parametrize(
+    "test_predictions,expected_output",
+    [
+        (
+            np.array(
+                [[[3.3954e-01, 6.3595e-01, 2.4509e-02]], [[9.8928e-01, 1.0667e-02, 4.8996e-05]]]
+            ),
+            np.array(
+                [
+                    ["3.395400e-01,6.359500e-01,2.450900e-02"],
+                    ["9.892800e-01,1.066700e-02,4.899600e-05"],
+                ]
+            ),
+        )
+    ],
+)
+def test_format_probability_string(test_predictions: np.ndarray, expected_output: np.ndarray):
+    """
+    Testing conversion of prediction arrays to comma-separated string format.
+    """
+    np.testing.assert_array_equal(format_probability_string(test_predictions), expected_output)
+
+
+@pytest.mark.parametrize(
+    "input_shape,expected_output_shape",
+    [((4, 2, 3), (4, 2)), ((2, 499, 1, 3), (2, 499, 1)), ((51, 1, 3), (51, 1))],
+)
+def test_format_probability_string__various_dimensions(
+    input_shape: int, expected_output_shape: int
+):
+    """
+    Testing dimensional consistency across arrays of varying shapes.
+    """
+    expected_output = np.full(expected_output_shape, "1.000000e+00,1.000000e+00,1.000000e+00")
+    np.testing.assert_array_equal(format_probability_string(np.ones(input_shape)), expected_output)
