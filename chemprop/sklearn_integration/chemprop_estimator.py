@@ -538,7 +538,8 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
     def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-        y = self._y
+        if y is None:
+            y = self._y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -601,7 +602,8 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
     def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
-        y = self.models[0]._y
+        if y is None:
+            y = self.models[0]._y
         if metric == "mae":
             return mean_absolute_error(y, y_pred)
         elif metric == "rmse":
@@ -632,14 +634,14 @@ if __name__ == "__main__":
     from sklearn.pipeline import Pipeline
 
     sklearnPipeline = Pipeline(
-       [
+        [
             (
                 "featurizer",
                 ChempropMulticomponentTransformer(
                     smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
                 ),
             ),
-            ("regressor", ChempropRegressor(epochs=200, patience=10, val_size=0.1)),
+            ("regressor", ChempropRegressor(epochs=100, patience=10)),
         ]
     )
 

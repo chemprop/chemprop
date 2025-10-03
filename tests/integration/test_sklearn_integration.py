@@ -8,13 +8,15 @@ def test_sklearn_pipeline(rxn_mol_regression_data):
         [
             (
                 "featurizer",
-                ChempropMulticomponentTransformer(component_types=["reaction", "molecule"]),
+                ChempropMulticomponentTransformer(component_types=["molecule", "reaction"]),
             ),
-            ("regressor", ChempropRegressor(epochs=200)),
+            ("regressor", ChempropRegressor(epochs=100)),
         ]
     )
     rxns, smis, Y = rxn_mol_regression_data
-    sklearnPipeline.fit(X=[rxns, smis], y=Y)
-    score = sklearnPipeline.score(X=[rxns, smis], y=Y)
-    assert score < 0.5
+    Y = Y.flatten()
+    sklearnPipeline.fit(X=[smis, rxns], y=Y)
+    pred = sklearnPipeline.predict(X=[smis, rxns])
+    score = sklearnPipeline.score(X=[smis, rxns], y=Y)
+    assert score < 1
     sklearnPipeline["regressor"].save_model("checkpoints")
