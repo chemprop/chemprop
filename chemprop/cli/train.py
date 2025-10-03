@@ -1037,7 +1037,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]
 
-            if len(args.data_path) == 2 and args.split_sizes[2] == [0.8, 0.1, 0.1]:
+            if len(args.data_path) == 2 and args.split_sizes == [0.8, 0.1, 0.1]:
                 logger.info(
                     "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
                 )
