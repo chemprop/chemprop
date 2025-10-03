@@ -100,7 +100,7 @@ class _MoleculeDatapointMixin:
 @dataclass
 class _LazyMoleculeDatapointMixin:
     smiles: str
-    """A :class:`_LazyMoleculeDatapointMixin` contains a single SMILES string, and all attributes need to form a `rdkit.Chem.Mol` object. The molecule is computed lazily when the attribute `mol` is accessed."""
+    """the SMILES string associated with this datapoint"""
     _keep_h: bool = False
     _add_h: bool = False
     _ignore_stereo: bool = False

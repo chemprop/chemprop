@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, Sized
 import copy
 from enum import auto
 import logging
@@ -26,7 +26,7 @@ class SplitType(EnumMapping):
 
 
 def make_split_indices(
-    mols: Sequence[Chem.Mol],
+    mols: Sequence[Chem.Mol] | Sized,
     split: SplitType | str = "random",
     sizes: tuple[float, float, float] = (0.8, 0.1, 0.1),
     seed: int = 0,
@@ -37,8 +37,9 @@ def make_split_indices(
 
     Parameters
     ----------
-    mols : Sequence[Chem.Mol]
-        Sequence of RDKit molecules to use for structure based splitting
+    mols : Sequence[Chem.Mol] | Sized
+        Sequence of RDKit molecules to use for structure based splitting or any object with a length
+        equal to the number of datapoints if using random splitting
     split : SplitType | str, optional
         Split type, one of ~chemprop.data.utils.SplitType, by default "random"
     sizes : tuple[float, float, float], optional
