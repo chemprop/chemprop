@@ -581,7 +581,9 @@ def validate_train_args(args):
             raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
 
     if len(args.data_path) > 3:
-        raise ArgumentError(argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}")
+        raise ArgumentError(
+            argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
+        )
 
     if (
         len(args.data_path) == 2
@@ -589,7 +591,8 @@ def validate_train_args(args):
         and args.split_sizes[2] != 0
     ):
         raise ArgumentError(
-            argument=None, message=f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}"
+            argument=None,
+            message=f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}",
         )
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
