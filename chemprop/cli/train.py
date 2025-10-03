@@ -581,7 +581,7 @@ def validate_train_args(args):
             raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
 
     if len(args.data_path) > 3:
-        raise ArgumentError(f"More than 3 data_files provided. Got: {args.data_path}")
+        raise ArgumentError(argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}")
 
     if (
         len(args.data_path) == 2
