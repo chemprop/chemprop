@@ -589,7 +589,7 @@ def validate_train_args(args):
         and args.split_sizes[2] != 0
     ):
         raise ArgumentError(
-            f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}"
+            argument=None, message=f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}"
         )
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
