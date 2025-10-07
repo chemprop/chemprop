@@ -113,6 +113,23 @@ Our code supports several methods of splitting data into train, validation, and 
 
 Other supported splitting methods include :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
 
+**Supplying Separate Train/Val/Test Files**
+
+You can also pass in train/val/test files separately through **2 or 3 paths** to the training command via :code:`--data-path` (or :code:`-i`):
+
+.. code-block::
+
+    # 3 files: use them as train / val / test respectively
+    chemprop train --data-path train.csv val.csv test.csv -t regression
+
+.. code-block::
+
+    # 2 files: first is split into train/val, second is used as test
+    chemprop train --data-path trainval.csv test.csv -t regression
+
+.. note::
+    When two paths are provided, the first file is split into train/val using the configured split method, and the second file is taken as the test set as-is. When three paths are provided, they map directly to train/val/test in order.
+
 Replicates
 ^^^^^^^^^^
 
