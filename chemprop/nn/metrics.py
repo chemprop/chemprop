@@ -613,7 +613,7 @@ class NLogProbEnrichment(ChempropMetric):
         task_weights: ArrayLike = 1.0,
         n1: int = 1,
         n2: int = 1,
-        method: str = "sqrt",
+        method: Literal["sqrt", "score", "wald"] = "sqrt",
         zscale: float = 1.0,
         zinterval: int = 5,
     ):
