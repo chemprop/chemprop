@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -615,7 +616,7 @@ class NLogProbEnrichment(ChempropMetric):
         n2: int = 1,
         method: Literal["sqrt", "score", "wald"] = "sqrt",
         zscale: float = 1.0,
-        zinterval: int = 5,
+        zinterval: float = 5.0,
     ):
         super().__init__(task_weights)
         self.n1 = n1
