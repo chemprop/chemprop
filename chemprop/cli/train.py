@@ -948,18 +948,17 @@ def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) 
         test_indices = [test_indices]
 
     for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
-        suffix = f"_{i}" if len(train_indices) > 1 else ""
-        df.iloc[train].to_csv(
-            output_dir / f"train{suffix}.csv", index=False, header=not no_header_row
-        )
-        df.iloc[val].to_csv(output_dir / f"val{suffix}.csv", index=False, header=not no_header_row)
-        df.iloc[test].to_csv(
-            output_dir / f"test{suffix}.csv", index=False, header=not no_header_row
-        )
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
+
+        df.iloc[train].to_csv(rep_dir / "train.csv", index=False, header=not no_header_row)
+        df.iloc[val].to_csv(rep_dir / "val.csv", index=False, header=not no_header_row)
+        df.iloc[test].to_csv(rep_dir / "test.csv", index=False, header=not no_header_row)
 
 
 def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
     output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     train_idxss, val_idxss, test_idxss = map(
         lambda idx: [[int(j) for j in idx]]
@@ -967,36 +966,36 @@ def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indi
         else [[int(j) for j in i] for i in idx],
         (train_indices, val_indices, test_indices),
     )
-    n_rep = len(train_idxss)
 
     def load_npz(path):
         loaded_feature = np.load(path)
-        return [loaded_feature[f"arr_{i}"] for i in range(len(loaded_feature))]
+        return [loaded_feature[f"arr_{k}"] for k in range(len(loaded_feature))]
 
     def save_npz(path, arrs):
         np.savez(path, *arrs)
 
-    for r, (train, val, test) in enumerate(zip(train_idxss, val_idxss, test_idxss)):
-        suf = f"_{r}" if n_rep > 1 else ""
+    for i, (train, val, test) in enumerate(zip(train_idxss, val_idxss, test_idxss)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_idxss) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
 
         if args.descriptors_path:
             loaded_feature = np.load(args.descriptors_path)
             features = loaded_feature["arr_0"]
-            np.savez(output_dir / f"train_descriptors{suf}.npz", features[train])
-            np.savez(output_dir / f"val_descriptors{suf}.npz", features[val])
-            np.savez(output_dir / f"test_descriptors{suf}.npz", features[test])
+            np.savez(rep_dir / "train_descriptors.npz", features[train])
+            np.savez(rep_dir / "val_descriptors.npz", features[val])
+            np.savez(rep_dir / "test_descriptors.npz", features[test])
 
         def save_npz_split(paths, tag):
             if not paths:
                 return
-            for idx, p in paths.items():
+            for idx_key, p in paths.items():
                 arrs = load_npz(p)
-                train_arrs = [arrs[tr] for tr in train]
-                val_arrs = [arrs[va] for va in val]
-                test_arrs = [arrs[te] for te in test]
-                save_npz(output_dir / f"train_{tag}{idx}{suf}.npz", train_arrs)
-                save_npz(output_dir / f"val_{tag}{idx}{suf}.npz", val_arrs)
-                save_npz(output_dir / f"test_{tag}{idx}{suf}.npz", test_arrs)
+                train_arrs = [arrs[idx] for idx in train]
+                val_arrs = [arrs[idx] for idx in val]
+                test_arrs = [arrs[idx] for idx in test]
+                save_npz(rep_dir / f"train_{tag}{idx_key}.npz", train_arrs)
+                save_npz(rep_dir / f"val_{tag}{idx_key}.npz", val_arrs)
+                save_npz(rep_dir / f"test_{tag}{idx_key}.npz", test_arrs)
 
         save_npz_split(args.atom_features_path, "atom_feat_")
         save_npz_split(args.atom_descriptors_path, "atom_desc_")

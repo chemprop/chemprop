@@ -793,6 +793,28 @@ def test_custom_activation_quick(monkeypatch, data_path):
         main()
 
 
+def test_empty_testset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "0.5",
+        "0.5",
+        "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_save_data_splits(monkeypatch, data_path):
     (
         input_path,
