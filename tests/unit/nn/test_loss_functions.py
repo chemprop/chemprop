@@ -537,7 +537,9 @@ def test_Wasserstein(
         ),
     ],
 )
-def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss, method):
+def test_NLL(
+    preds, targets, mask, weights, n1, n2, expected_loss, method
+):
     """
     Testing the NLL loss function
     """
@@ -547,5 +549,6 @@ def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss, method):
 
 
 # TODO: Add quantile loss tests
+
 
 
