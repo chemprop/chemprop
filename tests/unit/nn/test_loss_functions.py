@@ -503,7 +503,7 @@ def test_Wasserstein(
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,weights,n1,n2,expected_loss",
+    "preds,targets,mask,weights,n1,n2,expected_loss,method",
     [
         (
             torch.tensor([[0, 2], [0, 1]], dtype=torch.float),  # preds
@@ -513,6 +513,7 @@ def test_Wasserstein(
             torch.tensor(900, dtype=torch.int),  # n1
             torch.tensor(800, dtype=torch.int),  # n2
             torch.tensor(1.68638, dtype=torch.float),  # exptected_loss
+            "sqrt",
         ),
         (
             torch.tensor([[0, 2], [0, 1]], dtype=torch.float),  # preds
@@ -522,6 +523,7 @@ def test_Wasserstein(
             torch.tensor(500, dtype=torch.int),  # n1
             torch.tensor(600, dtype=torch.int),  # n2
             torch.tensor(1.63835, dtype=torch.float),  # exptected_loss
+            "score",
         ),
         (
             torch.tensor([[0, 2], [0, 1]], dtype=torch.float),  # preds
@@ -531,17 +533,19 @@ def test_Wasserstein(
             torch.tensor(10, dtype=torch.int),  # n1
             torch.tensor(1000, dtype=torch.int),  # n2
             torch.tensor(2.7664, dtype=torch.float),  # exptected_loss
+            "wald",
         ),
     ],
 )
-def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss):
+def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss, method):
     """
     Testing the NLL loss function
     """
-    nll_loss = NLogProbEnrichment(n1=n1, n2=n2)
+    nll_loss = NLogProbEnrichment(n1=n1, n2=n2, method=method)
     loss = nll_loss(preds, targets, mask, weights)
     torch.testing.assert_close(loss, expected_loss)
 
 
 # TODO: Add quantile loss tests
+
 
