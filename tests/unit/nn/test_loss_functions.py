@@ -508,7 +508,7 @@ def test_Wasserstein(
         (
             torch.tensor([[0, 2], [0, 1]], dtype=torch.float),  # preds
             torch.zeros([2, 2], dtype=torch.float),  # targets
-            torch.ones([2, 2], dtype=torch.bool),  # mask
+            torch.ones([2, 1], dtype=torch.bool),  # mask
             torch.ones([2]),  # weights
             torch.tensor(900, dtype=torch.int),  # n1
             torch.tensor(800, dtype=torch.int),  # n2
@@ -544,3 +544,4 @@ def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss):
 
 
 # TODO: Add quantile loss tests
+
