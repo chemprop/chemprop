@@ -942,11 +942,6 @@ def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if train_indices and isinstance(train_indices[0], int):
-        train_indices = [train_indices]
-        val_indices = [val_indices]
-        test_indices = [test_indices]
-
     for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
         rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
         rep_dir.mkdir(parents=True, exist_ok=True)
@@ -960,13 +955,6 @@ def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indi
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    train_idxss, val_idxss, test_idxss = map(
-        lambda idx: [[int(j) for j in idx]]
-        if isinstance(idx[0], (int, np.integer))
-        else [[int(j) for j in i] for i in idx],
-        (train_indices, val_indices, test_indices),
-    )
-
     def load_npz(path):
         loaded_feature = np.load(path)
         return [loaded_feature[f"arr_{k}"] for k in range(len(loaded_feature))]
@@ -974,8 +962,8 @@ def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indi
     def save_npz(path, arrs):
         np.savez(path, *arrs)
 
-    for i, (train, val, test) in enumerate(zip(train_idxss, val_idxss, test_idxss)):
-        rep_dir = output_dir / f"replicate_{i}" if len(train_idxss) > 1 else output_dir
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
         rep_dir.mkdir(parents=True, exist_ok=True)
 
         if args.descriptors_path:
