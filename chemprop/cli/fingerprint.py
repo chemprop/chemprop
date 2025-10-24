@@ -162,7 +162,9 @@ def make_fingerprint_for_model(
     else:
         test_dset = test_dsets[0]
 
-    test_loader = data.build_dataloader(test_dset, args.batch_size, args.num_workers, shuffle=False)
+    test_loader = data.build_dataloader(
+        test_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=False
+    )
 
     logger.info(model)
 
