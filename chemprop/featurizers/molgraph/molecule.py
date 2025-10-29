@@ -204,15 +204,15 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
         else:
             raise ValueError(f"Invalid atom featurizer mode: {self.atom_featurizer_mode}")
 
-        self.atom_property_list_onehot = cuik_molmaker.atom_onehot_feature_names_to_tensor(
+        self.atom_property_list_onehot = cuik_molmaker.atom_onehot_feature_names_to_array(
             atom_props_onehot
         )
 
-        self.atom_property_list_float = cuik_molmaker.atom_float_feature_names_to_tensor(
+        self.atom_property_list_float = cuik_molmaker.atom_float_feature_names_to_array(
             atom_props_float
         )
 
-        self.bond_property_list = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+        self.bond_property_list = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
@@ -241,6 +241,13 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
             duplicate_edges,
             add_self_loop,
         )
+
+        # Convert to Torch.tensors
+        atom_feats = torch.from_numpy(atom_feats)
+        bond_feats = torch.from_numpy(bond_feats)
+        edge_index = torch.from_numpy(edge_index)
+        rev_edge_index = torch.from_numpy(rev_edge_index)
+        batch = torch.from_numpy(batch)
 
         if atom_features_extra is not None:
             atom_features_extra = torch.tensor(atom_features_extra, dtype=torch.float32)
