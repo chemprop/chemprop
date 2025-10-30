@@ -156,7 +156,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
                 rxn_cols=self.rxn_cols,
                 target_cols=self.target_cols,
                 ignore_cols=self.ignore_cols,
-                splits_cols=None,
+                splits_col=None,
                 weight_col=self.weight_col,
                 descriptor_cols=None,
                 bounded=self.bounded,
