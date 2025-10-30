@@ -386,7 +386,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             model_paths = find_models(self.args.checkpoint)
             if len(model_paths) != 1:
                 logger.warning(
-                    "More than one model path privided in checkpoint and only the first one is used. Call ChempropEnsembleRegressor instead."
+                    "More than one model path provided in checkpoint and only the first one is used. Call ChempropEnsembleRegressor instead."
                 )
             model_path = model_paths[0]
 
