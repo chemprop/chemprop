@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, Namespace
+from datetime import datetime
 import logging
+import os
 from os import PathLike
 from pathlib import Path
 from typing import List, Literal, Optional, Sequence
@@ -22,6 +24,9 @@ from chemprop.models import MPNN, MulticomponentMPNN, utils
 from chemprop.nn.transforms import UnscaleTransform
 
 logger = logging.getLogger(__name__)
+
+NOW = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+CHEMPROP_TRAIN_DIR = Path(os.getenv("CHEMPROP_TRAIN_DIR", "chemprop_training"))
 
 
 class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
@@ -321,7 +326,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         self,
         num_workers: int = 0,
         batch_size: int = 64,
-        output_dir: Optional[PathLike] = None,
+        output_dir: Optional[PathLike] = CHEMPROP_TRAIN_DIR / "sklearn_output" / NOW,
         checkpoint: Optional[List[Path]] = None,
         molecule_featurizers: Optional[List[str]] = None,
         no_descriptor_scaling: bool = False,
@@ -553,9 +558,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
-            if self.args.model_output_dir is None:
-                raise ValueError("model_output_dir is not specified")
-            output_dir = self.args.model_output_dir
+            output_dir = self.args.output_dir
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         utils.save_model(str(output_dir / "best.pt"), self.model, None)
@@ -617,9 +620,7 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
-            if self.args.model_output_dir is None:
-                raise ValueError("no output directory specified")
-            output_dir = self.args.model_output_dir
+            output_dir = self.args.output_dir
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         for idx, model in enumerate(self.models):
