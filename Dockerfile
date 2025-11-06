@@ -44,9 +44,6 @@ RUN conda env update --file environment.yml --name chemprop_env && \
     conda clean --all --yes && \
     python -m pip install --no-deps .
 
-# Install cuik-molmaker using script
-RUN python /opt/chemprop/chemprop/scripts/check_and_install_cuik_molmaker.py
-
 # when running this image, open an interactive bash terminal inside the conda environment
 RUN conda init
 RUN echo "conda activate chemprop_env" >> ~/.bashrc

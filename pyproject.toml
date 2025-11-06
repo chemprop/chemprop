@@ -38,6 +38,7 @@ dependencies = [
     "ConfigArgParse",
     "rich",
     "descriptastorus",
+    "cuik-molmaker == 0.2",
 ]
 
 [project.optional-dependencies]
