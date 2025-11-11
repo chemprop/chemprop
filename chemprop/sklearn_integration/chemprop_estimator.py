@@ -350,45 +350,45 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         reaction_mode: RxnMode = RxnMode.REAC_DIFF,
     ):
-        args = Namespace(
-            num_workers=num_workers,
-            batch_size=batch_size,
-            output_dir=output_dir,
-            checkpoint=checkpoint,
-            molecule_featurizers=molecule_featurizers,
-            no_descriptor_scaling=no_descriptor_scaling,
-            message_hidden_dim=message_hidden_dim,
-            depth=depth,
-            dropout=dropout,
-            aggregation=aggregation,
-            ffn_hidden_dim=ffn_hidden_dim,
-            ffn_num_layers=ffn_num_layers,
-            batch_norm=batch_norm,
-            multiclass_num_classes=multiclass_num_classes,
-            accelerator=accelerator,
-            devices=devices,
-            epochs=epochs,
-            patience=patience,
-            no_cache=no_cache,
-            task_type=task_type,
-            loss_function=loss_function,
-            metrics=metrics,
-            val_size=val_size,
-            multi_hot_atom_featurizer_mode=multi_hot_atom_featurizer_mode,
-            reaction_mode=reaction_mode,
-        )
-        self.args = add_train_defaults(args)
         self.model = None
+        self.args = None
         for name, value in locals().items():
-            if name not in {"self", "args"}:
-                setattr(self, name, value)
+            setattr(self, name, value)
 
     def __sklearn_is_fitted__(self):
-        return True
+        return True if self.args else False
 
     def fit(self, X, y=None):
-        if self.args.checkpoint is not None:
-            model_paths = find_models(self.args.checkpoint)
+        args = Namespace(
+            num_workers=self.num_workers,
+            batch_size=self.batch_size,
+            output_dir=self.output_dir,
+            checkpoint=self.checkpoint,
+            molecule_featurizers=self.molecule_featurizers,
+            no_descriptor_scaling=self.no_descriptor_scaling,
+            message_hidden_dim=self.message_hidden_dim,
+            depth=self.depth,
+            dropout=self.dropout,
+            aggregation=self.aggregation,
+            ffn_hidden_dim=self.ffn_hidden_dim,
+            ffn_num_layers=self.ffn_num_layers,
+            batch_norm=self.batch_norm,
+            multiclass_num_classes=self.multiclass_num_classes,
+            accelerator=self.accelerator,
+            devices=self.devices,
+            epochs=self.epochs,
+            patience=self.patience,
+            no_cache=self.no_cache,
+            task_type=self.task_type,
+            loss_function=self.loss_function,
+            metrics=self.metrics,
+            val_size=self.val_size,
+            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+            reaction_mode=self.reaction_mode,
+        )
+        self.args = add_train_defaults(args)
+        if self.checkpoint is not None:
+            model_paths = find_models(self.checkpoint)
             if len(model_paths) != 1:
                 logger.warning(
                     "More than one model path provided in checkpoint and only the first one is used. Call ChempropEnsembleRegressor instead."
@@ -402,14 +402,14 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
             self.model = mpnn_cls.load_from_file(model_path)
             self.model.apply(
-                lambda m: setattr(m, "p", self.args.dropout)
+                lambda m: setattr(m, "p", self.dropout)
                 if isinstance(m, torch.nn.Dropout)
                 else None
             )
 
         if isinstance(X[0], list):
             n = len(X[0])
-            train_idx, val_idx = _split_indices(n, self.args.val_size)
+            train_idx, val_idx = _split_indices(n, self.val_size)
 
             train_datasets = []
             val_datasets = []
@@ -440,7 +440,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             if not isinstance(X, (list, tuple)):
                 raise ValueError("X must be a list of datapoints for non-multicomponent inputs")
             n = len(X)
-            train_idx, val_idx = _split_indices(n, self.args.val_size)
+            train_idx, val_idx = _split_indices(n, self.val_size)
             train_dps = [X[i] for i in train_idx]
             val_dps = [X[i] for i in val_idx]
             train_set = make_dataset(
@@ -456,7 +456,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                     multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
                 )
 
-        if not self.args.no_cache:
+        if not self.no_cache:
             train_set.cache = True
             if val_set is not None:
                 val_set.cache = True
@@ -466,35 +466,35 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 train_set, val_set if val_set is not None else train_set, self.args
             )
             output_transform = None
-            if "regression" in self.args.task_type:
+            if "regression" in self.task_type:
                 output_scaler = train_set.normalize_targets()
                 output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
             self.model = build_model(self.args, train_set, output_transform, input_transforms)
 
         train_loader = DataLoader(
             train_set,
-            batch_size=self.args.batch_size,
+            batch_size=self.batch_size,
             shuffle=True,
-            num_workers=self.args.num_workers,
+            num_workers=self.num_workers,
             collate_fn=pick_collate(train_set),
         )
         if val_set:
             val_loader = DataLoader(
                 val_set,
-                batch_size=self.args.batch_size,
+                batch_size=self.batch_size,
                 shuffle=False,
-                num_workers=self.args.num_workers,
+                num_workers=self.num_workers,
                 collate_fn=pick_collate(val_set),
             )
         else:
             val_loader = None
 
-        patience = self.args.patience if self.args.patience else self.args.epochs
+        patience = self.patience if self.patience else self.epochs
         metric = "val_loss" if val_loader else "train_loss"
         trainer = Trainer(
-            accelerator=self.args.accelerator,
-            devices=self.args.devices,
-            max_epochs=self.args.epochs,
+            accelerator=self.accelerator,
+            devices=self.devices,
+            max_epochs=self.epochs,
             callbacks=[EarlyStopping(monitor=metric, patience=patience, mode="min")],
         )
 
@@ -506,6 +506,8 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
+        if self.args is None:
+            raise ValueError("The regressor has not been fitted.")
         if isinstance(X[0], list):
             test_set = MulticomponentDataset(
                 [
@@ -577,14 +579,14 @@ class ChempropEnsembleRegressor(ChempropRegressor):
 
     def fit(self, X, y):
         self.models = []
-        if self.args.checkpoint is not None:
-            if len(self.args.checkpoint) != self.ensemble_size:
+        if self.checkpoint is not None:
+            if len(self.checkpoint) != self.ensemble_size:
                 logger.warning(
                     f"The number of models in ensemble for each splitting of data is set to {len(self.args.checkpoint)}."
                 )
-                self.ensemble_size = len(self.args.checkpoint)
+                self.ensemble_size = len(self.checkpoint)
 
-            for path in self.args.checkpoint:
+            for path in self.checkpoint:
                 args = dict(self.base_kwargs)
                 args["checkpoint"] = [path]
                 model = ChempropRegressor(**args)
