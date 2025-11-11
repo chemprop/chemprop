@@ -218,7 +218,6 @@ class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
         J. Chem. Inf. Model. 2025, 65 (20), 10832–10843. https://doi.org/10.1021/acs.jcim.5c00495
     """
 
-
     def __init__(
         self,
         atomic_nums: Sequence[int] | None = None,
