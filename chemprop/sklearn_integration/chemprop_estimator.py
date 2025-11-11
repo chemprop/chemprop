@@ -356,7 +356,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             setattr(self, name, value)
 
     def __sklearn_is_fitted__(self):
-        return True if self.args else False
+        return True if self.model else False
 
     def fit(self, X, y=None):
         args = Namespace(
@@ -402,9 +402,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
             self.model = mpnn_cls.load_from_file(model_path)
             self.model.apply(
-                lambda m: setattr(m, "p", self.dropout)
-                if isinstance(m, torch.nn.Dropout)
-                else None
+                lambda m: setattr(m, "p", self.dropout) if isinstance(m, torch.nn.Dropout) else None
             )
 
         if isinstance(X[0], list):
