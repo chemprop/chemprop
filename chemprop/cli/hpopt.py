@@ -367,9 +367,15 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
-    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    val_loader = build_dataloader(
+        val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
+    )
 
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 
@@ -579,7 +585,11 @@ def main(args: Namespace):
         )
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
 
     if args.tracking_metric != "val_loss":  # i.e. non-default

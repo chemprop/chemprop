@@ -2082,15 +2082,22 @@ def main(args):
             args.num_workers,
             class_balance=args.class_balance,
             seed=args.data_seed,
+            drop_last=args.batch_norm,
         )
         if args.class_balance:
             logger.debug(
                 f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
             )
-        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        val_loader = build_dataloader(
+            val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
+        )
         if test_dset is not None:
             test_loader = build_dataloader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
+                test_dset,
+                args.batch_size,
+                args.num_workers,
+                shuffle=False,
+                drop_last=args.batch_norm,
             )
         else:
             test_loader = None
