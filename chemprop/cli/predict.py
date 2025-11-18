@@ -271,7 +271,9 @@ def prepare_data_loader(
     ]
     dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
-    return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
+    return data.build_dataloader(
+        dset, args.batch_size, args.num_workers, shuffle=False, drop_last=False
+    )
 
 
 def make_prediction_for_models(
