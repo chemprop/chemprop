@@ -3,7 +3,7 @@ from sklearn.pipeline import Pipeline
 from chemprop.sklearn_integration import ChempropMulticomponentTransformer, ChempropRegressor
 
 
-def test_sklearn_pipeline(rxn_mol_regression_data):
+def test_sklearn_pipeline(rxn_mol_regression_data, tmp_path):
     sklearnPipeline = Pipeline(
         [
             (
@@ -14,8 +14,7 @@ def test_sklearn_pipeline(rxn_mol_regression_data):
         ]
     )
     rxns, smis, Y = rxn_mol_regression_data
-    Y = Y.flatten()
     sklearnPipeline.fit(X=[smis, rxns], y=Y)
     score = sklearnPipeline.score(X=[smis, rxns], y=Y)
-    assert score < 1
-    sklearnPipeline["regressor"].save_model("checkpoints")
+    assert score[0] < 1
+    sklearnPipeline["regressor"].save_model(tmp_path)

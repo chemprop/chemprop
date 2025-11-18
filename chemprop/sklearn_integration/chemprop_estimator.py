@@ -256,13 +256,13 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
-            mol_dps = self.mol_transformer._build_dps(
-                X=smiss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-            )
-            rxn_dps = self.rxn_transformer._build_dps(
-                X=rxnss, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-            )
-            return [mol_dps, rxn_dps]
+            mol_dpss = [self.mol_transformer._build_dps(
+                X=smis, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+            ) for smis in smiss]
+            rxn_dpss = [self.rxn_transformer._build_dps(
+                X=rxns, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
+            ) for rxns in rxnss]
+            return [*mol_dpss, *rxn_dpss]
         else:
             if (
                 isinstance(X, (np.ndarray, list))
@@ -308,13 +308,13 @@ def pick_collate(dset):
     return collate_batch
 
 
-def _split_indices(n: int, val_size: float):
+def _split_indices(n: int, val_size: float, seed = 0):
     if val_size <= 0:
         return np.arange(n), np.array([], dtype=int)
     if val_size >= 1:
         raise ValueError("val_size should be a float less than 1")
     n_val = int(n * val_size)
-    rng = np.random.RandomState(0)
+    rng = np.random.RandomState(seed)
     perm = rng.permutation(n)
     val_idx = perm[:n_val]
     train_idx = perm[n_val:]
@@ -347,13 +347,15 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         loss_function: Optional[str] = None,
         metrics: Optional[List[str]] = None,
         val_size: float = 0,
+        data_seed: int = 0,
         multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
         reaction_mode: RxnMode = RxnMode.REAC_DIFF,
     ):
         self.model = None
         self.args = None
         for name, value in locals().items():
-            setattr(self, name, value)
+            if name not in ["self", "model", "args"]:
+                setattr(self, name, value)
 
     def __sklearn_is_fitted__(self):
         return True if self.model else False
@@ -407,7 +409,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
 
         if isinstance(X[0], list):
             n = len(X[0])
-            train_idx, val_idx = _split_indices(n, self.val_size)
+            train_idx, val_idx = _split_indices(n, self.val_size, self.data_seed)
 
             train_datasets = []
             val_datasets = []
@@ -504,7 +506,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        if self.args is None:
+        if self.model is None:
             raise ValueError("The regressor has not been fitted.")
         if isinstance(X[0], list):
             test_set = MulticomponentDataset(
@@ -537,25 +539,53 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             accelerator=self.args.accelerator, devices=1, enable_progress_bar=True
         )
         preds = eval_trainer.predict(self.model, dataloaders=dl, return_predictions=True)
-        return torch.cat(preds, dim=0).view(-1).cpu().numpy()
+        preds = torch.cat(preds, dim=0)
+
+        if preds.ndim == 1:
+            preds = preds.unsqueeze(-1)
+
+        return preds.cpu().numpy()
+
+    def _score(self, y, y_pred, metric):
+        y_true = np.asarray(y)
+        y_pred = np.asarray(y_pred)
+
+        if y_true.ndim == 1:
+            y_true = y_true.reshape(-1, 1)
+        if y_pred.ndim == 1:
+            y_pred = y_pred.reshape(-1, 1)
+
+        if y_true.shape != y_pred.shape:
+            raise ValueError(f"Shape mismatch between y (shape={y_true.shape}) and predictions (shape={y_pred.shape}).")
+
+        scores = []
+        for j in range(y_true.shape[1]):
+            yt = y_true[:, j]
+            yp = y_pred[:, j]
+
+            if metric == "mae":
+                s = mean_absolute_error(yt, yp)
+            elif metric == "rmse":
+                s = root_mean_squared_error(yt, yp)
+            elif metric == "mse":
+                s = root_mean_squared_error(yt, yp) ** 2
+            elif metric == "r2":
+                s = r2_score(yt, yp)
+            elif metric == "accuracy":
+                s = accuracy_score(yt, (yp > 0.5).astype(int))
+            else:
+                raise ValueError(f"Unsupported metric: {metric}")
+
+            scores.append(s)
+
+        return scores
 
     def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
         y_pred = self.predict(X)
         if y is None:
             y = self._y
-        if metric == "mae":
-            return mean_absolute_error(y, y_pred)
-        elif metric == "rmse":
-            return root_mean_squared_error(y, y_pred)
-        elif metric == "mse":
-            return root_mean_squared_error(y, y_pred) ** 2
-        elif metric == "r2":
-            return r2_score(y, y_pred)
-        elif metric == "accuracy":
-            return accuracy_score(y, (y_pred > 0.5).astype(int))
-        else:
-            raise ValueError(f"Unsupported metric: {metric}")
-
+        return self._score(y, y_pred, metric)
+    
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
             output_dir = self.args.output_dir
@@ -605,18 +635,7 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         y_pred = self.predict(X)
         if y is None:
             y = self.models[0]._y
-        if metric == "mae":
-            return mean_absolute_error(y, y_pred)
-        elif metric == "rmse":
-            return root_mean_squared_error(y, y_pred)
-        elif metric == "mse":
-            return root_mean_squared_error(y, y_pred) ** 2
-        elif metric == "r2":
-            return r2_score(y, y_pred)
-        elif metric == "accuracy":
-            return accuracy_score(y, (y_pred > 0.5).astype(int))
-        else:
-            raise ValueError(f"Unsupported metric: {metric}")
+        return self._score(y, y_pred, metric)
 
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
