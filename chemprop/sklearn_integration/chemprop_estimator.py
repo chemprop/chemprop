@@ -440,7 +440,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             if not isinstance(X, (list, tuple)):
                 raise ValueError("X must be a list of datapoints for non-multicomponent inputs")
             n = len(X)
-            train_idx, val_idx = _split_indices(n, self.val_size)
+            train_idx, val_idx = _split_indices(n, self.val_size, self.data_seed)
             train_dps = [X[i] for i in train_idx]
             val_dps = [X[i] for i in val_idx]
             train_set = make_dataset(
