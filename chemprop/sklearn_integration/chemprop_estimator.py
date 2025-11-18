@@ -281,10 +281,10 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
             elif np.ndim(Y) == 1:
                 Y = np.asarray(Y).reshape(-1, 1)
             dp_lists = [
-                self.mol_transformer._build_dps(col, Y)
+                self.mol_transformer._build_dps(input_col, Y)
                 if type == "molecule"
-                else self.rxn_transformer._build_dps(col, Y)
-                for type, col in zip(self.component_types, X)
+                else self.rxn_transformer._build_dps(input_col, Y)
+                for type, input_col in zip(self.component_types, X)
             ]
             return dp_lists
 
@@ -592,7 +592,6 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         utils.save_model(str(output_dir / "best.pt"), self.model, None)
-        return self
 
 
 class ChempropEnsembleRegressor(ChempropRegressor):
@@ -644,7 +643,6 @@ class ChempropEnsembleRegressor(ChempropRegressor):
         output_dir.mkdir(parents=True, exist_ok=True)
         for idx, model in enumerate(self.models):
             utils.save_model(str(output_dir / f"best_{idx}.pt"), model.model, None)
-        return self
 
 
 # microtest
