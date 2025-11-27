@@ -503,8 +503,21 @@ def test_Wasserstein(
 
 
 @pytest.mark.parametrize(
-    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,alpha_mode,expected_type",
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,alpha_mode,gamma,expected_loss",
     [
+
+        (
+            torch.tensor([2.0, -2.0], dtype=torch.float),
+            torch.tensor([1.0, 0.0], dtype=torch.float),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones(1),
+            torch.ones(2),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            0.25,
+            2.0,
+            torch.tensor(0.000902, dtype=torch.float),
+        ),
         (
             torch.tensor([2.0, -2.0], dtype=torch.float),
             torch.tensor([1.0, 0.0], dtype=torch.float),
@@ -514,7 +527,8 @@ def test_Wasserstein(
             torch.zeros([2], dtype=torch.bool),
             torch.zeros([2], dtype=torch.bool),
             "auto",
-            float,
+            2.0,
+            torch.tensor(0.000902, dtype=torch.float),
         ),
         (
             torch.tensor([2.0, -2.0, 1.0, -1.0], dtype=torch.float),
@@ -525,20 +539,21 @@ def test_Wasserstein(
             torch.zeros([4], dtype=torch.bool),
             torch.zeros([4], dtype=torch.bool),
             0.3,
-            float,
+            2.0,
+            torch.tensor(0.006115, dtype=torch.float),
         ),
     ],
 )
 def test_FocalLoss(
-    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, alpha_mode, expected_type
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, alpha_mode, gamma, expected_loss
 ):
     """
     Test on the FocalLoss function with automatic and manual alpha.
+    Values have been manually calculated for the first test case.
     """
-    focal_loss = FocalLoss(task_weights=task_weights, alpha=alpha_mode, gamma=2.0)
+    focal_loss = FocalLoss(task_weights=task_weights, alpha=alpha_mode, gamma=gamma)
     loss = focal_loss(preds, targets, mask, weights, lt_mask, gt_mask)
-    assert isinstance(loss.item(), expected_type)
-    assert loss.item() >= 0
+    torch.testing.assert_close(loss, expected_loss, rtol=1e-4, atol=1e-5)
 
 
 # TODO: Add quantile loss tests

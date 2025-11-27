@@ -7,6 +7,7 @@ from torch.nn import functional as F
 import torchmetrics
 from torchmetrics.utilities.compute import auc
 from torchmetrics.utilities.data import dim_zero_cat
+from torchvision.ops import sigmoid_focal_loss
 
 from chemprop.utils.registry import ClassRegistry
 
@@ -618,16 +619,7 @@ class FocalLoss(ChempropMetric):
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         alpha = self.alpha if self.alpha is not None else 0.25 if self.alpha_mode == "auto" else self.alpha_mode
 
-        p = torch.sigmoid(preds)
-        bce = F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
-
-        p_t = torch.where(targets == 1, p, 1 - p)
-        focal_weight = (1 - p_t) ** self.gamma
-
-        alpha_weight = torch.where(targets == 1, alpha, 1 - alpha)
-        focal_loss = alpha_weight * focal_weight * bce
-
-        return focal_loss
+        return sigmoid_focal_loss(preds, targets, alpha=alpha, gamma=self.gamma, reduction="none")
 
     def extra_repr(self) -> str:
         alpha_str = f"{self.alpha:.3f}" if self.alpha is not None else self.alpha_mode
