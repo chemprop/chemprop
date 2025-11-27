@@ -585,26 +585,9 @@ class QuantileLoss(ChempropMetric):
 
 @LossFunctionRegistry.register("focal")
 class FocalLoss(ChempropMetric):
-    """Focal loss for handling class imbalance [lin2017]_.
-
-    References
-    ----------
-    .. [lin2017] Lin, T. Y.; Goyal, P.; Girshick, R.; He, K.; Dollár, P. "Focal loss for dense
-        object detection." ICCV, 2017. https://arxiv.org/abs/1708.02002
-    """
 
     def __init__(self, task_weights: ArrayLike = 1.0, alpha: float | str = "auto", gamma: float = 2.0):
-        """
-        Parameters
-        ----------
-        task_weights :  ArrayLike, default=1.0
-            the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
-        alpha : float or "auto", default="auto"
-            Weighting factor in [0, 1] to balance positive/negative examples.
-            If "auto", alpha is calculated from class frequencies.
-        gamma : float, default=2.0
-            Exponent of the modulating factor to focus on hard examples. Typical: 1.5-2.0
-        """
+
         super().__init__(task_weights)
         if isinstance(alpha, (int, float)) and not (0 <= alpha <= 1):
             raise ValueError(f"alpha must be in range [0, 1], got {alpha}")
