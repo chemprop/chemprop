@@ -49,6 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
+    "FocalLoss",
 ]
 
 
@@ -580,3 +581,69 @@ class QuantileLoss(ChempropMetric):
 
     def extra_repr(self) -> str:
         return f"alpha={self.alpha}"
+
+
+@LossFunctionRegistry.register("focal")
+class FocalLoss(ChempropMetric):
+    """Focal loss for handling class imbalance [lin2017]_.
+
+    References
+    ----------
+    .. [lin2017] Lin, T. Y.; Goyal, P.; Girshick, R.; He, K.; Dollár, P. "Focal loss for dense
+        object detection." ICCV, 2017. https://arxiv.org/abs/1708.02002
+    """
+
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float | str = "auto", gamma: float = 2.0):
+        """
+        Parameters
+        ----------
+        task_weights :  ArrayLike, default=1.0
+            the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
+        alpha : float or "auto", default="auto"
+            Weighting factor in [0, 1] to balance positive/negative examples.
+            If "auto", alpha is calculated from class frequencies.
+        gamma : float, default=2.0
+            Exponent of the modulating factor to focus on hard examples. Typical: 1.5-2.0
+        """
+        super().__init__(task_weights)
+        self.alpha_mode = alpha
+        self.alpha = None
+        self.gamma = gamma
+        self.add_state("pos_count", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total_count", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+    def update(
+        self,
+        preds: Tensor,
+        targets: Tensor,
+        mask: Tensor | None = None,
+        weights: Tensor | None = None,
+        lt_mask: Tensor | None = None,
+        gt_mask: Tensor | None = None,
+    ) -> None:
+        if self.alpha_mode == "auto" and self.alpha is None:
+            mask_val = torch.ones_like(targets, dtype=torch.bool) if mask is None else mask
+            pos_count = (targets[mask_val] == 1).sum().float()
+            total_count = mask_val.sum().float()
+            pos_ratio = pos_count / (total_count + 1e-8)
+            self.alpha = (1 - pos_ratio) / (1 + pos_ratio)
+        
+        super().update(preds, targets, mask, weights, lt_mask, gt_mask)
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        alpha = self.alpha if self.alpha is not None else 0.25 if self.alpha_mode == "auto" else self.alpha_mode
+        
+        p = torch.sigmoid(preds)
+        bce = F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
+        
+        p_t = torch.where(targets == 1, p, 1 - p)
+        focal_weight = (1 - p_t) ** self.gamma
+        
+        alpha_weight = torch.where(targets == 1, alpha, 1 - alpha)
+        focal_loss = alpha_weight * focal_weight * bce
+        
+        return focal_loss
+
+    def extra_repr(self) -> str:
+        alpha_str = f"{self.alpha:.3f}" if self.alpha is not None else self.alpha_mode
+        return f"alpha={alpha_str}, gamma={self.gamma}"
