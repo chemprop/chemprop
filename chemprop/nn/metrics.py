@@ -627,21 +627,21 @@ class FocalLoss(ChempropMetric):
             total_count = mask_val.sum().float()
             pos_ratio = pos_count / (total_count + 1e-8)
             self.alpha = (1 - pos_ratio) / (1 + pos_ratio)
-        
+
         super().update(preds, targets, mask, weights, lt_mask, gt_mask)
 
     def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
         alpha = self.alpha if self.alpha is not None else 0.25 if self.alpha_mode == "auto" else self.alpha_mode
-        
+
         p = torch.sigmoid(preds)
         bce = F.binary_cross_entropy_with_logits(preds, targets, reduction="none")
-        
+
         p_t = torch.where(targets == 1, p, 1 - p)
         focal_weight = (1 - p_t) ** self.gamma
-        
+
         alpha_weight = torch.where(targets == 1, alpha, 1 - alpha)
         focal_loss = alpha_weight * focal_weight * bce
-        
+
         return focal_loss
 
     def extra_repr(self) -> str:
