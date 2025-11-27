@@ -606,6 +606,8 @@ class FocalLoss(ChempropMetric):
             Exponent of the modulating factor to focus on hard examples. Typical: 1.5-2.0
         """
         super().__init__(task_weights)
+        if isinstance(alpha, (int, float)) and not (0 <= alpha <= 1):
+            raise ValueError(f"alpha must be in range [0, 1], got {alpha}")
         self.alpha_mode = alpha
         self.alpha = None
         self.gamma = gamma
