@@ -12,6 +12,7 @@ from chemprop.nn.metrics import (
     CrossEntropyLoss,
     DirichletLoss,
     EvidentialLoss,
+    FocalLoss,
     MulticlassMCCLoss,
     MVELoss,
     Wasserstein,
@@ -499,6 +500,45 @@ def test_Wasserstein(
     wasserstein_loss = Wasserstein(task_weights=task_weights, threshold=threshold)
     loss = wasserstein_loss(preds, targets, mask, weights, lt_mask, gt_mask)
     torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,alpha_mode,expected_type",
+    [
+        (
+            torch.tensor([2.0, -2.0], dtype=torch.float),
+            torch.tensor([1.0, 0.0], dtype=torch.float),
+            torch.ones([2], dtype=torch.bool),
+            torch.ones(1),
+            torch.ones(2),
+            torch.zeros([2], dtype=torch.bool),
+            torch.zeros([2], dtype=torch.bool),
+            "auto",
+            float,
+        ),
+        (
+            torch.tensor([2.0, -2.0, 1.0, -1.0], dtype=torch.float),
+            torch.tensor([1.0, 0.0, 1.0, 0.0], dtype=torch.float),
+            torch.ones([4], dtype=torch.bool),
+            torch.ones(1),
+            torch.ones(4),
+            torch.zeros([4], dtype=torch.bool),
+            torch.zeros([4], dtype=torch.bool),
+            0.3,
+            float,
+        ),
+    ],
+)
+def test_FocalLoss(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, alpha_mode, expected_type
+):
+    """
+    Test on the FocalLoss function with automatic and manual alpha.
+    """
+    focal_loss = FocalLoss(task_weights=task_weights, alpha=alpha_mode, gamma=2.0)
+    loss = focal_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+    assert isinstance(loss.item(), expected_type)
+    assert loss.item() >= 0
 
 
 # TODO: Add quantile loss tests
