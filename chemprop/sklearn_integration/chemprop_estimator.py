@@ -109,7 +109,7 @@ class ChempropMoleculeTransformer(BaseEstimator, TransformerMixin):
             reorder_atoms=self.reorder_atoms,
             use_cuikmolmaker_featurization=False,
         )
-        return mol_data[0]
+        return mol_data
 
 
 class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
@@ -193,7 +193,7 @@ class ChempropReactionTransformer(BaseEstimator, TransformerMixin):
             reorder_atoms=self.reorder_atoms,
             use_cuikmolmaker_featurization=False,
         )
-        return rxn_data[0]
+        return rxn_data
 
 
 class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
@@ -256,13 +256,25 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
                 bounded=self.bounded,
                 no_header_row=self.no_header_row,
             )
-            mol_dpss = [self.mol_transformer._build_dps(
-                X=smis, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-            ) for smis in smiss]
-            rxn_dpss = [self.rxn_transformer._build_dps(
-                X=rxns, Y=Y, weights=weights, lt_mask=lt_mask, gt_mask=gt_mask
-            ) for rxns in rxnss]
-            return [*mol_dpss, *rxn_dpss]
+            mol_data, rxn_data = make_datapoints(
+                smiss=smiss,
+                rxnss=rxnss,
+                Y=Y,
+                weights=weights,
+                lt_mask=lt_mask,
+                gt_mask=gt_mask,
+                X_d=None,
+                V_fss=None,
+                E_fss=None,
+                V_dss=None,
+                molecule_featurizers=None,
+                keep_h=self.keep_h,
+                add_h=self.add_h,
+                ignore_stereo=self.ignore_stereo,
+                reorder_atoms=self.reorder_atoms,
+                use_cuikmolmaker_featurization=False,
+            )
+            return [*mol_data, *rxn_data]
         else:
             if (
                 isinstance(X, (np.ndarray, list))
@@ -281,9 +293,9 @@ class ChempropMulticomponentTransformer(BaseEstimator, TransformerMixin):
             elif np.ndim(Y) == 1:
                 Y = np.asarray(Y).reshape(-1, 1)
             dp_lists = [
-                self.mol_transformer._build_dps(input_col, Y)
+                self.mol_transformer._build_dps(input_col, Y)[0]
                 if type == "molecule"
-                else self.rxn_transformer._build_dps(input_col, Y)
+                else self.rxn_transformer._build_dps(input_col, Y)[0]
                 for type, input_col in zip(self.component_types, X)
             ]
             return dp_lists
@@ -308,11 +320,11 @@ def pick_collate(dset):
     return collate_batch
 
 
-def _split_indices(n: int, val_size: float, seed = 0):
+def _split_indices(n: int, val_size: float, seed=0):
     if val_size <= 0:
         return np.arange(n), np.array([], dtype=int)
     if val_size >= 1:
-        raise ValueError("val_size should be a float less than 1")
+        raise ValueError("val_size should be a float between 0 and 1")
     n_val = int(n * val_size)
     rng = np.random.RandomState(seed)
     perm = rng.permutation(n)
@@ -556,7 +568,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
             y_pred = y_pred.reshape(-1, 1)
 
         if y_true.shape != y_pred.shape:
-            raise ValueError(f"Shape mismatch between y (shape={y_true.shape}) and predictions (shape={y_pred.shape}).")
+            raise ValueError(
+                f"Shape mismatch between y (shape={y_true.shape}) and predictions (shape={y_pred.shape})."
+            )
 
         scores = []
         for j in range(y_true.shape[1]):
@@ -585,7 +599,7 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         if y is None:
             y = self._y
         return self._score(y, y_pred, metric)
-    
+
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
             output_dir = self.args.output_dir
@@ -654,7 +668,7 @@ if __name__ == "__main__":
             (
                 "featurizer",
                 ChempropMulticomponentTransformer(
-                    smiles_cols="solvent_smiles", rxn_cols="rxn_smiles", target_cols="target"
+                    smiles_cols=["solvent_smiles"], rxn_cols=["rxn_smiles"], target_cols=["target"]
                 ),
             ),
             ("regressor", ChempropRegressor(epochs=100, patience=10)),
