@@ -17,10 +17,10 @@
 # Parent Image
 FROM condaforge/miniforge3:latest
 
-# Install libxrender1 (required by RDKit) and binutils (to get strings, for cuik-molmaker install) and then clean up
+# Install libxrender1 (required by RDKit) and then clean up
 RUN apt-get update && \
     apt-get install -y \
-    libxrender1 binutils && \
+    libxrender1 && \
     apt-get autoremove -y && \
     apt-get clean -y
 
