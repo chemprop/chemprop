@@ -1,5 +1,6 @@
 from copy import deepcopy
 import logging
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -28,6 +29,10 @@ from chemprop.data import MolAtomBondDataset, build_dataloader
 from chemprop.nn import AggregationRegistry, MetricRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.nn.utils import Activation
+
+# Disable Ray Train v2 API to maintain compatibility with tune.Tuner
+# See: https://github.com/ray-project/ray/issues/49454
+os.environ.setdefault("RAY_TRAIN_V2_ENABLED", "0")
 
 NO_RAY = False
 DEFAULT_SEARCH_SPACE = {
