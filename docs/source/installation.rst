@@ -32,7 +32,7 @@ To install the latest version of Chemprop and all of its dependencies, execute t
 
     conda create -n chemprop python=3.11
     conda activate chemprop
-    pip install chemprop --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/
+    pip install chemprop --extra-index-url https://pypi.nvidia.com/rdkit-latest/
 
 The above approach is recommended as it will install the most updated versions of all external dependencies and will be more compatible with other dependencies you may wish to add. However, it is possible that external dependencies to Chemprop may introduce backwards incompatible changes to their codebase. For this reason, we also provide known working sets of dependencies for each Chemprop version. To install a specific version of Chemprop (i.e. 2.1.0), download the corresponding ``x.y.z_requirements.txt`` file from the `Chemprop GitHub repository <https://github.com/chemprop/chemprop/tree/main/requirements>`_ and run the following commands:
 
@@ -53,10 +53,10 @@ Option 2: Installing from source using pip
     conda activate chemprop
     git clone https://github.com/chemprop/chemprop.git
     cd chemprop
-    pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/
+    pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-latest/
 
 .. note:: 
-    You can also use this option to install additional optional dependencies by replacing ``pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks]" --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/``.
+    You can also use this option to install additional optional dependencies by replacing ``pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-latest/`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks]" --extra-index-url https://pypi.nvidia.com/rdkit-latest/``.
 
 .. _install-from-source-using-environment-yml:
 
@@ -69,7 +69,7 @@ Option 3: Installing from source using environment.yml
     cd chemprop
     conda env create -f environment.yml
     conda activate chemprop
-    pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/
+    pip install -e . --extra-index-url https://pypi.nvidia.com/rdkit-latest/
 
 .. note::
     `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It can be installed using the python script ``check_and_install_cuik_molmaker.py``. This script finds a compatible version of ``cuik-molmaker`` depending on the version of ``RDKit`` and ``PyTorch`` and installs it. Currently, ``cuik-molmaker`` is compatible with installation :ref:`install-from-source-using-environment-yml` and :ref:`install-via-docker`.
