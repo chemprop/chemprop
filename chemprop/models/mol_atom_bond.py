@@ -552,7 +552,9 @@ class MolAtomBondMPNN(pl.LightningModule):
         torch.save(d, buffer)
         buffer.seek(0)
 
-        return super().load_from_checkpoint(buffer, map_location, hparams_file, strict, **kwargs, weights_only=False)
+        return super().load_from_checkpoint(
+            buffer, map_location, hparams_file, strict, **kwargs, weights_only=False
+        )
 
     @classmethod
     def load_from_file(
