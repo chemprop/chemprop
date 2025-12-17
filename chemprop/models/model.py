@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import io
 import logging
 import traceback
@@ -305,7 +306,16 @@ class MPNN(pl.LightningModule):
         torch.save(d, buffer)
         buffer.seek(0)
 
-        return super().load_from_checkpoint(buffer, map_location, hparams_file, strict, **kwargs)
+        if (
+            "weights_only" in inspect.signature(cls.load_from_checkpoint).parameters
+        ):  # lightning >=2.6.0
+            return super().load_from_checkpoint(
+                buffer, map_location, hparams_file, strict, weights_only=False, **kwargs
+            )
+        else:
+            return super().load_from_checkpoint(
+                buffer, map_location, hparams_file, strict, **kwargs
+            )
 
     @classmethod
     def load_from_file(cls, model_path, map_location=None, strict=True, **submodules) -> MPNN:
