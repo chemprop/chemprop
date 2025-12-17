@@ -57,7 +57,7 @@ DEFAULT_SEARCH_SPACE = {
 try:
     import ray
     from ray import tune
-    from ray.train import CheckpointConfig, Checkpoint, RunConfig, ScalingConfig
+    from ray.train import Checkpoint, CheckpointConfig, RunConfig, ScalingConfig
     from ray.train.lightning import (
         RayDDPStrategy,
         RayLightningEnvironment,
