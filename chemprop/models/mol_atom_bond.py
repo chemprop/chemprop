@@ -554,7 +554,7 @@ class MolAtomBondMPNN(pl.LightningModule):
         buffer.seek(0)
 
         if (
-            "weights_only" in inspect.signature(cls.load_from_checkpoint).parameters
+            "weights_only" in inspect.signature(super().load_from_checkpoint).parameters
         ):  # lightning >=2.6.0
             return super().load_from_checkpoint(
                 buffer, map_location, hparams_file, strict, weights_only=False, **kwargs
