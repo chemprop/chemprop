@@ -580,3 +580,23 @@ class QuantileLoss(ChempropMetric):
 
     def extra_repr(self) -> str:
         return f"alpha={self.alpha}"
+
+
+@LossFunctionRegistry.register(["quantile_single", "pinball_single"])
+class QuantileSingleLoss(ChempropMetric):
+    """
+    Single-output pinball (quantile) loss operating on one prediction per task.
+    Expects preds and targets shaped [batch, num_tasks].
+    """
+
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
+        super().__init__(task_weights)
+        self.alpha = alpha
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
+        diff = targets - preds
+        loss = torch.where(diff > 0, self.alpha * diff, (1 - self.alpha) * (-diff))
+        return loss
+
+    def extra_repr(self) -> str:
+        return f"alpha={self.alpha}"
