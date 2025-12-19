@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import io
 import logging
 from typing import Iterable
