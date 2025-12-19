@@ -6,6 +6,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.models import MPNN, MolAtomBondMPNN
 from chemprop.utils.registry import ClassRegistry
 
@@ -79,14 +80,16 @@ class NoUncertaintyEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             predss = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 predss.append(preds)
         else:
             mol_predss = []
             atom_predss = []
             bond_predss = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -138,14 +141,16 @@ class MVEEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             mves = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 mves.append(preds)
         else:
             mol_mves = []
             atom_mves = []
             bond_mves = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -201,14 +206,16 @@ class EnsembleEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             ensemble_preds = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 ensemble_preds.append(preds)
         else:
             mol_ensemble_preds = []
             atom_ensemble_preds = []
             bond_ensemble_preds = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -259,14 +266,16 @@ class ClassEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             predss = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 predss.append(preds)
         else:
             mol_predss = []
             atom_predss = []
             bond_predss = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -317,14 +326,16 @@ class EvidentialTotalEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             uncs = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 uncs.append(preds)
         else:
             mol_uncs = []
             atom_uncs = []
             bond_uncs = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -376,14 +387,16 @@ class EvidentialEpistemicEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             uncs = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 uncs.append(preds)
         else:
             mol_uncs = []
             atom_uncs = []
             bond_uncs = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -435,14 +448,16 @@ class EvidentialAleatoricEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             uncs = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 uncs.append(preds)
         else:
             mol_uncs = []
             atom_uncs = []
             bond_uncs = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -516,7 +531,7 @@ class DropoutEstimator(UncertaintyEstimator):
                 individual_preds = []
 
                 for _ in range(self.ensemble_size):
-                    predss = trainer.predict(model, dataloader)
+                    predss = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                     preds = torch.concat(predss, 0)
                     individual_preds.append(preds)
 
@@ -538,7 +553,7 @@ class DropoutEstimator(UncertaintyEstimator):
                 bond_individual_preds = []
 
                 for _ in range(self.ensemble_size):
-                    MAB_predss = trainer.predict(model, dataloader)
+                    MAB_predss = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                     mol_preds, atom_preds, bond_preds = (
                         torch.concat(preds, 0) if preds[0] is not None else None
                         for preds in zip(*MAB_predss)
@@ -666,14 +681,16 @@ class ClassificationDirichletEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             uncs = []
             for model in models:
-                preds = torch.concat(trainer.predict(model, dataloader), 0)
+                preds = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 uncs.append(preds)
         else:
             mol_uncs = []
             atom_uncs = []
             bond_uncs = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -740,7 +757,9 @@ class MulticlassDirichletEstimator(UncertaintyEstimator):
             uncs = []
             for model in models:
                 self._setup_model(model)
-                output = torch.concat(trainer.predict(model, dataloader), 0)
+                output = torch.concat(
+                    trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS), 0
+                )
                 self._restore_model(model)
                 preds.append(output[..., :-1])
                 uncs.append(output[..., -1])
@@ -757,7 +776,7 @@ class MulticlassDirichletEstimator(UncertaintyEstimator):
             bond_uncs = []
             for model in models:
                 self._setup_model(model)
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_output, atom_output, bond_output = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)
@@ -818,14 +837,14 @@ class QuantileRegressionEstimator(UncertaintyEstimator):
         if not_mol_atom_bond:
             individual_preds = []
             for model in models:
-                predss = trainer.predict(model, dataloader)
+                predss = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 individual_preds.append(torch.concat(predss, 0))
         else:
             mol_individual_preds = []
             atom_individual_preds = []
             bond_individual_preds = []
             for model in models:
-                MAB_preds = trainer.predict(model, dataloader)
+                MAB_preds = trainer.predict(model, dataloader, **LIGHTNING_26_COMPAT_ARGS)
                 mol_preds, atom_preds, bond_preds = (
                     torch.concat(preds, 0) if preds[0] is not None else None
                     for preds in zip(*MAB_preds)

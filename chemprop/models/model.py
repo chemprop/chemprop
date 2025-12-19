@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import io
 import logging
 import traceback
@@ -10,6 +9,7 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
@@ -306,16 +306,9 @@ class MPNN(pl.LightningModule):
         torch.save(d, buffer)
         buffer.seek(0)
 
-        if (
-            "weights_only" in inspect.signature(super().load_from_checkpoint).parameters
-        ):  # lightning >=2.6.0
-            return super().load_from_checkpoint(
-                buffer, map_location, hparams_file, strict, weights_only=False, **kwargs
-            )
-        else:
-            return super().load_from_checkpoint(
-                buffer, map_location, hparams_file, strict, **kwargs
-            )
+        return super().load_from_checkpoint(
+            buffer, map_location, hparams_file, strict, **LIGHTNING_26_COMPAT_ARGS, **kwargs
+        )
 
     @classmethod
     def load_from_file(cls, model_path, map_location=None, strict=True, **submodules) -> MPNN:

@@ -28,7 +28,7 @@ from chemprop.cli.common import (
     process_common_args,
     validate_common_args,
 )
-from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
+from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, LIGHTNING_26_COMPAT_ARGS, NOW
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
@@ -1713,9 +1713,9 @@ def train_model(
                     devices=1,
                 )
                 model = model.load_from_checkpoint(best_ckpt_path)
-                predss = trainer.predict(model, dataloaders=test_loader)
+                predss = trainer.predict(model, dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
             else:
-                predss = trainer.predict(dataloaders=test_loader)
+                predss = trainer.predict(dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
