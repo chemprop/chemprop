@@ -29,7 +29,6 @@ from chemprop.cli.common import (
     validate_common_args,
 )
 from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
-from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
@@ -43,6 +42,7 @@ from chemprop.cli.utils import (
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
     MolAtomBondDataset,
     MoleculeDataset,
