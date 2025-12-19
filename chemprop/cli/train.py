@@ -28,7 +28,8 @@ from chemprop.cli.common import (
     process_common_args,
     validate_common_args,
 )
-from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, LIGHTNING_26_COMPAT_ARGS, NOW
+from chemprop.cli.conf import CHEMPROP_TRAIN_DIR, NOW
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.cli.utils import (
     LookupAction,
     Subcommand,
