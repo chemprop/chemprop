@@ -517,7 +517,9 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
                 multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
             )
             self._y = test_set.Y
-        dl = build_dataloader(test_set, batch_size=self.batch_size, num_workers=self.num_workers)
+        dl = build_dataloader(
+            test_set, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False
+        )
 
         eval_trainer = Trainer(accelerator=self.accelerator, devices=1, enable_progress_bar=True)
         preds = eval_trainer.predict(self.model, dataloaders=dl)
@@ -578,46 +580,139 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
         utils.save_model(str(output_dir / "best.pt"), self.model, None)
 
 
-class ChempropEnsembleRegressor(ChempropRegressor):
-    def __init__(self, ensemble_size: int = 5, **chemprop_kwargs):
+class ChempropEnsembleRegressor(BaseEstimator, RegressorMixin):
+    def __init__(
+        self,
+        ensemble_size: int = 5,
+        num_workers: int = 0,
+        batch_size: int = 64,
+        output_dir: Optional[PathLike] = CHEMPROP_TRAIN_DIR / "sklearn_output" / NOW,
+        checkpoint: Optional[List[Path]] = None,
+        molecule_featurizers: Optional[List[str]] = None,
+        no_descriptor_scaling: bool = False,
+        message_hidden_dim: int = 300,
+        depth: int = 3,
+        dropout: float = 0.0,
+        aggregation: str = "norm",
+        ffn_hidden_dim: int = 300,
+        ffn_num_layers: int = 1,
+        batch_norm: bool = False,
+        multiclass_num_classes: int = 3,
+        accelerator: str = "auto",
+        devices: str | int | Sequence[int] = "auto",
+        epochs: int = 50,
+        patience: Optional[int] = None,
+        no_cache: bool = False,
+        task_type: str = "regression",
+        loss_function: Optional[str] = None,
+        metrics: Optional[List[str]] = None,
+        val_size: float = 0,
+        data_seed: int = 0,
+        multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
+        reaction_mode: RxnMode = RxnMode.REAC_DIFF,
+    ):
         self.ensemble_size = ensemble_size
-        self.base_kwargs = chemprop_kwargs
-        super().__init__(**chemprop_kwargs)
-        self.models: List[ChempropRegressor] = []
+        self.num_workers = num_workers
+        self.batch_size = batch_size
+        self.output_dir = output_dir
+        self.checkpoint = checkpoint
+        self.molecule_featurizers = molecule_featurizers
+        self.no_descriptor_scaling = no_descriptor_scaling
+        self.message_hidden_dim = message_hidden_dim
+        self.depth = depth
+        self.dropout = dropout
+        self.aggregation = aggregation
+        self.ffn_hidden_dim = ffn_hidden_dim
+        self.ffn_num_layers = ffn_num_layers
+        self.batch_norm = batch_norm
+        self.multiclass_num_classes = multiclass_num_classes
+        self.accelerator = accelerator
+        self.devices = devices
+        self.epochs = epochs
+        self.patience = patience
+        self.no_cache = no_cache
+        self.task_type = task_type
+        self.loss_function = loss_function
+        self.metrics = metrics
+        self.val_size = val_size
+        self.data_seed = data_seed
+        self.multi_hot_atom_featurizer_mode = multi_hot_atom_featurizer_mode
+        self.reaction_mode = reaction_mode
+        self.models = []
 
     def __sklearn_is_fitted__(self):
-        return len(self.models) == self.ensemble_size
+        return len(self.models) > 0
+
+    def _base_kwargs(self) -> dict:
+        return dict(
+            num_workers=self.num_workers,
+            batch_size=self.batch_size,
+            output_dir=self.output_dir,
+            checkpoint=None,
+            molecule_featurizers=self.molecule_featurizers,
+            no_descriptor_scaling=self.no_descriptor_scaling,
+            message_hidden_dim=self.message_hidden_dim,
+            depth=self.depth,
+            dropout=self.dropout,
+            aggregation=self.aggregation,
+            ffn_hidden_dim=self.ffn_hidden_dim,
+            ffn_num_layers=self.ffn_num_layers,
+            batch_norm=self.batch_norm,
+            multiclass_num_classes=self.multiclass_num_classes,
+            accelerator=self.accelerator,
+            devices=self.devices,
+            epochs=self.epochs,
+            patience=self.patience,
+            no_cache=self.no_cache,
+            task_type=self.task_type,
+            loss_function=self.loss_function,
+            metrics=self.metrics,
+            val_size=self.val_size,
+            data_seed=self.data_seed,
+            multi_hot_atom_featurizer_mode=self.multi_hot_atom_featurizer_mode,
+            reaction_mode=self.reaction_mode,
+        )
 
     def fit(self, X, y):
-        if self.checkpoint is not None:
-            if len(self.checkpoint) != self.ensemble_size:
-                logger.warning(
-                    f"Conflict between number of checkpoints supplied and ensemble_size argument (defaulted to 5). The number of models in ensemble is set to number of checkpoints = {len(self.checkpoint)}."
-                )
-                self.ensemble_size = len(self.checkpoint)
+        self.models = []
 
-            for path in self.checkpoint:
-                args = dict(self.base_kwargs)
+        ens_size = self.ensemble_size
+
+        if self.checkpoint is not None:
+            if len(self.checkpoint) != ens_size:
+                logger.warning(
+                    f"Conflict between number of checkpoints supplied ({len(self.checkpoint)}) "
+                    f"and ensemble_size ({ens_size}). Using len(checkpoint)={len(self.checkpoint)}."
+                )
+                ens_size = len(self.checkpoint)
+
+            for path in self.checkpoint[:ens_size]:
+                args = self._base_kwargs()
                 args["checkpoint"] = [path]
                 model = ChempropRegressor(**args)
                 model.fit(X, y)
                 self.models.append(model)
         else:
-            for _ in range(self.ensemble_size):
-                model = ChempropRegressor(**self.base_kwargs)
+            for _ in range(ens_size):
+                model = ChempropRegressor(**self._base_kwargs())
                 model.fit(X, y)
                 self.models.append(model)
+
         return self
 
     def predict(self, X):
-        preds = [model.predict(X) for model in self.models]
+        if not self.models:
+            raise RuntimeError("The ensemble regressor has not been fitted.")
+        preds = [m.predict(X) for m in self.models]
         return np.mean(preds, axis=0)
 
-    def score(self, X, y, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
+    def score(self, X, y=None, metric: Literal["mae", "rmse", "mse", "r2", "accuracy"] = "rmse"):
+        if not self.models:
+            raise RuntimeError("The ensemble regressor has not been fitted.")
         y_pred = self.predict(X)
         if y is None:
             y = self.models[0]._y
-        return self._score(y, y_pred, metric)
+        return self.models[0]._score(y, y_pred, metric)
 
     def save_model(self, output_dir: Optional[PathLike] = None):
         if output_dir is None:
