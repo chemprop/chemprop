@@ -102,7 +102,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 
             zscore = errors / np.sqrt(uncs_j)
             initial_guess = np.std(zscore)
-            scalings[j] = fmin(objective, x0=initial_guess, disp=False)
+            scalings[j] = fmin(objective, x0=initial_guess, disp=False).item()
 
         self.scalings = torch.tensor(scalings)
         return self
