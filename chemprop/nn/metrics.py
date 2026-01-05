@@ -49,6 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
+    "PointQuantileLoss",
 ]
 
 
@@ -582,11 +583,14 @@ class QuantileLoss(ChempropMetric):
         return f"alpha={self.alpha}"
 
 
-@LossFunctionRegistry.register(["quantile_single", "pinball_single"])
-class QuantileSingleLoss(ChempropMetric):
+@LossFunctionRegistry.register(["quantile_point", "pinball_point"])
+class PointQuantileLoss(ChempropMetric):
     """
-    Single-output pinball (quantile) loss operating on one prediction per task.
+    Point-based pinball (quantile) loss operating on one prediction per task.
     Expects preds and targets shaped [batch, num_tasks].
+
+    This is distinct from :class:`QuantileLoss` which uses interval-based predictions
+    (mean + interval, shape [batch, num_tasks, 2]).
     """
 
     def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
