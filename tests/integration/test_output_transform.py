@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from chemprop import nn
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
 
@@ -52,7 +53,7 @@ def test_output_transform(data):
     assert torch.allclose(std, torch.ones_like(std), atol=0.1)
     assert torch.allclose(mean, torch.zeros_like(mean), atol=0.1)
 
-    predss = trainer.predict(mpnn, test_loader)
+    predss = trainer.predict(mpnn, test_loader, **LIGHTNING_26_COMPAT_ARGS)
     preds = torch.cat(predss)
     std, mean = torch.std_mean(preds, dim=0)
     y_std, y_mean = torch.std_mean(torch.from_numpy(test_dset.Y).float(), dim=0)
