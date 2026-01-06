@@ -57,7 +57,7 @@ DEFAULT_SEARCH_SPACE = {
 try:
     import ray
     from ray import tune
-    from ray.train import CheckpointConfig, RunConfig, ScalingConfig
+    from ray.train import Checkpoint, CheckpointConfig, RunConfig, ScalingConfig
     from ray.train.lightning import (
         RayDDPStrategy,
         RayLightningEnvironment,
@@ -367,9 +367,15 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
-    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    val_loader = build_dataloader(
+        val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
+    )
 
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 
@@ -416,6 +422,8 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         )
         trainer = pl.Trainer(accelerator="cpu", **trainer_kwargs)
     trainer.fit(model, train_loader, val_loader)
+    ckpt_path = trainer.checkpoint_callback.best_model_path
+    return {"checkpoint": Checkpoint.from_directory(Path(ckpt_path).parent)}
 
 
 def tune_model(
@@ -450,7 +458,6 @@ def tune_model(
         num_workers=args.raytune_num_workers,
         use_gpu=use_gpu,
         resources_per_worker=resources_per_worker,
-        trainer_resources={"CPU": 0},
     )
 
     checkpoint_config = CheckpointConfig(
@@ -464,13 +471,17 @@ def tune_model(
         storage_path=args.hpopt_save_dir.absolute() / "ray_results",
     )
 
-    ray_trainer = TorchTrainer(
-        lambda config: train_model(
-            config, args, train_dset, val_dset, logger, output_transform, input_transforms
-        ),
-        scaling_config=scaling_config,
-        run_config=run_config,
-    )
+    def train_func(config):
+        trainer = TorchTrainer(
+            lambda cfg: train_model(
+                cfg, args, train_dset, val_dset, logger, output_transform, input_transforms
+            ),
+            scaling_config=scaling_config,
+            run_config=run_config,
+            train_loop_config=config,
+        )
+        result = trainer.fit()
+        tune.report(metrics=result.metrics, checkpoint=result.checkpoint)
 
     match args.raytune_search_algorithm:
         case "random":
@@ -503,10 +514,8 @@ def tune_model(
     )
 
     tuner = tune.Tuner(
-        ray_trainer,
-        param_space={
-            "train_loop_config": build_search_space(args.search_parameter_keywords, args.epochs)
-        },
+        train_func,
+        param_space=build_search_space(args.search_parameter_keywords, args.epochs),
         tune_config=tune_config,
     )
 
@@ -588,7 +597,11 @@ def main(args: Namespace):
         )
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
 
     if args.tracking_metric != "val_loss":  # i.e. non-default
@@ -623,7 +636,7 @@ def main(args: Namespace):
     )
 
     best_result = results.get_best_result()
-    best_config = best_result.config["train_loop_config"]
+    best_config = best_result.config
     best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
 
     best_config_save_path = args.hpopt_save_dir / "best_config.toml"

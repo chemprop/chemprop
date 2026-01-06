@@ -21,6 +21,7 @@ from chemprop.cli.utils import (
     Subcommand,
     build_data_from_files,
     build_MAB_data_from_files,
+    format_probability_string,
     make_dataset,
 )
 from chemprop.models.utils import load_model, load_output_columns
@@ -224,6 +225,7 @@ def prepare_data_loader(
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
     )
+
     if mol_atom_bond:
         datas = build_MAB_data_from_files(
             data_path,
@@ -240,6 +242,7 @@ def prepare_data_loader(
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:
@@ -252,6 +255,7 @@ def prepare_data_loader(
             p_atom_feats=atom_feats_path,
             p_bond_feats=bond_feats_path,
             p_atom_descs=atom_descs_path,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
 
@@ -261,12 +265,15 @@ def prepare_data_loader(
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         for d in datas
     ]
     dset = data.MulticomponentDataset(dsets) if multicomponent else dsets[0]
 
-    return data.build_dataloader(dset, args.batch_size, args.num_workers, shuffle=False)
+    return data.build_dataloader(
+        dset, args.batch_size, args.num_workers, shuffle=False, drop_last=False
+    )
 
 
 def make_prediction_for_models(
@@ -387,9 +394,7 @@ def save_predictions(args, model, output_columns, test_preds, test_uncs, output_
     if isinstance(model.predictor, MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         predicted_class_labels = test_preds.argmax(axis=-1)
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, test_preds.numpy()
-        )
+        formatted_probability_strings = format_probability_string(test_preds.numpy())
         test_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
         )
@@ -432,9 +437,7 @@ def save_individual_predictions(
         ]
 
         predicted_class_labels = test_individual_preds.argmax(axis=-1)
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 3, test_individual_preds.numpy()
-        )
+        formatted_probability_strings = format_probability_string(test_individual_preds.numpy())
         test_individual_preds = np.concatenate(
             (predicted_class_labels, formatted_probability_strings), axis=-1
         )
@@ -673,23 +676,15 @@ def save_MAB_predictions(
     if isinstance(next(p for p in model.predictors if p is not None), MulticlassClassificationFFN):
         output_columns = output_columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
-            if mol_preds is not None
-            else [None] * n_datapoints
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * n_datapoints
         )
         atomss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * n_datapoints
         )
         bondss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * n_datapoints
         )

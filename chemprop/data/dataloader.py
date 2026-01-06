@@ -31,6 +31,7 @@ def build_dataloader(
     class_balance: bool = False,
     seed: int | None = None,
     shuffle: bool = True,
+    drop_last: bool | None = None,
     **kwargs,
 ):
     """Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
@@ -51,6 +52,9 @@ def build_dataloader(
         the random seed to use for shuffling (only used when `shuffle` is `True`).
     shuffle : bool, default=False
         whether to shuffle the data during sampling.
+    drop_last : bool, default=None
+        Whether to drop the last batch if it is of size 1 (needed if using batchnorm during training).
+        If None, this will be set automatically.
     """
 
     if class_balance:
@@ -69,14 +73,15 @@ def build_dataloader(
     else:
         collate_fn = collate_batch
 
-    if len(dataset) % batch_size == 1:
-        logger.warning(
-            f"Dropping last batch of size 1 to avoid issues with batch normalization \
-(dataset size = {len(dataset)}, batch_size = {batch_size})"
-        )
-        drop_last = True
-    else:
-        drop_last = False
+    if drop_last is None:
+        if len(dataset) % batch_size == 1:
+            logger.warning(
+                f"Dropping last batch of size 1 to avoid issues with batch normalization \
+    (dataset size = {len(dataset)}, batch_size = {batch_size})"
+            )
+            drop_last = True
+        else:
+            drop_last = False
 
     return DataLoader(
         dataset,
