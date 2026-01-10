@@ -1294,7 +1294,7 @@ def build_model(
                 args.message_hidden_dim = [args.message_hidden_dim[0]] * train_dset.n_components
             elif len(args.message_hidden_dim) != train_dset.n_components:
                 raise ValueError(
-                    "Inconsistent number of components and message_hidden_dim input size."
+                    "Inconsistent number of components and number of --message-hidden-dim arguments."
                 )
             if len(args.depth) == 1:
                 args.depth = [args.depth[0]] * train_dset.n_components
