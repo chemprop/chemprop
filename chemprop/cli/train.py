@@ -42,6 +42,7 @@ from chemprop.cli.utils import (
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
     MolAtomBondDataset,
     MoleculeDataset,
@@ -1280,14 +1281,16 @@ def build_model(
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        args.from_foundation
+                        args.from_foundation, map_location=torch.device("cpu")
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
                     mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
-                foundation = MPNN.load_from_file(args.from_foundation)
+                foundation = MPNN.load_from_file(
+                    args.from_foundation, map_location=torch.device("cpu")
+                )
                 mp_block = foundation.message_passing
             agg = foundation.agg
         else:  # remote model
@@ -1756,9 +1759,9 @@ def train_model(
                     devices=1,
                 )
                 model = model.load_from_checkpoint(best_ckpt_path)
-                predss = trainer.predict(model, dataloaders=test_loader)
+                predss = trainer.predict(model, dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
             else:
-                predss = trainer.predict(dataloaders=test_loader)
+                predss = trainer.predict(dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
