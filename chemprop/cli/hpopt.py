@@ -70,12 +70,8 @@ try:
     DEFAULT_SEARCH_SPACE = {
         "activation": tune.choice(categories=list(Activation.keys())),
         "dropout": tune.choice([0.0] * 8 + list(np.arange(0.05, 0.45, 0.05))),
-        "message_hidden_dim": tune.sample_from(
-            lambda _: [tune.qrandint(lower=300, upper=2400, q=100).sample(None)]
-        ),
-        "depth": tune.sample_from(
-            lambda _: [tune.randint(lower=2, upper=6 + 1).sample(None)]
-        ),  # `+ 1` because upper bound is exclusive
+        "message_hidden_dim": tune.qrandint(300, 2400, 100),
+        "depth": tune.randint(2, 6+1),  # `+ 1` because upper bound is exclusive
         "aggregation": tune.choice(categories=list(AggregationRegistry.keys())),
         "aggregation_norm": tune.randint(lower=1, upper=200 + 1),
         "ffn_hidden_dim": tune.qrandint(lower=300, upper=2400, q=100),
@@ -359,7 +355,13 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
             case "init_lr_ratio":
                 setattr(args, "init_lr", value * config.get("max_lr", args.max_lr))
+            
+            case "message_hidden_dim":
+                setattr(args, "message_hidden_dim", [value])
 
+            case "depth":
+                setattr(args, "depth", [value])
+              
             case _:
                 assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
