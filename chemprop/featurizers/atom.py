@@ -202,13 +202,20 @@ class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
 
 
 class RIGRAtomFeaturizer(VectorFeaturizer[Atom]):
-    """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using resonance-invariant features.
+    """A :class:`RIGRAtomFeaturizer` uses a multi-hot encoding to featurize atoms using
+    resonance-invariant features [1]_.
 
     The generated atom features are ordered as follows:
     * atomic number
     * degree
     * number of hydrogens
     * mass
+
+    References
+    -----------
+    .. [1] Zalte, A. S.; Pang, H.-W.; Doner, A. C.; Green, W. H.
+        "RIGR: Resonance-Invariant Graph Representation for Molecular Property Prediction."
+        J. Chem. Inf. Model. 2025, 65 (20), 10832–10843. https://doi.org/10.1021/acs.jcim.5c00495
     """
 
     def __init__(

@@ -93,10 +93,18 @@ class MultiHotBondFeaturizer(VectorFeaturizer[Bond]):
 
 
 class RIGRBondFeaturizer(VectorFeaturizer[Bond]):
-    """A :class:`RIGRBondFeaturizer` feauturizes bonds based on only the resonance-invariant features:
+    """A :class:`RIGRBondFeaturizer` featurizes bonds using resonance-invariant features [1]_.
 
-    * ``null``-ity (i.e., is the bond ``None``?)
+    The generated bond features include:
+    * ``null``-ity (i.e., whether the bond is ``None``)
     * in ring?
+
+    References
+    -----------
+    .. [1] Zalte, A. S.; Pang, H.-W.; Doner, A. C.; Green, W. H.
+        "RIGR: Resonance-Invariant Graph Representation for Molecular Property Prediction."
+        J. Chem. Inf. Model. 2025, 65 (20), 10832–10843.
+        https://doi.org/10.1021/acs.jcim.5c00495
     """
 
     def __len__(self):
