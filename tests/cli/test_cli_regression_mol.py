@@ -895,7 +895,7 @@ def test_multiple_data_files(monkeypatch, data_path):
         m.setattr("sys.argv", args)
         main()
 
-    args = ["chemprop", "train", "-i", input_path, input_path]
+    args = ["chemprop", "train", "-i", input_path, input_path, "--split-sizes", "0.9", "0.1", "0.0"]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
