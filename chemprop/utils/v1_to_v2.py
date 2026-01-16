@@ -19,6 +19,14 @@ from chemprop.utils import Factory
 logger = logging.getLogger(__name__)
 
 
+def max_encoder_index(d: dict) -> int:
+    return max(
+        int(k.split(".")[2])
+        for k in d
+        if k.startswith("encoder.encoder.") and k.endswith(".W_i.weight")
+    )
+
+
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     """Converts v1 model dictionary to a v2 state dictionary"""
 
@@ -38,16 +46,16 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
         state_dict_v2[f"{str1}.1.W_o.weight"] = state_dict_v1[f"{str2}_solvent.W_o.weight"]
         state_dict_v2[f"{str1}.1.W_o.bias"] = state_dict_v1[f"{str2}_solvent.W_o.bias"]
     elif "encoder.encoder.1.W_i.weight" in state_dict_v1:
-        # This section hasn't been tested
+        logger.warning(
+            "This conversion is untested - please validate your model predictions are consistent after conversion!"
+        )
         i = 0
-        while True:
+        while i <= max_encoder_index(state_dict_v1):
             state_dict_v2[f"{str1}.{i}.W_i.weight"] = state_dict_v1[f"{str2}.{i}.W_i.weight"]
             state_dict_v2[f"{str1}.{i}.W_h.weight"] = state_dict_v1[f"{str2}.{i}.W_h.weight"]
             state_dict_v2[f"{str1}.{i}.W_o.weight"] = state_dict_v1[f"{str2}.{i}.W_o.weight"]
             state_dict_v2[f"{str1}.{i}.W_o.bias"] = state_dict_v1[f"{str2}.{i}.W_o.bias"]
             i += 1
-            if f"{str2}.{i}.W_i.weight" not in state_dict_v1:
-                break
     else:
         state_dict_v2["message_passing.W_i.weight"] = state_dict_v1["encoder.encoder.0.W_i.weight"]
         state_dict_v2["message_passing.W_h.weight"] = state_dict_v1["encoder.encoder.0.W_h.weight"]
@@ -177,10 +185,12 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
             }
         )
     elif args_v1.number_of_molecules > 1:
-        # This section hasn't been tested
+        logger.warning(
+            "This conversion is untested - please validate your model predictions are consistent after conversion!"
+        )
         blocks = []
         i = 0
-        while True:
+        while i <= max_encoder_index(model_v1_dict["state_dict"]):
             W_i_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_i.weight"].shape
             W_h_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_h.weight"].shape
             W_o_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_o.weight"].shape
@@ -207,8 +217,6 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
                 )
             )
             i += 1
-            if f"encoder.encoder.{i}.W_i.weight" not in model_v1_dict["state_dict"]:
-                break
         hyper_parameters_v2["message_passing"] = AttributeDict(
             {
                 "cls": MulticomponentMessagePassing,
@@ -280,7 +288,9 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
                 (args_v1.hidden_size + args_v1.hidden_size_solvent)
                 if getattr(args_v1, "reaction_solvent", False)
                 else (args_v1.hidden_size * getattr(args_v1, "number_of_molecules", 1))
-            ) + args_v1.atom_descriptors_size + d_xd,
+            )
+            + args_v1.atom_descriptors_size
+            + d_xd,
             "n_layers": args_v1.ffn_num_layers - 1,
             "n_tasks": args_v1.num_tasks,
         }
