@@ -897,6 +897,14 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         "0.4",
         "0.3",
         "0.3",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
@@ -973,6 +981,14 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
         "0.4",
         "0.3",
         "0.3",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:

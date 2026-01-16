@@ -687,6 +687,14 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "morgan_count",
         "--search-parameter-keywords",
         "all",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
@@ -753,6 +761,14 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         bond_features_path,
         "--atom-descriptors-path",
         atom_descriptors_path,
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
