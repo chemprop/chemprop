@@ -202,13 +202,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         default=[300],
         nargs="+",
-        help="Hidden dimension of the messages",
+        help="Hidden dimension of the messages (specify multiple values to customize multicomponent encoders separately)",
     )
     mp_args.add_argument(
         "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
     mp_args.add_argument(
-        "--depth", type=int, default=[3], nargs="+", help="Number of message passing steps"
+        "--depth",
+        type=int,
+        default=[3],
+        nargs="+",
+        help="Number of message passing steps (specify multiple values to customize multicomponent encoders separately)",
     )
     mp_args.add_argument(
         "--undirected",
@@ -721,6 +725,13 @@ def validate_train_args(args):
 
     args.input_columns = input_cols
     args.target_columns = target_cols
+
+    number_of_components = max(1, len(args.smiles_columns or []) + len(args.reaction_columns or []))
+    if number_of_components == 1:
+        if len(args.message_hidden_dim) > 1:
+            raise ValueError("Single-component data only accepts one --message-hidden-dim value")
+        if len(args.depth) > 1:
+            raise ValueError("Single-component data only accepts one --depth value")
 
     return args
 
@@ -1291,15 +1302,18 @@ def build_model(
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
             if len(args.message_hidden_dim) == 1:
-                args.message_hidden_dim = [args.message_hidden_dim[0]] * train_dset.n_components
+                args.message_hidden_dim = args.message_hidden_dim * train_dset.n_components
             elif len(args.message_hidden_dim) != train_dset.n_components:
                 raise ValueError(
-                    "Inconsistent number of components and number of --message-hidden-dim arguments."
+                    f"Inconsistent number of components ({train_dset.n_components}) and number of --message-hidden-dim arguments ({len(args.message_hidden_dim)}, {args.message_hidden_dim})."
                 )
             if len(args.depth) == 1:
-                args.depth = [args.depth[0]] * train_dset.n_components
+                args.depth = args.depth * train_dset.n_components
             elif len(args.depth) != train_dset.n_components:
-                raise ValueError("Inconsistent number of components and depth input size.")
+                raise ValueError(
+                    f"Inconsistent number of components ({train_dset.n_components}) and number of --depth arguments ({len(args.depth)}, {args.depth})."
+                )
+            exit
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
@@ -1331,14 +1345,6 @@ def build_model(
                 mp_blocks, train_dset.n_components, args.mpn_shared
             )
         else:
-            if len(args.message_hidden_dim) > 1:
-                logger.warning(
-                    "Single-component data only takes in one message_hiddem_dim value, subsequent inputted values are ignored."
-                )
-            if len(args.depth) > 1:
-                logger.warning(
-                    "Single-component data only takes in one depth value, subsequent inputted values are ignored."
-                )
             mp_block = mp_cls(
                 train_dset.featurizer.atom_fdim,
                 train_dset.featurizer.bond_fdim,
@@ -1421,14 +1427,6 @@ def build_MAB_model(
 
     X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
 
-    if len(args.message_hidden_dim) > 1:
-        logger.warning(
-            "Single-component data only takes in one message_hiddem_dim value, subsequent inputted values are ignored."
-        )
-    if len(args.depth) > 1:
-        logger.warning(
-            "Single-component data only takes in one depth value, subsequent inputted values are ignored."
-        )
     mp = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
