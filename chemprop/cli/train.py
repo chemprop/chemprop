@@ -586,7 +586,12 @@ def validate_train_args(args):
             argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
         )
 
-    if len(args.data_path) == 2 and args.split_sizes[2] != 0:
+    if (
+        len(args.data_path) == 2
+        and args.split_sizes[2] != 0
+        and args.splits_columns is None
+        and args.splits_file is None
+    ):
         raise ArgumentError(
             argument=None,
             message=f"Test split size should be 0 when a separate test file is supplied: {args.data_path[1]}. Got split sizes {args.split_sizes} (default is [0.8, 0.1, 0.1]). Please use --split-sizes to adjust, perhaps --split-sizes 0.9 0.1 0.0",
