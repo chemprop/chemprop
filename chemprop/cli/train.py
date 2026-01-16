@@ -35,12 +35,14 @@ from chemprop.cli.utils import (
     activation_function_argument,
     build_data_from_files,
     build_MAB_data_from_files,
+    format_probability_string,
     get_column_names,
     make_dataset,
     parse_activation,
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
     MolAtomBondDataset,
     MoleculeDataset,
@@ -468,7 +470,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_args.add_argument(
         "--tracking-metric",
         default="val_loss",
-        help="The metric to track for early stopping and checkpointing. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
+        help="The metric to track for early stopping, checkpointing, and hyperparameter optimization. Defaults to the criterion used during training. When training on two or three of molecule, atom, and bond targets, and not tracking the default ('val_loss'), you must append '-mol', '-atom', or '-bond' to the metric name to specify which individual metric to track. For example, 'val_loss-bond' will track the criterion value of the bond predictions and 'rmse-atom' will track the RMSE of the atom predictions.",
     )
     train_args.add_argument(
         "--show-individual-scores",
@@ -688,6 +690,16 @@ def validate_train_args(args):
             message=f"Tracking metric must be one of {','.join(valid_tracking_metrics)}. "
             f"Got {args.tracking_metric}. Additional tracking metric options can be specified with "
             "the `--metrics` flag.",
+        )
+
+    if (
+        args.use_cuikmolmaker_featurization
+        and args.splits_column is None
+        and args.splits_file is None
+        and args.split != "random"
+    ):
+        logger.warning(
+            f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
     input_cols, target_cols = get_column_names(
@@ -923,6 +935,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file: {args.data_path}")
+
     if any(
         cols is not None
         for cols in [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
@@ -933,6 +946,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         all_data = build_MAB_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
@@ -947,15 +961,18 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             }
             if args.constraints_to_targets is not None
             else None,
+            n_workers=args.num_workers,
             **featurization_kwargs,
         )
     else:
         all_data = build_data_from_files(
             args.data_path,
             p_descriptors=args.descriptors_path,
+            descriptor_cols=args.descriptors_columns,
             p_atom_feats=args.atom_features_path,
             p_bond_feats=args.bond_features_path,
             p_atom_descs=args.atom_descriptors_path,
+            n_workers=args.num_workers,
             **format_kwargs,
             **featurization_kwargs,
         )
@@ -975,16 +992,19 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             split_idxss = json.load(json_file)
         train_indices = [parse_indices(d["train"]) for d in split_idxss]
         val_indices = [parse_indices(d["val"]) for d in split_idxss]
-        test_indices = [parse_indices(d["test"]) for d in split_idxss]
+        test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
         args.num_replicates = len(split_idxss)
 
     else:
         splitting_data = all_data[args.split_key_molecule]
 
-        if isinstance(splitting_data[0], ReactionDatapoint):
-            splitting_mols = [datapoint.rct for datapoint in splitting_data]
+        if args.split == "random":
+            splitting_mols = range(len(splitting_data))
         else:
-            splitting_mols = [datapoint.mol for datapoint in splitting_data]
+            if isinstance(splitting_data[0], ReactionDatapoint):
+                splitting_mols = [datapoint.rct for datapoint in splitting_data]
+            else:
+                splitting_mols = [datapoint.mol for datapoint in splitting_data]
         train_indices, val_indices, test_indices = make_split_indices(
             splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
         )
@@ -1094,6 +1114,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in train_data
         ]
@@ -1103,6 +1124,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
             for data in val_data
         ]
@@ -1115,6 +1137,7 @@ def build_datasets(args, train_data, val_data, test_data):
                     args.rxn_mode,
                     args.multi_hot_atom_featurizer_mode,
                     args.use_cuikmolmaker_featurization,
+                    n_workers=args.num_workers,
                 )
                 for data in test_data
             ]
@@ -1130,12 +1153,14 @@ def build_datasets(args, train_data, val_data, test_data):
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         val_dset = make_dataset(
             val_data,
             args.rxn_mode,
             args.multi_hot_atom_featurizer_mode,
             args.use_cuikmolmaker_featurization,
+            n_workers=args.num_workers,
         )
         if len(test_data) > 0:
             test_dset = make_dataset(
@@ -1143,6 +1168,7 @@ def build_datasets(args, train_data, val_data, test_data):
                 args.rxn_mode,
                 args.multi_hot_atom_featurizer_mode,
                 args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
             )
         else:
             test_dset = None
@@ -1168,8 +1194,13 @@ def build_datasets(args, train_data, val_data, test_data):
             for dataset, label in zip(
                 [train_dset, val_dset, test_dset], ["Training", "Validation", "Test"]
             ):
-                column_headers, table_rows = summarize(args.target_columns, args.task_type, dataset)
-                output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                if dataset is not None:
+                    column_headers, table_rows = summarize(
+                        args.target_columns, args.task_type, dataset
+                    )
+                    output = build_table(column_headers, table_rows, f"Summary of {label} Data")
+                else:
+                    output = label + " set is empty."
                 logger.info("\n" + output)
 
     return train_dset, val_dset, test_dset
@@ -1185,7 +1216,6 @@ def build_model(
         list[ScaleTransform | None],
         list[ScaleTransform | None],
     ],
-    from_foundation: FoundationModels | None = None,
 ) -> MPNN | MulticomponentMPNN:
     X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
     activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
@@ -1200,24 +1230,26 @@ def build_model(
         n_tasks = train_dset.Y.shape[1]
         mpnn_cls = MPNN
 
-    if from_foundation is not None:
-        if Path(from_foundation).exists():  # local model
+    if args.from_foundation is not None:
+        if Path(args.from_foundation).exists():  # local model
             if is_multi:
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        from_foundation
+                        args.from_foundation, map_location=torch.device("cpu")
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
                     mp_blocks, train_dset.n_components, args.mpn_shared
                 )
             else:
-                foundation = MPNN.load_from_file(from_foundation)
+                foundation = MPNN.load_from_file(
+                    args.from_foundation, map_location=torch.device("cpu")
+                )
                 mp_block = foundation.message_passing
             agg = foundation.agg
         else:  # remote model
-            match FoundationModels.get(from_foundation):
+            match FoundationModels.get(args.from_foundation):
                 case FoundationModels.CHEMELEON:
                     ckpt_dir = Path().home() / ".chemprop"
                     ckpt_dir.mkdir(exist_ok=True)
@@ -1553,7 +1585,7 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path)
+            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
 
             if args.checkpoint:
                 model.apply(
@@ -1577,13 +1609,7 @@ def train_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
-                model = build_model(
-                    args,
-                    train_loader.dataset,
-                    output_transform,
-                    input_transforms,
-                    args.from_foundation,
-                )
+                model = build_model(args, train_loader.dataset, output_transform, input_transforms)
         logger.info(model)
 
         try:
@@ -1688,9 +1714,9 @@ def train_model(
                     devices=1,
                 )
                 model = model.load_from_checkpoint(best_ckpt_path)
-                predss = trainer.predict(model, dataloaders=test_loader)
+                predss = trainer.predict(model, dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
             else:
-                predss = trainer.predict(dataloaders=test_loader)
+                predss = trainer.predict(dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
@@ -1792,9 +1818,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     columns = args.input_columns + args.target_columns
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
-        formatted_probability_strings = np.apply_along_axis(
-            lambda x: ",".join(map(str, x)), 2, preds
-        )
+        formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
             list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
@@ -1886,23 +1910,15 @@ def evaluate_and_save_MAB_predictions(
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
-            np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, mol_preds)
-            if mol_preds is not None
-            else [None] * len(names)
+            format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
         atomss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, atom_preds),
-                atom_split_indices,
-            )
+            np.split(format_probability_string(atom_preds), atom_split_indices)
             if atom_preds is not None
             else [None] * len(names)
         )
         bondss_class_probs = (
-            np.split(
-                np.apply_along_axis(lambda x: ",".join(map(str, x)), 2, bond_preds),
-                bond_split_indices,
-            )
+            np.split(format_probability_string(bond_preds), bond_split_indices)
             if bond_preds is not None
             else [None] * len(names)
         )
@@ -2054,8 +2070,14 @@ def main(args):
                     output_transform = UnscaleTransform.from_standard_scaler(output_scaler)
 
         if not args.no_cache:
-            train_dset.cache = True
-            val_dset.cache = True
+            if args.use_cuikmolmaker_featurization:
+                logger.warning(
+                    "not caching CuikmolmakerDataset as it is meant to be used without caching!"
+                )
+            else:
+                logger.info("Caching training and validation datasets...")
+                train_dset.cache = True
+                val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,
@@ -2063,15 +2085,22 @@ def main(args):
             args.num_workers,
             class_balance=args.class_balance,
             seed=args.data_seed,
+            drop_last=args.batch_norm,
         )
         if args.class_balance:
             logger.debug(
                 f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
             )
-        val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+        val_loader = build_dataloader(
+            val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
+        )
         if test_dset is not None:
             test_loader = build_dataloader(
-                test_dset, args.batch_size, args.num_workers, shuffle=False
+                test_dset,
+                args.batch_size,
+                args.num_workers,
+                shuffle=False,
+                drop_last=args.batch_norm,
             )
         else:
             test_loader = None

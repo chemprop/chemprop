@@ -2,6 +2,7 @@
 """
 
 import json
+import sys
 
 import pytest
 import torch
@@ -10,6 +11,7 @@ from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
+from chemprop.utils.utils import is_cuikmolmaker_available
 
 pytestmark = pytest.mark.CLI
 
@@ -46,8 +48,18 @@ def evidential_model_path(data_dir):
 
 
 @pytest.fixture
+def quantile_model_path(data_dir):
+    return str(data_dir / "example_model_v2_regression_quantile_mol.pt")
+
+
+@pytest.fixture
 def config_path(data_dir):
     return str(data_dir / "regression" / "mol" / "config.toml")
+
+
+@pytest.fixture
+def data_with_descriptors_path(data_dir):
+    return str(data_dir / "regression" / "mol" / "mol_with_descriptors.csv")
 
 
 def test_train_quick(monkeypatch, data_path):
@@ -80,7 +92,9 @@ def test_train_quick_from_foundation(monkeypatch, data_path):
             "-i",
             input_path,
             "--epochs",
-            "3",
+            "1",
+            "--warmup-epochs",
+            "0",
             "--num-workers",
             "0",
             "--show-individual-scores",
@@ -190,9 +204,62 @@ def test_train_quick_features(monkeypatch, data_path):
             main()
 
 
+@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
+def test_train_quick_features_cuikmolmaker(monkeypatch, data_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+        "--use-cuikmolmaker-featurization",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_quick(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = ["chemprop", "predict", "-i", input_path, "--model-path", model_path]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
+def test_predict_quick_cuikmolmaker(monkeypatch, data_path, model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--use-cuikmolmaker-featurization",
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
@@ -284,6 +351,33 @@ def test_predict_evidential_quick(monkeypatch, data_path, evidential_model_path)
         "miscalibration_area",
         "ence",
         "spearman",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_predict_quantile_quick(monkeypatch, data_path, quantile_model_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        quantile_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "quantile-regression",
+        "--calibration-method",
+        "conformal-regression",
+        "--conformal-alpha",
+        "0.1",
+        "--evaluation-methods",
+        "spearman",
+        "conformal-coverage-regression",
     ]
 
     with monkeypatch.context() as m:
@@ -569,6 +663,10 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
+@pytest.mark.skipif(
+    sys.platform == "win32" or (sys.platform == "darwin" and sys.version_info[:2] == (3, 11)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_optuna_quick(monkeypatch, data_path, tmp_path):
     input_path, *_ = data_path
 
@@ -589,6 +687,14 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
         "morgan_count",
         "--search-parameter-keywords",
         "all",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
@@ -617,6 +723,10 @@ def test_optuna_quick(monkeypatch, data_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+@pytest.mark.skipif(
+    sys.platform == "win32" or (sys.platform == "darwin" and sys.version_info[:2] == (3, 12)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
     (
         input_path,
@@ -651,6 +761,14 @@ def test_hyperopt_quick(monkeypatch, data_path, tmp_path):
         bond_features_path,
         "--atom-descriptors-path",
         atom_descriptors_path,
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
@@ -695,6 +813,72 @@ def test_custom_activation_quick(monkeypatch, data_path):
         "--activation-args",
         "1.0",
         "threshold=15",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_empty_testset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "0.5",
+        "0.5",
+        "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_with_descriptors_path,
+        "--target-columns",
+        "y",
+        "--descriptors-columns",
+        "temperature",
+        "pressure",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_descriptors_multisource(monkeypatch, data_path):
+    input_path, descriptors_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--target-columns",
+        "lipo",
+        "--descriptors-columns",
+        "lipo",
+        "--descriptors-path",
+        descriptors_path,
+        "--epochs",
+        "3",
     ]
 
     with monkeypatch.context() as m:

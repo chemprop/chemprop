@@ -57,7 +57,7 @@ DEFAULT_SEARCH_SPACE = {
 try:
     import ray
     from ray import tune
-    from ray.train import CheckpointConfig, RunConfig, ScalingConfig
+    from ray.train import Checkpoint, CheckpointConfig, RunConfig, ScalingConfig
     from ray.train.lightning import (
         RayDDPStrategy,
         RayLightningEnvironment,
@@ -307,6 +307,17 @@ def process_hpopt_args(args: Namespace) -> Namespace:
         ]:
             search_parameters.discard(param)
 
+    if args.from_foundation is not None:
+        for param in [
+            "activation",
+            "dropout",
+            "depth",
+            "aggregation",
+            "aggregation_norm",
+            "message_hidden_dim",
+        ]:
+            search_parameters.discard(param)
+
     if args.constraints_path is None:
         for param in [
             "atom_constrainer_ffn_hidden_dim",
@@ -356,9 +367,15 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     args = update_args_with_config(args, config)
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
-    val_loader = build_dataloader(val_dset, args.batch_size, args.num_workers, shuffle=False)
+    val_loader = build_dataloader(
+        val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
+    )
 
     seed = args.pytorch_seed if args.pytorch_seed is not None else torch.seed()
 
@@ -376,8 +393,7 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
         else:
             T_tracking_metric = model.criterion.__class__
     else:
-        T_tracking_metric = MetricRegistry[args.tracking_metric]
-        args.tracking_metric = "val/" + args.tracking_metric
+        T_tracking_metric = MetricRegistry[args.tracking_metric.split("/")[1]]
 
     monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
@@ -385,18 +401,29 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     patience = args.patience if args.patience is not None else args.epochs
     early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
 
-    trainer = pl.Trainer(
-        accelerator=args.accelerator,
+    trainer_kwargs = dict(
         devices=args.devices,
         max_epochs=args.epochs,
         gradient_clip_val=args.grad_clip,
-        strategy=RayDDPStrategy(),
-        callbacks=[RayTrainReportCallback(), early_stopping],
-        plugins=[RayLightningEnvironment()],
         deterministic=args.pytorch_seed is not None,
+        callbacks=[RayTrainReportCallback(), early_stopping],
     )
-    trainer = prepare_trainer(trainer)
+    try:
+        trainer = pl.Trainer(
+            accelerator=args.accelerator,
+            strategy=RayDDPStrategy(),
+            plugins=[RayLightningEnvironment()],
+            **trainer_kwargs,
+        )
+        trainer = prepare_trainer(trainer)
+    except ValueError as e:
+        logger.info(
+            f"Initializing Ray + Lightning failed - switching to CPU and plain Lightning. Original Error: {e}"
+        )
+        trainer = pl.Trainer(accelerator="cpu", **trainer_kwargs)
     trainer.fit(model, train_loader, val_loader)
+    ckpt_path = trainer.checkpoint_callback.best_model_path
+    return {"checkpoint": Checkpoint.from_directory(Path(ckpt_path).parent)}
 
 
 def tune_model(
@@ -431,7 +458,6 @@ def tune_model(
         num_workers=args.raytune_num_workers,
         use_gpu=use_gpu,
         resources_per_worker=resources_per_worker,
-        trainer_resources={"CPU": 0},
     )
 
     checkpoint_config = CheckpointConfig(
@@ -445,13 +471,17 @@ def tune_model(
         storage_path=args.hpopt_save_dir.absolute() / "ray_results",
     )
 
-    ray_trainer = TorchTrainer(
-        lambda config: train_model(
-            config, args, train_dset, val_dset, logger, output_transform, input_transforms
-        ),
-        scaling_config=scaling_config,
-        run_config=run_config,
-    )
+    def train_func(config):
+        trainer = TorchTrainer(
+            lambda cfg: train_model(
+                cfg, args, train_dset, val_dset, logger, output_transform, input_transforms
+            ),
+            scaling_config=scaling_config,
+            run_config=run_config,
+            train_loop_config=config,
+        )
+        result = trainer.fit()
+        tune.report(metrics=result.metrics, checkpoint=result.checkpoint)
 
     match args.raytune_search_algorithm:
         case "random":
@@ -484,10 +514,8 @@ def tune_model(
     )
 
     tuner = tune.Tuner(
-        ray_trainer,
-        param_space={
-            "train_loop_config": build_search_space(args.search_parameter_keywords, args.epochs)
-        },
+        train_func,
+        param_space=build_search_space(args.search_parameter_keywords, args.epochs),
         tune_config=tune_config,
     )
 
@@ -569,24 +597,46 @@ def main(args: Namespace):
         )
 
     train_loader = build_dataloader(
-        train_dset, args.batch_size, args.num_workers, seed=args.data_seed
+        train_dset,
+        args.batch_size,
+        args.num_workers,
+        seed=args.data_seed,
+        drop_last=args.batch_norm,
     )
 
-    if isinstance(train_loader.dataset, MolAtomBondDataset):
-        model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = (
-            "max" if next(m[0].higher_is_better for m in model.metricss if m is not None) else "min"
-        )
+    if args.tracking_metric != "val_loss":  # i.e. non-default
+        if any(
+            cols is not None
+            for cols in [
+                args.mol_target_columns,
+                args.atom_target_columns,
+                args.bond_target_columns,
+            ]
+        ):
+            raise NotImplementedError(
+                "`val_loss` is the only implemented tracking metric for hpopt when training on atom and bond targets. Open an issue on the GitHub repo if you would like us to add support for other tracking metrics in hpopt: https://github.com/chemprop/chemprop/issues"
+            )
+        T_tracking_metric = MetricRegistry[args.tracking_metric]
+        args.tracking_metric = "val/" + args.tracking_metric
+        monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
     else:
-        model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-        monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+        if isinstance(train_loader.dataset, MolAtomBondDataset):
+            model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = (
+                "max"
+                if next(m[0].higher_is_better for m in model.metricss if m is not None)
+                else "min"
+            )
+        else:
+            model = build_model(args, train_loader.dataset, output_transform, input_transforms)
+            monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
     )
 
     best_result = results.get_best_result()
-    best_config = best_result.config["train_loop_config"]
+    best_config = best_result.config
     best_checkpoint_path = Path(best_result.checkpoint.path) / "checkpoint.ckpt"
 
     best_config_save_path = args.hpopt_save_dir / "best_config.toml"
