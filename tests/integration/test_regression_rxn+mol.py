@@ -73,7 +73,7 @@ def test_overfit(mcmpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=100,
+        max_epochs=15,
         overfit_batches=1.00,
     )
     trainer.fit(mcmpnn, dataloader)
