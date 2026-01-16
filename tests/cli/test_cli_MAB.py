@@ -1,5 +1,6 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
+import sys
 
 import numpy as np
 import pytest
@@ -858,6 +859,10 @@ def test_fingerprint_quick(
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
+@pytest.mark.skipif(
+    sys.platform == "darwin" or (sys.platform == "win32" and sys.version_info[:2] == (3, 11)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
     input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
@@ -892,6 +897,14 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
         "0.4",
         "0.3",
         "0.3",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
@@ -920,6 +933,10 @@ def test_optuna_quick(monkeypatch, regression_data_path, tmp_path):
 
 
 @pytest.mark.skipif(NO_RAY or NO_HYPEROPT, reason="Ray and/or Hyperopt not installed")
+@pytest.mark.skipif(
+    sys.platform == "darwin" or (sys.platform == "win32" and sys.version_info[:2] == (3, 12)),
+    reason="hpopt is slow, run only on some systems",
+)
 def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
     (
         input_path,
@@ -964,6 +981,14 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
         "0.4",
         "0.3",
         "0.3",
+        "--depth",
+        "1",
+        "--message-hidden-dim",
+        "8",
+        "--ffn-num-layers",
+        "1",
+        "--ffn-hidden-dim",
+        "8",
     ]
 
     with monkeypatch.context() as m:
