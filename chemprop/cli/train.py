@@ -586,14 +586,10 @@ def validate_train_args(args):
             argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
         )
 
-    if (
-        len(args.data_path) == 2
-        and args.split_sizes != [0.8, 0.1, 0.1]
-        and args.split_sizes[2] != 0
-    ):
+    if len(args.data_path) == 2 and args.split_sizes[2] != 0:
         raise ArgumentError(
             argument=None,
-            message=f"Test split size should be 0 when separate test file is supplied: {args.data_path[1]}",
+            message=f"Test split size should be 0 when a separate test file is supplied: {args.data_path[1]}. Got split sizes {args.split_sizes} (default is [0.8, 0.1, 0.1]). Please use --split-sizes to adjust, perhaps --split-sizes 0.9 0.1 0.0",
         )
 
     if args.epochs != -1 and args.epochs <= args.warmup_epochs:
@@ -1002,6 +998,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             logger.warning(
                 "num_replicates is fixed to 1 when train, val, test data are supplied in 3 separate files."
             )
+        args.num_replicates = 1
         train_data = [make_data(args.data_path[0])]
         val_data = [make_data(args.data_path[1])]
         test_data = [make_data(args.data_path[2])]
@@ -1041,11 +1038,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]
 
-            if len(args.data_path) == 2 and args.split_sizes == [0.8, 0.1, 0.1]:
-                logger.info(
-                    "Train-val split defaulted to 90:10. You can customize split with --split-sizes."
-                )
-                args.split_sizes = [0.9, 0.1, 0]
             train_indices, val_indices, test_indices = make_split_indices(
                 splitting_mols, args.split, args.split_sizes, args.data_seed, args.num_replicates
             )
