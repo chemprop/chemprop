@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,8 @@ _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
 _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
 _DF["smi"] = _DF["mol"].map(Chem.MolToSmiles)
+# Ensure atom numbering is consistent between mol and smi for `test_same_featurization`
+_DF["mol"] = _DF["smi"].map(Chem.MolFromSmiles)
 
 
 @pytest.fixture
@@ -58,6 +61,25 @@ def mol_regression_data(data_dir):
     Y = df["lipo"].to_numpy().reshape(-1, 1)
 
     return smis, Y
+
+
+@pytest.fixture
+def mol_atom_bond_regression_data(data_dir):
+    df = pd.read_csv(data_dir / "mol_atom_bond/regression.csv")
+    columns = ["smiles", "mol_y1", "mol_y2", "atom_y1", "atom_y2", "bond_y1", "bond_y2"]
+    smis = df.loc[:, columns[0]].values
+    mol_ys = df.loc[:, columns[1:2]].values
+    atoms_ys = df.loc[:, columns[3:4]].values
+    bonds_ys = df.loc[:, columns[5:6]].values
+    atoms_ys = [
+        np.array([ast.literal_eval(atom_y) for atom_y in atom_ys], dtype=float).T
+        for atom_ys in atoms_ys
+    ]
+    bonds_ys = [
+        np.array([ast.literal_eval(bond_y) for bond_y in bond_ys], dtype=float).T
+        for bond_ys in bonds_ys
+    ]
+    return smis, mol_ys, atoms_ys, bonds_ys
 
 
 @pytest.fixture

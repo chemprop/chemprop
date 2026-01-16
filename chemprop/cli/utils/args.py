@@ -32,3 +32,20 @@ def uppercase(x: str):
 
 def lowercase(x: str):
     return x.lower()
+
+
+def activation_function_argument(argument):
+    """Parse a command line option for an activation function argument."""
+    *k, s = argument.split("=", 1)
+    s = s.strip()
+    if s.lower() in {"true", "false"}:
+        v = s.lower() == "true"
+    else:
+        try:
+            v = int(s)
+        except ValueError:
+            try:
+                v = float(s)
+            except ValueError:
+                v = s
+    return {k[0]: v} if k else v

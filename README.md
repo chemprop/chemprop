@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/source/_static/images/logo/chemprop_logo_dark_mode.svg">
-  <img alt="ChemProp Logo" src="docs/source/_static/images/logo/chemprop_logo.svg">
+  <img alt="Chemprop Logo" src="docs/source/_static/images/logo/chemprop_logo.svg">
 </picture>
 
 # Chemprop
@@ -31,6 +31,7 @@ Chemprop recently underwent a ground-up rewrite and new major release (v2.0.0). 
 - **Version 2**: [Chemprop v2: An Efficient, Modular Machine Learning Package for Chemical Property Prediction](https://doi.org/10.1021/acs.jcim.5c02332).
 - **Theory**: The theory underpinning Chemprop was initially described in the papers [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) for molecules and [Machine Learning of Reaction Properties via Learned Representations of the Condensed Graph of Reaction](https://doi.org/10.1021/acs.jcim.1c00975) for reactions.
 - **Interpretability**: The interpretation functionality (available in v2 as an example notebook) is based on the paper [Multi-Objective Molecule Generation using Interpretable Substructures](https://arxiv.org/abs/2002.03244).
+- **Atom and Bond Predictions**: Based on the paper [When Do Quantum Mechanical Descriptors Help Graph Neural Networks to Predict Chemical Properties?](https://pubs.acs.org/doi/10.1021/jacs.4c04670).
 
 **Selected Applications**: Chemprop has been successfully used in the following works.
 

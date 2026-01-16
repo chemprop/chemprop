@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from chemprop.data import MoleculeDatapoint
+from chemprop.data import LazyMoleculeDatapoint, MoleculeDatapoint
 
 SMI = "c1ccccc1"
 
@@ -57,3 +57,14 @@ def test_replace_token(smi, targets, features_with_nans):
     d = MoleculeDatapoint.from_smi(smi, y=targets, x_d=features_with_nans)
 
     assert not np.isnan(d.x_d).any()
+
+
+def test_lazy_datapoint(targets, features):
+    d = LazyMoleculeDatapoint(SMI, _add_h=True, y=targets, x_d=features)
+
+    assert d.smiles == SMI
+    assert np.array_equal(d.y, targets)
+    assert np.array_equal(d.x_d, features)
+    assert d._mol_cache is None
+    assert d.mol.GetNumAtoms() == 12
+    assert d._mol_cache is not None

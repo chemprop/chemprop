@@ -7,6 +7,7 @@ from torch import Tensor, nn
 from chemprop.conf import DEFAULT_ATOM_FDIM, DEFAULT_BOND_FDIM, DEFAULT_HIDDEN_DIM
 from chemprop.data import BatchMolGraph
 from chemprop.exceptions import InvalidShapeError
+from chemprop.nn.message_passing.mixins import _AtomMessagePassingMixin, _BondMessagePassingMixin
 from chemprop.nn.message_passing.proto import MessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform
 from chemprop.nn.utils import Activation, get_activation_function
@@ -29,14 +30,20 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         if `True`, add a bias term to the learned weight matrices
     depth : int, default=3
         the number of message passing iterations
-    undirected : bool, default=False
-        if `True`, pass messages on undirected edges
     dropout : float, default=0.0
         the dropout probability
-    activation : str, default="relu"
+    activation : str | nn.Module, default="relu"
         the activation function to use
+    undirected : bool, default=False
+        if `True`, pass messages on undirected edges
     d_vd : int | None, default=None
-        the dimension of additional vertex descriptors that will be concatenated to the hidden features before readout
+        the dimension of additional vertex descriptors that will be concatenated to the hidden
+        features before readout
+    V_d_transform : ScaleTransform | None, default=None
+        an optional transformation to apply to the additional vertex descriptors before concatenation
+    graph_transform : GraphTransform | None, default=None
+        an optional transformation to apply to the :class:`BatchMolGraph` before message passing. It
+        is usually used to scale extra vertex and edge features.
 
     See also
     --------
@@ -53,19 +60,23 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         bias: bool = False,
         depth: int = 3,
         dropout: float = 0.0,
-        activation: str | Activation = Activation.RELU,
+        activation: str | nn.Module | Activation = Activation.RELU,
         undirected: bool = False,
         d_vd: int | None = None,
         V_d_transform: ScaleTransform | None = None,
         graph_transform: GraphTransform | None = None,
-        # layers_per_message: int = 1,
     ):
         super().__init__()
         # manually add V_d_transform and graph_transform to hparams to suppress lightning's warning
         # about double saving their state_dict values.
-        self.save_hyperparameters(ignore=["V_d_transform", "graph_transform"])
+        ignore_list = ["V_d_transform", "graph_transform"]
+        if isinstance(activation, nn.Module):
+            ignore_list.append("activation")
+        self.save_hyperparameters(ignore=ignore_list)
         self.hparams["V_d_transform"] = V_d_transform
         self.hparams["graph_transform"] = graph_transform
+        if isinstance(activation, nn.Module):
+            self.hparams["activation"] = activation
         self.hparams["cls"] = self.__class__
 
         self.W_i, self.W_h, self.W_o, self.W_d = self.setup(d_v, d_e, d_h, d_vd, bias)
@@ -183,23 +194,6 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return H
 
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        """Encode a batch of molecular graphs.
-
-        Parameters
-        ----------
-        bmg: BatchMolGraph
-            a batch of :class:`BatchMolGraph`s to encode
-        V_d : Tensor | None, default=None
-            an optional tensor of shape ``V x d_vd`` containing additional descriptors for each atom
-            in the batch. These will be concatenated to the learned atomic descriptors and
-            transformed before the readout phase.
-
-        Returns
-        -------
-        Tensor
-            a tensor of shape ``V x d_h`` or ``V x (d_h + d_vd)`` containing the encoding of each
-            molecule in the batch, depending on whether additional atom descriptors were provided
-        """
         bmg = self.graph_transform(bmg)
         H_0 = self.initialize(bmg)
 
@@ -218,7 +212,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         return self.finalize(M, bmg.V, V_d)
 
 
-class BondMessagePassing(_MessagePassingBase):
+class BondMessagePassing(_BondMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`BondMessagePassing` encodes a batch of molecular graphs by passing messages along
     directed bonds.
 
@@ -252,25 +246,12 @@ class BondMessagePassing(_MessagePassingBase):
         W_i = nn.Linear(d_v + d_e, d_h, bias)
         W_h = nn.Linear(d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
-        # initialize W_d only when d_vd is neither 0 nor None
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
 
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(torch.cat([bmg.V[bmg.edge_index[0]], bmg.E], dim=1))
 
-    def message(self, H: Tensor, bmg: BatchMolGraph) -> Tensor:
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        M_all = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]
-        M_rev = H[bmg.rev_edge_index]
-
-        return M_all - M_rev
-
-
-class AtomMessagePassing(_MessagePassingBase):
+class AtomMessagePassing(_AtomMessagePassingMixin, _MessagePassingBase):
     r"""A :class:`AtomMessagePassing` encodes a batch of molecular graphs by passing messages along
     atoms.
 
@@ -303,17 +284,6 @@ class AtomMessagePassing(_MessagePassingBase):
         W_i = nn.Linear(d_v, d_h, bias)
         W_h = nn.Linear(d_e + d_h, d_h, bias)
         W_o = nn.Linear(d_v + d_h, d_h)
-        # initialize W_d only when d_vd is neither 0 nor None
         W_d = nn.Linear(d_h + d_vd, d_h + d_vd) if d_vd else None
 
         return W_i, W_h, W_o, W_d
-
-    def initialize(self, bmg: BatchMolGraph) -> Tensor:
-        return self.W_i(bmg.V[bmg.edge_index[0]])
-
-    def message(self, H: Tensor, bmg: BatchMolGraph):
-        H = torch.cat((H, bmg.E), dim=1)
-        index_torch = bmg.edge_index[1].unsqueeze(1).repeat(1, H.shape[1])
-        return torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            0, index_torch, H, reduce="sum", include_self=False
-        )[bmg.edge_index[0]]

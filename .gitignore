@@ -162,6 +162,7 @@ cython_debug/
 *.idea
 *.DS_Store
 *.vscode
+*.code-workspace
 *.csv
 *.pkl
 *.pt
@@ -172,6 +173,7 @@ cython_debug/
 *.ckpt
 chemprop/_version.py
 *.ckpt
+*.ipynb
 config.toml
 
 !tests/data/*

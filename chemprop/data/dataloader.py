@@ -2,20 +2,36 @@ import logging
 
 from torch.utils.data import DataLoader
 
-from chemprop.data.collate import collate_batch, collate_multicomponent
-from chemprop.data.datasets import MoleculeDataset, MulticomponentDataset, ReactionDataset
+from chemprop.data.collate import (
+    collate_batch,
+    collate_cuik_batch,
+    collate_mol_atom_bond_batch,
+    collate_multicomponent,
+)
+from chemprop.data.datasets import (
+    CuikmolmakerDataset,
+    MolAtomBondDataset,
+    MoleculeDataset,
+    MulticomponentDataset,
+    ReactionDataset,
+)
 from chemprop.data.samplers import ClassBalanceSampler, SeededSampler
 
 logger = logging.getLogger(__name__)
 
 
 def build_dataloader(
-    dataset: MoleculeDataset | ReactionDataset | MulticomponentDataset,
+    dataset: MoleculeDataset
+    | CuikmolmakerDataset
+    | MolAtomBondDataset
+    | ReactionDataset
+    | MulticomponentDataset,
     batch_size: int = 64,
     num_workers: int = 0,
     class_balance: bool = False,
     seed: int | None = None,
     shuffle: bool = True,
+    drop_last: bool | None = None,
     **kwargs,
 ):
     """Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
@@ -36,6 +52,9 @@ def build_dataloader(
         the random seed to use for shuffling (only used when `shuffle` is `True`).
     shuffle : bool, default=False
         whether to shuffle the data during sampling.
+    drop_last : bool, default=None
+        Whether to drop the last batch if it is of size 1 (needed if using batchnorm during training).
+        If None, this will be set automatically.
     """
 
     if class_balance:
@@ -47,17 +66,22 @@ def build_dataloader(
 
     if isinstance(dataset, MulticomponentDataset):
         collate_fn = collate_multicomponent
+    elif isinstance(dataset, CuikmolmakerDataset):
+        collate_fn = collate_cuik_batch
+    elif isinstance(dataset, MolAtomBondDataset):
+        collate_fn = collate_mol_atom_bond_batch
     else:
         collate_fn = collate_batch
 
-    if len(dataset) % batch_size == 1:
-        logger.warning(
-            f"Dropping last batch of size 1 to avoid issues with batch normalization \
-(dataset size = {len(dataset)}, batch_size = {batch_size})"
-        )
-        drop_last = True
-    else:
-        drop_last = False
+    if drop_last is None:
+        if len(dataset) % batch_size == 1:
+            logger.warning(
+                f"Dropping last batch of size 1 to avoid issues with batch normalization \
+    (dataset size = {len(dataset)}, batch_size = {batch_size})"
+            )
+            drop_last = True
+        else:
+            drop_last = False
 
     return DataLoader(
         dataset,
