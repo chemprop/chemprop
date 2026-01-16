@@ -401,17 +401,26 @@ def train_model(config, args, train_dset, val_dset, logger, output_transform, in
     patience = args.patience if args.patience is not None else args.epochs
     early_stopping = EarlyStopping(args.tracking_metric, patience=patience, mode=monitor_mode)
 
-    trainer = pl.Trainer(
-        accelerator=args.accelerator,
+    trainer_kwargs = dict(
         devices=args.devices,
         max_epochs=args.epochs,
         gradient_clip_val=args.grad_clip,
-        strategy=RayDDPStrategy(),
-        callbacks=[RayTrainReportCallback(), early_stopping],
-        plugins=[RayLightningEnvironment()],
         deterministic=args.pytorch_seed is not None,
+        callbacks=[RayTrainReportCallback(), early_stopping],
     )
-    trainer = prepare_trainer(trainer)
+    try:
+        trainer = pl.Trainer(
+            accelerator=args.accelerator,
+            strategy=RayDDPStrategy(),
+            plugins=[RayLightningEnvironment()],
+            **trainer_kwargs,
+        )
+        trainer = prepare_trainer(trainer)
+    except ValueError as e:
+        logger.info(
+            f"Initializing Ray + Lightning failed - switching to CPU and plain Lightning. Original Error: {e}"
+        )
+        trainer = pl.Trainer(accelerator="cpu", **trainer_kwargs)
     trainer.fit(model, train_loader, val_loader)
     ckpt_path = trainer.checkpoint_callback.best_model_path
     return {"checkpoint": Checkpoint.from_directory(Path(ckpt_path).parent)}
