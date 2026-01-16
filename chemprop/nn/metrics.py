@@ -637,7 +637,12 @@ class NLogProbEnrichment(ChempropMetric):
             zstat = 2 * (torch.sqrt(k1 + 3 / 8.0) - torch.sqrt((k2 + 3 / 8.0) * R_d))
             zstat = zstat / torch.sqrt(1 + R_d)
         else:
-            raise NotImplementedError
+            raise ValueError(f"Unsupported method: {method}")
+
+        if torch.isnan(zstat).any():
+            raise ValueError(
+                f"Got nan loss with method '{method}', ensure row-wise sum of counts are nonzero or use method='sqrt'"
+            )
         return zstat
 
     def _calc_unreduced_loss(
