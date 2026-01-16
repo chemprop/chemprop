@@ -51,12 +51,7 @@ def E_ds(mols):
     return [np.random.rand(mol.GetNumBonds(), 4) for mol in mols]
 
 
-@pytest.mark.parametrize(
-    "X_d, V_fs, E_fs, V_ds, E_ds",
-    [(None, None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds", "E_ds")],
-    indirect=True,
-)
-@pytest.fixture
+@pytest.fixture(params=[(None, None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds", "E_ds")])
 def data(mols, targets, X_d, V_fs, E_fs, V_ds, E_ds):
     mol_targets, atom_targets, bond_targets = targets
     return [
