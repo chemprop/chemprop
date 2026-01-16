@@ -644,10 +644,7 @@ def test_PointQuantileLoss_with_masks_and_weights(
     assert loss.item() >= 0  # Loss should be non-negative
 
 
-@pytest.mark.parametrize(
-    "alpha",
-    [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0],
-)
+@pytest.mark.parametrize("alpha", [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0])
 def test_PointQuantileLoss_alpha_values(alpha):
     """
     Test PointQuantileLoss with different alpha values.
