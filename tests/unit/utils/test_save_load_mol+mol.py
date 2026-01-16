@@ -7,6 +7,7 @@ import torch
 from torch.nn import Identity
 from torch.utils.data import DataLoader
 
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
     MoleculeDatapoint,
     MoleculeDataset,
@@ -70,7 +71,7 @@ def trainer():
 
 @pytest.fixture
 def ys(model, test_loader, trainer):
-    predss = trainer.predict(model, test_loader)
+    predss = trainer.predict(model, test_loader, **LIGHTNING_26_COMPAT_ARGS)
     return np.vstack(predss)
 
 
@@ -80,7 +81,7 @@ def test_roundtrip(tmp_path, model, test_loader, trainer, ys):
 
     model_from_file = MulticomponentMPNN.load_from_file(save_path)
 
-    predss_from_file = trainer.predict(model_from_file, test_loader)
+    predss_from_file = trainer.predict(model_from_file, test_loader, **LIGHTNING_26_COMPAT_ARGS)
     ys_from_file = np.vstack(predss_from_file)
 
     assert np.allclose(ys_from_file, ys, atol=1e-6)
@@ -89,7 +90,9 @@ def test_roundtrip(tmp_path, model, test_loader, trainer, ys):
 def test_checkpoint_is_valid(checkpoint_path, test_loader, trainer, ys):
     model_from_checkpoint = MulticomponentMPNN.load_from_file(checkpoint_path)
 
-    predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
+    predss_from_checkpoint = trainer.predict(
+        model_from_checkpoint, test_loader, **LIGHTNING_26_COMPAT_ARGS
+    )
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
 
     assert np.allclose(ys_from_checkpoint, ys, atol=1e-6)
@@ -101,10 +104,12 @@ def test_checkpoint_roundtrip(checkpoint_path, file_path, trainer, test_loader):
     )
     model_from_file = MulticomponentMPNN.load_from_file(file_path, map_location="cpu")
 
-    predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
+    predss_from_checkpoint = trainer.predict(
+        model_from_checkpoint, test_loader, **LIGHTNING_26_COMPAT_ARGS
+    )
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
 
-    predss_from_file = trainer.predict(model_from_file, test_loader)
+    predss_from_file = trainer.predict(model_from_file, test_loader, **LIGHTNING_26_COMPAT_ARGS)
     ys_from_file = np.vstack(predss_from_file)
 
     assert np.allclose(ys_from_file, ys_from_checkpoint, atol=1e-6)
