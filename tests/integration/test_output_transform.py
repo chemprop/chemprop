@@ -17,6 +17,7 @@ def data(mol_regression_data):
 
     return [MoleculeDatapoint.from_smi(smi, y) for smi, y in zip(smis, Y)]
 
+
 @pytest.mark.skipif(
     sys.platform == "darwin" and sys.version_info[:2] == (3, 11),
     reason="this test passes on other platforms but fails for unknown reasons here. Skip for now.",
