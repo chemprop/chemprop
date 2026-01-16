@@ -265,9 +265,8 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "multiclass": "ce",
         "specitra": "sid",
     }
-    T_loss_fn = LossFunctionRegistry[
-        getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
-    ]
+    str_loss_fn = getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
+    T_loss_fn = LossFunctionRegistry[renamed_metrics.get(str_loss_fn, str_loss_fn)]
 
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
