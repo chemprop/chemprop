@@ -49,6 +49,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
+    "PointQuantileLoss",
 ]
 
 
@@ -255,6 +256,33 @@ class EvidentialLoss(ChempropMetric):
     def extra_repr(self) -> str:
         parent_repr = super().extra_repr()
         return parent_repr + f", v_kl={self.v_kl}, eps={self.eps}"
+
+
+@LossFunctionRegistry.register(["quantile-point", "pinball-point"])
+class PointQuantileLoss(ChempropMetric):
+    """
+    Point-based pinball (quantile) loss operating on one prediction per task.
+    Expects preds and targets shaped [batch, num_tasks]. See [efimov2023]_
+
+    This is distinct from :class:`QuantileLoss` which uses interval-based predictions
+    (mean + interval, shape [batch, num_tasks, 2]).
+
+    References
+    ----------
+    .. [efimov2023] https://web.archive.org/web/20250502145226/https://towardsdatascience.com/quantile-loss-and-quantile-regression-b0689c13f54d/
+    """
+
+    def __init__(self, task_weights: ArrayLike = 1.0, alpha: float = 0.1):
+        super().__init__(task_weights)
+        self.alpha = alpha
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, mask: Tensor, *args) -> Tensor:
+        diff = targets - preds
+        loss = torch.where(diff > 0, self.alpha * diff, (1 - self.alpha) * (-diff))
+        return loss
+
+    def extra_repr(self) -> str:
+        return f"alpha={self.alpha}"
 
 
 @LossFunctionRegistry.register("bce")
