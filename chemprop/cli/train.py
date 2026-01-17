@@ -733,6 +733,11 @@ def validate_train_args(args):
         if len(args.depth) > 1:
             raise ValueError("Single-component data only accepts one --depth value")
 
+    if (len(args.message_hidden_dim) > 1 or len(args.depth) > 1) and args.mpn_shared:
+        raise ValueError(
+            "Cannot combine --mpn-shared with multiple arguments to --message-hidden-dim or --depth"
+        )
+
     return args
 
 
