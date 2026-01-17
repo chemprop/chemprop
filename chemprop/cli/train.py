@@ -589,7 +589,7 @@ def validate_train_args(args):
     if (
         len(args.data_path) == 2
         and args.split_sizes[2] != 0
-        and args.splits_columns is None
+        and args.splits_column is None
         and args.splits_file is None
     ):
         raise ArgumentError(
