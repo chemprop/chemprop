@@ -356,6 +356,12 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
             case "init_lr_ratio":
                 setattr(args, "init_lr", value * config.get("max_lr", args.max_lr))
 
+            case "message_hidden_dim":
+                setattr(args, "message_hidden_dim", [value])
+
+            case "depth":
+                setattr(args, "depth", [value])
+
             case _:
                 assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)

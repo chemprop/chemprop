@@ -827,6 +827,8 @@ def test_empty_testset(monkeypatch, data_path):
         "train",
         "-i",
         input_path,
+        "--epochs",
+        "3",
         "--smiles-columns",
         "smiles",
         "--target-columns",
@@ -834,6 +836,54 @@ def test_empty_testset(monkeypatch, data_path):
         "--split-sizes",
         "0.5",
         "0.5",
+        "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_empty_valset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "0.5",
+        "0",
+        "0.5",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_only_trainset(monkeypatch, data_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--smiles-columns",
+        "smiles",
+        "--target-columns",
+        "lipo",
+        "--split-sizes",
+        "1",
+        "0",
         "0",
     ]
 

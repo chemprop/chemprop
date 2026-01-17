@@ -109,6 +109,9 @@ Our code supports several methods of splitting data into train, validation, and 
     ]
 
 .. note::
+    To train without a validation set or test set, the respective key can be omitted from the JSON file.
+
+.. note::
     By default, both random and scaffold split the data into 80% train, 10% validation, and 10% test. This can be changed with :code:`--split-sizes <train_frac> <val_frac> <test_frac>`. The default setting is :code:`--split-sizes 0.8 0.1 0.1`. Both splits also involve a random component that can be seeded with :code:`--data-seed <seed>`. The default setting is :code:`--data-seed 0`.
 
 Other supported splitting methods include :code:`random_with_repeated_smiles`, :code:`kennard_stone`, and :code:`kmeans`.
@@ -169,6 +172,7 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`mve` Mean-variance estimation
  * :code:`evidential` Evidential; if used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
+ * :code:`quantile-point` Point-based pinball (quantile) loss
 
 **Classification**:
 

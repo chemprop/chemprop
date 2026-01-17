@@ -199,12 +199,22 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     mp_args = parser.add_argument_group("message passing")
     mp_args.add_argument(
-        "--message-hidden-dim", type=int, default=300, help="Hidden dimension of the messages"
+        "--message-hidden-dim",
+        type=int,
+        default=[300],
+        nargs="+",
+        help="Hidden dimension of the messages (specify multiple values to customize multicomponent encoders separately)",
     )
     mp_args.add_argument(
         "--message-bias", action="store_true", help="Add bias to the message passing layers"
     )
-    mp_args.add_argument("--depth", type=int, default=3, help="Number of message passing steps")
+    mp_args.add_argument(
+        "--depth",
+        type=int,
+        default=[3],
+        nargs="+",
+        help="Number of message passing steps (specify multiple values to customize multicomponent encoders separately)",
+    )
     mp_args.add_argument(
         "--undirected",
         action="store_true",
@@ -502,6 +512,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Number of epochs to wait for improvement before early stopping",
     )
     train_args.add_argument(
+        "--min-delta",
+        type=float,
+        default=0.0,
+        help="Minimum change in the monitored quantity to qualify as an improvement",
+    )
+    train_args.add_argument(
         "--grad-clip",
         type=float,
         help="Passed directly to the lightning trainer which controls grad clipping (see the ``Trainer()`` docstring for details)",
@@ -732,6 +748,18 @@ def validate_train_args(args):
     args.input_columns = input_cols
     args.target_columns = target_cols
 
+    number_of_components = max(1, len(args.smiles_columns or []) + len(args.reaction_columns or []))
+    if number_of_components == 1:
+        if len(args.message_hidden_dim) > 1:
+            raise ValueError("Single-component data only accepts one --message-hidden-dim value")
+        if len(args.depth) > 1:
+            raise ValueError("Single-component data only accepts one --depth value")
+
+    if (len(args.message_hidden_dim) > 1 or len(args.depth) > 1) and args.mpn_shared:
+        raise ValueError(
+            "Cannot combine --mpn-shared with multiple arguments to --message-hidden-dim or --depth"
+        )
+
     return args
 
 
@@ -754,7 +782,8 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_xd > 0 and not args.no_descriptor_scaling:
         scaler = train_dset.normalize_inputs("X_d")
-        val_dset.normalize_inputs("X_d", scaler)
+        if val_dset is not None:
+            val_dset.normalize_inputs("X_d", scaler)
 
         scaler = scaler if not isinstance(scaler, list) else scaler[0]
 
@@ -766,7 +795,8 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_vf > 0 and not args.no_atom_feature_scaling:
         scaler = train_dset.normalize_inputs("V_f")
-        val_dset.normalize_inputs("V_f", scaler)
+        if val_dset is not None:
+            val_dset.normalize_inputs("V_f", scaler)
 
         scalers = [scaler] if not isinstance(scaler, list) else scaler
 
@@ -786,7 +816,8 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_ef > 0 and not args.no_bond_feature_scaling:
         scaler = train_dset.normalize_inputs("E_f")
-        val_dset.normalize_inputs("E_f", scaler)
+        if val_dset is not None:
+            val_dset.normalize_inputs("E_f", scaler)
 
         scalers = [scaler] if not isinstance(scaler, list) else scaler
 
@@ -809,7 +840,8 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_vd > 0 and not args.no_atom_descriptor_scaling:
         scaler = train_dset.normalize_inputs("V_d")
-        val_dset.normalize_inputs("V_d", scaler)
+        if val_dset is not None:
+            val_dset.normalize_inputs("V_d", scaler)
 
         scalers = [scaler] if not isinstance(scaler, list) else scaler
 
@@ -824,7 +856,8 @@ def normalize_inputs(train_dset, val_dset, args):
 
     if d_ed > 0 and not args.no_bond_descriptor_scaling:
         scaler = train_dset.normalize_inputs("E_d")
-        val_dset.normalize_inputs("E_d", scaler)
+        if val_dset is not None:
+            val_dset.normalize_inputs("E_d", scaler)
 
         scalers = [scaler] if not isinstance(scaler, list) else scaler
 
@@ -845,19 +878,20 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
         _model = MulticomponentMPNN.load_from_file(model_path, map_location="cpu")
         blocks = _model.message_passing.blocks
         train_dsets = train_dset.datasets
-        val_dsets = val_dset.datasets
+        val_dsets = val_dset.datasets if val_dset is not None else None
     else:
         mpnn_cls = MolAtomBondMPNN if isinstance(train_dset, MolAtomBondDataset) else MPNN
         _model = mpnn_cls.load_from_file(model_path, map_location="cpu")
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
-        val_dsets = [val_dset]
+        val_dsets = [val_dset] if val_dset is not None else None
 
     for i in range(len(blocks)):
         if isinstance(_model.X_d_transform, ScaleTransform):
             scaler = _model.X_d_transform.to_standard_scaler()
             train_dsets[i].normalize_inputs("X_d", scaler)
-            val_dsets[i].normalize_inputs("X_d", scaler)
+            if val_dsets is not None:
+                val_dsets[i].normalize_inputs("X_d", scaler)
 
         if isinstance(blocks[i].graph_transform, GraphTransform):
             if isinstance(blocks[i].graph_transform.V_transform, ScaleTransform):
@@ -868,7 +902,8 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
                     anti_pad=V_anti_pad
                 )
                 train_dsets[i].normalize_inputs("V_f", scaler)
-                val_dsets[i].normalize_inputs("V_f", scaler)
+                if val_dsets is not None:
+                    val_dsets[i].normalize_inputs("V_f", scaler)
             if isinstance(blocks[i].graph_transform.E_transform, ScaleTransform):
                 E_anti_pad = (
                     train_dsets[i].featurizer.bond_fdim - train_dsets[i].featurizer.extra_bond_fdim
@@ -877,30 +912,35 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
                     anti_pad=E_anti_pad
                 )
                 train_dsets[i].normalize_inputs("E_f", scaler)
-                val_dsets[i].normalize_inputs("E_f", scaler)
+                if val_dsets is not None:
+                    val_dsets[i].normalize_inputs("E_f", scaler)
 
         if isinstance(blocks[i].V_d_transform, ScaleTransform):
             scaler = blocks[i].V_d_transform.to_standard_scaler()
             train_dsets[i].normalize_inputs("V_d", scaler)
-            val_dsets[i].normalize_inputs("V_d", scaler)
+            if val_dsets is not None:
+                val_dsets[i].normalize_inputs("V_d", scaler)
 
         if hasattr(blocks[i], "E_d_transform") and isinstance(
             blocks[i].E_d_transform, ScaleTransform
         ):
             scaler = blocks[i].E_d_transform.to_standard_scaler()
             train_dsets[i].normalize_inputs("E_d", scaler)
-            val_dsets[i].normalize_inputs("E_d", scaler)
+            if val_dsets is not None:
+                val_dsets[i].normalize_inputs("E_d", scaler)
 
     if isinstance(train_dset, MolAtomBondDataset):
         for kind, predictor in zip(["mol", "atom", "bond"], _model.predictors):
             if isinstance(predictor.output_transform, UnscaleTransform):
                 scaler = predictor.output_transform.to_standard_scaler()
                 train_dset.normalize_targets(kind, scaler)
-                val_dset.normalize_targets(kind, scaler)
+                if val_dset is not None:
+                    val_dset.normalize_targets(kind, scaler)
     elif isinstance(_model.predictor.output_transform, UnscaleTransform):
         scaler = _model.predictor.output_transform.to_standard_scaler()
         train_dset.normalize_targets(scaler)
-        val_dset.normalize_targets(scaler)
+        if val_dset is not None:
+            val_dset.normalize_targets(scaler)
 
 
 def save_config(parser: ArgumentParser, args: Namespace, config_path: Path):
@@ -938,9 +978,10 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
     df_train = pd.DataFrame(train_smis, columns=column_labels)
     df_train.to_csv(output_dir / "train_smiles.csv", index=False)
 
-    val_smis = val_dset.names
-    df_val = pd.DataFrame(val_smis, columns=column_labels)
-    df_val.to_csv(output_dir / "val_smiles.csv", index=False)
+    if val_dset is not None:
+        val_smis = val_dset.names
+        df_val = pd.DataFrame(val_smis, columns=column_labels)
+        df_val.to_csv(output_dir / "val_smiles.csv", index=False)
 
     if test_dset is not None:
         test_smis = test_dset.names
@@ -1028,7 +1069,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             with open(args.splits_file, "rb") as json_file:
                 split_idxss = json.load(json_file)
             train_indices = [parse_indices(d["train"]) for d in split_idxss]
-            val_indices = [parse_indices(d["val"]) for d in split_idxss]
+            val_indices = [parse_indices(d["val"]) if "val" in d else [] for d in split_idxss]
             test_indices = [parse_indices(d["test"]) if "test" in d else [] for d in split_idxss]
             args.num_replicates = len(split_idxss)
 
@@ -1160,18 +1201,23 @@ def build_datasets(args, train_data, val_data, test_data):
             )
             for data in train_data
         ]
-        val_dsets = [
-            make_dataset(
-                data,
-                args.rxn_mode,
-                args.multi_hot_atom_featurizer_mode,
-                args.use_cuikmolmaker_featurization,
-                n_workers=args.num_workers,
-            )
-            for data in val_data
-        ]
         train_dset = MulticomponentDataset(train_dsets)
-        val_dset = MulticomponentDataset(val_dsets)
+
+        if len(val_data[0]) > 0:
+            val_dsets = [
+                make_dataset(
+                    data,
+                    args.rxn_mode,
+                    args.multi_hot_atom_featurizer_mode,
+                    args.use_cuikmolmaker_featurization,
+                    n_workers=args.num_workers,
+                )
+                for data in val_data
+            ]
+            val_dset = MulticomponentDataset(val_dsets)
+        else:
+            val_dset = None
+
         if len(test_data[0]) > 0:
             test_dsets = [
                 make_dataset(
@@ -1197,13 +1243,16 @@ def build_datasets(args, train_data, val_data, test_data):
             args.use_cuikmolmaker_featurization,
             n_workers=args.num_workers,
         )
-        val_dset = make_dataset(
-            val_data,
-            args.rxn_mode,
-            args.multi_hot_atom_featurizer_mode,
-            args.use_cuikmolmaker_featurization,
-            n_workers=args.num_workers,
-        )
+        if len(val_data) > 0:
+            val_dset = make_dataset(
+                val_data,
+                args.rxn_mode,
+                args.multi_hot_atom_featurizer_mode,
+                args.use_cuikmolmaker_featurization,
+                n_workers=args.num_workers,
+            )
+        else:
+            val_dset = None
         if len(test_data) > 0:
             test_dset = make_dataset(
                 test_data,
@@ -1326,18 +1375,31 @@ def build_model(
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
         if is_multi:
+            if len(args.message_hidden_dim) == 1:
+                args.message_hidden_dim = args.message_hidden_dim * train_dset.n_components
+            elif len(args.message_hidden_dim) != train_dset.n_components:
+                raise ValueError(
+                    f"Inconsistent number of components ({train_dset.n_components}) and number of --message-hidden-dim arguments ({len(args.message_hidden_dim)}, {args.message_hidden_dim})."
+                )
+            if len(args.depth) == 1:
+                args.depth = args.depth * train_dset.n_components
+            elif len(args.depth) != train_dset.n_components:
+                raise ValueError(
+                    f"Inconsistent number of components ({train_dset.n_components}) and number of --depth arguments ({len(args.depth)}, {args.depth})."
+                )
+            exit
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
                     train_dset.datasets[i].featurizer.bond_fdim,
-                    d_h=args.message_hidden_dim,
+                    d_h=args.message_hidden_dim[i],
                     d_vd=(
                         train_dset.datasets[i].d_vd
                         if isinstance(train_dset.datasets[i], MoleculeDataset)
                         else 0
                     ),
                     bias=args.message_bias,
-                    depth=args.depth,
+                    depth=args.depth[i],
                     undirected=args.undirected,
                     dropout=args.dropout,
                     activation=activation,
@@ -1360,10 +1422,10 @@ def build_model(
             mp_block = mp_cls(
                 train_dset.featurizer.atom_fdim,
                 train_dset.featurizer.bond_fdim,
-                d_h=args.message_hidden_dim,
+                d_h=args.message_hidden_dim[0],
                 d_vd=train_dset.d_vd if isinstance(train_dset, MoleculeDataset) else 0,
                 bias=args.message_bias,
-                depth=args.depth,
+                depth=args.depth[0],
                 undirected=args.undirected,
                 dropout=args.dropout,
                 activation=activation,
@@ -1438,14 +1500,15 @@ def build_MAB_model(
     mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
+
     mp = mp_cls(
         train_dset.featurizer.atom_fdim,
         train_dset.featurizer.bond_fdim,
-        d_h=args.message_hidden_dim,
+        d_h=args.message_hidden_dim[0],
         d_vd=train_dset.d_vd,
         d_ed=train_dset.d_ed,
         bias=args.message_bias,
-        depth=args.depth,
+        depth=args.depth[0],
         undirected=args.undirected,
         dropout=args.dropout,
         activation=args.activation,
@@ -1703,6 +1766,13 @@ def train_model(
                 T_tracking_metric = MetricRegistry[args.tracking_metric]
                 tracking_metric = "val/" + args.tracking_metric
 
+        if val_loader is None:
+            if isinstance(train_loader.dataset, MolAtomBondDataset):
+                T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
+            else:
+                T_tracking_metric = model.criterion.__class__
+            tracking_metric = "train_loss"
+
         monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         logger.debug(f"Evaluation metric: '{T_tracking_metric.alias}', mode: '{monitor_mode}'")
 
@@ -1727,7 +1797,9 @@ def train_model(
 
         if args.epochs != -1:
             patience = args.patience if args.patience is not None else args.epochs
-            early_stopping = EarlyStopping(tracking_metric, patience=patience, mode=monitor_mode)
+            early_stopping = EarlyStopping(
+                tracking_metric, patience=patience, mode=monitor_mode, min_delta=args.min_delta
+            )
             callbacks = [checkpointing, early_stopping]
         else:
             callbacks = [checkpointing]
@@ -2094,7 +2166,8 @@ def main(args):
                     ):
                         if cols is not None:
                             output_scaler = train_dset.normalize_targets(kind)
-                            val_dset.normalize_targets(kind, output_scaler)
+                            if val_dset is not None:
+                                val_dset.normalize_targets(kind, output_scaler)
                             logger.info(
                                 f"Train data ({kind}): mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
                             )
@@ -2105,7 +2178,8 @@ def main(args):
                             output_transform.append(None)
                 else:
                     output_scaler = train_dset.normalize_targets()
-                    val_dset.normalize_targets(output_scaler)
+                    if val_dset is not None:
+                        val_dset.normalize_targets(output_scaler)
                     logger.info(
                         f"Train data: mean = {output_scaler.mean_} | std = {output_scaler.scale_}"
                     )
@@ -2119,7 +2193,8 @@ def main(args):
             else:
                 logger.info("Caching training and validation datasets...")
                 train_dset.cache = True
-                val_dset.cache = True
+                if val_dset is not None:
+                    val_dset.cache = True
 
         train_loader = build_dataloader(
             train_dset,
@@ -2133,9 +2208,16 @@ def main(args):
             logger.debug(
                 f"With `--class-balance`, effective train size = {len(train_loader.sampler)}"
             )
-        val_loader = build_dataloader(
-            val_dset, args.batch_size, args.num_workers, shuffle=False, drop_last=args.batch_norm
-        )
+        if val_dset is not None:
+            val_loader = build_dataloader(
+                val_dset,
+                args.batch_size,
+                args.num_workers,
+                shuffle=False,
+                drop_last=args.batch_norm,
+            )
+        else:
+            val_loader = None
         if test_dset is not None:
             test_loader = build_dataloader(
                 test_dset,
