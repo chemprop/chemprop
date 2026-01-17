@@ -14,6 +14,8 @@ from chemprop.nn.metrics import (
     EvidentialLoss,
     MulticlassMCCLoss,
     MVELoss,
+    NLogProbEnrichment,
+    PointQuantileLoss,
     Wasserstein,
 )
 
@@ -501,4 +503,262 @@ def test_Wasserstein(
     torch.testing.assert_close(loss, expected_loss)
 
 
-# TODO: Add quantile loss tests
+@pytest.mark.parametrize(
+    "preds,targets,mask,weights,n1,n2,expected_loss,method",
+    [
+        (
+            torch.tensor([[0.5], [0.5]], dtype=torch.float),  # preds
+            torch.tensor([[1, 2], [3, 4]], dtype=torch.int),  # targets
+            torch.ones([2, 1], dtype=torch.bool),  # mask
+            torch.ones([2]),  # weights
+            torch.tensor(900, dtype=torch.int),  # n1
+            torch.tensor(800, dtype=torch.int),  # n2
+            torch.tensor(0.21284, dtype=torch.float),  # exptected_loss
+            "sqrt",
+        ),
+        (
+            torch.tensor([[0.5], [0.5]], dtype=torch.float),  # preds
+            torch.tensor([[1, 2], [3, 4]], dtype=torch.int),  # targets
+            torch.ones([2, 2], dtype=torch.bool),  # mask
+            torch.ones([2]),  # weights
+            torch.tensor(500, dtype=torch.int),  # n1
+            torch.tensor(600, dtype=torch.int),  # n2
+            torch.tensor(0.47931, dtype=torch.float),  # exptected_loss
+            "score",
+        ),
+        (
+            torch.tensor([[0.5], [0.5]], dtype=torch.float),  # preds
+            torch.tensor([[1, 2], [3, 4]], dtype=torch.int),  # targets
+            torch.ones([2, 2], dtype=torch.bool),  # mask
+            torch.ones([2]),  # weights
+            torch.tensor(10, dtype=torch.int),  # n1
+            torch.tensor(1000, dtype=torch.int),  # n2
+            torch.tensor(1.79683, dtype=torch.float),  # exptected_loss
+            "wald",
+        ),
+    ],
+)
+def test_NLL(preds, targets, mask, weights, n1, n2, expected_loss, method):
+    """
+    Testing the NLL loss function
+    """
+    nll_loss = NLogProbEnrichment(n1=n1, n2=n2, method=method)
+    loss = nll_loss(preds, targets, mask, weights)
+    torch.testing.assert_close(loss, expected_loss)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,alpha,expected_loss",
+    [
+        # Basic test: prediction below target (diff > 0)
+        (
+            torch.tensor([[1.0], [2.0]], dtype=torch.float),
+            torch.tensor([[2.0], [3.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.1,
+            torch.tensor(0.1, dtype=torch.float),  # alpha * (2-1) = 0.1
+        ),
+        # Basic test: prediction above target (diff < 0)
+        (
+            torch.tensor([[2.0], [3.0]], dtype=torch.float),
+            torch.tensor([[1.0], [2.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.1,
+            torch.tensor(0.9, dtype=torch.float),  # (1-alpha) * (2-1) = 0.9
+        ),
+        # Perfect prediction (diff = 0)
+        (
+            torch.tensor([[1.0], [2.0]], dtype=torch.float),
+            torch.tensor([[1.0], [2.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.1,
+            torch.tensor(0.0, dtype=torch.float),
+        ),
+        # Mixed case: one above, one below
+        (
+            torch.tensor([[1.0], [3.0]], dtype=torch.float),
+            torch.tensor([[2.0], [2.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.1,
+            torch.tensor(0.5, dtype=torch.float),  # (0.1*1.0 + 0.9*1.0)/2 = 0.5
+        ),
+        # Different alpha value (median regression, alpha=0.5)
+        (
+            torch.tensor([[1.0], [3.0]], dtype=torch.float),
+            torch.tensor([[2.0], [2.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.5,
+            torch.tensor(0.5, dtype=torch.float),  # (0.5*1 + 0.5*1)/2 = 0.5
+        ),
+        # Multiple tasks
+        (
+            torch.tensor([[1.0, 2.0], [3.0, 1.0]], dtype=torch.float),
+            torch.tensor([[2.0, 1.0], [2.0, 2.0]], dtype=torch.float),
+            torch.ones([2, 2], dtype=torch.bool),
+            torch.ones([2]),
+            torch.ones([2]),
+            torch.zeros([2, 2], dtype=torch.bool),
+            torch.zeros([2, 2], dtype=torch.bool),
+            0.1,
+            torch.tensor(0.5, dtype=torch.float),  # Average across all tasks
+        ),
+    ],
+)
+def test_PointQuantileLoss(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, alpha, expected_loss
+):
+    """
+    Test the PointQuantileLoss (pinball loss) function.
+    The pinball loss is: alpha * max(0, target - pred) + (1-alpha) * max(0, pred - target)
+    """
+    quantile_loss = PointQuantileLoss(task_weights=task_weights, alpha=alpha)
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, expected_loss, rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.parametrize(
+    "preds,targets,mask,weights,task_weights,lt_mask,gt_mask,alpha",
+    [
+        # Test with mask
+        (
+            torch.tensor([[1.0], [2.0], [3.0]], dtype=torch.float),
+            torch.tensor([[2.0], [3.0], [4.0]], dtype=torch.float),
+            torch.tensor([[1], [1], [0]], dtype=torch.bool),
+            torch.ones([3]),
+            torch.ones([1]),
+            torch.zeros([3, 1], dtype=torch.bool),
+            torch.zeros([3, 1], dtype=torch.bool),
+            0.1,
+        ),
+        # Test with sample weights
+        (
+            torch.tensor([[1.0], [2.0]], dtype=torch.float),
+            torch.tensor([[2.0], [3.0]], dtype=torch.float),
+            torch.ones([2, 1], dtype=torch.bool),
+            torch.tensor([0.5, 2.0]),
+            torch.ones([1]),
+            torch.zeros([2, 1], dtype=torch.bool),
+            torch.zeros([2, 1], dtype=torch.bool),
+            0.1,
+        ),
+        # Test with task weights
+        (
+            torch.tensor([[1.0, 2.0]], dtype=torch.float),
+            torch.tensor([[2.0, 3.0]], dtype=torch.float),
+            torch.ones([1, 2], dtype=torch.bool),
+            torch.ones([1]),
+            torch.tensor([0.5, 2.0]),
+            torch.zeros([1, 2], dtype=torch.bool),
+            torch.zeros([1, 2], dtype=torch.bool),
+            0.1,
+        ),
+    ],
+)
+def test_PointQuantileLoss_with_masks_and_weights(
+    preds, targets, mask, weights, task_weights, lt_mask, gt_mask, alpha
+):
+    """
+    Test PointQuantileLoss with masks and weights.
+    The loss should be properly weighted and masked.
+    """
+    quantile_loss = PointQuantileLoss(task_weights=task_weights, alpha=alpha)
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+
+    # Loss should be a scalar (averaged)
+    assert loss.numel() == 1
+    assert loss.item() >= 0  # Loss should be non-negative
+
+
+@pytest.mark.parametrize("alpha", [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0])
+def test_PointQuantileLoss_alpha_values(alpha):
+    """
+    Test PointQuantileLoss with different alpha values.
+    Alpha should be in [0, 1] and represents the quantile level.
+    """
+    preds = torch.tensor([[1.0], [3.0]], dtype=torch.float)
+    targets = torch.tensor([[2.0], [2.0]], dtype=torch.float)
+    mask = torch.ones([2, 1], dtype=torch.bool)
+    weights = torch.ones([2])
+    task_weights = torch.ones([1])
+    lt_mask = torch.zeros([2, 1], dtype=torch.bool)
+    gt_mask = torch.zeros([2, 1], dtype=torch.bool)
+
+    quantile_loss = PointQuantileLoss(task_weights=task_weights, alpha=alpha)
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+
+    # Loss should be non-negative
+    assert loss.item() >= 0
+
+    # For alpha=0.5 (median), loss should be symmetric
+    if alpha == 0.5:
+        # Swapping preds should give same loss
+        preds_swapped = torch.tensor([[3.0], [1.0]], dtype=torch.float)
+        loss_swapped = quantile_loss(preds_swapped, targets, mask, weights, lt_mask, gt_mask)
+        torch.testing.assert_close(loss, loss_swapped, rtol=1e-5, atol=1e-5)
+
+
+def test_PointQuantileLoss_extra_repr():
+    """
+    Test that extra_repr returns the correct string representation.
+    """
+    quantile_loss = PointQuantileLoss(alpha=0.25)
+    repr_str = quantile_loss.extra_repr()
+    assert "alpha=0.25" in repr_str
+
+
+def test_PointQuantileLoss_mathematical_correctness():
+    """
+    Test mathematical correctness of the pinball loss formula.
+    For a given alpha and difference d = target - pred:
+    - If d > 0: loss = alpha * d
+    - If d <= 0: loss = (1 - alpha) * (-d)
+    """
+    alpha = 0.2
+    quantile_loss = PointQuantileLoss(alpha=alpha)
+
+    # Case 1: pred < target (d > 0)
+    preds = torch.tensor([[1.0]], dtype=torch.float)
+    targets = torch.tensor([[3.0]], dtype=torch.float)
+    mask = torch.ones([1, 1], dtype=torch.bool)
+    weights = torch.ones([1])
+    lt_mask = torch.zeros([1, 1], dtype=torch.bool)
+    gt_mask = torch.zeros([1, 1], dtype=torch.bool)
+
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+    expected = alpha * (targets - preds).item()  # alpha * 2.0 = 0.4
+    torch.testing.assert_close(loss, torch.tensor(expected), rtol=1e-5, atol=1e-5)
+
+    # Case 2: pred > target (d < 0)
+    preds = torch.tensor([[3.0]], dtype=torch.float)
+    targets = torch.tensor([[1.0]], dtype=torch.float)
+
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+    expected = (1 - alpha) * (preds - targets).item()  # 0.8 * 2.0 = 1.6
+    torch.testing.assert_close(loss, torch.tensor(expected), rtol=1e-5, atol=1e-5)
+
+    # Case 3: pred == target (d = 0)
+    preds = torch.tensor([[2.0]], dtype=torch.float)
+    targets = torch.tensor([[2.0]], dtype=torch.float)
+
+    loss = quantile_loss(preds, targets, mask, weights, lt_mask, gt_mask)
+    torch.testing.assert_close(loss, torch.tensor(0.0), rtol=1e-5, atol=1e-5)
