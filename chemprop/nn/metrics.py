@@ -1,5 +1,7 @@
 from abc import abstractmethod
+from typing import Literal
 
+import numpy as np
 from numpy.typing import ArrayLike
 import torch
 from torch import Tensor
@@ -49,6 +51,7 @@ __all__ = [
     "SID",
     "Wasserstein",
     "QuantileLoss",
+    "NLogProbEnrichment",
     "PointQuantileLoss",
 ]
 
@@ -608,3 +611,82 @@ class QuantileLoss(ChempropMetric):
 
     def extra_repr(self) -> str:
         return f"alpha={self.alpha}"
+
+
+@LossFunctionRegistry.register("nlogprob_enrichment")
+class NLogProbEnrichment(ChempropMetric):
+    """
+    Negative log probability enrichment loss function.
+    Originally implemented by [lim2022]_ for DNA-encoded library screening data, but can be applied to any count-based data that can be assumed to follow a Poisson distribution.
+    This code is adapted from [coleyGithub]_
+
+    Additional arguments, k1, k2, n1 and n2, are needed for the loss function.
+    k1: counts for specific observation in positive sample
+    n2: total counts across observations in positive sample
+    k2: counts for specifc observation in the counter (negative) sample
+    n2: total counts across observations in counter (negative) sample
+
+    zinterval: the range of z-scores (+/-) that are used for calculating confidence interval. Defaults to 5 due application on DNA-encoded library screening data.
+
+
+    References
+    ----------
+    .. [lim2022] Lim, Katherine S.; Reidenbach, Andrew G.; Hua, Bruce K.; Mason, Jeremy W.; Gerry, Christopher J.; Clemons, Paul A.; Coley, Connor W. "Machine Learning on DNA-Encoded Library Count Data Using an Uncertainty-Aware Probabilistic Loss Function" JCIM, 2022, 62. https://doi.org/10.1021/acs.jcim.2c00041
+    .. [coleyGithub] https://github.com/coleygroup/del_qsar/blob/main/losses.py
+
+
+    """
+
+    def __init__(
+        self,
+        task_weights: ArrayLike = 1.0,
+        n1: int = 1,
+        n2: int = 1,
+        method: Literal["sqrt", "score", "wald"] = "sqrt",
+        zscale: float = 1.0,
+        zinterval: float = 5.0,
+    ):
+        super().__init__(task_weights)
+        self.n1 = n1
+        self.n2 = n2
+        self.method = method
+        self.zscale = zscale
+        self.zinterval = zinterval
+
+    @staticmethod
+    def get_zstats(R, k1, k2, n1, n2, method):
+        d = n2 / n1
+        R_d = R / d
+        if method == "score":
+            zstat = (k1 - k2 * R_d) / torch.sqrt((k1 + k2) * R_d)
+        elif method == "wald":
+            zstat = (k1 - k2 * R_d) / torch.sqrt(k1 + k2 * R_d**2)
+        elif method == "sqrt":
+            zstat = 2 * (torch.sqrt(k1 + 3 / 8.0) - torch.sqrt((k2 + 3 / 8.0) * R_d))
+            zstat = zstat / torch.sqrt(1 + R_d)
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+
+        if torch.isnan(zstat).any():
+            raise ValueError(
+                f"Got nan loss with method '{method}', ensure row-wise sum of counts are nonzero or use method='sqrt'"
+            )
+        return zstat
+
+    def _calc_unreduced_loss(
+        self, preds: Tensor, targets: Tensor, mask: Tensor, weights: Tensor, *args
+    ) -> Tensor:
+        R = preds.squeeze()
+
+        k1 = targets[:, 0]
+        k2 = targets[:, 1]
+
+        zstat = self.get_zstats(R, k1, k2, self.n1, self.n2, method=self.method)
+        zstat = torch.clamp(zstat / self.zscale, -self.zinterval, self.zinterval)
+        zstat = torch.abs(zstat)
+        sf = 1 - torch.erf(zstat / np.sqrt(2))
+        loss = -torch.log(sf)
+        return loss.unsqueeze(1)
+
+    def extra_repr(self):
+        return f"n1={self.n1}, n2={self.n2}, method='{self.method}', zscale={self.zscale}, zinterval={self.zinterval}"
