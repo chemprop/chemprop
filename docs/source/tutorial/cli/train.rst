@@ -152,6 +152,7 @@ The loss function can be specified using the :code:`--loss-function <function>` 
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`mve` Mean-variance estimation
  * :code:`evidential` Evidential; if used, :code:`--evidential-regularization` can be specified to modify the regularization, and :code:`--eps` to modify epsilon.
+ * :code:`quantile-point` Point-based pinball (quantile) loss
 
 **Classification**:
 
