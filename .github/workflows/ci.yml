@@ -51,7 +51,7 @@ jobs:
       - run: isort --check .
 
   test:
-    name: Execute Tests
+    name: Execute Tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}${{ matrix.cuik-molmaker == 'true' && ' and cuik_molmaker' || '' }}
     needs: lint
     runs-on: ${{ matrix.os }}
     defaults:
