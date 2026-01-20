@@ -6,13 +6,25 @@ from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
 from chemprop.nn.agg import AggregationRegistry
-from chemprop.nn.message_passing import AtomMessagePassing, BondMessagePassing
+from chemprop.nn.message_passing import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MulticomponentMessagePassing,
+)
 from chemprop.nn.metrics import LossFunctionRegistry, MetricRegistry
 from chemprop.nn.predictors import PredictorRegistry
 from chemprop.nn.transforms import UnscaleTransform
 from chemprop.utils import Factory
 
 logger = logging.getLogger(__name__)
+
+
+def max_encoder_index(d: dict) -> int:
+    return max(
+        int(k.split(".")[2])
+        for k in d
+        if k.startswith("encoder.encoder.") and k.endswith(".W_i.weight")
+    )
 
 
 def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
@@ -22,10 +34,33 @@ def convert_state_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     args_v1 = model_v1_dict["args"]
 
     state_dict_v1 = model_v1_dict["state_dict"]
-    state_dict_v2["message_passing.W_i.weight"] = state_dict_v1["encoder.encoder.0.W_i.weight"]
-    state_dict_v2["message_passing.W_h.weight"] = state_dict_v1["encoder.encoder.0.W_h.weight"]
-    state_dict_v2["message_passing.W_o.weight"] = state_dict_v1["encoder.encoder.0.W_o.weight"]
-    state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
+    str1 = "message_passing.blocks"
+    str2 = "encoder.encoder"
+    if "encoder.encoder_solvent.W_i.weight" in state_dict_v1:
+        state_dict_v2[f"{str1}.0.W_i.weight"] = state_dict_v1[f"{str2}.W_i.weight"]
+        state_dict_v2[f"{str1}.0.W_h.weight"] = state_dict_v1[f"{str2}.W_h.weight"]
+        state_dict_v2[f"{str1}.0.W_o.weight"] = state_dict_v1[f"{str2}.W_o.weight"]
+        state_dict_v2[f"{str1}.0.W_o.bias"] = state_dict_v1[f"{str2}.W_o.bias"]
+        state_dict_v2[f"{str1}.1.W_i.weight"] = state_dict_v1[f"{str2}_solvent.W_i.weight"]
+        state_dict_v2[f"{str1}.1.W_h.weight"] = state_dict_v1[f"{str2}_solvent.W_h.weight"]
+        state_dict_v2[f"{str1}.1.W_o.weight"] = state_dict_v1[f"{str2}_solvent.W_o.weight"]
+        state_dict_v2[f"{str1}.1.W_o.bias"] = state_dict_v1[f"{str2}_solvent.W_o.bias"]
+    elif "encoder.encoder.1.W_i.weight" in state_dict_v1:
+        logger.warning(
+            "This conversion is untested - please validate your model predictions are consistent after conversion!"
+        )
+        i = 0
+        while i <= max_encoder_index(state_dict_v1):
+            state_dict_v2[f"{str1}.{i}.W_i.weight"] = state_dict_v1[f"{str2}.{i}.W_i.weight"]
+            state_dict_v2[f"{str1}.{i}.W_h.weight"] = state_dict_v1[f"{str2}.{i}.W_h.weight"]
+            state_dict_v2[f"{str1}.{i}.W_o.weight"] = state_dict_v1[f"{str2}.{i}.W_o.weight"]
+            state_dict_v2[f"{str1}.{i}.W_o.bias"] = state_dict_v1[f"{str2}.{i}.W_o.bias"]
+            i += 1
+    else:
+        state_dict_v2["message_passing.W_i.weight"] = state_dict_v1["encoder.encoder.0.W_i.weight"]
+        state_dict_v2["message_passing.W_h.weight"] = state_dict_v1["encoder.encoder.0.W_h.weight"]
+        state_dict_v2["message_passing.W_o.weight"] = state_dict_v1["encoder.encoder.0.W_o.weight"]
+        state_dict_v2["message_passing.W_o.bias"] = state_dict_v1["encoder.encoder.0.W_o.bias"]
 
     # v1.6 renamed ffn to readout
     if "readout.1.weight" in state_dict_v1:
@@ -91,28 +126,128 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
     hyper_parameters_v2["final_lr"] = args_v1.final_lr
 
     # convert the message passing block
-    W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
-    W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_h.weight"].shape
-    W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape
+    if getattr(args_v1, "reaction_solvent", False):
+        W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.W_i.weight"].shape
+        W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.W_h.weight"].shape
+        W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.W_o.weight"].shape
 
-    d_h = W_i_shape[0]
-    d_v = W_o_shape[1] - d_h
-    d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+        d_h = W_i_shape[0]
+        d_v = W_o_shape[1] - d_h
+        d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
 
-    hyper_parameters_v2["message_passing"] = AttributeDict(
-        {
-            "activation": args_v1.activation,
-            "bias": args_v1.bias,
-            "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
-            "d_e": d_e,  # the feature dimension of the edges
-            "d_h": args_v1.hidden_size,  # dimension of the hidden layer
-            "d_v": d_v,  # the feature dimension of the vertices
-            "d_vd": args_v1.atom_descriptors_size,
-            "depth": args_v1.depth,
-            "dropout": args_v1.dropout,
-            "undirected": args_v1.undirected,
-        }
-    )
+        reaction = [
+            AttributeDict(
+                {
+                    "activation": args_v1.activation,
+                    "bias": args_v1.bias,
+                    "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
+                    "d_e": d_e,
+                    "d_h": args_v1.hidden_size,
+                    "d_v": d_v,
+                    "d_vd": args_v1.atom_descriptors_size,
+                    "depth": args_v1.depth,
+                    "dropout": args_v1.dropout,
+                    "undirected": args_v1.undirected,
+                }
+            )
+        ]
+
+        W_i_shape = model_v1_dict["state_dict"]["encoder.encoder_solvent.W_i.weight"].shape
+        W_h_shape = model_v1_dict["state_dict"]["encoder.encoder_solvent.W_h.weight"].shape
+        W_o_shape = model_v1_dict["state_dict"]["encoder.encoder_solvent.W_o.weight"].shape
+
+        d_h = W_i_shape[0]
+        d_v = W_o_shape[1] - d_h
+        d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+
+        solvent = [
+            AttributeDict(
+                {
+                    "activation": args_v1.activation,
+                    "bias": args_v1.bias_solvent,
+                    "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
+                    "d_e": d_e,
+                    "d_h": args_v1.hidden_size_solvent,
+                    "d_v": d_v,
+                    "d_vd": args_v1.atom_descriptors_size,
+                    "depth": args_v1.depth_solvent,
+                    "dropout": args_v1.dropout,
+                    "undirected": args_v1.undirected,
+                }
+            )
+        ]
+        hyper_parameters_v2["message_passing"] = AttributeDict(
+            {
+                "cls": MulticomponentMessagePassing,
+                "blocks": reaction + solvent,
+                "n_components": 2,
+                "shared": False,
+            }
+        )
+    elif args_v1.number_of_molecules > 1:
+        logger.warning(
+            "This conversion is untested - please validate your model predictions are consistent after conversion!"
+        )
+        blocks = []
+        i = 0
+        while i <= max_encoder_index(model_v1_dict["state_dict"]):
+            W_i_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_i.weight"].shape
+            W_h_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_h.weight"].shape
+            W_o_shape = model_v1_dict["state_dict"][f"encoder.encoder.{i}.W_o.weight"].shape
+
+            d_h = W_i_shape[0]
+            d_v = W_o_shape[1] - d_h
+            d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+            blocks.append(
+                AttributeDict(
+                    {
+                        "activation": args_v1.activation,
+                        "bias": args_v1.bias,
+                        "cls": BondMessagePassing
+                        if not args_v1.atom_messages
+                        else AtomMessagePassing,
+                        "d_e": d_e,
+                        "d_h": args_v1.hidden_size,
+                        "d_v": d_v,
+                        "d_vd": args_v1.atom_descriptors_size,
+                        "depth": args_v1.depth,
+                        "dropout": args_v1.dropout,
+                        "undirected": args_v1.undirected,
+                    }
+                )
+            )
+            i += 1
+        hyper_parameters_v2["message_passing"] = AttributeDict(
+            {
+                "cls": MulticomponentMessagePassing,
+                "blocks": blocks,
+                "n_components": args_v1.number_of_molecules,
+                "shared": args_v1.mpn_shared,
+            }
+        )
+    else:
+        W_i_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_i.weight"].shape
+        W_h_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_h.weight"].shape
+        W_o_shape = model_v1_dict["state_dict"]["encoder.encoder.0.W_o.weight"].shape
+
+        d_h = W_i_shape[0]
+        d_v = W_o_shape[1] - d_h
+        d_e = W_h_shape[1] - d_h if args_v1.atom_messages else W_i_shape[1] - d_v
+
+        hyper_parameters_v2["message_passing"] = AttributeDict(
+            {
+                "activation": args_v1.activation,
+                "bias": args_v1.bias,
+                "cls": BondMessagePassing if not args_v1.atom_messages else AtomMessagePassing,
+                "d_e": d_e,  # the feature dimension of the edges
+                "d_h": args_v1.hidden_size,  # dimension of the hidden layer
+                "d_v": d_v,  # the feature dimension of the vertices
+                "d_vd": args_v1.atom_descriptors_size,
+                "depth": args_v1.depth,
+                "dropout": args_v1.dropout,
+                "undirected": args_v1.undirected,
+            }
+        )
 
     # convert the aggregation block
     hyper_parameters_v2["agg"] = {
@@ -138,9 +273,8 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
         "multiclass": "ce",
         "specitra": "sid",
     }
-    T_loss_fn = LossFunctionRegistry[
-        getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
-    ]
+    str_loss_fn = getattr(args_v1, "loss_function", loss_fn_defaults[args_v1.dataset_type])
+    T_loss_fn = LossFunctionRegistry[renamed_metrics.get(str_loss_fn, str_loss_fn)]
 
     hyper_parameters_v2["predictor"] = AttributeDict(
         {
@@ -150,7 +284,13 @@ def convert_hyper_parameters_v1_to_v2(model_v1_dict: dict) -> dict:
             "task_weights": None,
             "dropout": args_v1.dropout,
             "hidden_dim": args_v1.ffn_hidden_size,
-            "input_dim": args_v1.hidden_size + args_v1.atom_descriptors_size + d_xd,
+            "input_dim": (
+                (args_v1.hidden_size + args_v1.hidden_size_solvent)
+                if getattr(args_v1, "reaction_solvent", False)
+                else (args_v1.hidden_size * getattr(args_v1, "number_of_molecules", 1))
+            )
+            + args_v1.atom_descriptors_size
+            + d_xd,
             "n_layers": args_v1.ffn_num_layers - 1,
             "n_tasks": args_v1.num_tasks,
         }

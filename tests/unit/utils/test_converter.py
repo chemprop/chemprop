@@ -4,6 +4,7 @@ from lightning import pytorch as pl
 import numpy as np
 import pytest
 
+from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data.dataloader import build_dataloader
 from chemprop.data.datapoints import MoleculeDatapoint
 from chemprop.data.datasets import MoleculeDataset
@@ -55,7 +56,7 @@ def test_converter(tmp_path, example_model_v1_path, example_model_v1_prediction)
     ys_v1, test_loader = example_model_v1_prediction
 
     trainer = pl.Trainer(accelerator="cpu", logger=None, enable_progress_bar=False)
-    predss = trainer.predict(mpnn, test_loader)
+    predss = trainer.predict(mpnn, test_loader, **LIGHTNING_26_COMPAT_ARGS)
     ys_v2 = np.vstack(predss)
     assert np.allclose(ys_v2, ys_v1, atol=1e-6)
 

@@ -16,3 +16,4 @@ dependencies:
   - rich
   - descriptastorus
   - cuik_molmaker>=0.2
+  - pydantic

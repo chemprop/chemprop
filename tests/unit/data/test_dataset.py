@@ -50,12 +50,7 @@ def V_ds(mols):
     return [np.random.rand(mol.GetNumAtoms(), 3) for mol in mols]
 
 
-@pytest.mark.parametrize(
-    "X_d, V_fs, E_fs, V_ds",
-    [(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")],
-    indirect=True,
-)
-@pytest.fixture
+@pytest.fixture(params=[(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")])
 def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     return [
         MoleculeDatapoint(mol=mol, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
@@ -63,12 +58,7 @@ def data(mols, targets, X_d, V_fs, E_fs, V_ds):
     ]
 
 
-@pytest.mark.parametrize(
-    "X_d, V_fs, E_fs, V_ds",
-    [(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")],
-    indirect=True,
-)
-@pytest.fixture
+@pytest.fixture(params=[(None, None, None, None), ("X_d", "V_fs", "E_fs", "V_ds")])
 def lazy_data(smis, targets, X_d, V_fs, E_fs, V_ds):
     return [
         LazyMoleculeDatapoint(smi, y=target, x_d=x_d, V_f=V_f, E_f=E_f, V_d=V_d)
