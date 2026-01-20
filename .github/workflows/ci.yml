@@ -51,7 +51,7 @@ jobs:
       - run: isort --check .
 
   test:
-    name: Execute Tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}${{ matrix.cuik-molmaker == 'true' && ' and cuik_molmaker' || '' }}
+    name: Execute Tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}${{ matrix.cuik-molmaker == 'yes' && ' and cuik_molmaker' || '' }}
     needs: lint
     runs-on: ${{ matrix.os }}
     defaults:
@@ -66,7 +66,7 @@ jobs:
         # test on all platforms with both supported versions of Python
         os: [ubuntu-latest, macos-15-intel, windows-2022]
         python-version: [3.11, 3.12]
-        cuik-molmaker: [true, false]
+        cuik-molmaker: [yes, no]
     steps:
       - uses: actions/checkout@v4
       # use a version of the conda virtual environment manager to set up an
@@ -91,13 +91,13 @@ jobs:
         run: |
           pip install 'torch==2.7.0'
       - name: Install dependencies (without cuik_molmaker)
-        if: matrix.cuik-molmaker == 'false'
+        if: matrix.cuik-molmaker == 'no'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
           python -m pip install ".[dev,docs,test,hpopt]"
       - name: Install dependencies (with cuik_molmaker)
-        if: matrix.cuik-molmaker == 'true'
+        if: matrix.cuik-molmaker == 'yes'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
