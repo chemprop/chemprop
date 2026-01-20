@@ -12,7 +12,7 @@ build:
     python: "3.11"
   jobs:
     post_install:
-      - python -m pip install --upgrade --upgrade-strategy only-if-needed --no-cache-dir ".[docs]" --extra-index-url https://pypi.nvidia.com/rdkit-latest/
+      - python -m pip install --upgrade --upgrade-strategy only-if-needed --no-cache-dir ".[docs]"
     
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
