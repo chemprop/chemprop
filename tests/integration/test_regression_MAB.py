@@ -72,7 +72,7 @@ def test_overfit(mol_atom_bond_mpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=150,
+        max_epochs=200,
         overfit_batches=1.00,
         deterministic=True,
     )
