@@ -106,10 +106,11 @@ def build_MAB_data_from_files(
         bonds_ys = df[bond_target_cols] if bond_target_cols is not None else None
 
         if mol_ys is not None:
-            mol_ys = mol_ys.astype(str)
-            lt_mask = mol_ys.map(lambda x: "<" in x).to_numpy()
-            gt_mask = mol_ys.map(lambda x: ">" in x).to_numpy()
-            mol_ys = mol_ys.map(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
+            lt_mask = mol_ys.apply(lambda x: x.str.contains("<", na=False), axis=1).to_numpy()
+            gt_mask = mol_ys.apply(lambda x: x.str.contains(">", na=False), axis=1).to_numpy()
+            mol_ys = mol_ys.apply(lambda x: x.str.strip("<").str.strip(">"), axis=1).to_numpy(
+                np.single
+            )
         else:
             mol_ys = [None] * n_datapoints
 
