@@ -27,7 +27,7 @@ RUN apt-get update && \
 WORKDIR /opt/chemprop
 
 # build an empty conda environment with appropriate Python version
-RUN conda create --name chemprop_env python=3.11* rdkit=2025.3.2 pytorch=2.6.0 -c pytorch
+RUN conda create --name chemprop_env python=3.12*
 
 # This runs all subsequent commands inside the chemprop_env conda environment
 #
@@ -40,6 +40,9 @@ SHELL ["conda", "run", "--no-capture-output", "-n", "chemprop_env", "/bin/bash",
 ADD chemprop chemprop
 ENV PYTHONPATH=/opt/chemprop
 ADD LICENSE.txt pyproject.toml README.md environment.yml ./
+# include cuik_molmaker in environment file, rather than running conda install cuik_molmaker after the
+# initial env build, to avoid downloading more packages than needed and thus speed up the Docker build
+RUN echo "  - cuik_molmaker>=0.2" >> environment.yml
 RUN conda env update --file environment.yml --name chemprop_env && \
     conda clean --all --yes && \
     python -m pip install --no-deps .
