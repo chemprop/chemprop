@@ -158,7 +158,7 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
         if not is_cuikmolmaker_available():
             raise ImportError(
                 "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
-                f"Please install it using `python {Path(__file__).parents[2] / Path('scripts/check_and_install_cuik_molmaker.py')}`."
+                "Please install it using `pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/` or `conda install conda-forge::cuik_molmaker>=0.2"
             )
         atom_props_float = ["aromatic", "mass"]
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
