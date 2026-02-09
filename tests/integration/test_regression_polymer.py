@@ -64,7 +64,7 @@ def test_overfit(wmpnn, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=100,
+        max_epochs=50,
         overfit_batches=1.00,
     )
     trainer.fit(wmpnn, dataloader)

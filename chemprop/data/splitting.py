@@ -77,6 +77,12 @@ def make_split_indices(
         raise ValueError(
             f"Specify sizes for train, validation, and test (got {num_splits} values)."
         )
+    if sizes[0] == 1.0 and sizes[1] == 0.0 and sizes[2] == 0.0:
+        return (
+            [list(range(len(mols)))] * num_replicates,
+            [[]] * num_replicates,
+            [[]] * num_replicates,
+        )
     # typically include a validation set
     include_val = True
     split_fun = train_val_test_split

@@ -27,11 +27,11 @@ Chemprop recently underwent a ground-up rewrite and new major release (v2.0.0). 
 
 **References**: Please cite the appropriate papers if Chemprop is helpful to your research.
 
-- Chemprop was initially described in the papers [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) for molecules and [Machine Learning of Reaction Properties via Learned Representations of the Condensed Graph of Reaction](https://doi.org/10.1021/acs.jcim.1c00975) for reactions.
-- The interpretation functionality (available in v1, but not yet implemented in v2) is based on the paper [Multi-Objective Molecule Generation using Interpretable Substructures](https://arxiv.org/abs/2002.03244).
-- Chemprop now has its own dedicated manuscript that describes and benchmarks it in more detail: [Chemprop: A Machine Learning Package for Chemical Property Prediction](https://doi.org/10.1021/acs.jcim.3c01250).
-- A paper describing and benchmarking the changes in v2.0.0 is forthcoming.
-- Support for atom and bond predictions is based on the paper [When Do Quantum Mechanical Descriptors Help Graph Neural Networks to Predict Chemical Properties?](https://pubs.acs.org/doi/10.1021/jacs.4c04670)
+- **Version 1**: [Chemprop: A Machine Learning Package for Chemical Property Prediction](https://doi.org/10.1021/acs.jcim.3c01250).
+- **Version 2**: [Chemprop v2: An Efficient, Modular Machine Learning Package for Chemical Property Prediction](https://doi.org/10.1021/acs.jcim.5c02332).
+- **Theory**: The theory underpinning Chemprop was initially described in the papers [Analyzing Learned Molecular Representations for Property Prediction](https://pubs.acs.org/doi/abs/10.1021/acs.jcim.9b00237) for molecules and [Machine Learning of Reaction Properties via Learned Representations of the Condensed Graph of Reaction](https://doi.org/10.1021/acs.jcim.1c00975) for reactions.
+- **Interpretability**: The interpretation functionality (available in v2 as an example notebook) is based on the paper [Multi-Objective Molecule Generation using Interpretable Substructures](https://arxiv.org/abs/2002.03244).
+- **Atom and Bond Predictions**: Based on the paper [When Do Quantum Mechanical Descriptors Help Graph Neural Networks to Predict Chemical Properties?](https://pubs.acs.org/doi/10.1021/jacs.4c04670).
 
 **Selected Applications**: Chemprop has been successfully used in the following works.
 

@@ -161,7 +161,7 @@ class _MolGraphDatasetMixin:
         if key not in VALID_KEYS:
             raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
-        X = self.X_d if self.X_d[0] is not None else None
+        X = self._X_d if self._X_d[0] is not None else None
 
         if X is None:
             return scaler
@@ -326,13 +326,13 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
         match key:
             case "X_d":
-                X = None if self.d_xd == 0 else self.X_d
+                X = None if self.d_xd == 0 else self._X_d
             case "V_f":
-                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
+                X = None if self.d_vf == 0 else np.concatenate(self._V_fs, axis=0)
             case "E_f":
-                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
+                X = None if self.d_ef == 0 else np.concatenate(self._E_fs, axis=0)
             case "V_d":
-                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
+                X = None if self.d_vd == 0 else np.concatenate(self._V_ds, axis=0)
             case _:
                 raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
@@ -346,11 +346,11 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
             case "X_d":
                 self.X_d = scaler.transform(X)
             case "V_f":
-                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self._V_fs]
             case "E_f":
-                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self._E_fs]
             case "V_d":
-                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self._V_ds]
             case _:
                 raise RuntimeError("unreachable code reached!")
 
@@ -596,13 +596,13 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             case "X_d":
                 X = None if self.d_xd == 0 else self.X_d
             case "V_f":
-                X = None if self.d_vf == 0 else np.concatenate(self.V_fs, axis=0)
+                X = None if self.d_vf == 0 else np.concatenate(self._V_fs, axis=0)
             case "E_f":
-                X = None if self.d_ef == 0 else np.concatenate(self.E_fs, axis=0)
+                X = None if self.d_ef == 0 else np.concatenate(self._E_fs, axis=0)
             case "V_d":
-                X = None if self.d_vd == 0 else np.concatenate(self.V_ds, axis=0)
+                X = None if self.d_vd == 0 else np.concatenate(self._V_ds, axis=0)
             case "E_d":
-                X = None if self.d_ed == 0 else np.concatenate(self.E_ds, axis=0)
+                X = None if self.d_ed == 0 else np.concatenate(self._E_ds, axis=0)
             case _:
                 raise ValueError(f"Invalid feature key! got: {key}. expected one of: {VALID_KEYS}")
 
@@ -616,13 +616,13 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
             case "X_d":
                 self.X_d = scaler.transform(X)
             case "V_f":
-                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self.V_fs]
+                self.V_fs = [scaler.transform(V_f) if V_f.size > 0 else V_f for V_f in self._V_fs]
             case "E_f":
-                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self.E_fs]
+                self.E_fs = [scaler.transform(E_f) if E_f.size > 0 else E_f for E_f in self._E_fs]
             case "V_d":
-                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self.V_ds]
+                self.V_ds = [scaler.transform(V_d) if V_d.size > 0 else V_d for V_d in self._V_ds]
             case "E_d":
-                self.E_ds = [scaler.transform(E_d) if E_d.size > 0 else E_d for E_d in self.E_ds]
+                self.E_ds = [scaler.transform(E_d) if E_d.size > 0 else E_d for E_d in self._E_ds]
             case _:
                 raise RuntimeError("unreachable code reached!")
 
