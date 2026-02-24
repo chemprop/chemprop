@@ -9,10 +9,9 @@ chemprop==2.2.1
 colorama==0.4.6
 ConfigArgParse==1.7.1
 contourpy==1.3.3
-cuik_molmaker==0.1
 cycler==0.12.1
 darkdetect==0.8.0
-descriptastorus==2.7.0
+descriptastorus==2.7.0.5
 dill==0.4.0
 et_xmlfile==2.0.0
 filelock==3.18.0
