@@ -18,6 +18,7 @@ Featurization Modules:
 * :doc:`featurizers/bond_featurizers`
 * :doc:`featurizers/molgraph_molecule_featurizer`
 * :doc:`featurizers/molgraph_reaction_featurizer`
+* :doc:`featurizers/weightedmolgraph_polymer_featurizer.ipynb`
 * :doc:`featurizers/molecule_featurizers`
 
 Model Modules:
@@ -26,6 +27,7 @@ Model Modules:
 * :doc:`models/message_passing`
 * :doc:`models/aggregation`
 * :doc:`models/predictor`
+* :doc:`models/basic_wmpnn_model.ipynb`
 * :doc:`models/multicomponent_mpnn_model`
 
 Other module and workflow tutorials:
@@ -49,11 +51,13 @@ Other module and workflow tutorials:
     featurizers/bond_featurizers
     featurizers/molgraph_molecule_featurizer
     featurizers/molgraph_reaction_featurizer
+    featurizers/weightedmolgraph_polymer_featurizer
     featurizers/molecule_featurizers
     models/basic_mpnn_model
     models/message_passing
     models/aggregation
     models/predictor
+    models/basic_wmpnn_model
     models/multicomponent_mpnn_model
     activation
     loss_functions

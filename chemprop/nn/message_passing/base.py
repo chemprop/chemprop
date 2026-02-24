@@ -153,7 +153,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
 
         where :math:`\tau` is the activation function, :math:`\Vert` is the concatenation operator,
         :math:`\mathbf{W}_o` and :math:`\mathbf{W}_d` are learned weight matrices, :math:`M` is
-        the message matrix, :math:`V` is the original vertex feature matrix, and :math:`V_d` is an
+        the message matrix, :math:`V` is the original vertex feature matrix and :math:`V_d` is an
         optional vertex descriptor matrix.
 
         Parameters
@@ -209,6 +209,7 @@ class _MessagePassingBase(MessagePassing, HyperparametersMixin):
         M = torch.zeros(len(bmg.V), H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             0, index_torch, H, reduce="sum", include_self=False
         )
+
         return self.finalize(M, bmg.V, V_d)
 
 

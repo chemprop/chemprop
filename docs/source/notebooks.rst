@@ -17,6 +17,7 @@ Chemprop's usage within Python scripts is also illustrated by the Jupyter notebo
     predicting_regression_multicomponent
     training_regression_reaction
     predicting_regression_reaction
+    polymers
     multi_task
     hpopting
     mpnn_fingerprints

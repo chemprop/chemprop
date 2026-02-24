@@ -98,6 +98,7 @@ def make_fingerprint_for_model(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        polymer_cols=args.polymer_columns,
         target_cols=[],
         ignore_cols=None,
         splits_col=None,
@@ -114,7 +115,14 @@ def make_fingerprint_for_model(
     )
 
     if mol_atom_bond:
-        for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+        for key in [
+            "no_header_row",
+            "rxn_cols",
+            "polymer_cols",
+            "ignore_cols",
+            "splits_col",
+            "target_cols",
+        ]:
             format_kwargs.pop(key, None)
         test_data = build_MAB_data_from_files(
             args.test_path,

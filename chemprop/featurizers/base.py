@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 import numpy as np
 
-from chemprop.data.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph, WeightedMolGraph
 
 S = TypeVar("S")
 T = TypeVar("T")
@@ -23,7 +23,7 @@ class VectorFeaturizer(Featurizer[S, np.ndarray], Sized):
     ...
 
 
-class GraphFeaturizer(Featurizer[S, MolGraph]):
+class GraphFeaturizer(Featurizer[S, MolGraph | WeightedMolGraph]):
     @property
     @abstractmethod
     def shape(self) -> tuple[int, int]:

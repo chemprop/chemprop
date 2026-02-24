@@ -14,18 +14,20 @@ from chemprop.data.datapoints import (
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
+    PolymerDatapoint,
     ReactionDatapoint,
 )
-from chemprop.data.molgraph import MolGraph
+from chemprop.data.molgraph import MolGraph, WeightedMolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
     BatchCuikMolGraph,
     CGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
+    PolymerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
 from chemprop.featurizers.molgraph.cache import MolGraphCache, MolGraphCacheOnTheFly
-from chemprop.types import Rxn
+from chemprop.types import Polymer, Rxn
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 class Datum(NamedTuple):
     """a singular training data point"""
 
-    mg: MolGraph
+    mg: MolGraph | WeightedMolGraph
     V_d: np.ndarray | None
     x_d: np.ndarray | None
     y: np.ndarray | None
@@ -708,10 +710,54 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
         return 0
 
 
+@dataclass
+class PolymerDataset(MoleculeDataset):
+    """A :class:`PolymerDataset` composed of :class:`PolymerDatapoint`\s
+
+    A :class:`PolymerDataset` produces featurized data for input to a
+    :class:`wMPNN` model. Typically, data featurization is performed on-the-fly
+    and parallelized across multiple workers via the :class:`~torch.utils.data
+    DataLoader` class. However, for small datasets, it may be more efficient to
+    featurize the data in advance and cache the results. This can be done by
+    setting ``PolymerDataset.cache=True``.
+
+    Parameters
+    ----------
+    data : Iterable[PolymerDatapoint]
+        the data from which to create a dataset
+    featurizer : Featurizer[Polymer, WeightedMolGraph]
+        the featurizer with which to generate WeightedMolGraphs of the polymers
+    n_workers : int, optional
+        number of workers to use for cache calculation
+    """
+
+    data: list[PolymerDatapoint]
+    featurizer: Featurizer[Polymer, WeightedMolGraph] = field(
+        default_factory=PolymerMolGraphFeaturizer
+    )
+    n_workers: int = 0
+
+    def _init_cache(self):
+        """initialize the cache"""
+        if self.cache:
+            self.mg_cache = MolGraphCache(
+                self.polymers, self.V_fs, self.E_fs, self.featurizer, n_workers=self.n_workers
+            )
+        else:
+            self.mg_cache = MolGraphCacheOnTheFly(
+                self.polymers, self.V_fs, self.E_fs, self.featurizer
+            )
+
+    @property
+    def polymers(self) -> list[Polymer]:
+        """the polymers associated with the dataset"""
+        return [(d.mol, d.fragment_weights, d.edge_rules) for d in self.data]
+
+
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
     """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel
-    :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
+    :class:`MoleculeDataset`s and :class:`ReactionDataset`s."""
 
     datasets: list[MoleculeDataset | ReactionDataset]
     """the parallel datasets"""

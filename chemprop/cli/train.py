@@ -54,9 +54,10 @@ from chemprop.data import (
     make_split_indices,
     split_data_by_indices,
 )
-from chemprop.data.datasets import _MolGraphDatasetMixin
+from chemprop.data.datasets import PolymerDataset, _MolGraphDatasetMixin
 from chemprop.featurizers.atom import AtomFeatureMode
 from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
+from chemprop.models.weighted import wMPNN
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.ffn import ConstrainerFFN
 from chemprop.nn.message_passing import (
@@ -66,6 +67,7 @@ from chemprop.nn.message_passing import (
     MABBondMessagePassing,
     MulticomponentMessagePassing,
 )
+from chemprop.nn.message_passing.weighted import WeightedBondMessagePassing
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.utils import Factory
 from chemprop.utils.utils import EnumMapping
@@ -738,6 +740,7 @@ def validate_train_args(args):
         args.data_path[0],
         args.smiles_columns,
         args.reaction_columns,
+        args.polymer_columns,
         args.target_columns,
         args.ignore_columns,
         args.splits_column,
@@ -880,7 +883,12 @@ def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset
         train_dsets = train_dset.datasets
         val_dsets = val_dset.datasets if val_dset is not None else None
     else:
-        mpnn_cls = MolAtomBondMPNN if isinstance(train_dset, MolAtomBondDataset) else MPNN
+        if isinstance(train_dset, MolAtomBondDataset):
+            mpnn_cls = MolAtomBondMPNN
+        elif isinstance(train_dset, PolymerDataset):
+            mpnn_cls = wMPNN
+        else:
+            mpnn_cls = MPNN
         _model = mpnn_cls.load_from_file(model_path, map_location="cpu")
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
@@ -1002,7 +1010,14 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 args.bond_target_columns,
             ]
         ):
-            for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
+            for key in [
+            "no_header_row",
+            "rxn_cols",
+            "polymer_cols",
+            "ignore_cols",
+            "splits_col",
+            "target_cols",
+        ]:
                 format_kwargs.pop(key, None)
             featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
             return build_MAB_data_from_files(
@@ -1486,6 +1501,91 @@ def build_model(
     )
 
 
+def build_weighted_model(
+    args,
+    train_dset: PolymerDataset,
+    output_transform: UnscaleTransform | None,
+    input_transforms: tuple[
+        ScaleTransform | None,
+        list[GraphTransform],
+        list[ScaleTransform | None],
+        list[ScaleTransform | None],
+    ],
+) -> wMPNN:
+    X_d_transform, graph_transforms, V_d_transforms, _ = input_transforms
+    activation = parse_activation(_ACTIVATION_FUNCTIONS[args.activation], args.activation_args)
+    d_xd = train_dset.d_xd
+    n_tasks = train_dset.Y.shape[1]
+    mpnn_cls = wMPNN
+
+    mp_cls = AtomMessagePassing if args.atom_messages else WeightedBondMessagePassing
+    mp_block = mp_cls(
+        train_dset.featurizer.atom_fdim,
+        train_dset.featurizer.bond_fdim,
+        d_h=args.message_hidden_dim[0],
+        d_vd=train_dset.d_vd if isinstance(train_dset, PolymerDataset) else 0,
+        bias=args.message_bias,
+        depth=args.depth[0],
+        undirected=args.undirected,
+        dropout=args.dropout,
+        activation=activation,
+        V_d_transform=V_d_transforms[0],
+        graph_transform=graph_transforms[0],
+    )
+    agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
+
+    predictor_cls = PredictorRegistry[args.task_type]
+    if args.loss_function is not None:
+        task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
+        criterion = Factory.build(
+            LossFunctionRegistry[args.loss_function],
+            task_weights=task_weights,
+            v_kl=args.v_kl,
+            # threshold=args.threshold, TODO: Add in v2.1
+            eps=args.eps,
+            alpha=args.alpha,
+        )
+    else:
+        criterion = None
+    if args.metrics is not None:
+        metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
+    else:
+        metrics = None
+
+    predictor = Factory.build(
+        predictor_cls,
+        input_dim=mp_block.output_dim + d_xd,
+        n_tasks=n_tasks,
+        hidden_dim=args.ffn_hidden_dim,
+        n_layers=args.ffn_num_layers,
+        dropout=args.dropout,
+        activation=activation,
+        criterion=criterion,
+        task_weights=args.task_weights,
+        n_classes=args.multiclass_num_classes,
+        output_transform=output_transform,
+        # spectral_activation=args.spectral_activation, TODO: Add in v2.1
+    )
+
+    if args.loss_function is None:
+        logger.info(
+            f"No loss function was specified! Using class default: {predictor_cls._T_default_criterion}"
+        )
+
+    return mpnn_cls(
+        mp_block,
+        agg,
+        predictor,
+        args.batch_norm,
+        metrics,
+        args.warmup_epochs,
+        args.init_lr,
+        args.max_lr,
+        args.final_lr,
+        X_d_transform=X_d_transform,
+    )
+
+
 def build_MAB_model(
     args,
     train_dset: MolAtomBondDataset,
@@ -1686,6 +1786,8 @@ def train_model(
                 mpnn_cls = MulticomponentMPNN
             elif isinstance(train_loader.dataset, MolAtomBondDataset):
                 mpnn_cls = MolAtomBondMPNN
+            elif isinstance(train_loader.dataset, PolymerDataset):
+                mpnn_cls = wMPNN
             else:
                 mpnn_cls = MPNN
 
@@ -1711,6 +1813,10 @@ def train_model(
         else:
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 model = build_MAB_model(
+                    args, train_loader.dataset, output_transform, input_transforms
+                )
+            elif isinstance(train_loader.dataset, PolymerDataset):
+                model = build_weighted_model(
                     args, train_loader.dataset, output_transform, input_transforms
                 )
             else:
@@ -2106,6 +2212,7 @@ def main(args):
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
         rxn_cols=args.reaction_columns,
+        polymer_cols=args.polymer_columns,
         target_cols=args.target_columns,
         ignore_cols=args.ignore_columns,
         splits_col=args.splits_column,
