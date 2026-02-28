@@ -558,6 +558,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
+        "--save-data-splits",
+        action="store_true",
+        help="Whether to store the input data in each train/val/test split",
+    )
+    split_args.add_argument(
         "--splits-file",
         type=Path,
         help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or formatted strings (e.g. [0, 1, 2, 4] or '0-2,4')",
@@ -989,6 +994,61 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
+def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
+    no_header_row = args.no_header_row
+    df = pd.read_csv(args.data_path, header=None if no_header_row else "infer", index_col=False)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
+
+        df.iloc[train].to_csv(rep_dir / "train.csv", index=False, header=not no_header_row)
+        df.iloc[val].to_csv(rep_dir / "val.csv", index=False, header=not no_header_row)
+        df.iloc[test].to_csv(rep_dir / "test.csv", index=False, header=not no_header_row)
+
+
+def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def load_npz(path):
+        loaded_feature = np.load(path)
+        return [loaded_feature[f"arr_{k}"] for k in range(len(loaded_feature))]
+
+    def save_npz(path, arrs):
+        np.savez(path, *arrs)
+
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
+
+        if args.descriptors_path:
+            loaded_feature = np.load(args.descriptors_path)
+            features = loaded_feature["arr_0"]
+            np.savez(rep_dir / "train_descriptors.npz", features[train])
+            np.savez(rep_dir / "val_descriptors.npz", features[val])
+            np.savez(rep_dir / "test_descriptors.npz", features[test])
+
+        def save_npz_split(paths, tag):
+            if not paths:
+                return
+            for idx_key, p in paths.items():
+                arrs = load_npz(p)
+                train_arrs = [arrs[idx] for idx in train]
+                val_arrs = [arrs[idx] for idx in val]
+                test_arrs = [arrs[idx] for idx in test]
+                save_npz(rep_dir / f"train_{tag}{idx_key}.npz", train_arrs)
+                save_npz(rep_dir / f"val_{tag}{idx_key}.npz", val_arrs)
+                save_npz(rep_dir / f"test_{tag}{idx_key}.npz", test_arrs)
+
+        save_npz_split(args.atom_features_path, "atom_feat_")
+        save_npz_split(args.atom_descriptors_path, "atom_desc_")
+        save_npz_split(args.bond_features_path, "bond_feat_")
+        save_npz_split(args.bond_descriptors_path, "bond_desc_")
+
+
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file(s): {args.data_path}")
@@ -1098,6 +1158,21 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     for i_split in range(len(train_data)):
         sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
         logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
+
+    splits = [
+        {
+            "train": [int(i) for i in train],
+            "val": [int(i) for i in val],
+            "test": [int(i) for i in test],
+        }
+        for train, val, test in zip(train_indices, val_indices, test_indices)
+    ]
+    with open(Path(args.output_dir) / "splits.json", "w") as f:
+        json.dump(splits, f)
+
+    if args.save_data_splits:
+        save_data_splits(args, train_indices, val_indices, test_indices)
+        save_feat_desc_splits(args, train_indices, val_indices, test_indices)
 
     return train_data, val_data, test_data
 
