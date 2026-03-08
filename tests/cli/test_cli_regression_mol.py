@@ -892,7 +892,7 @@ def test_only_trainset(monkeypatch, data_path):
         main()
 
 
-def test_save_data_splits(monkeypatch, data_path):
+def test_save_data_splits(monkeypatch, data_path, tmp_path):
     (
         input_path,
         descriptors_path,
@@ -908,7 +908,7 @@ def test_save_data_splits(monkeypatch, data_path):
         input_path,
         "--save-data-splits",
         "--output-dir",
-        "saved_splits",
+        str(tmp_path),
         "--descriptors-path",
         descriptors_path,
         "--atom-features-path",
@@ -925,13 +925,13 @@ def test_save_data_splits(monkeypatch, data_path):
         m.setattr("sys.argv", args)
         main()
 
-    assert ("saved_splits" / "splits.json").exists()
-    assert ("saved_splits" / "train_atom_desc_0.json").exists()
-    assert ("saved_splits" / "val_atom_desc_0.json").exists()
-    assert ("saved_splits" / "test_atom_desc_0.json").exists()
-    assert ("saved_splits" / "train_atom_feat_0.json").exists()
-    assert ("saved_splits" / "val_atom_feat_0.json").exists()
-    assert ("saved_splits" / "test_atom_feat_0.json").exists()
+    assert (tmp_path / "splits.json").exists()
+    assert (tmp_path / "train_atom_desc_0.json").exists()
+    assert (tmp_path / "val_atom_desc_0.json").exists()
+    assert (tmp_path / "test_atom_desc_0.json").exists()
+    assert (tmp_path / "train_atom_feat_0.json").exists()
+    assert (tmp_path / "val_atom_feat_0.json").exists()
+    assert (tmp_path / "test_atom_feat_0.json").exists()
 
 
 def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
