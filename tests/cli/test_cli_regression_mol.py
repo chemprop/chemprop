@@ -926,12 +926,12 @@ def test_save_data_splits(monkeypatch, data_path, tmp_path):
         main()
 
     assert (tmp_path / "splits.json").exists()
-    assert (tmp_path / "train_atom_desc_0.json").exists()
-    assert (tmp_path / "val_atom_desc_0.json").exists()
-    assert (tmp_path / "test_atom_desc_0.json").exists()
-    assert (tmp_path / "train_atom_feat_0.json").exists()
-    assert (tmp_path / "val_atom_feat_0.json").exists()
-    assert (tmp_path / "test_atom_feat_0.json").exists()
+    assert (tmp_path / "train_atom_desc_0.npz").exists()
+    assert (tmp_path / "val_atom_desc_0.npz").exists()
+    assert (tmp_path / "test_atom_desc_0.npz").exists()
+    assert (tmp_path / "train_atom_feat_0.npz").exists()
+    assert (tmp_path / "val_atom_feat_0.npz").exists()
+    assert (tmp_path / "test_atom_feat_0.npz").exists()
 
 
 def test_descriptors_columns(monkeypatch, data_with_descriptors_path):

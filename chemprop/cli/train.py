@@ -1161,7 +1161,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
         logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
 
-    if len(args.data_path!=3):
+    if len(args.data_path) < 3:
         splits = [
             {
                 "train": [int(i) for i in train],
@@ -1176,6 +1176,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         if args.save_data_splits:
             save_data_splits(args, train_indices, val_indices, test_indices)
             save_feat_desc_splits(args, train_indices, val_indices, test_indices)
+    
 
     return train_data, val_data, test_data
 
