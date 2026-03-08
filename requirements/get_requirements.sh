@@ -64,7 +64,7 @@ for TAG in $TAGS; do
     OUTPUT_FILE="${TAG}_requirements.txt"
     ERROR_FILE="${TAG}_pip_error.txt"
     # Use /bin/bash to ensure Conda environment activation
-    if ! docker run --rm "${REPO}:${TAG}" -c "python -m pip list --format=freeze" > "$OUTPUT_FILE" 2> "$ERROR_FILE"; then
+    if ! docker run --rm "${REPO}:${TAG}" -c "/opt/conda/envs/chemprop_env/bin/python -m pip list --format=freeze" > "$OUTPUT_FILE" 2> "$ERROR_FILE"; then
         echo "Warning: Failed to run pip freeze in ${REPO}:${TAG}. See $ERROR_FILE for details. Skipping..."
         cat "$ERROR_FILE" >&2
         rm -f "$OUTPUT_FILE"

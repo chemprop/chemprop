@@ -51,7 +51,7 @@ jobs:
       - run: isort --check .
 
   test:
-    name: Execute Tests
+    name: Execute Tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}${{ matrix.cuik-molmaker == 'yes' && ' and cuik_molmaker' || '' }}
     needs: lint
     runs-on: ${{ matrix.os }}
     defaults:
@@ -66,6 +66,10 @@ jobs:
         # test on all platforms with both supported versions of Python
         os: [ubuntu-latest, macos-15-intel, windows-2022]
         python-version: [3.11, 3.12]
+        cuik-molmaker: [yes, no]
+        exclude:
+          - python-version: 3.11
+            cuik-molmaker: yes
     steps:
       - uses: actions/checkout@v4
       # use a version of the conda virtual environment manager to set up an
@@ -84,23 +88,23 @@ jobs:
         if: matrix.os == 'windows-2022'
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install cuik-molmaker
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash -l {0}
-        # cuik-molmaker is only compatible with linux and some versions of RDKit and PyTorch
-        run: |
-          conda install -y rdkit==2025.3.2 pytorch==2.7.0 -c pytorch
-          python chemprop/scripts/check_and_install_cuik_molmaker.py
       - name: Install Compatible Torch Version
         if: matrix.os == 'windows-2022'
         shell: bash -l {0}
         run: |
           pip install 'torch==2.7.0'
-      - name: Install dependencies
+      - name: Install dependencies (without cuik_molmaker)
+        if: matrix.cuik-molmaker == 'no'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
           python -m pip install ".[dev,docs,test,hpopt]"
+      - name: Install dependencies (with cuik_molmaker)
+        if: matrix.cuik-molmaker == 'yes'
+        shell: bash -l {0}
+        run: |
+          python -m pip install nbmake
+          python -m pip install ".[dev,docs,test,hpopt,cuik_molmaker]" --extra-index-url https://pypi.nvidia.com/rdkit-latest/
       - name: Test with pytest
         shell: bash -l {0}
         run: |
