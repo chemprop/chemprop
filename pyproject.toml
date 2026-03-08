@@ -41,11 +41,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-hpopt = ["ray[tune]", "hyperopt", "optuna", "pydantic"]
+hpopt = ["ray[tune]", "hyperopt", "optuna", "pydantic", "setuptools < 82"]
 dev = ["black == 23.*", "bumpversion", "autopep8", "flake8", "pytest", "pytest-cov", "isort"]
 docs = ["nbsphinx", "sphinx", "sphinx-argparse != 0.5.0", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21", "readthedocs-sphinx-ext", "pandoc"]
 test = ["pytest >= 6.2", "pytest-cov"]
 notebooks = ["ipykernel", "matplotlib"]
+cuik_molmaker = ["cuik_molmaker >= 0.2"]
 
 [project.urls]
 documentation = "https://chemprop.readthedocs.io/en/latest/"

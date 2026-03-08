@@ -237,7 +237,7 @@ def validate_common_args(args):
     if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
         raise ArgumentError(
             argument=None,
-            message=f"cuik-molmaker is not installed. Please install it using `python {Path(__file__).parents[1] / Path('scripts/check_and_install_cuik_molmaker.py')}` before using the `--use-cuikmolmaker-featurization` flag.",
+            message="cuik-molmaker is not installed. Please install it using `pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/` or `conda install 'conda-forge::cuik_molmaker>=0.2'` before using the `--use-cuikmolmaker-featurization` flag.",
         )
 
     if args.use_cuikmolmaker_featurization:
