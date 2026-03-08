@@ -925,6 +925,14 @@ def test_save_data_splits(monkeypatch, data_path):
         m.setattr("sys.argv", args)
         main()
 
+    assert ("saved_splits" / "splits.json").exists()
+    assert ("saved_splits" / "train_atom_desc_0.json").exists()
+    assert ("saved_splits" / "val_atom_desc_0.json").exists()
+    assert ("saved_splits" / "test_atom_desc_0.json").exists()
+    assert ("saved_splits" / "train_atom_feat_0.json").exists()
+    assert ("saved_splits" / "val_atom_feat_0.json").exists()
+    assert ("saved_splits" / "test_atom_feat_0.json").exists()
+
 
 def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
     args = [

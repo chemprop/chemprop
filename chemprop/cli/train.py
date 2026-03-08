@@ -996,7 +996,7 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
 def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
     no_header_row = args.no_header_row
-    df = pd.read_csv(args.data_path, header=None if no_header_row else "infer", index_col=False)
+    df = pd.read_csv(args.data_path[0], header=None if no_header_row else "infer", index_col=False)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1005,8 +1005,10 @@ def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) 
         rep_dir.mkdir(parents=True, exist_ok=True)
 
         df.iloc[train].to_csv(rep_dir / "train.csv", index=False, header=not no_header_row)
-        df.iloc[val].to_csv(rep_dir / "val.csv", index=False, header=not no_header_row)
-        df.iloc[test].to_csv(rep_dir / "test.csv", index=False, header=not no_header_row)
+        if val:
+            df.iloc[val].to_csv(rep_dir / "val.csv", index=False, header=not no_header_row)
+        if test:
+            df.iloc[test].to_csv(rep_dir / "test.csv", index=False, header=not no_header_row)
 
 
 def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
