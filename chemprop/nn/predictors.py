@@ -102,8 +102,8 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
     underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 
-    _T_default_criterion: ChempropMetric
-    _T_default_metric: ChempropMetric
+    _T_default_criterion: type[ChempropMetric]
+    _T_default_metric: type[ChempropMetric]
 
     def __init__(
         self,
