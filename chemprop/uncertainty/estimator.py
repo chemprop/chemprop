@@ -646,7 +646,7 @@ class DropoutEstimator(UncertaintyEstimator):
 
 @UncertaintyEstimatorRegistry.register("classification-dirichlet")
 class ClassificationDirichletEstimator(UncertaintyEstimator):
-    """
+    r"""
     A :class:`ClassificationDirichletEstimator` predicts an amount of 'evidence' for both the
     negative class and the positive class as described in [sensoy2018]_. The class probabilities and
     the uncertainty are calculated based on the evidence.
@@ -720,7 +720,7 @@ class ClassificationDirichletEstimator(UncertaintyEstimator):
 
 @UncertaintyEstimatorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletEstimator(UncertaintyEstimator):
-    """
+    r"""
     A :class:`MulticlassDirichletEstimator` predicts an amount of 'evidence' for each class as
     described in [sensoy2018]_. The class probabilities and the uncertainty are calculated based on
     the evidence.

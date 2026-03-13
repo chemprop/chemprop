@@ -187,7 +187,7 @@ class _MolGraphDatasetMixin:
 
 @dataclass
 class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
+    r"""A :class:`MoleculeDataset` composed of :class:`MoleculeDatapoint`\s
 
     A :class:`MoleculeDataset` produces featurized data for input to a
     :class:`MPNN` model. Typically, data featurization is performed on-the-fly
@@ -365,7 +365,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass
 class CuikmolmakerDataset(MoleculeDataset):
-    """A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a
+    r"""A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a
     :class:`CuikmolmakerMolGraphFeaturizer`
 
     A :class:`CuikmolmakerDataset` produces featurized data for a batch of molecules for ingestion
@@ -639,7 +639,7 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
 
 @dataclass
 class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
-    """A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s
+    r"""A :class:`ReactionDataset` composed of :class:`ReactionDatapoint`\s
 
     .. note::
         The featurized data provided by this class may be cached, simlar to a
@@ -710,7 +710,7 @@ class ReactionDataset(_MolGraphDatasetMixin, MolGraphDataset):
 
 @dataclass(repr=False, eq=False)
 class MulticomponentDataset(_MolGraphDatasetMixin, Dataset):
-    """A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel
+    r"""A :class:`MulticomponentDataset` is a :class:`Dataset` composed of parallel
     :class:`MoleculeDatasets` and :class:`ReactionDataset`\s"""
 
     datasets: list[MoleculeDataset | ReactionDataset]

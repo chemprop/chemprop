@@ -115,7 +115,7 @@ class BatchCuikMolGraph:
         self.__size = self.batch[-1].item() + 1
 
     def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`\s in this batch"""
+        r"""the number of individual :class:`MolGraph`\s in this batch"""
         return self.__size
 
     def to(self, device: str | torch.device):

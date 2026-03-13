@@ -10,7 +10,7 @@ from chemprop.utils import parallel_execute
 
 
 class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
-    """
+    r"""
     A :class:`MolGraphCacheFacade` provided an interface for caching
     :class:`~chemprop.data.molgraph.MolGraph`\s.
 
@@ -44,7 +44,7 @@ class MolGraphCacheFacade(Sequence[MolGraph], Generic[S]):
 
 
 class MolGraphCache(MolGraphCacheFacade):
-    """
+    r"""
     A :class:`MolGraphCache` precomputes the corresponding
     :class:`~chemprop.data.molgraph.MolGraph`\s and caches them in memory.
     """
@@ -67,7 +67,7 @@ class MolGraphCache(MolGraphCacheFacade):
 
 
 class MolGraphCacheOnTheFly(MolGraphCacheFacade):
-    """
+    r"""
     A :class:`MolGraphCacheOnTheFly` computes the corresponding
     :class:`~chemprop.data.molgraph.MolGraph`\s as they are requested.
     """
