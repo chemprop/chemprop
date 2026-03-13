@@ -245,7 +245,7 @@ class BinaryClassificationEvaluator(ABC):
 
 @UncertaintyEvaluatorRegistry.register("nll-classification")
 class NLLClassEvaluator(BinaryClassificationEvaluator):
-    """
+    r"""
     Evaluate uncertainty values for binary classification datasets using the mean negative-log-likelihood
     of the targets given the assigned probabilities from the model:
 
