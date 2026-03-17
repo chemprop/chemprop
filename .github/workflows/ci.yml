@@ -72,6 +72,8 @@ jobs:
             cuik-molmaker: yes
           - python-version: 3.13
             cuik-molmaker: yes
+          - python-version: 3.13
+            os: windows-2022
     steps:
       - uses: actions/checkout@v4
       # use a version of the conda virtual environment manager to set up an
