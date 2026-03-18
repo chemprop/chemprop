@@ -98,7 +98,7 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
+    r"""A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
     underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 

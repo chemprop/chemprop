@@ -113,7 +113,7 @@ class ZScalingCalibrator(RegressionCalibrator):
 
 @UncertaintyCalibratorRegistry.register("zelikman-interval")
 class ZelikmanCalibrator(RegressionCalibrator):
-    """Calibrate regression datasets using a method that does not depend on a particular probability function form.
+    r"""Calibrate regression datasets using a method that does not depend on a particular probability function form.
 
     It uses the "CRUDE" method as described in [zelikman2020]_. We implemented this method to be used with variance as the uncertainty.
 
@@ -521,7 +521,7 @@ class MultilabelConformalCalibrator(BinaryClassificationCalibrator):
         return self
 
     def apply(self, uncs: Tensor) -> Tensor:
-        """
+        r"""
         Apply this calibrator to the input uncertainties.
 
         Parameters

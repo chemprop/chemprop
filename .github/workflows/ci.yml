@@ -65,11 +65,15 @@ jobs:
       matrix:
         # test on all platforms with both supported versions of Python
         os: [ubuntu-latest, macos-15-intel, windows-2022]
-        python-version: [3.11, 3.12]
+        python-version: [3.11, 3.12, 3.13]
         cuik-molmaker: [yes, no]
         exclude:
           - python-version: 3.11
             cuik-molmaker: yes
+          - python-version: 3.13
+            cuik-molmaker: yes
+          - python-version: 3.13
+            os: windows-2022
     steps:
       - uses: actions/checkout@v4
       # use a version of the conda virtual environment manager to set up an

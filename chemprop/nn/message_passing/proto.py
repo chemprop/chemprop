@@ -14,7 +14,7 @@ class MessagePassing(nn.Module, HasHParams):
 
     @abstractmethod
     def forward(self, bmg: BatchMolGraph, V_d: Tensor | None = None) -> Tensor:
-        """Encode a batch of molecular graphs.
+        r"""Encode a batch of molecular graphs.
 
         Parameters
         ----------
@@ -44,7 +44,7 @@ class MABMessagePassing(nn.Module, HasHParams):
     def forward(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, E_d: Tensor | None = None
     ) -> tuple[Tensor | None, Tensor | None]:
-        """Encode a batch of molecular graphs.
+        r"""Encode a batch of molecular graphs.
 
         Parameters
         ----------
