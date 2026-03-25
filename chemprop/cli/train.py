@@ -1387,7 +1387,6 @@ def build_model(
                 raise ValueError(
                     f"Inconsistent number of components ({train_dset.n_components}) and number of --depth arguments ({len(args.depth)}, {args.depth})."
                 )
-            exit
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
