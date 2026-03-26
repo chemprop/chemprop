@@ -133,6 +133,12 @@ You can also pass in train/val/test files separately through **2 or 3 paths** to
 .. note::
     When two paths are provided, the first file is split into train/val using the configured split method, and the second file is taken as the test set as-is. When three paths are provided, they map directly to train/val/test in order.
 
+.. note::
+    Passing separate train/val/tests files is not supported for extra features and descriptors :code:`.npz` files.
+
+**Saving Splits**
+    Each training run saves the train/val/test splits used as a :code:`splits.json` file with the same format as above. Additionally the flag :code:`--save-data-splits` can be used to automatically split the input data files into separate train/val/test files in the output directory. 
+
 Replicates
 ^^^^^^^^^^
 
