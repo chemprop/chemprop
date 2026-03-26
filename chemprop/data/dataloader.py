@@ -34,7 +34,7 @@ def build_dataloader(
     drop_last: bool | None = None,
     **kwargs,
 ):
-    """Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
+    r"""Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
 
     Parameters
     ----------

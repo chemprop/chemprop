@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import types
 from typing import Iterable
 
 from lightning import pytorch as pl
@@ -646,7 +647,7 @@ class DropoutEstimator(UncertaintyEstimator):
 
 @UncertaintyEstimatorRegistry.register("classification-dirichlet")
 class ClassificationDirichletEstimator(UncertaintyEstimator):
-    """
+    r"""
     A :class:`ClassificationDirichletEstimator` predicts an amount of 'evidence' for both the
     negative class and the positive class as described in [sensoy2018]_. The class probabilities and
     the uncertainty are calculated based on the evidence.
@@ -720,7 +721,7 @@ class ClassificationDirichletEstimator(UncertaintyEstimator):
 
 @UncertaintyEstimatorRegistry.register("multiclass-dirichlet")
 class MulticlassDirichletEstimator(UncertaintyEstimator):
-    """
+    r"""
     A :class:`MulticlassDirichletEstimator` predicts an amount of 'evidence' for each class as
     described in [sensoy2018]_. The class probabilities and the uncertainty are calculated based on
     the evidence.
@@ -804,7 +805,7 @@ class MulticlassDirichletEstimator(UncertaintyEstimator):
 
     def _setup_model(self, model):
         model.predictor._forward = model.predictor.forward
-        model.predictor.forward = self._forward.__get__(model.predictor, model.predictor.__class__)
+        model.predictor.forward = types.MethodType(self._forward.__func__, model.predictor)
 
     def _restore_model(self, model):
         model.predictor.forward = model.predictor._forward

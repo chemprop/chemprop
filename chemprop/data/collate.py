@@ -12,14 +12,14 @@ from chemprop.featurizers.molgraph.molecule import BatchCuikMolGraph
 
 @dataclass(repr=False, eq=False, slots=True)
 class BatchMolGraph:
-    """A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`\s.
+    r"""A :class:`BatchMolGraph` represents a batch of individual :class:`MolGraph`\s.
 
     It has all the attributes of a ``MolGraph`` with the addition of the ``batch`` attribute. This
     class is intended for use with data loading, so it uses :obj:`~torch.Tensor`\s to store data
     """
 
     mgs: InitVar[Sequence[MolGraph]]
-    """A list of individual :class:`MolGraph`\s to be batched together"""
+    r"""A list of individual :class:`MolGraph`\s to be batched together"""
     V: Tensor = field(init=False)
     """the atom feature matrix"""
     E: Tensor = field(init=False)
@@ -62,7 +62,7 @@ class BatchMolGraph:
         self.batch = torch.tensor(np.concatenate(batch_indexes)).long()
 
     def __len__(self) -> int:
-        """the number of individual :class:`MolGraph`\s in this batch"""
+        r"""the number of individual :class:`MolGraph`\s in this batch"""
         return self.__size
 
     def to(self, device: str | torch.device):

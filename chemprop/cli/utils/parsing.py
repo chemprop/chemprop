@@ -146,7 +146,7 @@ def make_datapoints(
 ) -> tuple[
     list[list[MoleculeDatapoint]] | list[list[LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]
 ]:
-    """Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
+    r"""Make the :class:`MoleculeDatapoint`s and :class:`ReactionDatapoint`s for a given
     dataset.
 
     Parameters

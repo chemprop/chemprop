@@ -98,12 +98,12 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
+    r"""A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
     underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 
-    _T_default_criterion: ChempropMetric
-    _T_default_metric: ChempropMetric
+    _T_default_criterion: type[ChempropMetric]
+    _T_default_metric: type[ChempropMetric]
 
     def __init__(
         self,
