@@ -1030,8 +1030,10 @@ def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indi
             loaded_feature = np.load(args.descriptors_path)
             features = loaded_feature["arr_0"]
             np.savez(rep_dir / "train_descriptors.npz", features[train])
-            np.savez(rep_dir / "val_descriptors.npz", features[val])
-            np.savez(rep_dir / "test_descriptors.npz", features[test])
+            if val:
+                np.savez(rep_dir / "val_descriptors.npz", features[val])
+            if test:
+                np.savez(rep_dir / "test_descriptors.npz", features[test])
 
         def save_npz_split(paths, tag):
             if not paths:
@@ -1039,11 +1041,13 @@ def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indi
             for idx_key, p in paths.items():
                 arrs = load_npz(p)
                 train_arrs = [arrs[idx] for idx in train]
-                val_arrs = [arrs[idx] for idx in val]
-                test_arrs = [arrs[idx] for idx in test]
                 save_npz(rep_dir / f"train_{tag}{idx_key}.npz", train_arrs)
-                save_npz(rep_dir / f"val_{tag}{idx_key}.npz", val_arrs)
-                save_npz(rep_dir / f"test_{tag}{idx_key}.npz", test_arrs)
+                if val:
+                    val_arrs = [arrs[idx] for idx in val]
+                    save_npz(rep_dir / f"val_{tag}{idx_key}.npz", val_arrs)
+                if test:
+                    test_arrs = [arrs[idx] for idx in test]
+                    save_npz(rep_dir / f"test_{tag}{idx_key}.npz", test_arrs)
 
         save_npz_split(args.atom_features_path, "atom_feat_")
         save_npz_split(args.atom_descriptors_path, "atom_desc_")
