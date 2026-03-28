@@ -64,7 +64,7 @@ def parse_csv(
         input_cols = [df.columns[0]]
 
     descriptor_cols = list(descriptor_cols or [])
-    X_d_extra = df[descriptor_cols].to_numpy(np.single) if descriptor_cols else None
+    X_d_extra = df[descriptor_cols].to_numpy(np.single, copy=True) if descriptor_cols else None
 
     if target_cols is None:
         target_cols = list(
