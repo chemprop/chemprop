@@ -934,6 +934,27 @@ def test_save_data_splits(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "test_atom_feat_0.npz").exists()
 
 
+def test_descriptors_column(monkeypatch, data_with_descriptors_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_with_descriptors_path,
+        "--target-columns",
+        "y",
+        "--descriptors-columns",
+        "temperature",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
     args = [
         "chemprop",
