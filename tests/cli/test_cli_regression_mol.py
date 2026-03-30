@@ -892,6 +892,48 @@ def test_only_trainset(monkeypatch, data_path):
         main()
 
 
+def test_save_data_splits(monkeypatch, data_path, tmp_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--save-data-splits",
+        "--output-dir",
+        str(tmp_path),
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "splits.json").exists()
+    assert (tmp_path / "train_atom_desc_0.npz").exists()
+    assert (tmp_path / "val_atom_desc_0.npz").exists()
+    assert (tmp_path / "test_atom_desc_0.npz").exists()
+    assert (tmp_path / "train_atom_feat_0.npz").exists()
+    assert (tmp_path / "val_atom_feat_0.npz").exists()
+    assert (tmp_path / "test_atom_feat_0.npz").exists()
+
+
 def test_descriptors_columns(monkeypatch, data_with_descriptors_path):
     args = [
         "chemprop",
