@@ -50,7 +50,7 @@ def build_dataloader(
         shuffle to True in order to get a random subset of the larger class.
     seed : int, default=None
         the random seed to use for shuffling (only used when `shuffle` is `True`).
-    shuffle : bool, default=False
+    shuffle : bool, default=True
         whether to shuffle the data during sampling.
     drop_last : bool, default=None
         Whether to drop the last batch if it is of size 1 (needed if using batchnorm during training).
