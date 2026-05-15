@@ -65,6 +65,7 @@ from chemprop.nn.message_passing import (
     MABAtomMessagePassing,
     MABBondMessagePassing,
     MulticomponentMessagePassing,
+    MultiweightMessagePassing,
 )
 from chemprop.nn.transforms import GraphTransform, ScaleTransform, UnscaleTransform
 from chemprop.utils import Factory
@@ -246,6 +247,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     mp_args.add_argument(
         "--atom-messages", action="store_true", help="Pass messages on atoms rather than bonds."
+    )
+    mp_args.add_argument(
+        "--message-passing-type",
+        choices=["atom", "bond", "multiweight"],
+        default="bond",
+        help="Type of message passing (atom, bond, or multiweight).",
     )
 
     mp_args.add_argument(
@@ -1455,7 +1462,12 @@ def build_model(
                         mp_block.load_state_dict(chemeleon_mp["state_dict"])
                     agg = Factory.build(AggregationRegistry["mean"])
     else:
-        mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
+        if args.message_passing_type == "atom" or args.atom_messages:
+            mp_cls = AtomMessagePassing
+        elif args.message_passing_type == "multiweight":
+            mp_cls = MultiweightMessagePassing
+        else:
+            mp_cls = BondMessagePassing
         if is_multi:
             if len(args.message_hidden_dim) == 1:
                 args.message_hidden_dim = args.message_hidden_dim * train_dset.n_components
@@ -1578,7 +1590,12 @@ def build_MAB_model(
         list[ScaleTransform | None],
     ],
 ) -> MolAtomBondMPNN:
-    mp_cls = MABAtomMessagePassing if args.atom_messages else MABBondMessagePassing
+    if args.message_passing_type == "atom" or args.atom_messages:
+        mp_cls = MABAtomMessagePassing
+    elif args.message_passing_type == "multiweight":
+        mp_cls = MultiweightMessagePassing
+    else:
+        mp_cls = MABBondMessagePassing
 
     X_d_transform, graph_transforms, V_d_transforms, E_d_transforms = input_transforms
 

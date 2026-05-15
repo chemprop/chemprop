@@ -2,6 +2,7 @@ from .base import AtomMessagePassing, BondMessagePassing
 from .mol_atom_bond import MABAtomMessagePassing, MABBondMessagePassing
 from .multi import MulticomponentMessagePassing
 from .proto import MABMessagePassing, MessagePassing
+from .multiweight import MultiweightMessagePassing
 
 __all__ = [
     "MessagePassing",
@@ -11,4 +12,5 @@ __all__ = [
     "MABAtomMessagePassing",
     "MABBondMessagePassing",
     "MulticomponentMessagePassing",
+    "MultiweightMessagePassing",
 ]

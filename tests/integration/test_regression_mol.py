@@ -33,6 +33,7 @@ def dataloader(data):
         (nn.AtomMessagePassing(), nn.SumAggregation()),
         (nn.BondMessagePassing(), nn.NormAggregation()),
         (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
+        (nn.MultiweightMessagePassing(depth=3), nn.MeanAggregation()),
     ],
     indirect=True,
 )
@@ -57,6 +58,7 @@ def test_quick(mpnn, dataloader):
         (nn.AtomMessagePassing(), nn.SumAggregation()),
         (nn.BondMessagePassing(), nn.NormAggregation()),
         (nn.BondMessagePassing(), nn.MeanAggregation(), torch.nn.Softplus()),
+        (nn.MultiweightMessagePassing(depth=3), nn.MeanAggregation()),
     ],
     indirect=True,
 )
