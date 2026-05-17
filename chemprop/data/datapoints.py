@@ -278,3 +278,7 @@ class LazyReactionDatapoint(_DatapointMixin, _LazyReactionDatapointMixin):
 
     def __len__(self) -> int:
         return 2
+
+    @property
+    def rct(self) -> Chem.Mol:
+        return make_mol(self.reac_smiles, self._keep_h, self._add_h)

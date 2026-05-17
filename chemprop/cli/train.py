@@ -48,6 +48,7 @@ from chemprop.data import (
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
+    LazyReactionDatapoint,
     ReactionDatapoint,
     SplitType,
     build_dataloader,
@@ -1145,7 +1146,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             if args.split == "random":
                 splitting_mols = range(len(splitting_data))
             else:
-                if isinstance(splitting_data[0], ReactionDatapoint):
+                if isinstance(splitting_data[0], (ReactionDatapoint, LazyReactionDatapoint)):
                     splitting_mols = [datapoint.rct for datapoint in splitting_data]
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]
