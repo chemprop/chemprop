@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 
 from chemprop.data.datapoints import (
     LazyMoleculeDatapoint,
+    LazyReactionDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
     ReactionDatapoint,
@@ -21,6 +22,7 @@ from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
     BatchCuikMolGraph,
     CGRFeaturizer,
+    CuikmolmakerCGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
@@ -412,6 +414,72 @@ class CuikmolmakerDataset(MoleculeDataset):
         V_f = np.concat([self.V_fs[idx] for idx in indexes]) if self.V_fs[0] is not None else None
         E_f = np.concat([self.E_fs[idx] for idx in indexes]) if self.E_fs[0] is not None else None
         bmg = self.featurizer(smiles_list, V_f, E_f)
+
+        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
+        X_d = self.X_d[indexes] if self.X_d[0] is not None else None
+        Y = self.Y[indexes] if self.Y[0] is not None else None
+        weights = self.weights[indexes]
+        lt_mask = self.lt_mask[indexes] if self.lt_mask[0] is not None else None
+        gt_mask = self.gt_mask[indexes] if self.gt_mask[0] is not None else None
+
+        return CuikBatchedDatum(bmg, V_d, X_d, Y, weights, lt_mask, gt_mask)
+
+
+@dataclass
+class CuikmolmakerReactionDataset(MoleculeDataset):
+    r"""A :class:`CuikmolmakerReactionDataset` composed of :class:`LazyReactionDatapoint`\s and a
+    :class:`CuikmolmakerCGRFeaturizer`
+
+    Featurizes reactions as Condensed Graphs of Reaction (CGR) using the cuik-molmaker C++ library.
+    Featurization is always on-the-fly and processed in batches for efficiency.
+
+    Parameters
+    ----------
+    data : list[LazyReactionDatapoint]
+        the reaction datapoints
+    featurizer : CuikmolmakerCGRFeaturizer
+        the CGR featurizer
+    """
+
+    data: list[LazyReactionDatapoint]
+    featurizer: CuikmolmakerCGRFeaturizer = field(default_factory=CuikmolmakerCGRFeaturizer)
+
+    @MoleculeDataset.cache.setter
+    def cache(self, cache: bool = False):
+        if cache:
+            raise NotImplementedError("CuikmolmakerReactionDataset is meant to be used without caching!")
+
+    def _init_cache(self):
+        pass
+
+    @property
+    def _V_fs(self) -> list[None]:
+        return [None] * len(self.data)
+
+    @property
+    def _E_fs(self) -> list[None]:
+        return [None] * len(self.data)
+
+    @property
+    def _V_ds(self) -> list[None]:
+        return [None] * len(self.data)
+
+    @property
+    def smiles(self) -> list[str]:
+        return [f"{d.reac_smiles}>>{d.prod_smiles}" for d in self.data]
+
+    def __getitem__(self, idx: int) -> Datum:
+        d = self.data[idx]
+        bmg = self.featurizer([d.reac_smiles], [d.prod_smiles])
+        mg = MolGraph(
+            bmg.V.numpy(), bmg.E.numpy(), bmg.edge_index.numpy(), bmg.rev_edge_index.numpy()
+        )
+        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+
+    def __getitems__(self, indexes: list[int]) -> CuikBatchedDatum:
+        reac_smiles_list = [self.data[idx].reac_smiles for idx in indexes]
+        prod_smiles_list = [self.data[idx].prod_smiles for idx in indexes]
+        bmg = self.featurizer(reac_smiles_list, prod_smiles_list)
 
         V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
         X_d = self.X_d[indexes] if self.X_d[0] is not None else None
