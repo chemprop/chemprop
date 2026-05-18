@@ -40,7 +40,7 @@ dependencies = [
     "ConfigArgParse",
     "rich",
     "descriptastorus",
-    "myerson>=1",
+    "myerson>=1.0.1",
 ]
 
 [project.optional-dependencies]

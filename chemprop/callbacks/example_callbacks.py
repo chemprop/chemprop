@@ -2,6 +2,7 @@ from lightning.pytorch.callbacks import Callback
 
 from chemprop.callbacks import CallbackRegistry
 
+
 @CallbackRegistry.register("example_callback")
 class ExampleCallback(Callback):
     def __init__(self, cli_args):
