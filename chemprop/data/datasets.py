@@ -110,15 +110,15 @@ class _MolGraphDatasetMixin:
 
         self.__X_d = np.array(X_d)
 
-    @property
+    @cached_property
     def weights(self) -> np.ndarray:
         return np.array([d.weight for d in self.data])
 
-    @property
+    @cached_property
     def gt_mask(self) -> np.ndarray:
         return np.array([d.gt_mask for d in self.data])
 
-    @property
+    @cached_property
     def lt_mask(self) -> np.ndarray:
         return np.array([d.lt_mask for d in self.data])
 
