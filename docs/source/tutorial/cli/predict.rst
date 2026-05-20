@@ -40,6 +40,10 @@ Performant Prediction
 
 Prediction can be accelerated using molecular featurizer package called ``cuik-molmaker``. This package is not installed by default, but can be installed using the script ``check_and_install_cuik_molmaker.py``. In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
 
+Custom Callbacks
+----------------
+
+Custom `callbacks <https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html>`_ can be supplied using the :code:`--callback <cb>` flag, for example to generate additional explanations for the predictions using :ref:`Myerson Values <callback>`.
 
 Uncertainty Quantification
 --------------------------
