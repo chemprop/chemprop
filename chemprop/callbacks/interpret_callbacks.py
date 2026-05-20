@@ -62,7 +62,7 @@ class MyersonExplainerCallback(Callback):
         self.model_counter = 0
         self.max_model_counter = len(model_paths) - 1
 
-        self.output_filename_base = cli_args.test_path.stem + "_myerson_explanation"
+        self.output_filename_base = cli_args.output.stem + "_myerson_explanation"
         self.output_path_dir = cli_args.output.parent
 
     def on_predict_start(self, trainer, pl_module):
