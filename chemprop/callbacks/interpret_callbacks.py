@@ -47,7 +47,7 @@ class MyersonExplainerCallback(Callback):
 
         if mol_atom_bond:
             raise NotImplementedError(
-                f"Myerson Explanations are not supported for atom/bond level predictions."
+                "Myerson Explanations are not supported for atom/bond level predictions."
             )
         if len(model_paths) > 1:
             logger.warning(
@@ -71,9 +71,7 @@ class MyersonExplainerCallback(Callback):
             "RegressionFFN",
         ]:
             raise NotImplementedError(
-                f"Myerson explanations are only implemented "
-                + "for BinaryClassificationFNN and RegressionFFN. "
-                + f"Got {pl_module.predictor.__class__.__name__}"
+                f"Myerson explanations are only implemented for BinaryClassificationFNN and RegressionFFN. Got {pl_module.predictor.__class__.__name__}"
             )
         self.mol_idxs = []
         self.per_mol_atom_idxs = []

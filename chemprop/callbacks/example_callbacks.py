@@ -22,6 +22,3 @@ class ExampleCallback(Callback):
 
     def on_predict(self, trainer, pl_module):
         pass
-
-    def on_predict(self, trainer, pl_module):
-        pass
