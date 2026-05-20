@@ -3,7 +3,7 @@
 Custom Callbacks for Prediction
 ===============================
 
-Chemprops predict subcommand can be invoked with the :code:`--callback <cb>` flag, allowing for the execution of custom code during the prediction process.
+Chemprop's :code:`predict` subcommand can be invoked with the :code:`--callback <cb>` flag, allowing for the execution of custom code during the prediction process.
 
 Interpretability Callbacks
 --------------------------
@@ -15,11 +15,11 @@ A Myerson explainer calculates and saves Myerson explanations during a :code:`pr
 It can be invoked by passing :code:`--callback myerson` to the :code:`chemprop predict` command.
 
 The explanations take the form of node attributions and are saved as a pickle file containing a dictionary with the keys :code:`myerson_values` and :code:`sampled`.
-The :code:`myerson_values` will be a 2D or 3D array of shape :code:`num_mols x max_atom_count` (for regression or binary classification)
-or :code:`num_mols x max_atom_count x num_classes` (for multilabel binary classification) containing the explanations.
+The :code:`myerson_values` will be a list of 1D or 2D arrays of shape :code:`num_atoms` (for regression or binary classification)
+or :code:`num_atoms x num_classes` (for multilabel binary classification) containing the explanations.
 
 By default, molecules with more than 20 nodes will use a sampling explainer instead of the exact explainer.
-This threshold is controlled by the `sampling_threshold` parameter (currently hardcoded to 20 when using the CLI).
+This threshold is controlled by the :code:`sampling_threshold` parameter (currently hardcoded to 20 when using the CLI).
 
 Myerson Explanations are not supported for atom or bond level predictions. Furthermore, they are only implemented for models using a :code:`BinaryClassificationFFN` or :code:`RegressionFFN`.
 

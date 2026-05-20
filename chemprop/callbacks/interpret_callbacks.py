@@ -23,8 +23,8 @@ class MyersonExplainerCallback(Callback):
     """A :class:`MyersonExplainerCallback` calculates and saves Myerson explanations during a `predict` call.
 
     The explanations are saved as a pickle file containing a dictionary with the keys ``myerson_values`` and ``sampled``.
-    The ``myerson_values`` will be a 2D or 3D array of shape ``num_mols x max_atom_count`` (for regression / binary classication)
-    or ``num_mols x max_atom_count x num_classes`` (multilabel binary classification) containing the explanations.
+    The ``myerson_values`` will be list of 1D or 2D arrays of shape ``num_mols`` (for regression / binary classication)
+    or ``num_mols x num_classes`` (multilabel binary classification) containing the explanations.
 
     Parameters
     ----------
@@ -117,26 +117,9 @@ class MyersonExplainerCallback(Callback):
                 self.explanations.append(my_values)
 
     def on_predict_end(self, trainer, pl_module):
-        if self.explanations[0].ndim > 2:
-            raise ValueError(
-                f"Unexpected number of dimensions for explanations: {self.explanations[0].ndim}, shape: {self.explanations[0].shape}"
-            )
-        class_dim = 1 if self.explanations[0].ndim == 1 else self.explanations[0].shape[1]
-        expl_dim = max([len(x) for x in self.explanations])
-        mol_dim = len(self.mol_idxs)
-
-        if class_dim > 1:
-            arr = np.full((mol_dim, expl_dim, class_dim), np.nan)
-            for i, expl in enumerate(self.explanations):
-                arr[i, : expl.shape[0], :] = expl
-        else:
-            arr = np.full((mol_dim, expl_dim), np.nan)
-            for i, expl in enumerate(self.explanations):
-                arr[i, : expl.shape[0]] = expl
-
         model_counter_string = "" if self.max_model_counter == 0 else f"_{self.model_counter}"
         save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}.pkl"
         with open(save_path, "wb") as f:
-            pickle.dump({"myerson_values": arr, "sampled": np.array(self.sampled, dtype=bool)}, f)
+            pickle.dump({"myerson_values": self.explanations, "sampled": np.array(self.sampled, dtype=bool)}, f)
         logger.info(f"Myerson explanations to {save_path}")
         self.model_counter += 1
