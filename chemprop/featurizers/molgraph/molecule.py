@@ -363,9 +363,7 @@ class CuikmolmakerCGRFeaturizer(Featurizer[tuple[list[str], list[str]], BatchCui
         self._mode_int = int(mode_arr[0])
 
     def __call__(
-        self,
-        reac_smiles_list: list[str],
-        prod_smiles_list: list[str],
+        self, reac_smiles_list: list[str], prod_smiles_list: list[str]
     ) -> BatchCuikMolGraph:
         (
             atom_feats,

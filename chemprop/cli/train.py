@@ -44,11 +44,11 @@ from chemprop.cli.utils import (
 from chemprop.cli.utils.args import uppercase
 from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
+    LazyReactionDatapoint,
     MolAtomBondDataset,
     MoleculeDataset,
     MolGraphDataset,
     MulticomponentDataset,
-    LazyReactionDatapoint,
     ReactionDatapoint,
     SplitType,
     build_dataloader,

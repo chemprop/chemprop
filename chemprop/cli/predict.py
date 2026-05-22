@@ -10,7 +10,6 @@ import pandas as pd
 import torch
 
 from chemprop import data, featurizers
-from chemprop.featurizers.molgraph.molecule import CuikmolmakerCGRFeaturizer
 from chemprop.cli.common import (
     add_common_args,
     find_models,
@@ -25,6 +24,7 @@ from chemprop.cli.utils import (
     format_probability_string,
     make_dataset,
 )
+from chemprop.featurizers.molgraph.molecule import CuikmolmakerCGRFeaturizer
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.message_passing import BondMessagePassing
 from chemprop.nn.metrics import BoundedMixin
@@ -228,7 +228,9 @@ def check_featurizer_matches_model(data_loader, model):
         atom_fdim = featurizer.atom_fdim
         bond_fdim = featurizer.bond_fdim
 
-        if isinstance(featurizer, (featurizers.CondensedGraphOfReactionFeaturizer, CuikmolmakerCGRFeaturizer)):
+        if isinstance(
+            featurizer, (featurizers.CondensedGraphOfReactionFeaturizer, CuikmolmakerCGRFeaturizer)
+        ):
             v1_atom_fdim = 2 * len(v1_atom_featurizer) - len(v1_atom_featurizer.atomic_nums) - 1
         else:
             v1_atom_fdim = len(v1_atom_featurizer) + featurizer.extra_atom_fdim

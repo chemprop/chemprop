@@ -447,7 +447,9 @@ class CuikmolmakerReactionDataset(MoleculeDataset):
     @MoleculeDataset.cache.setter
     def cache(self, cache: bool = False):
         if cache:
-            raise NotImplementedError("CuikmolmakerReactionDataset is meant to be used without caching!")
+            raise NotImplementedError(
+                "CuikmolmakerReactionDataset is meant to be used without caching!"
+            )
 
     def _init_cache(self):
         pass
