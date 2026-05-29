@@ -362,6 +362,9 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
             case "depth":
                 setattr(args, "depth", [value])
 
+            case "ffn_hidden_dim" | "atom_ffn_hidden_dim" | "bond_ffn_hidden_dim" | "atom_constrainer_ffn_hidden_dim" | "bond_constrainer_ffn_hidden_dim":
+                setattr(args, key, [value])
+
             case _:
                 assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
