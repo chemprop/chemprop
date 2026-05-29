@@ -43,6 +43,7 @@ def make_mol(
     add_h: bool = False,
     ignore_stereo: bool = False,
     reorder_atoms: bool = False,
+    cxsmiles_stereo: bool = False,
 ) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
@@ -61,6 +62,9 @@ def make_mol(
         whether to reorder the atoms in the molecule by their atom map numbers. This is useful when
         the order of atoms in the SMILES string does not match the atom mapping, e.g. '[F:2][Cl:1]'.
         Default is False. NOTE: This does not reorder the bonds.
+    cxsmiles_stereo : bool, optional
+        whether to parse CXSMILES |wD/wU| metadata and set chiral tags on atropisomer axis atoms
+        so they produce different molecular representations. Default is False.
 
     Returns
     -------
@@ -74,7 +78,7 @@ def make_mol(
     if mol is None:
         raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
 
-    if "|" in smi:
+    if cxsmiles_stereo:
         _apply_cxsmiles_stereo(mol, smi)
 
     if add_h:

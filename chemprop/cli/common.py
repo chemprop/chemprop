@@ -97,6 +97,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Reorder atoms in the Chem.Mol object using the specified atom map numbers",
     )
+    data_args.add_argument(
+        "--cxsmiles-stereo",
+        action="store_true",
+        help="Parse CXSMILES |wD/wU| metadata and set chiral tags on atropisomer axis atoms so they produce different molecular representations",
+    )
     featurization_args.add_argument(
         "--molecule-featurizers",
         "--features-generators",

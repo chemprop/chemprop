@@ -51,7 +51,7 @@ def test_make_mol_invalid_smiles():
 def test_cxsmiles_wd_sets_chiral_tags():
     """wD (wedge down) sets CW/CCW chiral tags on atropisomer axis atoms."""
     cxsmiles = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wD:14.16|"
-    mol = make_mol(cxsmiles)
+    mol = make_mol(cxsmiles, cxsmiles_stereo=True)
 
     assert mol.GetAtomWithIdx(14).GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CW
     assert mol.GetAtomWithIdx(16).GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CCW
@@ -60,7 +60,7 @@ def test_cxsmiles_wd_sets_chiral_tags():
 def test_cxsmiles_wu_leaves_unspecified():
     """wU (wedge unspecified) leaves atropisomer axis atoms as CHI_UNSPECIFIED."""
     cxsmiles = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wU:14.16|"
-    mol = make_mol(cxsmiles)
+    mol = make_mol(cxsmiles, cxsmiles_stereo=True)
 
     assert mol.GetAtomWithIdx(14).GetChiralTag() == ChiralType.CHI_UNSPECIFIED
     assert mol.GetAtomWithIdx(16).GetChiralTag() == ChiralType.CHI_UNSPECIFIED
@@ -75,8 +75,8 @@ def test_cxsmiles_wd_produces_different_features_than_wu():
     cxsmiles_wd = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wD:14.16|"
     cxsmiles_wu = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wU:14.16|"
 
-    mol_wd = make_mol(cxsmiles_wd)
-    mol_wu = make_mol(cxsmiles_wu)
+    mol_wd = make_mol(cxsmiles_wd, cxsmiles_stereo=True)
+    mol_wu = make_mol(cxsmiles_wu, cxsmiles_stereo=True)
 
     mg_featurizer = SimpleMoleculeMolGraphFeaturizer()
     graph_wd = mg_featurizer(mol_wd)
@@ -91,7 +91,7 @@ def test_cxsmiles_preserves_existing_chiral_tags():
     """CXSMILES wD does not overwrite existing chiral tags from SMILES."""
     # C[C@@H](O) has a tetrahedral chiral center at atom 1
     cxsmiles = "C[C@@H](O)CC1=CC=C(C)C=C1 |wD:1.2|"
-    mol = make_mol(cxsmiles)
+    mol = make_mol(cxsmiles, cxsmiles_stereo=True)
 
     # Atom 1 should keep its original chiral tag from [C@@H]
     assert mol.GetAtomWithIdx(1).GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CW
@@ -103,7 +103,7 @@ def test_cxsmiles_multiple_constraints():
     """Multiple wD/wU constraints on the same SMILES are all processed."""
     # wD:14.15 sets tags on atoms 14,15; wU:7.7 leaves atoms 7,7 unspecified
     cxsmiles = "O=C1C=CNC(=O)N1C(=C)[C@]([C@H](C)Br)([C@@H](F)C)[C@H](Cl)C |wD:14.15,wU:7.7|"
-    mol = make_mol(cxsmiles)
+    mol = make_mol(cxsmiles, cxsmiles_stereo=True)
 
     # wD:14.15 should set CW on atom 14, CCW on atom 15
     assert mol.GetAtomWithIdx(14).GetChiralTag() == ChiralType.CHI_TETRAHEDRAL_CW
@@ -113,7 +113,7 @@ def test_cxsmiles_multiple_constraints():
 def test_cxsmiles_invalid_atom_indices_ignored():
     """CXSMILES with atom indices beyond the molecule size are silently ignored."""
     cxsmiles = "CCO |wD:99.100|"
-    mol = make_mol(cxsmiles)
+    mol = make_mol(cxsmiles, cxsmiles_stereo=True)
 
     # Should parse successfully, no chiral tags set (atoms 99,100 don't exist)
     assert mol.GetNumAtoms() == 3
@@ -130,6 +130,16 @@ def test_cxsmiles_no_metadata_unchanged():
         assert atom.GetChiralTag() == ChiralType.CHI_UNSPECIFIED
 
 
+def test_cxsmiles_disabled_by_default():
+    """CXSMILES wD/wU tags are NOT processed by default (backwards compatibility)."""
+    cxsmiles = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wD:14.16|"
+    mol = make_mol(cxsmiles)
+
+    # Without cxsmiles_stereo=True, chiral tags should NOT be set
+    for atom in mol.GetAtoms():
+        assert atom.GetChiralTag() == ChiralType.CHI_UNSPECIFIED
+
+
 def test_cxsmiles_wd_different_pairs():
     """Different wD atom pairs produce different molecular representations."""
     import numpy as np
@@ -139,8 +149,8 @@ def test_cxsmiles_wd_different_pairs():
     cxsmiles_1 = "C1(Cl)=C2C(F)=CC=C1CCCCCC1=C2C=C(F)C=C1Cl |wD:14.16|"
     cxsmiles_2 = "C1=C(C2=CC(Cl)=CC(F)=C2)C(F)=CC=C1CCCCC |wD:2.9|"
 
-    mol_1 = make_mol(cxsmiles_1)
-    mol_2 = make_mol(cxsmiles_2)
+    mol_1 = make_mol(cxsmiles_1, cxsmiles_stereo=True)
+    mol_2 = make_mol(cxsmiles_2, cxsmiles_stereo=True)
 
     mg_featurizer = SimpleMoleculeMolGraphFeaturizer()
     graph_1 = mg_featurizer(mol_1)
