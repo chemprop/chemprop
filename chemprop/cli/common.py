@@ -72,7 +72,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=uppercase,
         default="V2",
         choices=list(AtomFeatureMode.keys()),
-        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reaction and reaction feturization (case insensitive):
+        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reaction and reaction featurization (case insensitive):
 
 - ``V1``: Corresponds to the original configuration employed in the Chemprop V1
 - ``V2``: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
