@@ -142,6 +142,7 @@ def make_datapoints(
     ignore_stereo: bool,
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
+    cxsmiles_stereo: bool,
     n_workers: int = 0,
 ) -> tuple[
     list[list[MoleculeDatapoint]] | list[list[LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]
@@ -252,6 +253,7 @@ def make_datapoints(
                 _add_h=add_h,
                 _ignore_stereo=ignore_stereo,
                 _reorder_atoms=reorder_atoms,
+                _cxsmiles_stereo=cxsmiles_stereo,
                 name=smiss[0][i],
                 y=Y[i],
                 weight=weights[i],
@@ -287,7 +289,10 @@ def make_datapoints(
         molss = [
             parallel_execute(
                 make_mol,
-                [(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis],
+                [
+                    (smi, keep_h, add_h, ignore_stereo, reorder_atoms, cxsmiles_stereo)
+                    for smi in smis
+                ],
                 n_workers=n_workers,
             )
             for smis in smiss
@@ -304,6 +309,7 @@ def make_datapoints(
                         add_h,
                         ignore_stereo,
                         reorder_atoms,
+                        cxsmiles_stereo,
                     )
                     for rct_smi, agt_smi, _ in (rxn.split(">") for rxn in rxns)
                 ],
@@ -316,7 +322,7 @@ def make_datapoints(
             parallel_execute(
                 make_mol,
                 [
-                    (pdt_smi, keep_h, add_h, ignore_stereo, reorder_atoms)
+                    (pdt_smi, keep_h, add_h, ignore_stereo, reorder_atoms, cxsmiles_stereo)
                     for _, _, pdt_smi in (rxn.split(">") for rxn in rxns)
                 ],
                 n_workers=n_workers,

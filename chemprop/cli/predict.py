@@ -302,6 +302,7 @@ def prepare_data_loader(
         add_h=args.add_h,
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
+        cxsmiles_stereo=args.cxsmiles_stereo,
     )
 
     if mol_atom_bond:
