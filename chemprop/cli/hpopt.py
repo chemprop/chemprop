@@ -362,6 +362,9 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
             case "depth":
                 setattr(args, "depth", [value])
 
+            case "ffn_hidden_dim" | "atom_ffn_hidden_dim" | "bond_ffn_hidden_dim" | "atom_constrainer_ffn_hidden_dim" | "bond_constrainer_ffn_hidden_dim":
+                setattr(args, key, [value])
+
             case _:
                 assert key in args, f"Key: {key} not found in args."
                 setattr(args, key, value)
@@ -569,6 +572,7 @@ def main(args: Namespace):
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
         use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
+        cxsmiles_stereo=args.cxsmiles_stereo,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
