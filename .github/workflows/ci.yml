@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       # use a version of the conda virtual environment manager to set up an
       # isolated environment with the Python version we want
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         if: matrix.os != 'windows-2022'
         with:
           python-version: ${{ matrix.python-version }}

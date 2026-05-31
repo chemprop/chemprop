@@ -74,7 +74,4 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
             a list of tensors of shape `V x d_i` containing the respective encodings of the `i`\th
             component, where `d_i` is the output dimension of the `i`\th encoder
         """
-        if V_ds is None:
-            return [block(bmg) for block, bmg in zip(self.blocks, bmgs)]
-        else:
-            return [block(bmg, V_d) for block, bmg, V_d in zip(self.blocks, bmgs, V_ds)]
+        return [block(bmg, V_d) for block, bmg, V_d in zip(self.blocks, bmgs, V_ds)]
