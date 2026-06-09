@@ -95,7 +95,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--callback",
         default=None,
         action=LookupAction(CallbackRegistry),
-        help="The callback to use. Only one callback can be used at a time (for now).",
+        help="The callback to use. Only one callback can be used at a time.",
     )
     cb_args.add_argument(
         "--callback-params",
