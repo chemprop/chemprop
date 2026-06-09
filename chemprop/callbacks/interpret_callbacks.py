@@ -1,16 +1,17 @@
 import logging
-import numpy as np
-import torch
-import lightning.pytorch as pl
 import pickle
+
+import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
 from myerson.chemprop_explain import (
-    MyersonExplainer,
-    MyersonSamplingExplainer,
     MyersonClassExplainer,
+    MyersonExplainer,
     MyersonSamplingClassExplainer,
+    MyersonSamplingExplainer,
 )
 from myerson.chemprop_explain.utils import unbatch
+import numpy as np
+import torch
 
 from chemprop.callbacks import CallbackRegistry
 from chemprop.cli.common import find_models
@@ -120,6 +121,12 @@ class MyersonExplainerCallback(Callback):
         model_counter_string = "" if self.max_model_counter == 0 else f"_{self.model_counter}"
         save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}.pkl"
         with open(save_path, "wb") as f:
-            pickle.dump({"myerson_values": self.explanations, "sampled": np.array(self.sampled, dtype=bool)}, f)
+            pickle.dump(
+                {
+                    "myerson_values": self.explanations,
+                    "sampled": np.array(self.sampled, dtype=bool),
+                },
+                f,
+            )
         logger.info(f"Myerson explanations to {save_path}")
         self.model_counter += 1

@@ -99,9 +99,9 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
     )
     cb_args.add_argument(
         "--callback-params",
-        default='{}',
+        default="{}",
         type=json.loads,
-        help="JSON string of kwargs for the callback."
+        help="JSON string of kwargs for the callback.",
     )
 
     unc_args = parser.add_argument_group("Uncertainty and calibration args")
@@ -403,10 +403,18 @@ def make_prediction_for_models(
     )
 
     # TODO: allow multiple callbacks
-    callbacks = [Factory.build(CallbackRegistry[args.callback], args, **args.callback_params)] if args.callback else None
+    callbacks = (
+        [Factory.build(CallbackRegistry[args.callback], args, **args.callback_params)]
+        if args.callback
+        else None
+    )
 
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices, callbacks=callbacks,
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
@@ -601,10 +609,18 @@ def make_MAB_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
-    callbacks = [Factory.build(CallbackRegistry[args.callback], args, **args.callback_params)] if args.callback else None
+    callbacks = (
+        [Factory.build(CallbackRegistry[args.callback], args, **args.callback_params)]
+        if args.callback
+        else None
+    )
 
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices, callbacks=callbacks,
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_predss, test_individual_uncss = uncertainty_estimator(
         test_loader, models, trainer
