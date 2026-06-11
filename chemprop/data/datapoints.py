@@ -55,10 +55,9 @@ class _MoleculeDatapointMixin:
         add_h: bool = False,
         ignore_stereo: bool = False,
         reorder_atoms: bool = False,
-        cxsmiles_stereo: bool = False,
         **kwargs,
     ) -> _MoleculeDatapointMixin:
-        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms, cxsmiles_stereo)
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -73,7 +72,6 @@ class _LazyMoleculeDatapointMixin:
     _add_h: bool = False
     _ignore_stereo: bool = False
     _reorder_atoms: bool = False
-    _cxsmiles_stereo: bool = False
     _mol_cache: Chem.Mol = field(default=None, repr=False, compare=False)
 
     @property
@@ -81,12 +79,7 @@ class _LazyMoleculeDatapointMixin:
         """Lazily compute the molecule only when accessed"""
         if self._mol_cache is None:
             self._mol_cache = make_mol(
-                self.smiles,
-                self._keep_h,
-                self._add_h,
-                self._ignore_stereo,
-                self._reorder_atoms,
-                self._cxsmiles_stereo,
+                self.smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
             )
         return self._mol_cache
 
@@ -201,17 +194,9 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
         add_h: bool = False,
         ignore_stereo: bool = False,
         reorder_atoms: bool = True,
-        cxsmiles_stereo: bool = False,
         **kwargs,
     ) -> MolAtomBondDatapoint:
-        mol = make_mol(
-            smi,
-            keep_h,
-            add_h,
-            ignore_stereo,
-            reorder_atoms=reorder_atoms,
-            cxsmiles_stereo=cxsmiles_stereo,
-        )
+        mol = make_mol(smi, keep_h, add_h, ignore_stereo, reorder_atoms=reorder_atoms)
 
         kwargs["name"] = smi if "name" not in kwargs else kwargs["name"]
 
@@ -233,7 +218,6 @@ class _ReactionDatapointMixin:
         keep_h: bool = False,
         add_h: bool = False,
         ignore_stereo: bool = False,
-        cxsmiles_stereo: bool = False,
         **kwargs,
     ) -> _ReactionDatapointMixin:
         match rxn_or_smis:
@@ -250,8 +234,8 @@ class _ReactionDatapointMixin:
                     " a product SMILES strings!"
                 )
 
-        rct = make_mol(rct_smi, keep_h, add_h, ignore_stereo, cxsmiles_stereo=cxsmiles_stereo)
-        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_stereo, cxsmiles_stereo=cxsmiles_stereo)
+        rct = make_mol(rct_smi, keep_h, add_h, ignore_stereo)
+        pdt = make_mol(pdt_smi, keep_h, add_h, ignore_stereo)
 
         kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from enum import StrEnum
 import os
-import re
 from typing import Any, Callable, Iterable, Iterator, Type
 
 import multiprocess
@@ -43,7 +42,6 @@ def make_mol(
     add_h: bool = False,
     ignore_stereo: bool = False,
     reorder_atoms: bool = False,
-    cxsmiles_stereo: bool = False,
 ) -> Chem.Mol:
     """build an RDKit molecule from a SMILES string.
 
@@ -62,9 +60,6 @@ def make_mol(
         whether to reorder the atoms in the molecule by their atom map numbers. This is useful when
         the order of atoms in the SMILES string does not match the atom mapping, e.g. '[F:2][Cl:1]'.
         Default is False. NOTE: This does not reorder the bonds.
-    cxsmiles_stereo : bool, optional
-        whether to parse CXSMILES |wD/wU| metadata and set chiral tags on atropisomer axis atoms
-        so they produce different molecular representations. Default is False.
 
     Returns
     -------
@@ -77,9 +72,6 @@ def make_mol(
 
     if mol is None:
         raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
-
-    if cxsmiles_stereo:
-        _apply_cxsmiles_stereo(mol, smi)
 
     if add_h:
         mol = Chem.AddHs(mol)
@@ -96,51 +88,6 @@ def make_mol(
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
-
-
-def _apply_cxsmiles_stereo(mol: Chem.Mol, cxsmiles: str) -> None:
-    """Parse CXSMILES wD/wU tags and set chiral tags on atropisomer axis atoms.
-
-    CXSMILES |wD:X.Y| and |wU:X.Y| tags encode bond stereochemistry for 2D rendering.
-    For atropisomers (restricted rotation around single bonds between aromatic rings),
-    these tags distinguish different 3D conformations that standard SMILES cannot encode.
-
-    This function sets tetrahedral chiral tags on the two atoms of the atropisomeric bond
-    to make them distinguishable to Chemprop's atom featurizer. wD bonds get CW/CCW tags
-    (different atoms), while wU bonds remain unspecified.
-
-    Parameters
-    ----------
-    mol : Chem.Mol
-        The RDKit molecule to modify.
-    cxsmiles : str
-        The original CXSMILES string containing |wD/wU| metadata.
-    """
-    if " |" not in cxsmiles:
-        return
-
-    _, metadata = cxsmiles.split(" |", 1)
-    metadata = metadata.strip("||")
-
-    for match in re.finditer(r"(wD|wU):(\d+)\.(\d+)", metadata):
-        kind = match.group(1)
-        atom_a, atom_b = int(match.group(2)), int(match.group(3))
-
-        if atom_a >= mol.GetNumAtoms() or atom_b >= mol.GetNumAtoms():
-            continue
-
-        if kind == "wD":
-            # wD (wedge down): set different chiral tags to distinguish the two atoms
-            # Only set tags on atoms that are currently UNSPECIFIED to avoid overwriting
-            # existing stereochemistry from the SMILES (e.g., [C@]/[C@@])
-            atom_a_obj = mol.GetAtomWithIdx(atom_a)
-            atom_b_obj = mol.GetAtomWithIdx(atom_b)
-
-            if atom_a_obj.GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
-                atom_a_obj.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CW)
-            if atom_b_obj.GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
-                atom_b_obj.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CCW)
-        # wU (unspecified): leave as CHI_UNSPECIFIED (default)
 
 
 def create_and_call_object(

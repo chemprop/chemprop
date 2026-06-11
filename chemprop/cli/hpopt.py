@@ -572,7 +572,6 @@ def main(args: Namespace):
         ignore_stereo=args.ignore_stereo,
         reorder_atoms=args.reorder_atoms,
         use_cuikmolmaker_featurization=args.use_cuikmolmaker_featurization,
-        cxsmiles_stereo=args.cxsmiles_stereo,
     )
 
     train_data, val_data, test_data = build_splits(args, format_kwargs, featurization_kwargs)
