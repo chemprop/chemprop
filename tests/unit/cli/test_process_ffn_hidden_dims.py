@@ -38,9 +38,9 @@ class TestProcessFFNHiddenDims:
         assert base_args.ffn_hidden_dim == [256]
         assert base_args.ffn_num_layers == 1
 
-    def test_per_layer_infer_n_layers(self, base_args):
+    def test_per_layer_explicit_n_layers(self, base_args):
         base_args.ffn_hidden_dim = [600, 300, 150]
-        base_args.ffn_num_layers = None
+        base_args.ffn_num_layers = 3
         _process_ffn_hidden_dims(base_args, "ffn_hidden_dim", "ffn_num_layers")
         assert base_args.ffn_hidden_dim == [600, 300, 150]
         assert base_args.ffn_num_layers == 3
@@ -57,14 +57,14 @@ class TestProcessFFNHiddenDims:
 
         base_args.ffn_hidden_dim = [600, 300]
         base_args.ffn_num_layers = 3
-        with pytest.raises(ArgumentError, match="must match"):
+        with pytest.raises(ArgumentError, match="must explicitly pass"):
             _process_ffn_hidden_dims(base_args, "ffn_hidden_dim", "ffn_num_layers")
 
     def test_all_ffn_variants_processed(self, base_args):
         from chemprop.cli.train import process_train_args
 
         base_args.ffn_hidden_dim = [600, 300, 150]
-        base_args.ffn_num_layers = None
+        base_args.ffn_num_layers = 3
         processed = process_train_args(base_args)
         assert processed.ffn_hidden_dim == [600, 300, 150]
         assert processed.ffn_num_layers == 3
@@ -73,7 +73,15 @@ class TestProcessFFNHiddenDims:
 
     def test_per_layer_two_values(self, base_args):
         base_args.ffn_hidden_dim = [256, 128]
-        base_args.ffn_num_layers = None
+        base_args.ffn_num_layers = 2
         _process_ffn_hidden_dims(base_args, "ffn_hidden_dim", "ffn_num_layers")
         assert base_args.ffn_hidden_dim == [256, 128]
         assert base_args.ffn_num_layers == 2
+
+    def test_mismatch_none_raises_error(self, base_args):
+        from configargparse import ArgumentError
+
+        base_args.ffn_hidden_dim = [600, 300, 150]
+        base_args.ffn_num_layers = None
+        with pytest.raises(ArgumentError, match="must explicitly pass"):
+            _process_ffn_hidden_dims(base_args, "ffn_hidden_dim", "ffn_num_layers")

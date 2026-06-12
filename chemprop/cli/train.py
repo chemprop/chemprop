@@ -294,10 +294,13 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         type=int,
         nargs="+",
         default=[300],
-        help="Hidden dimension(s) in the FFN top model. A single value is applied to all layers; multiple values specify per-layer widths (must match --ffn-num-layers or omit --ffn-num-layers)",
+        help="Hidden dimension(s) in the FFN top model. A single value is applied to all layers; multiple values specify per-layer widths (must match --ffn-num-layers)",
     )
     ffn_args.add_argument(
-        "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
+        "--ffn-num-layers",
+        type=int,
+        default=1,
+        help="Number of hidden layers in FFN top model (v2 semantics, differs from v1)",
     )
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
@@ -613,17 +616,17 @@ def _process_ffn_hidden_dims(args: Namespace, hidden_dim_key: str, n_layers_key:
     if len(hidden_dims) == 1:
         setattr(args, hidden_dim_key, [hidden_dims[0]] * n_layers)
     else:
-        if n_layers is not None and n_layers != len(hidden_dims):
+        if n_layers != len(hidden_dims):
             raise ArgumentError(
                 argument=None,
                 message=(
-                    f"--{n_layers_key.replace('_', '-')}={n_layers} but "
-                    f"--{hidden_dim_key.replace('_', '-')} has {len(hidden_dims)} values. "
-                    "When providing multiple hidden dimensions, --ffn-num-layers must match "
-                    "the count or be omitted."
+                    f"--{hidden_dim_key.replace('_', '-')} has {len(hidden_dims)} values but "
+                    f"--{n_layers_key.replace('_', '-')}={n_layers}. You must explicitly pass "
+                    f"--{n_layers_key.replace('_', '-')} {len(hidden_dims)} to match. "
+                    f"Note: --{n_layers_key.replace('_', '-')} specifies the number of hidden "
+                    f"layers (v2 semantics, differs from v1)."
                 ),
             )
-        setattr(args, n_layers_key, len(hidden_dims))
 
 
 def validate_train_args(args):
