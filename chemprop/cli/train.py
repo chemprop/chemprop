@@ -2052,17 +2052,35 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         namess = [names]
 
-    columns = args.input_columns + args.target_columns + [f"{col}_true" for col in args.target_columns]
+    columns = (
+        args.input_columns + args.target_columns + [f"{col}_true" for col in args.target_columns]
+    )
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
         formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
-            list(zip(*namess, *predicted_class_labels.T, *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])], *formatted_probability_strings.T)),
+            list(
+                zip(
+                    *namess,
+                    *predicted_class_labels.T,
+                    *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])],
+                    *formatted_probability_strings.T,
+                )
+            ),
             columns=columns,
         )
     else:
-        df_preds = pd.DataFrame(list(zip(*namess, *preds.T, *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])])), columns=columns)
+        df_preds = pd.DataFrame(
+            list(
+                zip(
+                    *namess,
+                    *preds.T,
+                    *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])],
+                )
+            ),
+            columns=columns,
+        )
 
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
@@ -2155,7 +2173,11 @@ def evaluate_and_save_MAB_predictions(
     bond_split_indices = np.cumsum(bonds_per_molecule)[:-1]
 
     if "multiclass" in args.task_type:
-        columns = columns + [f"{col}_true" for col in output_columns] + [f"{col}_prob" for col in output_columns]
+        columns = (
+            columns
+            + [f"{col}_true" for col in output_columns]
+            + [f"{col}_prob" for col in output_columns]
+        )
         mols_class_probs = (
             format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
@@ -2183,9 +2205,7 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
-        mols_true = (
-            mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
-        )
+        mols_true = mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
         atomss_true = (
             np.split(atom_targets_orig, atom_split_indices)
             if atom_targets_orig is not None
@@ -2236,9 +2256,7 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
-        mols_true = (
-            mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
-        )
+        mols_true = mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
         atomss_true = (
             np.split(atom_targets_orig, atom_split_indices)
             if atom_targets_orig is not None
