@@ -2095,9 +2095,9 @@ def evaluate_and_save_MAB_predictions(
     bond_targets_orig = test_dset.bond_Y
     if isinstance(mol_targets_orig, list):
         mol_targets_orig = np.concatenate(mol_targets_orig, axis=0)
-    if isinstance(atom_targets_orig, list):
+    if isinstance(atom_targets_orig, list) and any(a is not None for a in atom_targets_orig):
         atom_targets_orig = np.concatenate(atom_targets_orig, axis=0)
-    if isinstance(bond_targets_orig, list):
+    if isinstance(bond_targets_orig, list) and any(b is not None for b in bond_targets_orig):
         bond_targets_orig = np.concatenate(bond_targets_orig, axis=0)
 
     for targets, lt_mask, gt_mask, preds, cols, kind in zip(
@@ -2173,11 +2173,7 @@ def evaluate_and_save_MAB_predictions(
     bond_split_indices = np.cumsum(bonds_per_molecule)[:-1]
 
     if "multiclass" in args.task_type:
-        columns = (
-            columns
-            + [f"{col}_true" for col in output_columns]
-            + [f"{col}_prob" for col in output_columns]
-        )
+        columns = columns + [f"{col}_prob" for col in output_columns]
         mols_class_probs = (
             format_probability_string(mol_preds) if mol_preds is not None else [None] * len(names)
         )
@@ -2205,15 +2201,21 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
-        mols_true = mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
+        mols_true = (
+            mol_targets_orig
+            if mol_targets_orig is not None
+            and not isinstance(mol_targets_orig, list)
+            and mol_targets_orig.ndim >= 2
+            else [None] * len(names)
+        )
         atomss_true = (
             np.split(atom_targets_orig, atom_split_indices)
-            if atom_targets_orig is not None
+            if atom_targets_orig is not None and not isinstance(atom_targets_orig, list)
             else [None] * len(names)
         )
         bondss_true = (
             np.split(bond_targets_orig, bond_split_indices)
-            if bond_targets_orig is not None
+            if bond_targets_orig is not None and not isinstance(bond_targets_orig, list)
             else [None] * len(names)
         )
 
@@ -2256,15 +2258,21 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
-        mols_true = mol_targets_orig if mol_targets_orig is not None else [None] * len(names)
+        mols_true = (
+            mol_targets_orig
+            if mol_targets_orig is not None
+            and not isinstance(mol_targets_orig, list)
+            and mol_targets_orig.ndim >= 2
+            else [None] * len(names)
+        )
         atomss_true = (
             np.split(atom_targets_orig, atom_split_indices)
-            if atom_targets_orig is not None
+            if atom_targets_orig is not None and not isinstance(atom_targets_orig, list)
             else [None] * len(names)
         )
         bondss_true = (
             np.split(bond_targets_orig, bond_split_indices)
-            if bond_targets_orig is not None
+            if bond_targets_orig is not None and not isinstance(bond_targets_orig, list)
             else [None] * len(names)
         )
 
