@@ -75,6 +75,11 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--show-individual-scores",
+        "--ffn-hidden-dim",
+        "300",
+        "600",
+        "--ffn-num-layers",
+        "2",
     ]
 
     with monkeypatch.context() as m:
