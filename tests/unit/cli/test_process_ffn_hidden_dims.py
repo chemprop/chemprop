@@ -82,6 +82,6 @@ class TestProcessFFNHiddenDims:
         from configargparse import ArgumentError
 
         base_args.ffn_hidden_dim = [600, 300, 150]
-        base_args.ffn_num_layers = None
+        base_args.ffn_num_layers = 1
         with pytest.raises(ArgumentError, match="must explicitly pass"):
             _process_ffn_hidden_dims(base_args, "ffn_hidden_dim", "ffn_num_layers")
