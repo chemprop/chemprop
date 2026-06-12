@@ -4,6 +4,7 @@
 import json
 import sys
 
+import pandas as pd
 import pytest
 import torch
 
@@ -429,6 +430,31 @@ def test_train_output_structure(monkeypatch, data_path, tmp_path):
     assert (tmp_path / "model_0" / "trainer_logs" / "version_0").exists()
     assert (tmp_path / "train_smiles.csv").exists()
     assert (tmp_path / "model_0" / "test_predictions.csv").exists()
+
+
+def test_test_predictions_include_true_values(monkeypatch, data_path, tmp_path, data_dir):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    predictions_df = pd.read_csv(tmp_path / "model_0" / "test_predictions.csv")
+    assert "lipo_true" in predictions_df.columns
+    assert len(predictions_df) > 0
+    assert predictions_df["lipo_true"].notna().all()
 
 
 def test_train_output_structure_replicate_ensemble(monkeypatch, data_path, tmp_path):
