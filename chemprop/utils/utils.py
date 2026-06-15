@@ -180,12 +180,3 @@ def get_memory_usage():
     memory_mb = memory_info.rss / 1024 / 1024
 
     return f"Memory usage: {memory_mb:.2f} MB"
-
-
-def is_cuikmolmaker_available():
-    try:
-        import cuik_molmaker  # noqa: F401
-
-        return True
-    except ImportError:
-        return False

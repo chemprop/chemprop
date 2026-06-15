@@ -12,10 +12,6 @@ from chemprop.featurizers.molgraph import (
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from chemprop.utils.utils import is_cuikmolmaker_available
-
-if not is_cuikmolmaker_available():
-    pytest.skip("cuik_molmaker not installed", allow_module_level=True)
 
 
 @pytest.fixture(params=[0, 10])

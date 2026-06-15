@@ -37,7 +37,7 @@ To install the latest version of Chemprop and all of its dependencies, execute t
     # conda install chemprop
 
 .. note::
-    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It can be installed via ``conda`` with ``conda install conda-forge::cuik_molmaker>=0.2``. ``cuik-molmaker`` is automatically installed with :ref:`install-via-docker`. If installing with ``pip``, use the optional dependency ``cuik_molmaker`` and the ``--extra-index-url https://pypi.nvidia.com/rdkit-latest/`` flag,  i.e., ``pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/``. Additional RDKit versions are also supported, i.e., ``pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-2025.09.1/``. As of February 1, 2026 supported RDKit versions include 2025.03.5, 2025.3.6, and 2025.09.1. Support for additional versions may be checked by navigating to ``https://pypi.nvidia.com/`` and searching for the RDKit version number.
+    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It is a required dependency of Chemprop and is installed automatically with every installation option above: ``conda`` installs ``cuik_molmaker>0.2`` from conda-forge, and ``pip`` installs the ``cuik_molmaker_pin`` package from PyPI. ``cuik_molmaker_pin`` publishes a build for each supported RDKit release, so ``pip`` automatically selects the build matching your RDKit version with no additional index URL required.
 
 .. _`cuik-molmaker`: https://github.com/NVIDIA-Digital-Bio/cuik-molmaker
 
@@ -63,7 +63,7 @@ Option 2: Installing from source using pip
     pip install -e .
 
 .. note:: 
-    You can also use this option to install additional optional dependencies by replacing ``pip install -e .`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks,cuik_molmaker]" --extra-index-url https://pypi.nvidia.com/rdkit-latest/``.
+    You can also use this option to install additional optional dependencies by replacing ``pip install -e .`` with ``pip install -e ".[hpopt,dev,docs,test,notebooks]"``.
 
 .. _install-from-source-using-environment-yml:
 
