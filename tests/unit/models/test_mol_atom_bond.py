@@ -20,16 +20,21 @@ def ffn():
 
 
 @pytest.fixture
-def full_model(mp, agg, ffn):
+def bond_ffn(mp):
+    return RegressionFFN(input_dim=mp.output_dims[1] * 2)
+
+
+@pytest.fixture
+def full_model(mp, agg, ffn, bond_ffn):
     return MolAtomBondMPNN(
-        message_passing=mp, agg=agg, mol_predictor=ffn, atom_predictor=ffn, bond_predictor=ffn
+        message_passing=mp, agg=agg, mol_predictor=ffn, atom_predictor=ffn, bond_predictor=bond_ffn
     )
 
 
 @pytest.fixture
-def partial_model(mp, agg, ffn):
+def partial_model(mp, agg, ffn, bond_ffn):
     return MolAtomBondMPNN(
-        message_passing=mp, agg=agg, mol_predictor=ffn, atom_predictor=None, bond_predictor=ffn
+        message_passing=mp, agg=agg, mol_predictor=ffn, atom_predictor=None, bond_predictor=bond_ffn
     )
 
 
@@ -53,3 +58,13 @@ def test_criterions_lists(full_model, partial_model):
     assert isinstance(partial_model.criterions[0], MSE)
     assert partial_model.criterions[1] is None
     assert isinstance(partial_model.criterions[2], MSE)
+
+
+def test_bond_predictor_dim_validation(mp, agg, ffn):
+    """bond_predictor with wrong input_dim should raise ValueError."""
+    wrong_bond_ffn = RegressionFFN()  # default input_dim=300, expects 600
+    with pytest.raises(ValueError, match="bond_predictor input_dim"):
+        MolAtomBondMPNN(
+            message_passing=mp, agg=agg, mol_predictor=ffn,
+            atom_predictor=ffn, bond_predictor=wrong_bond_ffn
+        )

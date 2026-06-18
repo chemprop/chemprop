@@ -135,6 +135,31 @@ class MolAtomBondMPNN(pl.LightningModule):
         self.atom_predictor = atom_predictor
         self.atom_constrainer = atom_constrainer
 
+        # Validate predictor input dimensions match message passing output dimensions.
+        # Note: bond fingerprints are doubled via concatenation with reverse-edge embeddings
+        # in fingerprint(), so bond_predictor.input_dim must be 2 * output_dims[1].
+        mp_v_dim, mp_e_dim = message_passing.output_dims
+        if mol_predictor is not None and mp_v_dim is not None and mol_predictor.input_dim != mp_v_dim:
+            raise ValueError(
+                f"mol_predictor input_dim ({mol_predictor.input_dim}) does not match "
+                f"message passing vertex output dim ({mp_v_dim})."
+            )
+        if atom_predictor is not None and mp_v_dim is not None and atom_predictor.input_dim != mp_v_dim:
+            raise ValueError(
+                f"atom_predictor input_dim ({atom_predictor.input_dim}) does not match "
+                f"message passing vertex output dim ({mp_v_dim})."
+            )
+        if bond_predictor is not None and mp_e_dim is not None:
+            expected_bond_dim = mp_e_dim * 2
+            if bond_predictor.input_dim != expected_bond_dim:
+                raise ValueError(
+                    f"bond_predictor input_dim ({bond_predictor.input_dim}) does not match "
+                    f"the expected bond fingerprint dim ({expected_bond_dim}). "
+                    f"fingerprint() concatenates forward and reverse edge embeddings, "
+                    f"doubling the edge dimension from {mp_e_dim} to {expected_bond_dim}. "
+                    f"Set bond_predictor input_dim={expected_bond_dim}."
+                )
+
         if bond_predictor is not None:
 
             def wrapped_bond_fn(m, fn):
