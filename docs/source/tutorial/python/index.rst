@@ -36,6 +36,7 @@ Other module and workflow tutorials:
 * :doc:`saving_and_loading`
 * :doc:`ensembling`
 * :doc:`scaling`
+* :doc:`callbacks`
 
 .. toctree::
     :maxdepth: 1

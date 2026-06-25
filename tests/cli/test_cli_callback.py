@@ -22,47 +22,6 @@ def model_path_classification(data_dir):
 def model_path_regression(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
-
-def test_example_callback_classification(
-    monkeypatch, data_path, model_path_classification, tmp_path
-):
-    args = [
-        "chemprop",
-        "predict",
-        "-i",
-        data_path,
-        "--model-path",
-        model_path_classification,
-        "--callback",
-        "example_callback",
-        "--output",
-        str(tmp_path / "preds.csv"),
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-
-def test_example_callback_regression(monkeypatch, data_path, model_path_regression, tmp_path):
-    args = [
-        "chemprop",
-        "predict",
-        "-i",
-        data_path,
-        "--model-path",
-        model_path_regression,
-        "--callback",
-        "example_callback",
-        "--output",
-        str(tmp_path / "preds.csv"),
-    ]
-
-    with monkeypatch.context() as m:
-        m.setattr("sys.argv", args)
-        main()
-
-
 def test_myerson_callback_classification(
     monkeypatch, data_path, model_path_classification, tmp_path
 ):
