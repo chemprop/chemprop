@@ -1,5 +1,5 @@
 import logging
-import pickle
+import json
 import typing
 from pathlib import Path
 
@@ -25,9 +25,13 @@ logger = logging.getLogger(__name__)
 class MyersonExplainerCallback(Callback):
     """A :class:`MyersonExplainerCallback` calculates and saves Myerson explanations during a `predict` call.
 
-    The explanations are saved as a npz file where each array ``arr_0, arr_1, ...`` contains the Myerson values for one molecule.
-    The ``myerson_values`` will be list of 1D or 2D arrays of shape ``num_mols`` (for regression / binary classication)
-    or ``num_mols x num_classes`` (multilabel binary classification) containing the explanations.
+    The explanations are saved as a compressed NumPy archive (:code:`.npz` file) by default.
+    Each molecule's explanation is saved as a separate array within the archive (e.g., :code:`arr_0`, :code:`arr_1`, etc.).
+    Each array will be a 1D or 2D NumPy array of shape :code:`num_atoms` (for regression or binary classification)
+    or :code:`num_atoms x num_classes` (for multi-class classification) containing the explanation for one molecule.
+
+    Alternatively, if :code:`save_as_json` is set to `True`, the explanations are saved as a JSON file.
+    The JSON file contains a list of explanations, where each explanation corresponds to a molecule. For 2D explanations (multi-class), each inner list represents a column (i.e., attributions for a specific class across all atoms).
 
     Parameters
     ----------
@@ -37,11 +41,14 @@ class MyersonExplainerCallback(Callback):
         The path to the output file for saving predictions, used to derive the explanation file path.
     sampling_threshold : int, default=20
         The maximum number of atoms in a molecule for which to use the exact explainer. For molecules with more atoms, a sampling-based explainer is used.
+    save_as_json : bool, default=False
+        If `True`, save the explanations as a JSON file instead of a npz file.
     """
 
-    def __init__(self, model_paths: list[Path], output: Path, sampling_threshold: int = 20):
+    def __init__(self, model_paths: list[Path], output: Path, sampling_threshold: int = 20, save_as_json: bool = False):
         super().__init__()
         self.sampling_threshold = sampling_threshold
+        self.save_as_json = save_as_json
 
         logger.warning(
             "The 'myerson' callback can be computationally expensive and may significantly increase "
@@ -123,7 +130,22 @@ class MyersonExplainerCallback(Callback):
 
     def on_predict_end(self, trainer, pl_module):
         model_counter_string = "" if self.max_model_counter == 0 else f"_{self.model_counter}"
-        save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}.npz"
-        np.savez_compressed(save_path, *self.explanations)
+
+        if self.save_as_json:
+            file_extension = ".json"
+            save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            explanations_for_json = []
+            for arr in self.explanations:
+                if arr.ndim == 2:
+                    explanations_for_json.append(arr.T.tolist())
+                else:
+                    explanations_for_json.append(arr.tolist())
+            with open(save_path, "w") as f:
+                json.dump(explanations_for_json, f, indent=4)
+        else:
+            file_extension = ".npz"
+            save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            np.savez_compressed(save_path, *self.explanations)
+
         logger.info(f"Myerson explanations saved to {save_path}")
         self.model_counter += 1

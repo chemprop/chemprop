@@ -1,5 +1,6 @@
 """This tests the CLI functionality of predicting with a callback.
 """
+import json
 
 import pytest
 
@@ -44,6 +45,31 @@ def test_myerson_callback_classification(
 
     assert (tmp_path / "preds.csv").exists()
     assert (tmp_path / "preds_myerson_explanation.npz").exists()
+
+
+def test_myerson_callback_json_output(monkeypatch, data_path, model_path_regression, tmp_path):
+    callback_params = {"save_as_json": True}
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        data_path,
+        "--model-path",
+        model_path_regression,
+        "--callback",
+        "myerson",
+        "--output",
+        str(tmp_path / "preds.csv"),
+        "--callback-params",
+        json.dumps(callback_params),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "preds.csv").exists()
+    assert (tmp_path / "preds_myerson_explanation.json").exists()
 
 
 def test_myerson_callback_regression(monkeypatch, data_path, model_path_regression, tmp_path):
