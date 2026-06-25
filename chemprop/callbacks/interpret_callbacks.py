@@ -1,6 +1,7 @@
 import logging
 import pickle
 import typing
+from pathlib import Path
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
@@ -30,17 +31,19 @@ class MyersonExplainerCallback(Callback):
 
     Parameters
     ----------
-    cli_args : Namespace
-        All `predict` command line arguments.
+    model_paths : list[Path]
+        A list of paths to the models to be used for explanations.
+    output : Path
+        The path to the output file for saving predictions, used to derive the explanation file path.
     sampling_threshold : int, default=20
-        Maximum number of nodes in a molecule before switching to the sampling explainer.
+        The maximum number of atoms in a molecule for which to use the exact explainer. For molecules with more atoms, a sampling-based explainer is used.
     """
 
-    def __init__(self, cli_args, sampling_threshold: int = 20):
+    def __init__(self, model_paths: list[Path], output: Path, sampling_threshold: int = 20):
         super().__init__()
         self.sampling_threshold = sampling_threshold
 
-        model_paths = find_models(cli_args.model_paths)
+        model_paths = find_models(model_paths)
 
         model_file = torch.load(
             model_paths[0], map_location=torch.device("cpu"), weights_only=False
@@ -64,8 +67,8 @@ class MyersonExplainerCallback(Callback):
         self.model_counter = 0
         self.max_model_counter = len(model_paths) - 1
 
-        self.output_filename_base = cli_args.output.stem + "_myerson_explanation"
-        self.output_path_dir = cli_args.output.parent
+        self.output_filename_base = output.stem + "_myerson_explanation"
+        self.output_path_dir = output.parent
 
     def on_predict_start(self, trainer, pl_module):
         if pl_module.predictor.__class__.__name__ not in [

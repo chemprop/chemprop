@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from lightning.pytorch.callbacks import Callback
 
 from chemprop.callbacks import CallbackRegistry
@@ -5,7 +7,7 @@ from chemprop.callbacks import CallbackRegistry
 
 @CallbackRegistry.register("example_callback")
 class ExampleCallback(Callback):
-    def __init__(self, cli_args):
+    def __init__(self, model_paths: list[Path], output: Path):
         super().__init__()
 
     def on_predict_epoch_start(self, trainer, pl_module):
