@@ -84,7 +84,7 @@ def test_myerson_callback_classification(
         main()
 
     assert (tmp_path / "preds.csv").exists()
-    assert (tmp_path / "preds_myerson_explanation.pkl").exists()
+    assert (tmp_path / "preds_myerson_explanation.npz").exists()
 
 
 def test_myerson_callback_regression(monkeypatch, data_path, model_path_regression, tmp_path):
@@ -106,4 +106,4 @@ def test_myerson_callback_regression(monkeypatch, data_path, model_path_regressi
         main()
 
     assert (tmp_path / "preds.csv").exists()
-    assert (tmp_path / "preds_myerson_explanation.pkl").exists()
+    assert (tmp_path / "preds_myerson_explanation.npz").exists()

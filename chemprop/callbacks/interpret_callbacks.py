@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class MyersonExplainerCallback(Callback):
     """A :class:`MyersonExplainerCallback` calculates and saves Myerson explanations during a `predict` call.
 
-    The explanations are saved as a pickle file containing a dictionary with the keys ``myerson_values`` and ``sampled``.
+    The explanations are saved as a npz file where each array ``arr_0, arr_1, ...`` contains the Myerson values for one molecule.
     The ``myerson_values`` will be list of 1D or 2D arrays of shape ``num_mols`` (for regression / binary classication)
     or ``num_mols x num_classes`` (multilabel binary classification) containing the explanations.
 
@@ -76,7 +76,6 @@ class MyersonExplainerCallback(Callback):
                 f"Myerson explanations are only implemented for BinaryClassificationFNN and RegressionFFN. Got {pl_module.predictor.__class__.__name__}"
             )
         self.mol_idxs = []
-        self.sampled = []
         self.explanations = []
 
     @property
@@ -107,26 +106,16 @@ class MyersonExplainerCallback(Callback):
                 if num_nodes > self.sampling_threshold:
                     sampler = sampler_cls(mg, pl_module)
                     my_values = sampler.sample_all_myerson_values()
-                    xai_type = "sampled"
                 else:
                     explainer = explainer_cls(mg, pl_module)
                     my_values = explainer.calculate_all_myerson_values()
-                    xai_type = "exact"
 
                 self.mol_idxs.append(i)
-                self.sampled.append([xai_type == "sampled"])
                 self.explanations.append(my_values)
 
     def on_predict_end(self, trainer, pl_module):
         model_counter_string = "" if self.max_model_counter == 0 else f"_{self.model_counter}"
-        save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}.pkl"
-        with open(save_path, "wb") as f:
-            pickle.dump(
-                {
-                    "myerson_values": self.explanations,
-                    "sampled": np.array(self.sampled, dtype=bool),
-                },
-                f,
-            )
+        save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}.npz"
+        np.savez_compressed(save_path, *self.explanations)
         logger.info(f"Myerson explanations saved to {save_path}")
         self.model_counter += 1

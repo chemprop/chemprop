@@ -14,9 +14,8 @@ Myerson Values
 A Myerson explainer calculates and saves Myerson explanations during a :code:`predict` call using the `myerson <https://myerson.readthedocs.io/en/latest/>`_ package.
 It can be invoked by passing :code:`--callback myerson` to the :code:`chemprop predict` command.
 
-The explanations take the form of node attributions and are saved as a pickle file containing a dictionary with the keys :code:`myerson_values` and :code:`sampled`.
-The :code:`myerson_values` will be a list of 1D or 2D arrays of shape :code:`num_atoms` (for regression or binary classification)
-or :code:`num_atoms x num_classes` (for multilabel binary classification) containing the explanations.
+The explanations take the form of node attributions and are saved as a compressed NumPy archive (:code:`.npz` file). Each molecule's explanation is saved as a separate array within the archive (e.g., :code:`arr_0`, :code:`arr_1`, etc.).
+Each array will be a 1D or 2D NumPy array of shape :code:`num_atoms` (for regression or binary classification) or :code:`num_atoms x num_classes` (for multi-class classification) containing the explanation for one molecule.
 
 By default, molecules with more than 20 nodes will use a sampling explainer instead of the exact explainer.
 This threshold is controlled by the :code:`sampling_threshold` parameter (currently hardcoded to 20 when using the CLI).
