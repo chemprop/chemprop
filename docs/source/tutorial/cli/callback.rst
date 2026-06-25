@@ -18,10 +18,11 @@ The explanations take the form of node attributions and are saved as a compresse
 Each array will be a 1D or 2D NumPy array of shape :code:`num_atoms` (for regression or binary classification) or :code:`num_atoms x num_classes` (for multi-class classification) containing the explanation for one molecule.
 
 By default, molecules with more than 20 nodes will use a sampling explainer instead of the exact explainer.
-This threshold is controlled by the :code:`sampling_threshold` parameter (currently hardcoded to 20 when using the CLI).
+This threshold is controlled by the :code:`sampling_threshold` parameter, which can be set using the :code:`--callback-params` flag, which expects a JSON string.
 
 Myerson Explanations are not supported for atom or bond level predictions. Furthermore, they are only implemented for models using a :code:`BinaryClassificationFFN` or :code:`RegressionFFN`.
 
 .. code-block::
    
     chemprop predict --test-path tests/data/smis.csv --model-paths tests/data/example_model_v2_regression_mol.ckpt --callback myerson
+    chemprop predict --test-path tests/data/smis.csv --model-paths tests/data/example_model_v2_regression_mol.ckpt --callback myerson --callback-params '{"sampling_threshold": 25}'
