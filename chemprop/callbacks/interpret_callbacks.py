@@ -1,5 +1,6 @@
 import logging
 import pickle
+import typing
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
@@ -67,7 +68,7 @@ class MyersonExplainerCallback(Callback):
         self.output_path_dir = cli_args.output.parent
 
     def on_predict_start(self, trainer, pl_module):
-        if f"{pl_module.predictor.__class__.__name__}" not in [
+        if pl_module.predictor.__class__.__name__ not in [
             "BinaryClassificationFFN",
             "RegressionFFN",
         ]:
@@ -75,7 +76,6 @@ class MyersonExplainerCallback(Callback):
                 f"Myerson explanations are only implemented for BinaryClassificationFNN and RegressionFFN. Got {pl_module.predictor.__class__.__name__}"
             )
         self.mol_idxs = []
-        self.per_mol_atom_idxs = []
         self.sampled = []
         self.explanations = []
 
@@ -89,8 +89,8 @@ class MyersonExplainerCallback(Callback):
         self,
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
-        outputs: any,
-        batch: any,
+        outputs: typing.Any,
+        batch: typing.Any,
         batch_idx: int,
         dataloader_idx: int = 0,
     ):
@@ -128,5 +128,5 @@ class MyersonExplainerCallback(Callback):
                 },
                 f,
             )
-        logger.info(f"Myerson explanations to {save_path}")
+        logger.info(f"Myerson explanations saved to {save_path}")
         self.model_counter += 1

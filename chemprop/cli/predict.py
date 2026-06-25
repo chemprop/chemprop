@@ -402,7 +402,6 @@ def make_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
-    # TODO: allow multiple callbacks
     callbacks = (
         [Factory.build(CallbackRegistry[args.callback], args, **args.callback_params)]
         if args.callback
