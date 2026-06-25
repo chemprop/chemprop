@@ -43,6 +43,11 @@ class MyersonExplainerCallback(Callback):
         super().__init__()
         self.sampling_threshold = sampling_threshold
 
+        logger.warning(
+            "The 'myerson' callback can be computationally expensive and may significantly increase "
+            "runtime, especially with large batch sizes."
+        )
+
         model_paths = find_models(model_paths)
 
         model_file = torch.load(
