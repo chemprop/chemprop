@@ -4,6 +4,6 @@ from chemprop.utils.registry import ClassRegistry
 
 CallbackRegistry = ClassRegistry[Callback]()
 
-from .interpret_callbacks import MyersonExplainerCallback
+from .interpret import MyersonExplainerCallback
 
 __all__ = ["CallbackRegistry", "MyersonExplainerCallback"]
