@@ -77,6 +77,8 @@ Option 3: Installing from source using environment.yml
     conda env create -f environment.yml
     conda activate chemprop
     pip install --no-deps -e .
+.. note::
+    The ``--no-deps`` argument is needed to prevent pip from installing dependencies that are already provided by the ``environment.yml`` file. This avoids conflicts and ensures that key packages such as ``rdkit`` and ``cuik_molmaker`` are installed from conda rather than overwritten by pip, which could otherwise lead to incompatibilities or runtime errors.
 
 .. _install-via-docker:
 
