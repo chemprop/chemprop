@@ -37,7 +37,7 @@ To install the latest version of Chemprop and all of its dependencies, execute t
     # conda install chemprop
 
 .. note::
-    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit, and thereby accelerates training and inference. It is a required dependency of Chemprop and is installed automatically with every installation option above: ``conda`` installs ``cuik_molmaker>0.2`` from conda-forge, and ``pip`` installs the ``cuik_molmaker_pin`` package from PyPI. ``cuik_molmaker_pin`` publishes a build for each supported RDKit release, so ``pip`` automatically selects the build matching your RDKit version with no additional index URL required.
+    `cuik-molmaker`_ is a package that accelerates featurization of molecules using RDKit. It is installed by default with all installation options and can be used to accelerate training and inference. 
 
 .. _`cuik-molmaker`: https://github.com/NVIDIA-Digital-Bio/cuik-molmaker
 
