@@ -76,7 +76,7 @@ Option 3: Installing from source using environment.yml
     cd chemprop
     conda env create -f environment.yml
     conda activate chemprop
-    pip install -e .
+    pip install --no-deps -e .
 
 .. _install-via-docker:
 
