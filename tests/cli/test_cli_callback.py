@@ -23,6 +23,7 @@ def model_path_classification(data_dir):
 def model_path_regression(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
+
 def test_myerson_callback_classification(
     monkeypatch, data_path, model_path_classification, tmp_path
 ):

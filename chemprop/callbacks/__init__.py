@@ -2,8 +2,9 @@ from lightning.pytorch.callbacks import Callback
 
 from chemprop.utils.registry import ClassRegistry
 
+from .interpret import MyersonExplainerCallback
+
 CallbackRegistry = ClassRegistry[Callback]()
 
-from .interpret import MyersonExplainerCallback
 
 __all__ = ["CallbackRegistry", "MyersonExplainerCallback"]

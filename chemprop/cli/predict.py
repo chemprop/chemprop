@@ -403,7 +403,11 @@ def make_prediction_for_models(
     )
 
     callbacks = (
-        [Factory.build(CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params)]
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
         if args.callback
         else None
     )
@@ -609,7 +613,11 @@ def make_MAB_prediction_for_models(
     )
 
     callbacks = (
-        [Factory.build(CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params)]
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
         if args.callback
         else None
     )

@@ -1,7 +1,7 @@
-import logging
 import json
-import typing
+import logging
 from pathlib import Path
+import typing
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
@@ -45,7 +45,13 @@ class MyersonExplainerCallback(Callback):
         If `True`, save the explanations as a JSON file instead of a npz file.
     """
 
-    def __init__(self, model_paths: list[Path], output: Path, sampling_threshold: int = 20, save_as_json: bool = False):
+    def __init__(
+        self,
+        model_paths: list[Path],
+        output: Path,
+        sampling_threshold: int = 20,
+        save_as_json: bool = False,
+    ):
         super().__init__()
         self.sampling_threshold = sampling_threshold
         self.save_as_json = save_as_json
@@ -133,7 +139,10 @@ class MyersonExplainerCallback(Callback):
 
         if self.save_as_json:
             file_extension = ".json"
-            save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            save_path = (
+                self.output_path_dir
+                / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            )
             explanations_for_json = []
             for arr in self.explanations:
                 if arr.ndim == 2:
@@ -144,7 +153,10 @@ class MyersonExplainerCallback(Callback):
                 json.dump(explanations_for_json, f, indent=4)
         else:
             file_extension = ".npz"
-            save_path = self.output_path_dir / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            save_path = (
+                self.output_path_dir
+                / f"{self.output_filename_base}{model_counter_string}{file_extension}"
+            )
             np.savez_compressed(save_path, *self.explanations)
 
         logger.info(f"Myerson explanations saved to {save_path}")
