@@ -359,8 +359,7 @@ class CuikmolmakerCGRFeaturizer(Featurizer[tuple[list[str], list[str]], BatchCui
         )
         self.bond_property_list = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
-        mode_arr = cuik_molmaker.reaction_mode_names_to_array([self.reaction_mode.upper()])
-        self._mode_int = int(mode_arr[0])
+        self._mode_int = int(cuik_molmaker.reaction_mode_to_int(self.reaction_mode.upper()))
 
     def __call__(
         self, reac_smiles_list: list[str], prod_smiles_list: list[str]
