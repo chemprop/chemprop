@@ -31,7 +31,7 @@ class MyersonExplainerCallback(Callback):
     or :code:`num_atoms x num_classes` (for multi-label classification) containing the explanation for one molecule.
 
     Alternatively, if :code:`save_as_json` is set to `True`, the explanations are saved as a JSON file.
-    The JSON file contains a list of explanations, where each explanation corresponds to a molecule. For 2D explanations (multi-class), each inner list represents a column (i.e., attributions for a specific class across all atoms).
+    The JSON file contains a list of explanations, where each explanation corresponds to a molecule. For 2D explanations (multi-label), each inner list represents a column (i.e., attributions for a specific label across all atoms).
 
     Parameters
     ----------
