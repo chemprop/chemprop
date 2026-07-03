@@ -118,3 +118,9 @@ Evaluation scores will only appear in the output trace. Multiple evaluation meth
 Different evaluation metrics consider different aspects of uncertainty. It is often appropriate to consider multiple metrics. For intance, miscalibration error is important for evaluating uncertainty magnitude but does not indicate that the uncertainty function discriminates well between different outputs. Similarly, spearman tests ordering but not prediction magnitude.
 
 Evaluations can be used to compare different uncertainty methods and different calibration methods for a given dataset. Using evaluations to compare between datasets may not be a fair comparison and should be done cautiously.
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    callback

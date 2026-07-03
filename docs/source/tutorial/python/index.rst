@@ -62,3 +62,4 @@ Other module and workflow tutorials:
     saving_and_loading
     ensembling
     scaling
+    callbacks
