@@ -28,7 +28,7 @@ class MyersonExplainerCallback(Callback):
     The explanations are saved as a compressed NumPy archive (:code:`.npz` file) by default.
     Each molecule's explanation is saved as a separate array within the archive (e.g., :code:`arr_0`, :code:`arr_1`, etc.).
     Each array will be a 1D or 2D NumPy array of shape :code:`num_atoms` (for regression or binary classification)
-    or :code:`num_atoms x num_classes` (for multi-class classification) containing the explanation for one molecule.
+    or :code:`num_atoms x num_classes` (for multi-label classification) containing the explanation for one molecule.
 
     Alternatively, if :code:`save_as_json` is set to `True`, the explanations are saved as a JSON file.
     The JSON file contains a list of explanations, where each explanation corresponds to a molecule. For 2D explanations (multi-class), each inner list represents a column (i.e., attributions for a specific class across all atoms).
@@ -40,7 +40,8 @@ class MyersonExplainerCallback(Callback):
     output : Path
         The path to the output file for saving predictions, used to derive the explanation file path.
     sampling_threshold : int, default=20
-        The maximum number of atoms in a molecule for which to use the exact explainer. For molecules with more atoms, a sampling-based explainer is used.
+        The maximum number of atoms in a molecule for which to use the exact explainer. For
+        molecules with more atoms, a sampling-based explainer is used.
     save_as_json : bool, default=False
         If `True`, save the explanations as a JSON file instead of a npz file.
     """
