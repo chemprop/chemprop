@@ -631,14 +631,12 @@ def main(args: Namespace):
     else:
         if isinstance(train_loader.dataset, MolAtomBondDataset):
             model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-            monitor_mode = (
-                "max"
-                if next(m[0].higher_is_better for m in model.metricss if m is not None)
-                else "min"
-            )
+            T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
+            monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         else:
             model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-            monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+            T_tracking_metric = model.criterion.__class__
+            monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms
