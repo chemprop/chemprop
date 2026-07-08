@@ -12,8 +12,10 @@ dependencies:
   - numpy
   - pandas
   - rdkit
+  - cuik_molmaker >0.2
   - scikit-learn
   - scipy
   - rich
   - descriptastorus
   - pydantic
+  - myerson>=1.0.1
