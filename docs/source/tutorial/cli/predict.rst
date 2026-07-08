@@ -40,6 +40,10 @@ Performant Prediction
 
 Prediction can be accelerated using molecular featurizer package called ``cuik-molmaker``. This package is installed automatically with Chemprop (see :ref:`installation`). In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
 
+Custom Callbacks
+----------------
+
+Custom `callbacks <https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html>`_ can be supplied using the :code:`--callback <cb>` flag, for example to generate additional explanations for the predictions using :ref:`Myerson Values <callback>`.
 
 Uncertainty Quantification
 --------------------------
@@ -114,3 +118,9 @@ Evaluation scores will only appear in the output trace. Multiple evaluation meth
 Different evaluation metrics consider different aspects of uncertainty. It is often appropriate to consider multiple metrics. For intance, miscalibration error is important for evaluating uncertainty magnitude but does not indicate that the uncertainty function discriminates well between different outputs. Similarly, spearman tests ordering but not prediction magnitude.
 
 Evaluations can be used to compare different uncertainty methods and different calibration methods for a given dataset. Using evaluations to compare between datasets may not be a fair comparison and should be done cautiously.
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    callback

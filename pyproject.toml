@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chemprop"
 description = "Molecular Property Prediction with Message Passing Neural Networks"
-version = "2.2.3"
+version = "2.2.4"
 authors = [
     {name = "The Chemprop Development Team (see LICENSE.txt)", email="chemprop@mit.edu"}
 ]
@@ -41,6 +41,7 @@ dependencies = [
     "rich",
     "descriptastorus",
     "cuik_molmaker_pin",
+    "myerson>=1.0.1",
 ]
 
 [project.optional-dependencies]
