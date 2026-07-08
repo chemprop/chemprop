@@ -84,4 +84,4 @@ for TAG in $TAGS; do
     echo "Saved pip freeze output to $OUTPUT_FILE"
 done
 
-echo "Processing complete."
+echo "Processing complete - manually inspect results to fix cuik-molmaker naming (see README.md)."

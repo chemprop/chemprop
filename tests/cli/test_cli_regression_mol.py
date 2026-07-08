@@ -11,7 +11,6 @@ from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
-from chemprop.utils.utils import is_cuikmolmaker_available
 
 pytestmark = pytest.mark.CLI
 
@@ -209,7 +208,6 @@ def test_train_quick_features(monkeypatch, data_path):
             main()
 
 
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
 def test_train_quick_features_cuikmolmaker(monkeypatch, data_path):
     (
         input_path,
@@ -253,7 +251,6 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
 def test_predict_quick_cuikmolmaker(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = [

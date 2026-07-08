@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
+import cuik_molmaker
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import Mol
@@ -10,10 +11,6 @@ from torch import Tensor
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer, GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
-from chemprop.utils.utils import is_cuikmolmaker_available
-
-if is_cuikmolmaker_available():
-    import cuik_molmaker
 
 
 @dataclass
@@ -154,11 +151,6 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
     bond_fdim: int = field(init=False)
 
     def __post_init__(self):
-        if not is_cuikmolmaker_available():
-            raise ImportError(
-                "CuikmolmakerMolGraphFeaturizer requires cuik-molmaker package to be installed. "
-                "Please install it using `pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/` or '`conda install conda-forge::cuik_molmaker>=0.2`'"
-            )
         atom_props_float = ["aromatic", "mass"]
         bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
         self.bond_fdim = 14
