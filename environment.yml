@@ -18,3 +18,4 @@ dependencies:
   - rich
   - descriptastorus
   - pydantic
+  - myerson>=1.0.1
