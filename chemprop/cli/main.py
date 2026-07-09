@@ -4,6 +4,7 @@ import sys
 
 from configargparse import ArgumentParser
 
+import chemprop
 from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 from chemprop.cli.convert import ConvertSubcommand
 from chemprop.cli.fingerprint import FingerprintSubcommand
@@ -24,7 +25,13 @@ SUBCOMMANDS = [
 
 
 def construct_parser():
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        prog=f"chemprop {chemprop.__version__}",
+        description="Chemprop is a deep learning toolkit for molecular machine learning.",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"{parser.prog}"
+    )
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
 
     parent = ArgumentParser(add_help=False)
