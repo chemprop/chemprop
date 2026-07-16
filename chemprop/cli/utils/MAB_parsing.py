@@ -5,7 +5,7 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-from chemprop.data import MolAtomBondDatapoint
+from chemprop.data import LazyMolAtomBondDatapoint, MolAtomBondDatapoint
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.utils import create_and_call_object, make_mol, parallel_execute
 
@@ -28,6 +28,7 @@ def build_MAB_data_from_files(
     molecule_featurizers: Sequence[str] | None,
     descriptor_cols: Sequence[str] | None = None,
     n_workers: int = 0,
+    use_cuikmolmaker_featurization: bool = False,
     **make_mol_kwargs,
 ):
     df = pd.read_csv(p_data, index_col=False)
@@ -35,10 +36,19 @@ def build_MAB_data_from_files(
     X_d_extra = df[descriptor_cols] if descriptor_cols else None
 
     smis = df[smiles_cols[0]].values if smiles_cols is not None else df.iloc[:, 0].values
-    mols = parallel_execute(
-        make_mol, [(smi,) + tuple(make_mol_kwargs.values()) for smi in smis], n_workers=n_workers
-    )
-    n_datapoints = len(mols)
+    n_datapoints = len(smis)
+
+    if use_cuikmolmaker_featurization:
+        # Molecules are featurized lazily (and in batch) by cuik-molmaker from the SMILES
+        # strings directly, so building `Chem.Mol`s eagerly here would defeat the memory savings
+        # that motivate the cuik-molmaker path in the first place.
+        mols = None
+    else:
+        mols = parallel_execute(
+            make_mol,
+            [(smi,) + tuple(make_mol_kwargs.values()) for smi in smis],
+            n_workers=n_workers,
+        )
 
     weights = (
         df[weight_col].values if weight_col is not None else np.ones(n_datapoints, dtype=np.single)
@@ -78,12 +88,24 @@ def build_MAB_data_from_files(
 
     if molecule_featurizers is not None:
         molecule_featurizers = [MoleculeFeaturizerRegistry[mf]() for mf in molecule_featurizers]
+        # `LazyMolAtomBondDatapoint` builds the `Chem.Mol` when its `mol` attribute is accessed
+        # instead of accepting it as an argument, so molecules must be (re-)built here to compute
+        # molecule featurizer descriptors, even under `use_cuikmolmaker_featurization`.
+        featurizer_mols = (
+            mols
+            if mols is not None
+            else parallel_execute(
+                make_mol,
+                [(smi,) + tuple(make_mol_kwargs.values()) for smi in smis],
+                n_workers=n_workers,
+            )
+        )
         mol_descriptors = np.hstack(
             [
                 np.vstack(
                     parallel_execute(
                         create_and_call_object,
-                        [(mf.__class__, (mol,)) for mol in mols],
+                        [(mf.__class__, (mol,)) for mol in featurizer_mols],
                         n_workers=n_workers,
                     )
                 )
@@ -180,6 +202,14 @@ def build_MAB_data_from_files(
                 for bond_ys in bonds_ys
             ]
             if bonds_ys[0].ndim == 3:
+                if use_cuikmolmaker_featurization:
+                    raise ValueError(
+                        "Bond targets given as a full adjacency matrix are not supported when "
+                        "using `--use-cuikmolmaker-featurization`, as flattening them to "
+                        "per-bond values requires building an RDKit `Mol` for every molecule. "
+                        "Provide bond targets as a flat list ordered by RDKit bond index instead, "
+                        "or omit `--use-cuikmolmaker-featurization`."
+                    )
                 bonds_ys_1D = []
                 for mol, bonds_y in zip(mols, bonds_ys):
                     bond_vals = [0] * mol.GetNumBonds()
@@ -232,29 +262,59 @@ def build_MAB_data_from_files(
                 ]
             )
 
-    datapoints = [
-        MolAtomBondDatapoint(
-            mol=mols[i],
-            name=smis[i],
-            y=mol_ys[i],
-            atom_y=atoms_ys[i],
-            bond_y=bonds_ys[i],
-            weight=weights[i],
-            x_d=X_ds[i],
-            V_f=V_fs[i],
-            V_d=V_ds[i],
-            E_f=E_fs[i],
-            E_d=E_ds[i],
-            lt_mask=lt_mask[i],
-            gt_mask=gt_mask[i],
-            atom_lt_mask=atom_lt_masks[i],
-            atom_gt_mask=atom_gt_masks[i],
-            bond_lt_mask=bond_lt_masks[i],
-            bond_gt_mask=bond_gt_masks[i],
-            atom_constraint=atom_constraints[i],
-            bond_constraint=bond_constraints[i],
-        )
-        for i in range(n_datapoints)
-    ]
+    if use_cuikmolmaker_featurization:
+        datapoints = [
+            LazyMolAtomBondDatapoint(
+                smiles=smis[i],
+                _keep_h=make_mol_kwargs["keep_h"],
+                _add_h=make_mol_kwargs["add_h"],
+                _ignore_stereo=make_mol_kwargs["ignore_stereo"],
+                _reorder_atoms=make_mol_kwargs["reorder_atoms"],
+                name=smis[i],
+                y=mol_ys[i],
+                atom_y=atoms_ys[i],
+                bond_y=bonds_ys[i],
+                weight=weights[i],
+                x_d=X_ds[i],
+                V_f=V_fs[i],
+                V_d=V_ds[i],
+                E_f=E_fs[i],
+                E_d=E_ds[i],
+                lt_mask=lt_mask[i],
+                gt_mask=gt_mask[i],
+                atom_lt_mask=atom_lt_masks[i],
+                atom_gt_mask=atom_gt_masks[i],
+                bond_lt_mask=bond_lt_masks[i],
+                bond_gt_mask=bond_gt_masks[i],
+                atom_constraint=atom_constraints[i],
+                bond_constraint=bond_constraints[i],
+            )
+            for i in range(n_datapoints)
+        ]
+    else:
+        datapoints = [
+            MolAtomBondDatapoint(
+                mol=mols[i],
+                name=smis[i],
+                y=mol_ys[i],
+                atom_y=atoms_ys[i],
+                bond_y=bonds_ys[i],
+                weight=weights[i],
+                x_d=X_ds[i],
+                V_f=V_fs[i],
+                V_d=V_ds[i],
+                E_f=E_fs[i],
+                E_d=E_ds[i],
+                lt_mask=lt_mask[i],
+                gt_mask=gt_mask[i],
+                atom_lt_mask=atom_lt_masks[i],
+                atom_gt_mask=atom_gt_masks[i],
+                bond_lt_mask=bond_lt_masks[i],
+                bond_gt_mask=bond_gt_masks[i],
+                atom_constraint=atom_constraints[i],
+                bond_constraint=bond_constraints[i],
+            )
+            for i in range(n_datapoints)
+        ]
 
     return [datapoints]

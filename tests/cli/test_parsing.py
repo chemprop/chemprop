@@ -160,6 +160,32 @@ def test_MAB_parsing_constrained_error(data_dir):
         )
 
 
+def test_MAB_parsing_cuikmolmaker_matrix_bond_targets_error(data_dir):
+    with pytest.raises(ValueError, match="adjacency matrix"):
+        build_MAB_data_from_files(
+            data_dir / "mol_atom_bond/atomic_bond_regression.csv",
+            ["smiles"],
+            None,
+            None,
+            ["bond_index_matrix"],
+            None,
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            use_cuikmolmaker_featurization=True,
+            keep_h=False,
+            add_h=False,
+            reorder_atoms=False,
+            ignore_stereo=False,
+        )
+
+
 def test_preds_stay_same(monkeypatch, tmp_path):
     args = [
         "chemprop",

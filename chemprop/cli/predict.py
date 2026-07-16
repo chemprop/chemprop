@@ -321,6 +321,7 @@ def prepare_data_loader(
     )
 
     if mol_atom_bond:
+        featurization_kwargs["use_cuikmolmaker_featurization"] = args.use_cuikmolmaker_featurization
         datas = build_MAB_data_from_files(
             data_path,
             **format_kwargs,

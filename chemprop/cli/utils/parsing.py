@@ -7,6 +7,7 @@ import pandas as pd
 from torch import nn
 
 from chemprop.data.datapoints import (
+    LazyMolAtomBondDatapoint,
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
@@ -14,6 +15,7 @@ from chemprop.data.datapoints import (
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
+    CuikmolmakerMolAtomBondDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     ReactionDataset,
@@ -532,7 +534,13 @@ def make_dataset(
     multi_hot_atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2",
     cuikmolmaker_featurization: bool = False,
     n_workers: int = 0,
-) -> MoleculeDataset | CuikmolmakerDataset | MolAtomBondDataset | ReactionDataset:
+) -> (
+    MoleculeDataset
+    | CuikmolmakerDataset
+    | MolAtomBondDataset
+    | CuikmolmakerMolAtomBondDataset
+    | ReactionDataset
+):
     atom_featurizer = get_multi_hot_atom_featurizer(multi_hot_atom_featurizer_mode)
     match multi_hot_atom_featurizer_mode:
         case "RIGR":
@@ -543,6 +551,17 @@ def make_dataset(
             raise TypeError(
                 f"Unsupported atom featurizer mode '{multi_hot_atom_featurizer_mode=}'!"
             )
+
+    if isinstance(data[0], LazyMolAtomBondDatapoint):
+        extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0
+        extra_bond_fdim = data[0].E_f.shape[1] if data[0].E_f is not None else 0
+        featurizer = CuikmolmakerMolGraphFeaturizer(
+            atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+            extra_atom_fdim=extra_atom_fdim,
+            extra_bond_fdim=extra_bond_fdim,
+            add_h=data[0]._add_h,
+        )
+        return CuikmolmakerMolAtomBondDataset(data, featurizer)
 
     if isinstance(data[0], MolAtomBondDatapoint):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

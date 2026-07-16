@@ -11,6 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 from chemprop.data.datapoints import (
+    LazyMolAtomBondDatapoint,
     LazyMoleculeDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
@@ -19,6 +20,7 @@ from chemprop.data.datapoints import (
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import Featurizer
 from chemprop.featurizers.molgraph import (
+    BatchCuikMolAtomBondGraph,
     BatchCuikMolGraph,
     CGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
@@ -66,6 +68,20 @@ class CuikBatchedDatum(NamedTuple):
     weights: np.ndarray
     lt_mask: np.ndarray
     gt_mask: np.ndarray
+
+
+class CuikBatchedMolAtomBondDatum(NamedTuple):
+    """a cuik-molmaker batch of data points that supports atom and bond level targets"""
+
+    bmg: BatchCuikMolAtomBondGraph
+    V_d: np.ndarray | None
+    E_d: np.ndarray | None
+    X_d: np.ndarray | None
+    Ys: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    weights: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    lt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    gt_masks: tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    constraints: tuple[np.ndarray | None, np.ndarray | None]
 
 
 MolGraphDataset: TypeAlias = Dataset[Datum]
@@ -363,8 +379,26 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.__V_ds = self._V_ds
 
 
+class _CuikmolmakerDatasetMixin:
+    """Shared behavior for cuik-molmaker-backed datasets: featurization is always performed
+    on-the-fly (never cached), and ``smiles`` returns the original input SMILES directly rather
+    than re-deriving it from an RDKit ``Mol`` (which would canonicalize and reorder atoms)."""
+
+    @MoleculeDataset.cache.setter
+    def cache(self, cache: bool = False):
+        if cache:
+            raise NotImplementedError(f"{type(self).__name__} is meant to be used without caching!")
+
+    def _init_cache(self):
+        pass
+
+    @property
+    def smiles(self) -> list[str]:
+        return [d.smiles for d in self.data]
+
+
 @dataclass
-class CuikmolmakerDataset(MoleculeDataset):
+class CuikmolmakerDataset(_CuikmolmakerDatasetMixin, MoleculeDataset):
     r"""A :class:`CuikmolmakerDataset` composed of :class:`LazyMoleculeDatapoint`\s and a
     :class:`CuikmolmakerMolGraphFeaturizer`
 
@@ -385,18 +419,6 @@ class CuikmolmakerDataset(MoleculeDataset):
     featurizer: CuikmolmakerMolGraphFeaturizer = field(
         default_factory=CuikmolmakerMolGraphFeaturizer
     )
-
-    @MoleculeDataset.cache.setter
-    def cache(self, cache: bool = False):
-        if cache:
-            raise NotImplementedError("CuikmolmakerDataset is meant to be used without caching!")
-
-    def _init_cache(self):
-        pass
-
-    @property
-    def smiles(self) -> list[str]:
-        return [d.smiles for d in self.data]
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
@@ -635,6 +657,132 @@ class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
         self.__bond_Y = self._bond_Y
         self.__atom_constraints = self._atom_constraints
         self.__bond_constraints = self._bond_constraints
+
+
+@dataclass
+class CuikmolmakerMolAtomBondDataset(_CuikmolmakerDatasetMixin, MolAtomBondDataset):
+    r"""A :class:`CuikmolmakerMolAtomBondDataset` composed of :class:`LazyMolAtomBondDatapoint`\s
+    and a :class:`CuikmolmakerMolGraphFeaturizer`
+
+    A :class:`CuikmolmakerMolAtomBondDataset` produces featurized data for a batch of molecules
+    with atom- and/or bond-level targets for ingestion by a :class:`MolAtomBondMPNN` model. Data
+    featurization is always performed on-the-fly and using the cuik-molmaker package.
+
+    Parameters
+    ----------
+    data : Iterable[LazyMolAtomBondDatapoint]
+        the data from which to create a dataset
+    featurizer : CuikmolmakerMolGraphFeaturizer
+        the featurizer with which to generate MolGraphs of the molecules
+    """
+
+    data: list[LazyMolAtomBondDatapoint]
+    featurizer: CuikmolmakerMolGraphFeaturizer = field(
+        default_factory=CuikmolmakerMolGraphFeaturizer
+    )
+
+    def __getitem__(self, idx: int) -> MolAtomBondDatum:
+        d = self.data[idx]
+        bmg = self.featurizer([d.smiles], self.V_fs[idx], self.E_fs[idx])
+        mg = MolGraph(
+            bmg.V.numpy(), bmg.E.numpy(), bmg.edge_index.numpy(), bmg.rev_edge_index.numpy()
+        )
+
+        return MolAtomBondDatum(
+            mg,
+            self.V_ds[idx],
+            self.E_ds[idx],
+            self.X_d[idx],
+            [
+                self.Y[idx] if isinstance(self.Y[idx], np.ndarray) else None,
+                self.atom_Y[idx] if self.atom_Y[idx] is not None else None,
+                self.bond_Y[idx] if self.bond_Y[idx] is not None else None,
+            ],
+            d.weight,
+            [d.lt_mask, d.atom_lt_mask, d.bond_lt_mask],
+            [d.gt_mask, d.atom_gt_mask, d.bond_gt_mask],
+            [d.atom_constraint, d.bond_constraint],
+        )
+
+    def __getitems__(self, indexes: list[int]) -> CuikBatchedMolAtomBondDatum:
+        data = [self.data[idx] for idx in indexes]
+        smiles_list = [d.smiles for d in data]
+        V_f = np.concat([self.V_fs[idx] for idx in indexes]) if self.V_fs[0] is not None else None
+        E_f = np.concat([self.E_fs[idx] for idx in indexes]) if self.E_fs[0] is not None else None
+
+        plain_bmg = self.featurizer(smiles_list, V_f, E_f)
+        bmg = BatchCuikMolAtomBondGraph(
+            V=plain_bmg.V,
+            E=plain_bmg.E,
+            edge_index=plain_bmg.edge_index,
+            rev_edge_index=plain_bmg.rev_edge_index,
+            batch=plain_bmg.batch,
+        )
+
+        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
+        E_d = np.concat([self.E_ds[idx] for idx in indexes]) if self.E_ds[0] is not None else None
+        X_d = self.X_d[indexes] if self.X_d[0] is not None else None
+
+        Y = self.Y[indexes] if isinstance(self.Y[0], np.ndarray) else None
+        atom_Y = (
+            None if self.atom_Y[0] is None else np.vstack([self.atom_Y[idx] for idx in indexes])
+        )
+        bond_Y = (
+            None if self.bond_Y[0] is None else np.vstack([self.bond_Y[idx] for idx in indexes])
+        )
+
+        weights = self.weights[indexes]
+        mol_weights = None if Y is None else weights
+        atom_weights = (
+            None
+            if atom_Y is None
+            else np.repeat(weights, [len(self.atom_Y[idx]) for idx in indexes])
+        )
+        bond_weights = (
+            None
+            if bond_Y is None
+            else np.repeat(weights, [len(self.bond_Y[idx]) for idx in indexes])
+        )
+
+        lt_mask = None if data[0].lt_mask is None else np.vstack([d.lt_mask for d in data])
+        atom_lt_mask = (
+            None if data[0].atom_lt_mask is None else np.vstack([d.atom_lt_mask for d in data])
+        )
+        bond_lt_mask = (
+            None if data[0].bond_lt_mask is None else np.vstack([d.bond_lt_mask for d in data])
+        )
+
+        gt_mask = None if data[0].gt_mask is None else np.vstack([d.gt_mask for d in data])
+        atom_gt_mask = (
+            None if data[0].atom_gt_mask is None else np.vstack([d.atom_gt_mask for d in data])
+        )
+        bond_gt_mask = (
+            None if data[0].bond_gt_mask is None else np.vstack([d.bond_gt_mask for d in data])
+        )
+
+        atom_constraint = (
+            None if data[0].atom_constraint is None else np.array([d.atom_constraint for d in data])
+        )
+        bond_constraint = (
+            None if data[0].bond_constraint is None else np.array([d.bond_constraint for d in data])
+        )
+        constraints = (
+            None
+            if atom_constraint is None and bond_constraint is None
+            else [atom_constraint, bond_constraint]
+        )
+
+        return CuikBatchedMolAtomBondDatum(
+            bmg,
+            V_d,
+            E_d,
+            X_d,
+            [Y, atom_Y, bond_Y],
+            [mol_weights, atom_weights, bond_weights],
+            [lt_mask, atom_lt_mask, bond_lt_mask],
+            [gt_mask, atom_gt_mask, bond_gt_mask],
+            constraints,
+        )
 
 
 @dataclass
