@@ -2008,6 +2008,7 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         test_dset = test_loader.dataset
     targets = test_dset.Y
+    targets_orig = targets.copy()
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
@@ -2051,17 +2052,35 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     else:
         namess = [names]
 
-    columns = args.input_columns + args.target_columns
+    columns = (
+        args.input_columns + args.target_columns + [f"{col}_true" for col in args.target_columns]
+    )
     if "multiclass" in args.task_type:
         columns = columns + [f"{col}_prob" for col in args.target_columns]
         formatted_probability_strings = format_probability_string(preds)
         predicted_class_labels = preds.argmax(axis=-1)
         df_preds = pd.DataFrame(
-            list(zip(*namess, *predicted_class_labels.T, *formatted_probability_strings.T)),
+            list(
+                zip(
+                    *namess,
+                    *predicted_class_labels.T,
+                    *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])],
+                    *formatted_probability_strings.T,
+                )
+            ),
             columns=columns,
         )
     else:
-        df_preds = pd.DataFrame(list(zip(*namess, *preds.T)), columns=columns)
+        df_preds = pd.DataFrame(
+            list(
+                zip(
+                    *namess,
+                    *preds.T,
+                    *[targets_orig[:, i : i + 1].T for i in range(targets_orig.shape[1])],
+                )
+            ),
+            columns=columns,
+        )
 
     df_preds.to_csv(model_output_dir / "test_predictions.csv", index=False)
 
@@ -2070,6 +2089,16 @@ def evaluate_and_save_MAB_predictions(
     mol_preds, atom_preds, bond_preds, test_loader, metrics, model_output_dir, args
 ):
     test_dset = test_loader.dataset
+
+    mol_targets_orig = test_dset.Y
+    atom_targets_orig = test_dset.atom_Y
+    bond_targets_orig = test_dset.bond_Y
+    if isinstance(mol_targets_orig, list):
+        mol_targets_orig = np.concatenate(mol_targets_orig, axis=0)
+    if isinstance(atom_targets_orig, list) and any(a is not None for a in atom_targets_orig):
+        atom_targets_orig = np.concatenate(atom_targets_orig, axis=0)
+    if isinstance(bond_targets_orig, list) and any(b is not None for b in bond_targets_orig):
+        bond_targets_orig = np.concatenate(bond_targets_orig, axis=0)
 
     for targets, lt_mask, gt_mask, preds, cols, kind in zip(
         [test_dset.Y, test_dset.atom_Y, test_dset.bond_Y],
@@ -2136,7 +2165,7 @@ def evaluate_and_save_MAB_predictions(
         if cols is not None
         for col in cols
     ]
-    columns = args.input_columns + output_columns
+    columns = args.input_columns + output_columns + [f"{col}_true" for col in output_columns]
 
     atoms_per_molecule = [d.mol.GetNumAtoms() for d in test_dset.data]
     atom_split_indices = np.cumsum(atoms_per_molecule)[:-1]
@@ -2172,6 +2201,23 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
+        mols_true = (
+            mol_targets_orig
+            if mol_targets_orig is not None
+            and not isinstance(mol_targets_orig, list)
+            and mol_targets_orig.ndim >= 2
+            else [None] * len(names)
+        )
+        atomss_true = (
+            np.split(atom_targets_orig, atom_split_indices)
+            if atom_targets_orig is not None and not isinstance(atom_targets_orig, list)
+            else [None] * len(names)
+        )
+        bondss_true = (
+            np.split(bond_targets_orig, bond_split_indices)
+            if bond_targets_orig is not None and not isinstance(bond_targets_orig, list)
+            else [None] * len(names)
+        )
 
         outputs = [
             (
@@ -2179,15 +2225,21 @@ def evaluate_and_save_MAB_predictions(
                 *(mol_class_preds.tolist() if mol_class_preds is not None else []),
                 *(atoms_class_preds.T.tolist() if atoms_class_preds is not None else []),
                 *(bonds_class_preds.T.tolist() if bonds_class_preds is not None else []),
+                *(mol_t.tolist() if mol_t is not None else []),
+                *(atoms_t.T.tolist() if atoms_t is not None else []),
+                *(bonds_t.T.tolist() if bonds_t is not None else []),
                 *(mol_class_probs.tolist() if mol_class_probs is not None else []),
                 *(atoms_class_probs.T.tolist() if atoms_class_probs is not None else []),
                 *(bonds_class_probs.T.tolist() if bonds_class_probs is not None else []),
             )
-            for name, mol_class_preds, atoms_class_preds, bonds_class_preds, mol_class_probs, atoms_class_probs, bonds_class_probs in zip(
+            for name, mol_class_preds, atoms_class_preds, bonds_class_preds, mol_t, atoms_t, bonds_t, mol_class_probs, atoms_class_probs, bonds_class_probs in zip(
                 names,
                 mols_class_preds,
                 atomss_class_preds,
                 bondss_class_preds,
+                mols_true,
+                atomss_true,
+                bondss_true,
                 mols_class_probs,
                 atomss_class_probs,
                 bondss_class_probs,
@@ -2206,16 +2258,36 @@ def evaluate_and_save_MAB_predictions(
             if bond_preds is not None
             else [None] * len(names)
         )
+        mols_true = (
+            mol_targets_orig
+            if mol_targets_orig is not None
+            and not isinstance(mol_targets_orig, list)
+            and mol_targets_orig.ndim >= 2
+            else [None] * len(names)
+        )
+        atomss_true = (
+            np.split(atom_targets_orig, atom_split_indices)
+            if atom_targets_orig is not None and not isinstance(atom_targets_orig, list)
+            else [None] * len(names)
+        )
+        bondss_true = (
+            np.split(bond_targets_orig, bond_split_indices)
+            if bond_targets_orig is not None and not isinstance(bond_targets_orig, list)
+            else [None] * len(names)
+        )
 
         outputs = [
             (
                 name,
-                *(mol_preds.tolist() if mol_preds is not None else []),
-                *(atoms_preds.T.tolist() if atoms_preds is not None else []),
-                *(bonds_preds.T.tolist() if bonds_preds is not None else []),
+                *(mol_p.tolist() if mol_p is not None else []),
+                *(atoms_p.T.tolist() if atoms_p is not None else []),
+                *(bonds_p.T.tolist() if bonds_p is not None else []),
+                *(mol_t.tolist() if mol_t is not None else []),
+                *(atoms_t.T.tolist() if atoms_t is not None else []),
+                *(bonds_t.T.tolist() if bonds_t is not None else []),
             )
-            for name, mol_preds, atoms_preds, bonds_preds in zip(
-                names, mols_preds, atomss_preds, bondss_preds
+            for name, mol_p, atoms_p, bonds_p, mol_t, atoms_t, bonds_t in zip(
+                names, mols_preds, atomss_preds, bondss_preds, mols_true, atomss_true, bondss_true
             )
         ]
         df_preds = pd.DataFrame(outputs, columns=columns)
