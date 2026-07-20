@@ -1,9 +1,9 @@
-from typing import NamedTuple
-
+import numpy as np
 import pytest
 import torch
-from torch import Tensor
 
+from chemprop.data import BatchMolGraph
+from chemprop.data.molgraph import MolGraph
 from chemprop.nn import (
     AtomMessagePassing,
     BondMessagePassing,
@@ -12,42 +12,31 @@ from chemprop.nn import (
 )
 
 
-class MockBatchMolGraph(NamedTuple):
-    V: Tensor
-    E: Tensor
-    edge_index: Tensor
-    rev_edge_index: Tensor
-    batch: Tensor
-
-
-def make_chain_graph(num_atoms: int) -> MockBatchMolGraph:
-    src = torch.arange(num_atoms - 1)
+def make_chain_graph(num_atoms: int) -> BatchMolGraph:
+    src = np.arange(num_atoms - 1)
     dst = src + 1
-    edge_index = torch.stack((torch.cat((src, dst)), torch.cat((dst, src))))
+    edge_index = np.stack((np.concatenate((src, dst)), np.concatenate((dst, src))))
     num_edges = edge_index.shape[1]
-
-    return MockBatchMolGraph(
-        V=torch.randn(num_atoms, 72),
-        E=torch.randn(num_edges, 14),
+    mol_graph = MolGraph(
+        V=np.ones((num_atoms, 72), dtype=np.float32),
+        E=np.ones((num_edges, 14), dtype=np.float32),
         edge_index=edge_index,
-        rev_edge_index=torch.cat((torch.arange(num_atoms - 1, num_edges), src)),
-        batch=torch.zeros(num_atoms, dtype=torch.long),
+        rev_edge_index=np.concatenate((np.arange(num_atoms - 1, num_edges), src)),
     )
+    return BatchMolGraph([mol_graph])
 
 
 @pytest.mark.parametrize(
     "message_passing",
     [AtomMessagePassing(), BondMessagePassing(), MABAtomMessagePassing(), MABBondMessagePassing()],
 )
-def test_message_passing_export_dynamic_graph_sizes(message_passing):
+def test_message_passing_export_dynamic_graph_sizes(message_passing, batch_mol_graph_pytree):
     export_graph = make_chain_graph(3)
     inference_graph = make_chain_graph(5)
     num_atoms = torch.export.Dim("num_atoms", min=2)
     num_edges = torch.export.Dim("num_edges", min=2)
     dynamic_shapes = {
-        "bmg": MockBatchMolGraph(
-            {0: num_atoms}, {0: num_edges}, {1: num_edges}, {0: num_edges}, {0: num_atoms}
-        )
+        "bmg": [{0: num_atoms}, {0: num_edges}, {1: num_edges}, {0: num_edges}, {0: num_atoms}]
     }
 
     exported = torch.export.export(
