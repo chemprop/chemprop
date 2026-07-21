@@ -39,6 +39,32 @@ def test_reorder_atoms_no_atom_map():
     )
 
 
+def test_reorder_atoms_no_atom_map_large():
+    # diphenhydramine, 19 heavy atoms, unmapped: large enough to expose an unstable sort
+    smi = "CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1"
+    mol = make_mol(smi, reorder_atoms=False)
+    reordered_mol = make_mol(smi, reorder_atoms=True)
+    assert [a.GetSymbol() for a in mol.GetAtoms()] == [
+        a.GetSymbol() for a in reordered_mol.GetAtoms()
+    ]
+
+
+def test_reorder_atoms_partial_map():
+    # unmapped atoms (map number 0) must keep their relative order, ahead of mapped atoms
+    mol = make_mol("C[C:5]CO", reorder_atoms=True)
+    assert [a.GetSymbol() for a in mol.GetAtoms()] == ["C", "C", "O", "C"]
+
+
+def test_reorder_atoms_add_h():
+    # hydrogens added by AddHs are all unmapped (map number 0) and must keep their relative order
+    smi = "CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1"
+    mol = make_mol(smi, add_h=True, reorder_atoms=False)
+    reordered_mol = make_mol(smi, add_h=True, reorder_atoms=True)
+    assert [a.GetSymbol() for a in mol.GetAtoms()] == [
+        a.GetSymbol() for a in reordered_mol.GetAtoms()
+    ]
+
+
 def test_make_mol_invalid_smiles():
     with pytest.raises(RuntimeError):
         make_mol("chemprop")
