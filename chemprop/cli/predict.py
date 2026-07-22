@@ -1,4 +1,5 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
+import json
 import logging
 from pathlib import Path
 import sys
@@ -10,6 +11,7 @@ import pandas as pd
 import torch
 
 from chemprop import data, featurizers
+from chemprop.callbacks import CallbackRegistry
 from chemprop.cli.common import (
     add_common_args,
     find_models,
@@ -87,6 +89,20 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         nargs="+",
         help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
+    )
+
+    cb_args = parser.add_argument_group("Callback args")
+    cb_args.add_argument(
+        "--callback",
+        default=None,
+        action=LookupAction(CallbackRegistry),
+        help="The callback to use. Only one callback can be used at a time.",
+    )
+    cb_args.add_argument(
+        "--callback-params",
+        default="{}",
+        type=json.loads,
+        help="JSON string of kwargs for the callback.",
     )
 
     unc_args = parser.add_argument_group("Uncertainty and calibration args")
@@ -389,8 +405,22 @@ def make_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
+    callbacks = (
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
+        if args.callback
+        else None
+    )
+
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
@@ -585,8 +615,22 @@ def make_MAB_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
+    callbacks = (
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
+        if args.callback
+        else None
+    )
+
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_predss, test_individual_uncss = uncertainty_estimator(
         test_loader, models, trainer

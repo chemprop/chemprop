@@ -6,7 +6,6 @@ import sys
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
-from chemprop.utils.utils import is_cuikmolmaker_available
 
 logger = logging.getLogger(__name__)
 
@@ -234,12 +233,6 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
-        raise ArgumentError(
-            argument=None,
-            message="cuik-molmaker is not installed. Please install it using `pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/` or `conda install 'conda-forge::cuik_molmaker>=0.2'` before using the `--use-cuikmolmaker-featurization` flag.",
-        )
-
     if args.use_cuikmolmaker_featurization:
         is_reaction_task = bool(args.reaction_columns)
         if args.keep_h and not is_reaction_task:

@@ -291,10 +291,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     ffn_args = parser.add_argument_group("FFN args")
     ffn_args.add_argument(
-        "--ffn-hidden-dim", type=int, default=300, help="Hidden dimension in the FFN top model"
+        "--ffn-hidden-dim",
+        type=int,
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the FFN top model. A single value is applied to all layers; multiple values specify per-layer widths (must match --ffn-num-layers)",
     )
     ffn_args.add_argument(
-        "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
+        "--ffn-num-layers",
+        type=int,
+        default=1,
+        help="Number of hidden layers in FFN top model (v2 semantics, differs from v1)",
     )
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
@@ -325,8 +332,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     atom_ffn_args.add_argument(
         "--atom-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the atom FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the atom FFN top model",
     )
     atom_ffn_args.add_argument(
         "--atom-ffn-num-layers", type=int, default=1, help="Number of layers in atom FFN top model"
@@ -348,8 +356,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     bond_ffn_args.add_argument(
         "--bond-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the bond FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the bond FFN top model",
     )
     bond_ffn_args.add_argument(
         "--bond-ffn-num-layers", type=int, default=1, help="Number of layers in bond FFN top model"
@@ -365,8 +374,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     atom_constrain_ffn_args.add_argument(
         "--atom-constrainer-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the atom constrainer FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the atom constrainer FFN top model",
     )
     atom_constrain_ffn_args.add_argument(
         "--atom-constrainer-ffn-num-layers",
@@ -379,8 +389,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     bond_constrain_ffn_args.add_argument(
         "--bond-constrainer-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the bond constrainer FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the bond constrainer FFN top model",
     )
     bond_constrain_ffn_args.add_argument(
         "--bond-constrainer-ffn-num-layers",
@@ -586,7 +597,37 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    _process_ffn_hidden_dims(args, "ffn_hidden_dim", "ffn_num_layers")
+    _process_ffn_hidden_dims(args, "atom_ffn_hidden_dim", "atom_ffn_num_layers")
+    _process_ffn_hidden_dims(args, "bond_ffn_hidden_dim", "bond_ffn_num_layers")
+    _process_ffn_hidden_dims(
+        args, "atom_constrainer_ffn_hidden_dim", "atom_constrainer_ffn_num_layers"
+    )
+    _process_ffn_hidden_dims(
+        args, "bond_constrainer_ffn_hidden_dim", "bond_constrainer_ffn_num_layers"
+    )
     return args
+
+
+def _process_ffn_hidden_dims(args: Namespace, hidden_dim_key: str, n_layers_key: str) -> None:
+    """Normalize --ffn-hidden-dim: single value expands to match n_layers; multiple values infer n_layers."""
+    hidden_dims = getattr(args, hidden_dim_key)
+    n_layers = getattr(args, n_layers_key)
+
+    if len(hidden_dims) == 1:
+        setattr(args, hidden_dim_key, [hidden_dims[0]] * n_layers)
+    else:
+        if n_layers != len(hidden_dims):
+            raise ArgumentError(
+                argument=None,
+                message=(
+                    f"--{hidden_dim_key.replace('_', '-')} has {len(hidden_dims)} values but "
+                    f"--{n_layers_key.replace('_', '-')}={n_layers}. You must explicitly pass "
+                    f"--{n_layers_key.replace('_', '-')} {len(hidden_dims)} to match. "
+                    f"Note: --{n_layers_key.replace('_', '-')} specifies the number of hidden "
+                    f"layers (v2 semantics, differs from v1)."
+                ),
+            )
 
 
 def validate_train_args(args):
