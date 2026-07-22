@@ -8,12 +8,14 @@ from torch import nn
 
 from chemprop.data.datapoints import (
     LazyMoleculeDatapoint,
+    LazyReactionDatapoint,
     MolAtomBondDatapoint,
     MoleculeDatapoint,
     ReactionDatapoint,
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
+    CuikmolmakerReactionDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     ReactionDataset,
@@ -23,6 +25,7 @@ from chemprop.featurizers.bond import MultiHotBondFeaturizer, RIGRBondFeaturizer
 from chemprop.featurizers.molecule import MoleculeFeaturizerRegistry
 from chemprop.featurizers.molgraph import (
     CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerCGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     RxnMode,
     SimpleMoleculeMolGraphFeaturizer,
@@ -245,6 +248,31 @@ def make_datapoints(
     V_dss = [[None] * N] * n_mols if V_dss is None else V_dss
 
     if use_cuikmolmaker_featurization:
+        if rxnss:
+            # Reaction cuikmolmaker path: build LazyReactionDatapoint list
+            rxn_data = [
+                LazyReactionDatapoint(
+                    reac_smiles=f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                    prod_smiles=pdt_smi,
+                    _keep_h=keep_h,
+                    _add_h=add_h,
+                    name=rxnss[0][i],
+                    y=Y[i],
+                    weight=weights[i],
+                    gt_mask=gt_mask[i],
+                    lt_mask=lt_mask[i],
+                    x_d=X_d[i] if X_d is not None else None,
+                )
+                for i, rxn in enumerate(rxnss[0])
+                for rct_smi, agt_smi, pdt_smi in [rxn.split(">")]
+            ]
+
+            if X_d is None:
+                for dp in rxn_data:
+                    setattr(dp, "x_d", None)
+
+            return [], [rxn_data]
+
         mol_data = [
             LazyMoleculeDatapoint(
                 smiles=smiss[0][i],  # cuikmolmaker only supports single molecule datapoints
@@ -554,6 +582,15 @@ def make_dataset(
             extra_bond_fdim=extra_bond_fdim,
         )
         return MolAtomBondDataset(data, featurizer, n_workers=n_workers)
+
+    if isinstance(data[0], LazyReactionDatapoint):
+        featurizer = CuikmolmakerCGRFeaturizer(
+            atom_featurizer_mode=multi_hot_atom_featurizer_mode,
+            reaction_mode=reaction_mode,
+            keep_h=data[0]._keep_h,
+            add_h=data[0]._add_h,
+        )
+        return CuikmolmakerReactionDataset(data, featurizer)
 
     if isinstance(data[0], (MoleculeDatapoint, LazyMoleculeDatapoint)):
         extra_atom_fdim = data[0].V_f.shape[1] if data[0].V_f is not None else 0

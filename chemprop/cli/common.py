@@ -234,10 +234,11 @@ def process_common_args(args: Namespace) -> Namespace:
 
 def validate_common_args(args):
     if args.use_cuikmolmaker_featurization:
-        if args.keep_h:
+        is_reaction_task = bool(args.reaction_columns)
+        if args.keep_h and not is_reaction_task:
             raise ArgumentError(
                 argument=None,
-                message="`--keep-h` is not supported when using cuik-molmaker featurization.",
+                message="`--keep-h` is not supported for molecule featurization with cuik-molmaker. It is supported for reaction featurization (--reaction-columns).",
             )
         if args.ignore_stereo:
             raise ArgumentError(
@@ -249,10 +250,10 @@ def validate_common_args(args):
                 argument=None,
                 message="`--reorder-atoms` is not supported when using cuik-molmaker featurization.",
             )
-        if args.reaction_columns or (args.smiles_columns and len(args.smiles_columns) > 1):
+        if args.smiles_columns and len(args.smiles_columns) > 1:
             raise ArgumentError(
                 argument=None,
-                message="cuik-molmaker featurization only supports single component molecule datasets.",
+                message="cuik-molmaker featurization does not support multi-component molecule datasets.",
             )
         if args.molecule_featurizers is not None:
             logger.warning(

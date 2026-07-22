@@ -256,3 +256,29 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
 
     def __len__(self) -> int:
         return 2
+
+
+@dataclass
+class _LazyReactionDatapointMixin:
+    reac_smiles: str
+    """The reactant SMILES string (atom-mapped)."""
+    prod_smiles: str
+    """The product SMILES string (atom-mapped)."""
+    _keep_h: bool = True
+    """Whether to keep explicit hydrogens when parsing (passed to CuikmolmakerCGRFeaturizer)."""
+    _add_h: bool = False
+    """Whether to add implicit hydrogens (passed to CuikmolmakerCGRFeaturizer)."""
+
+
+@dataclass
+class LazyReactionDatapoint(_DatapointMixin, _LazyReactionDatapointMixin):
+    """A :class:`LazyReactionDatapoint` stores a reaction as SMILES strings rather than parsed Mol
+    objects, for use with :class:`CuikmolmakerReactionDataset` where batch C++ featurization
+    eliminates the need for per-datapoint mol parsing."""
+
+    def __len__(self) -> int:
+        return 2
+
+    @property
+    def rct(self) -> Chem.Mol:
+        return make_mol(self.reac_smiles, self._keep_h, self._add_h)

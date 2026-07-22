@@ -44,6 +44,7 @@ from chemprop.cli.utils import (
 from chemprop.cli.utils.args import uppercase
 from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
+    LazyReactionDatapoint,
     MolAtomBondDataset,
     MoleculeDataset,
     MolGraphDataset,
@@ -1186,7 +1187,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             if args.split == "random":
                 splitting_mols = range(len(splitting_data))
             else:
-                if isinstance(splitting_data[0], ReactionDatapoint):
+                if isinstance(splitting_data[0], (ReactionDatapoint, LazyReactionDatapoint)):
                     splitting_mols = [datapoint.rct for datapoint in splitting_data]
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]

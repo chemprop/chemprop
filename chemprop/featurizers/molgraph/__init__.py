@@ -1,6 +1,7 @@
 from .cache import MolGraphCache, MolGraphCacheFacade, MolGraphCacheOnTheFly
 from .molecule import (
     BatchCuikMolGraph,
+    CuikmolmakerCGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
@@ -12,6 +13,7 @@ __all__ = [
     "MolGraphCacheOnTheFly",
     "SimpleMoleculeMolGraphFeaturizer",
     "CuikmolmakerMolGraphFeaturizer",
+    "CuikmolmakerCGRFeaturizer",
     "CondensedGraphOfReactionFeaturizer",
     "CGRFeaturizer",
     "RxnMode",
