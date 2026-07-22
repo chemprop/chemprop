@@ -60,13 +60,15 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
 
         return d_o
 
-    def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> list[Tensor]:
+    def forward(
+        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None] | None = None
+    ) -> list[Tensor]:
         """Encode the multicomponent inputs
 
         Parameters
         ----------
         bmgs : Iterable[BatchMolGraph]
-        V_ds : Iterable[Tensor | None]
+        V_ds : Iterable[Tensor | None] | None
 
         Returns
         -------
