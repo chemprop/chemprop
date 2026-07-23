@@ -30,7 +30,8 @@ def make_chain_graph(num_atoms: int) -> BatchMolGraph:
     "message_passing",
     [AtomMessagePassing(), BondMessagePassing(), MABAtomMessagePassing(), MABBondMessagePassing()],
 )
-def test_message_passing_export_dynamic_graph_sizes(message_passing, batch_mol_graph_pytree):
+@pytest.mark.usefixtures("batch_mol_graph_pytree")
+def test_message_passing_export_dynamic_graph_sizes(message_passing):
     export_graph = make_chain_graph(3)
     inference_graph = make_chain_graph(5)
     num_atoms = torch.export.Dim("num_atoms", min=2)

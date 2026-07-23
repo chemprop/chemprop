@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from chemprop.data import BatchMolGraph, MoleculeDatapoint, MoleculeDataset, collate_batch
@@ -10,18 +11,19 @@ def make_batch(smiles: list[str]) -> BatchMolGraph:
     return collate_batch(dataset)[0]
 
 
-def test_mpnn_export_dynamic_graph_sizes(batch_mol_graph_pytree):
-    export_graph = make_batch(["C", "CC"])
-    inference_graph = make_batch(["c1ccccc1", "CCCCCC"])
+@pytest.mark.usefixtures("batch_mol_graph_pytree")
+def test_mpnn_export_dynamic_graph_sizes():
+    export_graph = make_batch(["C", "CC", "CCC", "CCCC"])
+    inference_graph = make_batch(["C", "S", "N", "O"])
     assert export_graph.V.shape[0] != inference_graph.V.shape[0]
-    assert export_graph.E.shape[0] != inference_graph.E.shape[0]
+    assert inference_graph.E.shape[0] == 0
 
     message_passing = BondMessagePassing()
     model = MPNN(
         message_passing, SumAggregation(), RegressionFFN(input_dim=message_passing.output_dim)
     ).eval()
-    num_atoms = torch.export.Dim("num_atoms", min=1)
-    num_edges = torch.export.Dim("num_edges", min=1)
+    num_atoms = torch.export.Dim("num_atoms")
+    num_edges = torch.export.Dim("num_edges")
     dynamic_shapes = {
         "bmg": [{0: num_atoms}, {0: num_edges}, {1: num_edges}, {0: num_edges}, {0: num_atoms}],
         "V_d": None,
