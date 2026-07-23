@@ -63,11 +63,7 @@ def test_reorder_atoms_add_h():
     reordered_mol = make_mol(smi, add_h=True, reorder_atoms=True)
 
     def h_neighbor_maps(mol):
-        return [
-            a.GetNeighbors()[0].GetAtomMapNum()
-            for a in mol.GetAtoms()
-            if a.GetSymbol() == "H"
-        ]
+        return [a.GetNeighbors()[0].GetAtomMapNum() for a in mol.GetAtoms() if a.GetSymbol() == "H"]
 
     assert h_neighbor_maps(mol) == h_neighbor_maps(reordered_mol)
 
