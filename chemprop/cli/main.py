@@ -26,7 +26,7 @@ SUBCOMMANDS = [
 
 def construct_parser():
     parser = ArgumentParser(
-        description=f"Chemprop {chemprop.__version__} implements 2-D message-passing neural networks for molecular property prediction.",
+        description=f"Chemprop {chemprop.__version__} implements 2-D message-passing neural networks for molecular property prediction."
     )
     parser.add_argument("-v", "--version", action="version", version=f"{parser.prog}")
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
