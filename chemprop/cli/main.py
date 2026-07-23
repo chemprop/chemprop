@@ -29,7 +29,7 @@ def construct_parser():
         prog=f"chemprop {chemprop.__version__}",
         description="Chemprop is a deep learning toolkit for molecular machine learning.",
     )
-    parser.add_argument("--version", action="version", version=f"{parser.prog}")
+    parser.add_argument("-v", "--version", action="version", version=f"{parser.prog}")
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
 
     parent = ArgumentParser(add_help=False)
