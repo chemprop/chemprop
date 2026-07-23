@@ -84,8 +84,6 @@ def make_mol(
 
     if reorder_atoms:
         atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
-        # kind="stable" is required: unmapped atoms all share map number 0, and the default
-        # (unstable) sort is free to permute them arbitrarily instead of preserving their order.
         new_order = np.argsort(atom_map_numbers, kind="stable").tolist()
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 

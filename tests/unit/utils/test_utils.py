@@ -57,12 +57,19 @@ def test_reorder_atoms_partial_map():
 
 def test_reorder_atoms_add_h():
     # hydrogens added by AddHs are all unmapped (map number 0) and must keep their relative order
-    smi = "CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1"
+    # every hydrogen can be distinguished by its neighbor's map number after reordering
+    smi = "[cH:1]1[cH:2][cH:3][c:4]2[cH:5][cH:6][cH:7][cH:8][c:9]2[cH:10]1"
     mol = make_mol(smi, add_h=True, reorder_atoms=False)
     reordered_mol = make_mol(smi, add_h=True, reorder_atoms=True)
-    assert [a.GetSymbol() for a in mol.GetAtoms()] == [
-        a.GetSymbol() for a in reordered_mol.GetAtoms()
-    ]
+
+    def h_neighbor_maps(mol):
+        return [
+            a.GetNeighbors()[0].GetAtomMapNum()
+            for a in mol.GetAtoms()
+            if a.GetSymbol() == "H"
+        ]
+
+    assert h_neighbor_maps(mol) == h_neighbor_maps(reordered_mol)
 
 
 def test_make_mol_invalid_smiles():
