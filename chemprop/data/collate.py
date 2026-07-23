@@ -5,9 +5,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from chemprop.data.datasets import CuikBatchedDatum, Datum, MolAtomBondDatum
+from chemprop.data.datasets import (
+    CuikBatchedDatum,
+    CuikBatchedMolAtomBondDatum,
+    Datum,
+    MolAtomBondDatum,
+)
 from chemprop.data.molgraph import MolGraph
-from chemprop.featurizers.molgraph.molecule import BatchCuikMolGraph
+from chemprop.featurizers.molgraph.molecule import BatchCuikMolAtomBondGraph, BatchCuikMolGraph
 
 
 @dataclass(repr=False, eq=False, slots=True)
@@ -131,7 +136,7 @@ class BatchMolAtomBondGraph(BatchMolGraph):
 
 
 class MolAtomBondTrainingBatch(NamedTuple):
-    bmg: BatchMolAtomBondGraph
+    bmg: BatchMolAtomBondGraph | BatchCuikMolAtomBondGraph
     V_d: Tensor | None
     E_d: Tensor | None
     X_d: Tensor | None
@@ -180,6 +185,29 @@ def collate_mol_atom_bond_batch(batch: Iterable[MolAtomBondDatum]) -> MolAtomBon
             for gt_masks in zip(*gt_maskss)
         ],
         constraintss,
+    )
+
+
+def collate_cuik_mol_atom_bond_batch(
+    batch: CuikBatchedMolAtomBondDatum,
+) -> MolAtomBondTrainingBatch:
+    bmg, V_d, E_d, X_d, Ys, weights, lt_masks, gt_masks, constraints = batch
+
+    return MolAtomBondTrainingBatch(
+        bmg,
+        None if V_d is None else torch.from_numpy(V_d).float(),
+        None if E_d is None else torch.from_numpy(E_d).float(),
+        None if X_d is None else torch.from_numpy(X_d).float(),
+        [None if y is None else torch.from_numpy(y).float() for y in Ys],
+        [None if w is None else torch.tensor(w, dtype=torch.float).unsqueeze(1) for w in weights],
+        [None if lt_mask is None else torch.from_numpy(lt_mask) for lt_mask in lt_masks],
+        [None if gt_mask is None else torch.from_numpy(gt_mask) for gt_mask in gt_masks],
+        None
+        if constraints is None
+        else [
+            None if constraint is None else torch.from_numpy(constraint).float()
+            for constraint in constraints
+        ],
     )
 
 

@@ -1111,7 +1111,6 @@ def build_splits(args, format_kwargs, featurization_kwargs):
         ):
             for key in ["no_header_row", "rxn_cols", "ignore_cols", "splits_col", "target_cols"]:
                 format_kwargs.pop(key, None)
-            featurization_kwargs.pop("use_cuikmolmaker_featurization", None)
             return build_MAB_data_from_files(
                 data_path,
                 p_descriptors=args.descriptors_path,

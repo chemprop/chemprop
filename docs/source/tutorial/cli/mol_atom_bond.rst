@@ -41,6 +41,12 @@ Reordering the atoms does not change the order of bonds, but the bond targets ca
 The model predictions are still returned as a list of values which follow the order of the bonds in the input SMILES string.
 
 
+Performant Training
+--------------------
+
+As with regular molecule training, atom and bond property training can be accelerated with the :code:`--use-cuikmolmaker-featurization` flag (see :ref:`performant-training`). The same restrictions apply: :code:`--keep-h`, :code:`--reorder-atoms`, and :code:`--ignore-stereo` are not supported, and bond targets given as a full adjacency matrix (rather than a flat list ordered by RDKit bond index) are not supported, since flattening them requires building an RDKit :code:`Mol` for every molecule.
+
+
 Constrained Prediction
 ----------------------
 
