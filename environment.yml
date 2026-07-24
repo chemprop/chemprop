@@ -1,5 +1,6 @@
 name: chemprop
 channels:
+  - conda-forge/label/cuik_molmaker_rc
   - conda-forge
 dependencies:
   - python>=3.11
@@ -12,7 +13,7 @@ dependencies:
   - numpy
   - pandas
   - rdkit
-  - cuik_molmaker >0.2
+  - cuik_molmaker=0.3.0rc1
   - scikit-learn
   - scipy
   - rich
