@@ -37,9 +37,11 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     format_probability_string,
     get_column_names,
+    get_oeb_column_names,
     make_dataset,
     parse_activation,
     parse_indices,
+    read_oeb_column,
 )
 from chemprop.cli.utils.args import uppercase
 from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
@@ -128,7 +130,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--data-path",
         type=Path,
         nargs="*",
-        help="Path to one, two, or three input CSV files containing SMILES and the associated target values. If one data file is supplied, it will undergo train-val-test split; if two are supplied, the first will undergo train-val split and the second will be taken as test data; if three are supplied, they will be taken as train, val, test data respectively",
+        help="Path to one, two, or three input CSV or OEB files containing SMILES and the associated target values. For OEB files, SMILES are derived from molecule structures and targets/descriptors are read from SD data tags. If one data file is supplied, it will undergo train-val-test split; if two are supplied, the first will undergo train-val split and the second will be taken as test data; if three are supplied, they will be taken as train, val, test data respectively",
     )
     parser.add_argument(
         "-o",
@@ -403,12 +405,12 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "-w",
         "--weight-column",
-        help="Name of the column in the input CSV containing individual data weights",
+        help="Name of the column in the input CSV (or SD data tag in OEB files) containing individual data weights",
     )
     train_data_args.add_argument(
         "--target-columns",
         nargs="+",
-        help="Name of the columns containing target values (by default, uses all columns except the SMILES column and the ``ignore_columns``)",
+        help="Name of the columns (or SD data tags in OEB files) containing target values (by default, uses all columns except the SMILES column and the ``ignore_columns``)",
     )
     train_data_args.add_argument(
         "--mol-target-columns",
@@ -428,7 +430,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     train_data_args.add_argument(
         "--ignore-columns",
         nargs="+",
-        help="Name of the columns to ignore when ``target_columns`` is not provided",
+        help="Name of the columns (or SD data tags in OEB files) to ignore when ``target_columns`` is not provided",
     )
     train_data_args.add_argument(
         "--no-cache",
@@ -437,7 +439,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     )
     train_data_args.add_argument(
         "--splits-column",
-        help="Name of the column in the input CSV file containing 'train', 'val', or 'test' for each row.",
+        help="Name of the column in the input CSV file (or SD data tag in OEB files) containing 'train', 'val', or 'test' for each row.",
     )
     # TODO: Add in v2.1
     # train_data_args.add_argument(
@@ -640,8 +642,10 @@ def validate_train_args(args):
         raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
 
     for path in args.data_path:
-        if path.suffix not in [".csv"]:
-            raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
+        if path.suffix.lower() not in (".csv", ".oeb", ".oez"):
+            raise ArgumentError(
+                argument=None, message=f"Input data must be a CSV, OEB, or OEZ file. Got {path}"
+            )
 
     if len(args.data_path) > 3:
         raise ArgumentError(
@@ -780,16 +784,28 @@ def validate_train_args(args):
             f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
         )
 
-    input_cols, target_cols = get_column_names(
-        args.data_path[0],
-        args.smiles_columns,
-        args.reaction_columns,
-        args.target_columns,
-        args.ignore_columns,
-        args.splits_column,
-        args.weight_column,
-        args.no_header_row,
-    )
+    if args.data_path[0].suffix.lower() in (".oeb", ".oez"):
+        input_cols, target_cols = get_oeb_column_names(
+            args.data_path[0],
+            args.smiles_columns,
+            args.reaction_columns,
+            args.target_columns,
+            args.ignore_columns,
+            args.splits_column,
+            args.weight_column,
+            args.no_header_row,
+        )
+    else:
+        input_cols, target_cols = get_column_names(
+            args.data_path[0],
+            args.smiles_columns,
+            args.reaction_columns,
+            args.target_columns,
+            args.ignore_columns,
+            args.splits_column,
+            args.weight_column,
+            args.no_header_row,
+        )
 
     args.input_columns = input_cols
     args.target_columns = target_cols
@@ -1036,6 +1052,13 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
 
 
 def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
+    if args.data_path[0].suffix.lower() in (".oeb", ".oez"):
+        logger.warning(
+            "--save-data-splits is not supported for OEB/OEZ input files. "
+            "Skipping data split export."
+        )
+        return
+
     no_header_row = args.no_header_row
     df = pd.read_csv(args.data_path[0], header=None if no_header_row else "infer", index_col=False)
     output_dir = Path(args.output_dir)
@@ -1159,13 +1182,25 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     else:
         all_data = make_data(args.data_path[0])
         if args.splits_column is not None:
-            df = pd.read_csv(
-                args.data_path[0], header=None if args.no_header_row else "infer", index_col=False
-            )
-            grouped = df.groupby(df[args.splits_column].str.lower())
-            train_indices = grouped.groups.get("train", pd.Index([])).tolist()
-            val_indices = grouped.groups.get("val", pd.Index([])).tolist()
-            test_indices = grouped.groups.get("test", pd.Index([])).tolist()
+            if args.data_path[0].suffix.lower() in (".oeb", ".oez"):
+                split_values = read_oeb_column(args.data_path[0], args.splits_column)
+                train_indices = [
+                    i for i, v in enumerate(split_values) if v.strip().lower() == "train"
+                ]
+                val_indices = [i for i, v in enumerate(split_values) if v.strip().lower() == "val"]
+                test_indices = [
+                    i for i, v in enumerate(split_values) if v.strip().lower() == "test"
+                ]
+            else:
+                df = pd.read_csv(
+                    args.data_path[0],
+                    header=None if args.no_header_row else "infer",
+                    index_col=False,
+                )
+                grouped = df.groupby(df[args.splits_column].str.lower())
+                train_indices = grouped.groups.get("train", pd.Index([])).tolist()
+                val_indices = grouped.groups.get("val", pd.Index([])).tolist()
+                test_indices = grouped.groups.get("test", pd.Index([])).tolist()
             train_indices, val_indices, test_indices = (
                 [train_indices],
                 [val_indices],

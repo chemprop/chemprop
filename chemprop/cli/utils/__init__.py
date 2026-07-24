@@ -5,10 +5,12 @@ from .command import Subcommand
 from .parsing import (
     build_data_from_files,
     get_column_names,
+    get_oeb_column_names,
     make_datapoints,
     make_dataset,
     parse_activation,
     parse_indices,
+    read_oeb_column,
 )
 from .utils import _pop_attr, _pop_attr_d, format_probability_string, pop_attr
 
@@ -22,6 +24,7 @@ __all__ = [
     "make_datapoints",
     "make_dataset",
     "get_column_names",
+    "get_oeb_column_names",
     "parse_activation",
     "parse_indices",
     "actions",

@@ -1,5 +1,6 @@
 import logging
 from os import PathLike
+from pathlib import Path
 from typing import Literal, Mapping, Sequence
 
 import numpy as np
@@ -90,6 +91,215 @@ def parse_csv(
         gt_mask = None
 
     return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra
+
+
+def parse_oeb(
+    path: PathLike,
+    smiles_cols: Sequence[str] | None,
+    rxn_cols: Sequence[str] | None,
+    target_cols: Sequence[str] | None,
+    ignore_cols: Sequence[str] | None,
+    splits_col: str | None,
+    weight_col: str | None,
+    descriptor_cols: Sequence[str] | None,
+    bounded: bool = False,
+    no_header_row: bool = False,
+):
+    """Parse an OpenEye .oeb file, returning the same tuple as parse_csv().
+
+    In OEB files, SMILES are derived from the molecule graph, and all other
+    fields (targets, descriptors, weights) are stored as SD data tags. The
+    ``smiles_cols`` and ``rxn_cols`` arguments are used to identify which SD
+    data tags contain SMILES / reaction SMILES (if molecules are stored as
+    non-canonical graphs). If neither is provided, SMILES are generated from
+    each molecule using ``OEMolToSmiles``.
+    """
+    from openeye import oechem
+
+    ifs = oechem.oemolistream()
+    if not ifs.open(str(path)):
+        raise FileNotFoundError(f"Unable to open OEB file: {path}")
+
+    if ifs.GetFormat() not in (oechem.OEFormat_OEB, oechem.OEFormat_OEZ):
+        raise ValueError(
+            f"Expected .oeb or .oez file, got format {ifs.GetFormat()}. "
+            "Only OEB and compressed OEB formats are supported."
+        )
+
+    # First pass: discover all available SD data tags across all molecules
+    all_tags: dict[str, None] = {}
+    for mol in ifs.GetOEGraphMols():
+        for dp in oechem.OEGetSDDataPairs(mol):
+            all_tags[dp.GetTag()] = None
+
+    ifs.rewind()
+
+    # Determine input columns (SMILES / reaction SMILES stored as SD tags)
+    input_cols = list((smiles_cols or []) + (rxn_cols or []))
+
+    # Resolve descriptor cols
+    descriptor_cols = list(descriptor_cols or [])
+
+    # Auto-detect target columns if not provided
+    if target_cols is None:
+        target_cols = list(
+            tag
+            for tag in all_tags
+            if tag
+            not in set(
+                input_cols + (ignore_cols or []) + descriptor_cols + [splits_col] + [weight_col]
+            )
+        )
+
+    # Second pass: extract data into per-column lists
+    # For SMILES: one list per smiles_col (or one generated list)
+    # For targets/reaction/etc: one list per column
+    smiles_lists: list[list[str]] = []
+    rxn_lists: list[list[str]] = []
+    target_lists: dict[str, list[str]] = {col: [] for col in target_cols}
+    weight_list: list[str] = []
+    descriptor_lists: dict[str, list[str]] = {col: [] for col in descriptor_cols}
+
+    for mol in ifs.GetOEGraphMols():
+        sd_data: dict[str, str] = {}
+        for dp in oechem.OEGetSDDataPairs(mol):
+            sd_data[dp.GetTag()] = dp.GetValue()
+
+        # Extract SMILES
+        if smiles_cols:
+            for col in smiles_cols:
+                if not smiles_lists:
+                    smiles_lists.append([])
+                smiles_lists[-1].append(sd_data.get(col, ""))
+        elif rxn_cols:
+            pass
+        else:
+            if not smiles_lists:
+                smiles_lists.append([])
+            smiles_lists[-1].append(oechem.OEMolToSmiles(mol))
+
+        # Extract reaction SMILES
+        if rxn_cols:
+            for col in rxn_cols:
+                if not rxn_lists:
+                    rxn_lists.append([])
+                rxn_lists[-1].append(sd_data.get(col, ""))
+
+        # Extract targets
+        for col in target_cols:
+            target_lists[col].append(sd_data.get(col, ""))
+
+        # Extract weight
+        if weight_col is not None:
+            weight_list.append(sd_data.get(weight_col, "1.0"))
+
+        # Extract descriptors
+        for col in descriptor_cols:
+            descriptor_lists[col].append(sd_data.get(col, ""))
+
+    ifs.close()
+
+    smiss = smiles_lists if smiles_lists else None
+    rxnss = rxn_lists if rxn_lists else None
+
+    # Build Y array
+    n_samples = len(smiles_lists[0]) if smiles_lists else len(rxn_lists[0]) if rxn_lists else 0
+
+    if target_cols:
+        Y = np.array(
+            [[target_lists[col][i] for col in target_cols] for i in range(n_samples)], dtype=object
+        )
+    else:
+        Y = np.empty((n_samples, 0), dtype=np.single)
+
+    if bounded and target_cols:
+        lt_mask = np.array([("<" in val) for row in Y for val in row]).reshape(Y.shape)
+        gt_mask = np.array([(">" in val) for row in Y for val in row]).reshape(Y.shape)
+        Y = np.array(
+            [[float(val.strip("<").strip(">")) for val in row] for row in Y], dtype=np.single
+        )
+    elif target_cols:
+        Y = np.array([[float(val) for val in row] for row in Y], dtype=np.single)
+        lt_mask = None
+        gt_mask = None
+
+    # Convert weights
+    if weight_col is not None:
+        weights = np.array(weight_list, dtype=np.single)
+    else:
+        weights = None
+
+    # Convert descriptors
+    if descriptor_cols and descriptor_lists:
+        X_d_extra = np.array(
+            [[descriptor_lists[col][i] for col in descriptor_cols] for i in range(n_samples)],
+            dtype=np.single,
+        )
+    else:
+        X_d_extra = None
+
+    return smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra
+
+
+def read_oeb_column(path: PathLike, column_name: str) -> list[str]:
+    """Read a single SD data tag from all molecules in an OEB file as a list of strings."""
+    from openeye import oechem
+
+    ifs = oechem.oemolistream()
+    if not ifs.open(str(path)):
+        raise FileNotFoundError(f"Unable to open OEB file: {path}")
+
+    values = []
+    for mol in ifs.GetOEGraphMols():
+        val = oechem.OEGetSDData(mol, column_name)
+        values.append(val)
+
+    ifs.close()
+    return values
+
+
+def get_oeb_column_names(
+    path: PathLike,
+    smiles_cols: Sequence[str] | None,
+    rxn_cols: Sequence[str] | None,
+    target_cols: Sequence[str] | None,
+    ignore_cols: Sequence[str] | None,
+    splits_col: str | None,
+    weight_col: str | None,
+    no_header_row: bool = False,
+) -> tuple[list[str], list[str]]:
+    """Discover available column names (SD data tags) in an OEB file."""
+    from openeye import oechem
+
+    ifs = oechem.oemolistream()
+    if not ifs.open(str(path)):
+        raise FileNotFoundError(f"Unable to open OEB file: {path}")
+
+    all_tags: dict[str, None] = {}
+    for mol in ifs.GetOEGraphMols():
+        for dp in oechem.OEGetSDDataPairs(mol):
+            all_tags[dp.GetTag()] = None
+    ifs.close()
+
+    all_tag_names = list(all_tags.keys())
+
+    input_cols = list((smiles_cols or []) + (rxn_cols or []))
+
+    if not input_cols:
+        # For OEB, SMILES are generated from molecule graph, not from a column
+        input_cols = ["<generated>"]
+
+    if target_cols is None:
+        target_cols = list(
+            tag
+            for tag in all_tag_names
+            if tag
+            not in set(
+                input_cols + (ignore_cols or []) + ([splits_col] or []) + ([weight_col] or [])
+            )
+        )
+
+    return input_cols, target_cols
 
 
 def get_column_names(
@@ -423,6 +633,10 @@ def make_datapoints(
     return mol_data, rxn_data
 
 
+def _is_oeb_file(path: PathLike) -> bool:
+    return Path(path).suffix.lower() in (".oeb", ".oez")
+
+
 def build_data_from_files(
     p_data: PathLike,
     no_header_row: bool,
@@ -441,18 +655,33 @@ def build_data_from_files(
     n_workers: int = 0,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
-    smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
-        p_data,
-        smiles_cols,
-        rxn_cols,
-        target_cols,
-        ignore_cols,
-        splits_col,
-        weight_col,
-        descriptor_cols,
-        bounded,
-        no_header_row,
-    )
+    if _is_oeb_file(p_data):
+        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_oeb(
+            p_data,
+            smiles_cols,
+            rxn_cols,
+            target_cols,
+            ignore_cols,
+            splits_col,
+            weight_col,
+            descriptor_cols,
+            bounded,
+            no_header_row,
+        )
+    else:
+        smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
+            p_data,
+            smiles_cols,
+            rxn_cols,
+            target_cols,
+            ignore_cols,
+            splits_col,
+            weight_col,
+            descriptor_cols,
+            bounded,
+            no_header_row,
+        )
+
     n_molecules = len(smiss) if smiss is not None else 0
     n_datapoints = len(Y)
 

@@ -67,7 +67,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--test-path",
         required=True,
         type=Path,
-        help="Path to an input CSV file containing SMILES",
+        help="Path to an input CSV or OEB file containing SMILES",
     )
     parser.add_argument(
         "-o",
@@ -203,9 +203,10 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_predict_args(args: Namespace) -> Namespace:
-    if args.test_path.suffix not in [".csv"]:
+    if args.test_path.suffix.lower() not in (".csv", ".oeb", ".oez"):
         raise ArgumentError(
-            argument=None, message=f"Input data must be a CSV file. Got {args.test_path}"
+            argument=None,
+            message=f"Input data must be a CSV, OEB, or OEZ file. Got {args.test_path}",
         )
     if args.output is None:
         args.output = args.test_path.parent / (args.test_path.stem + "_preds.csv")
