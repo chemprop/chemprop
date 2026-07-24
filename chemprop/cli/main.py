@@ -4,6 +4,7 @@ import sys
 
 from configargparse import ArgumentParser
 
+import chemprop
 from chemprop.cli.conf import LOG_DIR, LOG_LEVELS, NOW
 from chemprop.cli.convert import ConvertSubcommand
 from chemprop.cli.fingerprint import FingerprintSubcommand
@@ -24,7 +25,12 @@ SUBCOMMANDS = [
 
 
 def construct_parser():
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description=f"Chemprop {chemprop.__version__} implements 2-D message-passing neural networks for molecular property prediction."
+    )
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"chemprop {chemprop.__version__}"
+    )
     subparsers = parser.add_subparsers(title="mode", dest="mode", required=True)
 
     parent = ArgumentParser(add_help=False)
