@@ -270,7 +270,7 @@ By default, graph featurization occurs a single time at the beginning of the tra
 .. note::
   Setting :code:`num_workers` to a value greater than 0 can cause hangs on Windows and MacOS
 
-Training can be further accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is a required dependency and is installed automatically with Chemprop (see :ref:`installation`). In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets.
+Training can be further accelerated using a molecular featurizer package called ``cuik-molmaker``. This package is a required dependency and is installed automatically with Chemprop (see :ref:`installation`). In order to enable the accelerated featurizer, use the :code:`--use-cuikmolmaker-featurization` flag. This featurizer also performs on-the-fly featurization of molecules and reduces memory usage which is particularly useful for large datasets. This flag is also supported for :ref:`mol_atom_bond` training and prediction, with the same restrictions on :code:`--keep-h`, :code:`--reorder-atoms`, :code:`--ignore-stereo`, and multi-component data described above.
 
 
 .. _train-on-reactions:

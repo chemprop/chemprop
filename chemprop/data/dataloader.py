@@ -5,11 +5,13 @@ from torch.utils.data import DataLoader
 from chemprop.data.collate import (
     collate_batch,
     collate_cuik_batch,
+    collate_cuik_mol_atom_bond_batch,
     collate_mol_atom_bond_batch,
     collate_multicomponent,
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
+    CuikmolmakerMolAtomBondDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
@@ -66,6 +68,8 @@ def build_dataloader(
 
     if isinstance(dataset, MulticomponentDataset):
         collate_fn = collate_multicomponent
+    elif isinstance(dataset, CuikmolmakerMolAtomBondDataset):
+        collate_fn = collate_cuik_mol_atom_bond_batch
     elif isinstance(dataset, CuikmolmakerDataset):
         collate_fn = collate_cuik_batch
     elif isinstance(dataset, MolAtomBondDataset):

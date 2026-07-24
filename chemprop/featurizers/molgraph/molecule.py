@@ -123,6 +123,23 @@ class BatchCuikMolGraph:
         self.batch = self.batch.to(device)
 
 
+@dataclass(repr=False, eq=False, slots=True)
+class BatchCuikMolAtomBondGraph(BatchCuikMolGraph):
+    """A :class:`BatchCuikMolAtomBondGraph` is a :class:`BatchCuikMolGraph` with the addition of
+    the ``bond_batch`` attribute, for use with atom/bond-level targets."""
+
+    bond_batch: Tensor = field(init=False)
+    """A tensor of indices that show which molecule each (directed) bond belongs to in the batch"""
+
+    def __post_init__(self):
+        super(BatchCuikMolAtomBondGraph, self).__post_init__()
+        self.bond_batch = self.batch[self.edge_index[0]]
+
+    def to(self, device: str | torch.device):
+        super(BatchCuikMolAtomBondGraph, self).to(device)
+        self.bond_batch = self.bond_batch.to(device)
+
+
 @dataclass
 class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
     """A :class:`CuikmolmakerMolGraphFeaturizer` featurizes a list of molecules at once instead of

@@ -204,6 +204,46 @@ class MolAtomBondDatapoint(MoleculeDatapoint):
 
 
 @dataclass
+class LazyMolAtomBondDatapoint(LazyMoleculeDatapoint):
+    """A :class:`LazyMolAtomBondDatapoint` contains a single SMILES string and all attributes
+    needed to form a `rdkit.Chem.Mol` object, plus atom- and bond-level targets. The molecule is
+    computed lazily when the attribute `mol` is accessed."""
+
+    E_d: np.ndarray | None = None
+    """A numpy array of shape ``E x d_ed``, where ``E`` is the number of bonds in the molecule, and
+    ``d_ed`` is the number of additional descriptors that will be concatenated to edge-level
+    descriptors *after* message passing"""
+    atom_y: np.ndarray | None = None
+    """A numpy array of shape ``V x v_t``, where ``V`` is the number of atoms in the molecule, and
+    ``v_t`` is the number of atom targets. The order of atoms in the array should match the order of
+    atoms in the mol. Unknown targets are indicated by `nan`s."""
+    atom_gt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `<x`"""
+    atom_lt_mask: np.ndarray | None = None
+    """Indicates whether the atom targets are an inequality regression target of the form `>x`"""
+    bond_y: np.ndarray | None = None
+    """A numpy array of shape ``E x e_t``, where ``V`` is the number of bonds in the molecule, and
+    ``e_t`` is the number of bond targets. The order of bonds in the array should match the order of
+    bonds in the mol. Unknown targets are indicated by `nan`s."""
+    bond_gt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `<x`"""
+    bond_lt_mask: np.ndarray | None = None
+    """Indicates whether the bond targets are an inequality regression target of the form `>x`"""
+    atom_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x v_t`` containing the values that the atom property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
+    bond_constraint: np.ndarray | None = None
+    """A numpy array of shape ``1 x e_t`` containing the values that the bond property predictions
+    should be constrained to sum to, with np.nan indicating no constraint for that property"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        NAN_TOKEN = 0
+        if self.E_d is not None:
+            self.E_d[np.isnan(self.E_d)] = NAN_TOKEN
+
+
+@dataclass
 class _ReactionDatapointMixin:
     rct: Chem.Mol
     """the reactant associated with this datapoint"""
