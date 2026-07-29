@@ -171,8 +171,6 @@ def parse_oeb(
                 if not smiles_lists:
                     smiles_lists.append([])
                 smiles_lists[-1].append(sd_data.get(col, ""))
-        elif rxn_cols:
-            pass
         else:
             if not smiles_lists:
                 smiles_lists.append([])
@@ -214,12 +212,12 @@ def parse_oeb(
 
     if bounded and target_cols:
         lt_mask = np.array([("<" in val) for row in Y for val in row]).reshape(Y.shape)
-        gt_mask = np.array([(">" in val) for row in Y for val in row]).reshape(Y.shape)
+        gt_mask = np.array([">" in val for row in Y for val in row]).reshape(Y.shape)
         Y = np.array(
-            [[float(val.strip("<").strip(">")) for val in row] for row in Y], dtype=np.single
+            [[float(val.strip("<").strip(">")) if val else np.nan for val in row] for row in Y], dtype=np.single
         )
     elif target_cols:
-        Y = np.array([[float(val) for val in row] for row in Y], dtype=np.single)
+        Y = np.array([[float(val) if val else np.nan for val in row] for row in Y], dtype=np.single)
         lt_mask = None
         gt_mask = None
 
