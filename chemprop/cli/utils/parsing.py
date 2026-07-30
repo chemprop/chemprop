@@ -249,11 +249,10 @@ def make_datapoints(
 
     if use_cuikmolmaker_featurization:
         if rxnss:
-            # Reaction cuikmolmaker path: build LazyReactionDatapoint list
             rxn_data = [
                 LazyReactionDatapoint(
-                    reac_smiles=f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
-                    prod_smiles=pdt_smi,
+                    rct_smiles=f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi,
+                    pdt_smiles=pdt_smi,
                     _keep_h=keep_h,
                     _add_h=add_h,
                     name=rxnss[0][i],

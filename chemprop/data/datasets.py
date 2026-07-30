@@ -418,9 +418,17 @@ class CuikmolmakerDataset(MoleculeDataset):
         V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
         X_d = self.X_d[indexes] if self.X_d[0] is not None else None
         Y = self.Y[indexes] if self.Y[0] is not None else None
-        weights = self.weights[indexes]
-        lt_mask = self.lt_mask[indexes] if self.lt_mask[0] is not None else None
-        gt_mask = self.gt_mask[indexes] if self.gt_mask[0] is not None else None
+        weights = np.array([self.data[idx].weight for idx in indexes])
+        lt_mask = (
+            np.array([self.data[idx].lt_mask for idx in indexes])
+            if self.data[0].lt_mask is not None
+            else None
+        )
+        gt_mask = (
+            np.array([self.data[idx].gt_mask for idx in indexes])
+            if self.data[0].gt_mask is not None
+            else None
+        )
 
         return CuikBatchedDatum(bmg, V_d, X_d, Y, weights, lt_mask, gt_mask)
 
@@ -467,30 +475,37 @@ class CuikmolmakerReactionDataset(MoleculeDataset):
         return [None] * len(self.data)
 
     @property
-    def smiles(self) -> list[str]:
-        return [f"{d.reac_smiles}>>{d.prod_smiles}" for d in self.data]
+    def smiles(self) -> list[tuple]:
+        return [(d.rct_smiles, d.pdt_smiles) for d in self.data]
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
-        bmg = self.featurizer([d.reac_smiles], [d.prod_smiles])
+        bmg = self.featurizer([d.rct_smiles], [d.pdt_smiles])
         mg = MolGraph(
             bmg.V.numpy(), bmg.E.numpy(), bmg.edge_index.numpy(), bmg.rev_edge_index.numpy()
         )
-        return Datum(mg, self.V_ds[idx], self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
+        return Datum(mg, None, self.X_d[idx], self.Y[idx], d.weight, d.lt_mask, d.gt_mask)
 
     def __getitems__(self, indexes: list[int]) -> CuikBatchedDatum:
-        reac_smiles_list = [self.data[idx].reac_smiles for idx in indexes]
-        prod_smiles_list = [self.data[idx].prod_smiles for idx in indexes]
-        bmg = self.featurizer(reac_smiles_list, prod_smiles_list)
+        rct_smiles_list = [self.data[idx].rct_smiles for idx in indexes]
+        pdt_smiles_list = [self.data[idx].pdt_smiles for idx in indexes]
+        bmg = self.featurizer(rct_smiles_list, pdt_smiles_list)
 
-        V_d = np.concat([self.V_ds[idx] for idx in indexes]) if self.V_ds[0] is not None else None
         X_d = self.X_d[indexes] if self.X_d[0] is not None else None
         Y = self.Y[indexes] if self.Y[0] is not None else None
-        weights = self.weights[indexes]
-        lt_mask = self.lt_mask[indexes] if self.lt_mask[0] is not None else None
-        gt_mask = self.gt_mask[indexes] if self.gt_mask[0] is not None else None
+        weights = np.array([self.data[idx].weight for idx in indexes])
+        lt_mask = (
+            np.array([self.data[idx].lt_mask for idx in indexes])
+            if self.data[0].lt_mask is not None
+            else None
+        )
+        gt_mask = (
+            np.array([self.data[idx].gt_mask for idx in indexes])
+            if self.data[0].gt_mask is not None
+            else None
+        )
 
-        return CuikBatchedDatum(bmg, V_d, X_d, Y, weights, lt_mask, gt_mask)
+        return CuikBatchedDatum(bmg, None, X_d, Y, weights, lt_mask, gt_mask)
 
 
 class MolAtomBondDataset(MoleculeDataset, MolAtomBondGraphDataset):
