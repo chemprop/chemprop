@@ -26,7 +26,7 @@ from chemprop.cli.utils import (
     format_probability_string,
     make_dataset,
 )
-from chemprop.featurizers.molgraph.molecule import CuikmolmakerCGRFeaturizer
+from chemprop.featurizers.molgraph.reaction import CuikmolmakerCGRFeaturizer
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.message_passing import BondMessagePassing
 from chemprop.nn.metrics import BoundedMixin

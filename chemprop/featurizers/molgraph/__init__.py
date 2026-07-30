@@ -1,11 +1,15 @@
 from .cache import MolGraphCache, MolGraphCacheFacade, MolGraphCacheOnTheFly
 from .molecule import (
     BatchCuikMolGraph,
-    CuikmolmakerCGRFeaturizer,
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from .reaction import CGRFeaturizer, CondensedGraphOfReactionFeaturizer, RxnMode
+from .reaction import (
+    CGRFeaturizer,
+    CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerCGRFeaturizer,
+    RxnMode,
+)
 
 __all__ = [
     "MolGraphCacheFacade",
