@@ -255,6 +255,8 @@ def make_datapoints(
                     pdt_smiles=pdt_smi,
                     _keep_h=keep_h,
                     _add_h=add_h,
+                    _ignore_stereo=ignore_stereo,
+                    _reorder_atoms=reorder_atoms,
                     name=rxnss[0][i],
                     y=Y[i],
                     weight=weights[i],
@@ -265,10 +267,6 @@ def make_datapoints(
                 for i, rxn in enumerate(rxnss[0])
                 for rct_smi, agt_smi, pdt_smi in [rxn.split(">")]
             ]
-
-            if X_d is None:
-                for dp in rxn_data:
-                    setattr(dp, "x_d", None)
 
             return [], [rxn_data]
 

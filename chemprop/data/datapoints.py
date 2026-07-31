@@ -269,7 +269,11 @@ class _LazyReactionDatapointMixin:
     _add_h: bool = False
     """Whether to add implicit hydrogens (passed to CuikmolmakerCGRFeaturizer)."""
     _ignore_stereo: bool = False
+    """Only affects the ``rct``/``pdt`` mols (used for splitting and molecule features), not the C++
+    CGR featurization, which parses the SMILES on its own."""
     _reorder_atoms: bool = False
+    """Only affects the ``rct``/``pdt`` mols (used for splitting and molecule features), not the C++
+    CGR featurization, which parses the SMILES on its own."""
     _rct_cache: Chem.Mol = field(default=None, repr=False, compare=False)
     _pdt_cache: Chem.Mol = field(default=None, repr=False, compare=False)
 
