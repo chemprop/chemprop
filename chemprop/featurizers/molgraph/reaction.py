@@ -355,7 +355,14 @@ class CuikmolmakerCGRFeaturizer:
     """
 
     atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2"
-    reaction_mode: str = "REAC_DIFF"
+    reaction_mode: Literal[
+        "REAC_DIFF",
+        "REAC_PROD",
+        "PROD_DIFF",
+        "REAC_DIFF_BALANCE",
+        "REAC_PROD_BALANCE",
+        "PROD_DIFF_BALANCE",
+    ] = "REAC_DIFF"
     keep_h: bool = True
     add_h: bool = False
 
