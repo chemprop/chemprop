@@ -214,8 +214,8 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         if self.data is None:
             raise ValueError("Data cannot be None!")
 
-        self.reset()
         self.cache = False
+        self.reset()
 
     def __getitem__(self, idx: int) -> Datum:
         d = self.data[idx]
