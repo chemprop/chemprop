@@ -150,6 +150,7 @@ class HpoptSubcommand(Subcommand):
         args = process_hpopt_args(args)
         validate_common_args(args)
         validate_train_args(args)
+        args.output_dir.mkdir(exist_ok=True, parents=True)
         main(args)
 
 
