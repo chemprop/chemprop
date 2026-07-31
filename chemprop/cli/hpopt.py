@@ -275,7 +275,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_hpopt_args(args: Namespace) -> Namespace:
     if args.hpopt_save_dir is None:
-        args.hpopt_save_dir = Path(f"chemprop_hpopt/{args.data_path.stem}")
+        args.hpopt_save_dir = Path(f"chemprop_hpopt/{args.data_path[0].stem}")
 
     args.hpopt_save_dir.mkdir(exist_ok=True, parents=True)
 
