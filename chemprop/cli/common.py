@@ -256,6 +256,11 @@ def validate_common_args(args):
                 message="cuik-molmaker featurization does not support multi-component molecule datasets.",
             )
         if args.molecule_featurizers is not None:
+            if is_reaction_task:
+                raise ArgumentError(
+                    argument=None,
+                    message="`--molecule-featurizers` is not supported for reaction featurization with cuik-molmaker. Either drop `--molecule-featurizers` or run without `--use-cuikmolmaker-featurization`.",
+                )
             logger.warning(
                 "Molecule featurizers reduce the memory savings of `--use-cuikmolmaker-featurization`. Consider pre-computing the features manually and providing them via `--descriptors-path`"
             )
