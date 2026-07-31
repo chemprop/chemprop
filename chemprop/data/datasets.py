@@ -361,6 +361,7 @@ class MoleculeDataset(_MolGraphDatasetMixin, MolGraphDataset):
         self.__V_fs = self._V_fs
         self.__E_fs = self._E_fs
         self.__V_ds = self._V_ds
+        self._init_cache()
 
 
 @dataclass
