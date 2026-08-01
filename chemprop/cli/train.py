@@ -2012,8 +2012,8 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
-    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
-    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.data[0].lt_mask is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.data[0].gt_mask is not None else None
 
     individual_scores = dict()
     for metric in metrics:
