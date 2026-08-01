@@ -775,7 +775,7 @@ def validate_train_args(args):
         args.use_cuikmolmaker_featurization
         and args.splits_column is None
         and args.splits_file is None
-        and args.split != "random"
+        and args.split.lower() != "random"
     ):
         logger.warning(
             f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
