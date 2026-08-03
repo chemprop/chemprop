@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from chemprop import data, featurizers
+from chemprop import data
 from chemprop.callbacks import CallbackRegistry
 from chemprop.cli.common import (
     add_common_args,
@@ -25,6 +25,11 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     format_probability_string,
     make_dataset,
+)
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
+from chemprop.featurizers.molgraph.reaction import (
+    CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerCGRFeaturizer,
 )
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.message_passing import BondMessagePassing
@@ -235,7 +240,7 @@ def check_featurizer_matches_model(data_loader, model):
     current_feat_output_dims = []
     v1_default_feat_output_dims = []
     mp_input_dims = []
-    v1_atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+    v1_atom_featurizer = MultiHotAtomFeaturizer.v1()
     v1_atom_fdims = []
 
     for dataset, mp in zip(datasets, mps):
@@ -243,7 +248,7 @@ def check_featurizer_matches_model(data_loader, model):
         atom_fdim = featurizer.atom_fdim
         bond_fdim = featurizer.bond_fdim
 
-        if isinstance(featurizer, featurizers.CondensedGraphOfReactionFeaturizer):
+        if isinstance(featurizer, (CondensedGraphOfReactionFeaturizer, CuikmolmakerCGRFeaturizer)):
             v1_atom_fdim = 2 * len(v1_atom_featurizer) - len(v1_atom_featurizer.atomic_nums) - 1
         else:
             v1_atom_fdim = len(v1_atom_featurizer) + featurizer.extra_atom_fdim
@@ -272,7 +277,7 @@ def check_featurizer_matches_model(data_loader, model):
             "featurizer! To remove this warning, pass `--multi-hot-atom-featurizer-mode v1`."
         )
         for dataset, v1_atom_fdim in zip(datasets, v1_atom_fdims):
-            dataset.featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+            dataset.featurizer.atom_featurizer = MultiHotAtomFeaturizer.v1()
             dataset.featurizer.atom_fdim = v1_atom_fdim
         current_feat_output_dims = v1_default_feat_output_dims
 
