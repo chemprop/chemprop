@@ -51,8 +51,11 @@ def test_reorder_atoms_no_atom_map_large():
 
 def test_reorder_atoms_partial_map():
     # unmapped atoms (map number 0) must keep their relative order, ahead of mapped atoms
-    mol = make_mol("S[C:5]NO", reorder_atoms=True)
-    assert [a.GetSymbol() for a in mol.GetAtoms()] == ["S", "N", "O", "C"]
+    num = 20
+    mol = make_mol(
+        "SC" + "".join(f"[C:{i}]" for i in range(1, num + 1)) + "NO", reorder_atoms=True
+    )
+    assert [a.GetSymbol() for a in mol.GetAtoms()] == ["S", "C", "N", "O"] + ["C"] * num
 
 
 def test_reorder_atoms_add_h():
