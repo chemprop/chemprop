@@ -1,15 +1,18 @@
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 from enum import auto
 import logging
-from typing import Iterable, Sequence, TypeAlias
+from typing import Iterable, Literal, Sequence, TypeAlias
 
+import cuik_molmaker
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import Bond, Mol
+import torch
 
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.base import GraphFeaturizer
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
+from chemprop.featurizers.molgraph.molecule import BatchCuikMolGraph
 from chemprop.types import Rxn
 from chemprop.utils.utils import EnumMapping
 
@@ -330,3 +333,138 @@ class CondensedGraphOfReactionFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturiz
 
 
 CGRFeaturizer: TypeAlias = CondensedGraphOfReactionFeaturizer
+
+
+@dataclass
+class CuikmolmakerCGRFeaturizer:
+    """A :class:`CuikmolmakerCGRFeaturizer` featurizes a batch of reactions using the Condensed
+    Graph of Reaction (CGR) representation via the cuik-molmaker C++ library.
+
+    Parameters
+    ----------
+    atom_featurizer_mode : str, default="V2"
+        Atom featurizer mode: V1, V2, ORGANIC, or RIGR.
+    reaction_mode : str, default="REAC_DIFF"
+        CGR mode: REAC_DIFF, REAC_PROD, PROD_DIFF, REAC_DIFF_BALANCE, REAC_PROD_BALANCE, or
+        PROD_DIFF_BALANCE.
+    keep_h : bool, default=True
+        Whether to keep explicit hydrogens when parsing SMILES. Required for reactions with mapped
+        hydrogens.
+    add_h : bool, default=False
+        Whether to add implicit hydrogens via Chem.AddHs after parsing.
+    """
+
+    atom_featurizer_mode: Literal["V1", "V2", "ORGANIC", "RIGR"] = "V2"
+    reaction_mode: Literal[
+        "REAC_DIFF",
+        "REAC_PROD",
+        "PROD_DIFF",
+        "REAC_DIFF_BALANCE",
+        "REAC_PROD_BALANCE",
+        "PROD_DIFF_BALANCE",
+    ] = "REAC_DIFF"
+    keep_h: bool = True
+    add_h: bool = False
+
+    atom_fdim: int = field(init=False)
+    bond_fdim: int = field(init=False)
+
+    def __post_init__(self):
+        if not hasattr(cuik_molmaker, "batch_reaction_featurizer"):
+            raise ImportError(
+                "CuikmolmakerCGRFeaturizer requires cuik_molmaker>=0.3 for reaction (CGR) "
+                "featurization, but the installed cuik_molmaker does not provide it. Please "
+                "upgrade with `conda install 'conda-forge::cuik_molmaker>=0.3'` or "
+                "`pip install --upgrade cuik_molmaker_pin`."
+            )
+
+        atom_props_float = ["aromatic", "mass"]
+        bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
+        single_bond_fdim = 14
+
+        self.atom_featurizer_mode = self.atom_featurizer_mode.upper()
+        if self.atom_featurizer_mode == "V1":
+            atom_props_onehot = [
+                "atomic-number",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization",
+            ]
+            single_atom_fdim = 133
+            atomic_num_block_w = 101  # 100 elements + 1 "other"
+        elif self.atom_featurizer_mode == "V2":
+            atom_props_onehot = [
+                "atomic-number-common",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization-expanded",
+            ]
+            single_atom_fdim = 72
+            atomic_num_block_w = 38  # 37 common elements + 1 "other"
+        elif self.atom_featurizer_mode == "ORGANIC":
+            atom_props_onehot = [
+                "atomic-number-organic",
+                "total-degree",
+                "formal-charge",
+                "chirality",
+                "num-hydrogens",
+                "hybridization-organic",
+            ]
+            single_atom_fdim = 44
+            atomic_num_block_w = 13  # 12 organic elements + 1 "other"
+        elif self.atom_featurizer_mode == "RIGR":
+            atom_props_onehot = ["atomic-number-common", "total-degree", "num-hydrogens"]
+            atom_props_float = ["mass"]
+            bond_props = ["is-null", "in-ring"]
+            single_atom_fdim = 52
+            atomic_num_block_w = 38  # same as V2
+            single_bond_fdim = 2
+        else:
+            raise ValueError(f"Invalid atom featurizer mode: {self.atom_featurizer_mode}")
+
+        # CGR doubles the feature dimension; second half strips the atomic-number one-hot block
+        self.atom_fdim = 2 * single_atom_fdim - atomic_num_block_w
+        self.bond_fdim = 2 * single_bond_fdim
+
+        self.atom_property_list_onehot = cuik_molmaker.atom_onehot_feature_names_to_array(
+            atom_props_onehot
+        )
+        self.atom_property_list_float = cuik_molmaker.atom_float_feature_names_to_array(
+            atom_props_float
+        )
+        self.bond_property_list = cuik_molmaker.bond_feature_names_to_array(bond_props)
+
+        self._mode_int = int(cuik_molmaker.reaction_mode_to_int(self.reaction_mode.upper()))
+
+    def __call__(
+        self, reac_smiles_list: list[str], prod_smiles_list: list[str]
+    ) -> BatchCuikMolGraph:
+        (
+            atom_feats,
+            bond_feats,
+            edge_index,
+            rev_edge_index,
+            batch,
+        ) = cuik_molmaker.batch_reaction_featurizer(
+            reac_smiles_list,
+            prod_smiles_list,
+            self.atom_property_list_onehot,
+            self.atom_property_list_float,
+            self.bond_property_list,
+            self.keep_h,
+            self.add_h,
+            False,  # offset_carbon
+            self._mode_int,
+        )
+
+        return BatchCuikMolGraph(
+            V=torch.from_numpy(atom_feats),
+            E=torch.from_numpy(bond_feats),
+            edge_index=torch.from_numpy(edge_index),
+            rev_edge_index=torch.from_numpy(rev_edge_index),
+            batch=torch.from_numpy(batch),
+        )
