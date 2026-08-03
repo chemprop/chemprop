@@ -12,7 +12,7 @@ dependencies:
   - numpy
   - pandas
   - rdkit
-  - cuik_molmaker >0.2
+  - cuik_molmaker >=0.3
   - scikit-learn
   - scipy
   - rich

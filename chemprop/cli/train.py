@@ -44,6 +44,7 @@ from chemprop.cli.utils import (
 from chemprop.cli.utils.args import uppercase
 from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
+    LazyReactionDatapoint,
     MolAtomBondDataset,
     MoleculeDataset,
     MolGraphDataset,
@@ -774,7 +775,7 @@ def validate_train_args(args):
         args.use_cuikmolmaker_featurization
         and args.splits_column is None
         and args.splits_file is None
-        and args.split != "random"
+        and args.split.lower() != "random"
     ):
         logger.warning(
             f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
@@ -1186,7 +1187,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             if args.split == "random":
                 splitting_mols = range(len(splitting_data))
             else:
-                if isinstance(splitting_data[0], ReactionDatapoint):
+                if isinstance(splitting_data[0], (ReactionDatapoint, LazyReactionDatapoint)):
                     splitting_mols = [datapoint.rct for datapoint in splitting_data]
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]
@@ -2011,8 +2012,8 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
-    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
-    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.data[0].lt_mask is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.data[0].gt_mask is not None else None
 
     individual_scores = dict()
     for metric in metrics:
