@@ -84,7 +84,7 @@ def make_mol(
 
     if reorder_atoms:
         atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
-        new_order = np.argsort(atom_map_numbers).tolist()
+        new_order = np.argsort(atom_map_numbers, kind="stable").tolist()
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
