@@ -1,3 +1,5 @@
+import copy
+
 from numpy.typing import ArrayLike
 from sklearn.preprocessing import StandardScaler
 import torch
@@ -64,6 +66,8 @@ class GraphTransform(nn.Module):
         if self.training:
             return bmg
 
+        # Avoid mutating the input by using a shallow copy
+        bmg = copy.copy(bmg)
         bmg.V = self.V_transform(bmg.V)
         bmg.E = self.E_transform(bmg.E)
 
