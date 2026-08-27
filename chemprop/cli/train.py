@@ -649,6 +649,23 @@ def validate_train_args(args):
             argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
         )
 
+    if len(args.data_path) > 1:
+        for arg_value, arg_name in (
+            (args.descriptors_path, "--descriptors-path"),
+            (args.atom_features_path, "--atom-features-path"),
+            (args.atom_descriptors_path, "--atom-descriptors-path"),
+            (args.bond_features_path, "--bond-features-path"),
+            (args.bond_descriptors_path, "--bond-descriptors-path"),
+        ):
+            if arg_value is not None:
+                raise ArgumentError(
+                    argument=None,
+                    message=(
+                        f"{arg_name} is not supported with separate data files supplied to "
+                        "--data-path."
+                    ),
+                )
+
     if (
         len(args.data_path) == 2
         and args.split_sizes[2] != 0
