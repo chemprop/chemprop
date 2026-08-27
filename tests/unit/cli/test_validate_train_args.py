@@ -4,40 +4,49 @@ import pandas as pd
 import pytest
 
 from chemprop.cli.common import process_common_args, validate_common_args
-from chemprop.cli.train import (
-    TrainSubcommand,
-    process_train_args,
-    validate_train_args,
-)
+from chemprop.cli.train import TrainSubcommand, process_train_args, validate_train_args
 
 
 @pytest.mark.parametrize(
-    "feature_flag",
+    ("external_data_flag", "file_type"),
     [
-        "--descriptors-path",
-        "--atom-features-path",
-        "--atom-descriptors-path",
-        "--bond-features-path",
-        "--bond-descriptors-path",
+        ("--descriptors-path", "npz"),
+        ("--atom-features-path", "npz"),
+        ("--atom-descriptors-path", "npz"),
+        ("--bond-features-path", "npz"),
+        ("--bond-descriptors-path", "npz"),
+        ("--constraints-path", "csv"),
     ],
 )
-def test_extra_features_with_separate_data_files(tmp_path, feature_flag):
+@pytest.mark.parametrize("num_data_paths", [2, 3])
+def test_external_data_with_separate_data_files(
+    tmp_path, external_data_flag, file_type, num_data_paths
+):
     data_paths = []
-    for split, smiles in zip(("train", "val", "test"), ("C", "CC", "CCC")):
+    for split, smiles in zip(
+        ("train", "val", "test")[:num_data_paths], ("C", "CC", "CCC")[:num_data_paths]
+    ):
         data_path = tmp_path / f"{split}.csv"
         pd.DataFrame({"smiles": [smiles], "target": [0.0]}).to_csv(data_path, index=False)
         data_paths.append(data_path)
 
-    features_path = tmp_path / "features.npz"
-    np.savez(features_path, np.array([[1.0], [2.0], [3.0]]))
+    external_data_path = tmp_path / f"external_data.{file_type}"
+    if file_type == "npz":
+        np.savez(external_data_path, np.array([[1.0], [2.0], [3.0]]))
+    else:
+        pd.DataFrame({"constraint": [1.0, 2.0, 3.0]}).to_csv(external_data_path, index=False)
 
     parser = TrainSubcommand.add_args(ArgumentParser())
     args = parser.parse_args(
         [
             "--data-path",
             *map(str, data_paths),
-            feature_flag,
-            str(features_path),
+            external_data_flag,
+            str(external_data_path),
+            "--split-sizes",
+            "0.8",
+            "0.2",
+            "0.0",
             "--output-dir",
             str(tmp_path / "output"),
         ]
@@ -46,5 +55,5 @@ def test_extra_features_with_separate_data_files(tmp_path, feature_flag):
     validate_common_args(args)
     args = process_train_args(args)
 
-    with pytest.raises(ArgumentError, match=f"{feature_flag}.*separate data files"):
+    with pytest.raises(ArgumentError, match=f"{external_data_flag}.*separate data files"):
         validate_train_args(args)

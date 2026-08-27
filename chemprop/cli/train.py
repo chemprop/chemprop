@@ -656,6 +656,7 @@ def validate_train_args(args):
             (args.atom_descriptors_path, "--atom-descriptors-path"),
             (args.bond_features_path, "--bond-features-path"),
             (args.bond_descriptors_path, "--bond-descriptors-path"),
+            (args.constraints_path, "--constraints-path"),
         ):
             if arg_value is not None:
                 raise ArgumentError(
