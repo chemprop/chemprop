@@ -73,9 +73,14 @@ class MeanAggregation(Aggregation):
     def forward(self, H: Tensor, batch: Tensor) -> Tensor:
         index_torch = batch.unsqueeze(1).repeat(1, H.shape[1])
         dim_size = batch.max().int() + 1
-        return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
-            self.dim, index_torch, H, reduce="mean", include_self=False
+        sums = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, index_torch, H, reduce="sum", include_self=False
         )
+        ones = torch.ones(H.shape[0], 1, dtype=H.dtype, device=H.device)
+        counts = torch.zeros(dim_size, 1, dtype=H.dtype, device=H.device).scatter_reduce_(
+            self.dim, batch.unsqueeze(1), ones, reduce="sum", include_self=False
+        )
+        return sums / counts
 
 
 @AggregationRegistry.register("sum")
