@@ -208,6 +208,23 @@ class CuikmolmakerMolGraphFeaturizer(Featurizer[list[str], BatchCuikMolGraph]):
         self.atom_fdim += self.extra_atom_fdim
         self.bond_fdim += self.extra_bond_fdim
 
+    def __getstate__(self):
+        # cuik property-list arrays break after pickle (V/E feature dim becomes 0). Persist only
+        # constructor inputs and rebuild in __setstate__ for DataLoader spawn workers.
+        return {
+            "atom_featurizer_mode": self.atom_featurizer_mode,
+            "extra_atom_fdim": self.extra_atom_fdim,
+            "extra_bond_fdim": self.extra_bond_fdim,
+            "add_h": self.add_h,
+        }
+
+    def __setstate__(self, state):
+        self.atom_featurizer_mode = state["atom_featurizer_mode"]
+        self.extra_atom_fdim = state["extra_atom_fdim"]
+        self.extra_bond_fdim = state["extra_bond_fdim"]
+        self.add_h = state["add_h"]
+        self.__post_init__()
+
     def __call__(
         self,
         smiles_list: list[str],
