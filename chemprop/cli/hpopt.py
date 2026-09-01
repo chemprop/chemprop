@@ -253,7 +253,9 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
     raytune_args.add_argument(
         "--raytune-max-concurrent-trials",
         type=int,
-        help="Passed directly to Ray Tune TuneConfig to control maximum concurrent trials",
+        help="Passed to Ray Tune ``TuneConfig.max_concurrent_trials`` to limit simultaneously "
+        "RUNNING trials. When ``--raytune-num-cpus`` / ``--raytune-num-gpus`` are also set, "
+        "those resources are divided across this many concurrent trials for placement.",
     )
 
     hyperopt_args = parser.add_argument_group("Hyperopt arguments")
@@ -329,6 +331,12 @@ def process_hpopt_args(args: Namespace) -> Namespace:
             search_parameters.discard(param)
 
     args.search_parameter_keywords = list(search_parameters)
+
+    if args.raytune_max_concurrent_trials is not None and args.raytune_max_concurrent_trials < 1:
+        raise ValueError(
+            f"--raytune-max-concurrent-trials must be >= 1 when set, got: "
+            f"{args.raytune_max_concurrent_trials}. Omit the flag for no concurrency limit."
+        )
 
     if not args.hyperopt_n_initial_points:
         args.hyperopt_n_initial_points = args.raytune_num_samples // 2
@@ -514,12 +522,18 @@ def tune_model(
 
             search_alg = OptunaSearch()
 
+    if args.raytune_max_concurrent_trials is not None:
+        logger.info(
+            f"Limiting Ray Tune to max_concurrent_trials={args.raytune_max_concurrent_trials}"
+        )
+
     tune_config = tune.TuneConfig(
         metric=args.tracking_metric,
         mode=monitor_mode,
         num_samples=args.raytune_num_samples,
         scheduler=scheduler,
         search_alg=search_alg,
+        max_concurrent_trials=args.raytune_max_concurrent_trials,
         trial_dirname_creator=lambda trial: str(trial.trial_id),
     )
 
