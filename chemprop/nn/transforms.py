@@ -29,8 +29,8 @@ class _ScaleTransformMixin(nn.Module):
 
     def to_standard_scaler(self, anti_pad: int = 0) -> StandardScaler:
         scaler = StandardScaler()
-        scaler.mean_ = self.mean[anti_pad:].numpy()
-        scaler.scale_ = self.scale[anti_pad:].numpy()
+        scaler.mean_ = self.mean[0, anti_pad:].numpy()
+        scaler.scale_ = self.scale[0, anti_pad:].numpy()
         return scaler
 
 
