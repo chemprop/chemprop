@@ -248,7 +248,9 @@ class MPNN(pl.LightningModule):
         except KeyError:
             raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
 
-        if hparams["metrics"] is not None:
+        # Foundation .pt checkpoints (e.g. CheMeleon) may omit optional training
+        # hparams such as metrics; tolerate missing keys rather than KeyError.
+        if hparams.get("metrics") is not None:
             hparams["metrics"] = [
                 cls._rebuild_metric(metric)
                 if not hasattr(metric, "_defaults")
@@ -257,8 +259,9 @@ class MPNN(pl.LightningModule):
                 for metric in hparams["metrics"]
             ]
 
-        if hparams["predictor"]["criterion"] is not None:
-            metric = hparams["predictor"]["criterion"]
+        predictor_hparams = hparams.get("predictor") or {}
+        if predictor_hparams.get("criterion") is not None:
+            metric = predictor_hparams["criterion"]
             if not hasattr(metric, "_defaults") or (
                 not torch.cuda.is_available() and metric.device.type != "cpu"
             ):
@@ -275,7 +278,7 @@ class MPNN(pl.LightningModule):
     @classmethod
     def _add_metric_task_weights_to_state_dict(cls, state_dict, hparams):
         if "metrics.0.task_weights" not in state_dict:
-            metrics = hparams["metrics"]
+            metrics = hparams.get("metrics")
             n_metrics = len(metrics) if metrics is not None else 1
             for i_metric in range(n_metrics):
                 state_dict[f"metrics.{i_metric}.task_weights"] = torch.tensor([[1.0]])
