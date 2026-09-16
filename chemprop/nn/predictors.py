@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections.abc import Sequence
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
@@ -100,6 +101,11 @@ PredictorRegistry = ClassRegistry[Predictor]()
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
     r"""A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
     underlying :class:`MLP` to map the learned fingerprint to the desired output.
+
+    ``hidden_dim`` accepts either an ``int``, giving ``n_layers`` hidden layers of that width, or a
+    sequence of ``int``, giving one hidden layer per element. A sequence allows a network that
+    changes width with depth, e.g. ``hidden_dim=[1024, 512, 256]``, and its length determines the
+    depth, so ``n_layers`` is ignored.
     """
 
     _T_default_criterion: type[ChempropMetric]
@@ -109,7 +115,7 @@ class _FFNPredictorBase(Predictor, HyperparametersMixin):
         self,
         n_tasks: int = 1,
         input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",

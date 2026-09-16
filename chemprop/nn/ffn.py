@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections.abc import Sequence
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
@@ -39,14 +40,35 @@ class MLP(nn.Sequential, FFN):
         cls,
         input_dim: int,
         output_dim: int,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",
     ):
+        """Build an :class:`MLP`.
+
+        Parameters
+        ----------
+        input_dim : int
+            the dimension of the input tensor
+        output_dim : int
+            the dimension of the output tensor
+        hidden_dim : int | Sequence[int], default=300
+            the width of the hidden layers. An ``int`` gives ``n_layers`` hidden layers of that
+            width. A sequence gives one hidden layer per element, of the corresponding width, which
+            allows a network that changes width with depth, e.g. ``[1024, 512, 256]``. When a
+            sequence is given, its length determines the depth and ``n_layers`` is ignored.
+        n_layers : int, default=1
+            the number of hidden layers. Ignored if ``hidden_dim`` is a sequence.
+        dropout : float, default=0.0
+            the dropout probability applied before each hidden layer
+        activation : str | nn.Module, default="relu"
+            the activation function
+        """
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
-        dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
+        hidden_dims = [hidden_dim] * n_layers if isinstance(hidden_dim, int) else list(hidden_dim)
+        dims = [input_dim, *hidden_dims, output_dim]
         blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
         if len(dims) > 2:
             blocks.extend(
