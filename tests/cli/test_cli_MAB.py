@@ -845,10 +845,11 @@ def test_train_regression_atom_constrained(monkeypatch, constrained_data_path, d
         "0.3",
         "0.3",
     ]
-    
+
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
 
 def test_train_regression_bond_constrained(monkeypatch, constrained_data_path, data_dir):
     (

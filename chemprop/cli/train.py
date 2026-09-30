@@ -1753,8 +1753,16 @@ def build_MAB_model(
 
     atom_constrainer, bond_constrainer = None, None
     if args.constraints_path is not None:
-        n_atom_cons = sum([col in args.atom_target_columns for col in args.constraints_to_targets]) if args.atom_target_columns is not None else 0
-        n_bond_cons = sum([col in args.bond_target_columns for col in args.constraints_to_targets]) if args.bond_target_columns is not None else 0
+        n_atom_cons = (
+            sum([col in args.atom_target_columns for col in args.constraints_to_targets])
+            if args.atom_target_columns is not None
+            else 0
+        )
+        n_bond_cons = (
+            sum([col in args.bond_target_columns for col in args.constraints_to_targets])
+            if args.bond_target_columns is not None
+            else 0
+        )
 
         if n_atom_cons:
             atom_constrainer = ConstrainerFFN(
