@@ -207,7 +207,7 @@ def build_MAB_data_from_files(
             )
 
         atom_constraint_cols = [
-            constraints_cols_to_target_cols.get(col) for col in atom_target_cols
+            constraints_cols_to_target_cols.get(col) for col in atom_target_cols or []
         ]
         if atom_constraint_cols:
             atom_constraints = np.hstack(
@@ -220,7 +220,7 @@ def build_MAB_data_from_files(
             )
 
         bond_constraint_cols = [
-            constraints_cols_to_target_cols.get(col) for col in bond_target_cols
+            constraints_cols_to_target_cols.get(col) for col in bond_target_cols or []
         ]
         if bond_constraint_cols:
             bond_constraints = np.hstack(
