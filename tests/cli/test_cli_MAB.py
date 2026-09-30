@@ -810,6 +810,87 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         main()
 
 
+def test_train_regression_atom_constrained(monkeypatch, constrained_data_path, data_dir):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        mol_targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--epochs",
+        "3",
+        "--constraints-path",
+        str(data_dir / "mol_atom_bond" / "constrained_regression_atom_constraints.csv"),
+        "--constraints-to-targets",
+        *constraints_to_targets[:2],
+        "--keep-h",
+        "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+    ]
+    
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+def test_train_regression_bond_constrained(monkeypatch, constrained_data_path, data_dir):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        mol_targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--constraints-path",
+        str(data_dir / "mol_atom_bond" / "constrained_regression_bond_constraints.csv"),
+        "--constraints-to-targets",
+        *constraints_to_targets[2:],
+        "--keep-h",
+        "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_regression_constrained(monkeypatch, constrained_data_path, constrained_model_path):
     (input_path, constraints_path, constraints_to_targets, smiles, *_) = constrained_data_path
 
