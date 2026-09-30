@@ -256,3 +256,89 @@ class ReactionDatapoint(_DatapointMixin, _ReactionDatapointMixin):
 
     def __len__(self) -> int:
         return 2
+
+
+@dataclass
+class _LazyReactionDatapointMixin:
+    rct_smiles: str
+    """The reactant SMILES string (atom-mapped)."""
+    pdt_smiles: str
+    """The product SMILES string (atom-mapped)."""
+    _keep_h: bool = True
+    """Whether to keep explicit hydrogens when parsing (passed to CuikmolmakerCGRFeaturizer)."""
+    _add_h: bool = False
+    """Whether to add implicit hydrogens (passed to CuikmolmakerCGRFeaturizer)."""
+    _ignore_stereo: bool = False
+    """Only affects the ``rct``/``pdt`` mols (used for splitting and molecule features), not the C++
+    CGR featurization, which parses the SMILES on its own."""
+    _reorder_atoms: bool = False
+    """Only affects the ``rct``/``pdt`` mols (used for splitting and molecule features), not the C++
+    CGR featurization, which parses the SMILES on its own."""
+    _rct_cache: Chem.Mol = field(default=None, repr=False, compare=False)
+    _pdt_cache: Chem.Mol = field(default=None, repr=False, compare=False)
+
+    @property
+    def rct(self) -> Chem.Mol:
+        """Lazily compute the reactant molecule only when accessed"""
+        if self._rct_cache is None:
+            self._rct_cache = make_mol(
+                self.rct_smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
+            )
+        return self._rct_cache
+
+    @property
+    def pdt(self) -> Chem.Mol:
+        """Lazily compute the product molecule only when accessed"""
+        if self._pdt_cache is None:
+            self._pdt_cache = make_mol(
+                self.pdt_smiles, self._keep_h, self._add_h, self._ignore_stereo, self._reorder_atoms
+            )
+        return self._pdt_cache
+
+    @classmethod
+    def from_smi(
+        cls,
+        rxn_or_smis: str | tuple[str, str],
+        *args,
+        keep_h: bool = True,
+        add_h: bool = False,
+        ignore_stereo: bool = False,
+        reorder_atoms: bool = False,
+        **kwargs,
+    ) -> _LazyReactionDatapointMixin:
+        match rxn_or_smis:
+            case str():
+                rct_smi, agt_smi, pdt_smi = rxn_or_smis.split(">")
+                rct_smi = f"{rct_smi}.{agt_smi}" if agt_smi else rct_smi
+                name = rxn_or_smis
+            case tuple():
+                rct_smi, pdt_smi = rxn_or_smis
+                name = ">>".join(rxn_or_smis)
+            case _:
+                raise TypeError(
+                    "Must provide either a reaction SMARTS string or a tuple of reactant and"
+                    " a product SMILES strings!"
+                )
+
+        kwargs["name"] = name if "name" not in kwargs else kwargs["name"]
+
+        return cls(
+            rct_smi,
+            pdt_smi,
+            *args,
+            _keep_h=keep_h,
+            _add_h=add_h,
+            _ignore_stereo=ignore_stereo,
+            _reorder_atoms=reorder_atoms,
+            **kwargs,
+        )
+
+
+@dataclass
+class LazyReactionDatapoint(_DatapointMixin, _LazyReactionDatapointMixin):
+    """A :class:`LazyReactionDatapoint` stores a reaction as SMILES strings rather than parsed Mol
+    objects, for use with :class:`CuikmolmakerReactionDataset` where batch C++ featurization
+    eliminates the need for per-datapoint mol parsing."""
+
+    def __len__(self) -> int:
+        return 2

@@ -11,7 +11,6 @@ from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.train import FoundationModels, TrainSubcommand
 from chemprop.models.model import MPNN
-from chemprop.utils.utils import is_cuikmolmaker_available
 
 pytestmark = pytest.mark.CLI
 
@@ -75,6 +74,11 @@ def test_train_quick(monkeypatch, data_path):
         "--num-workers",
         "0",
         "--show-individual-scores",
+        "--ffn-hidden-dim",
+        "300",
+        "600",
+        "--ffn-num-layers",
+        "2",
     ]
 
     with monkeypatch.context() as m:
@@ -204,7 +208,6 @@ def test_train_quick_features(monkeypatch, data_path):
             main()
 
 
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
 def test_train_quick_features_cuikmolmaker(monkeypatch, data_path):
     (
         input_path,
@@ -248,7 +251,6 @@ def test_predict_quick(monkeypatch, data_path, model_path):
         main()
 
 
-@pytest.mark.skipif(not is_cuikmolmaker_available(), reason="cuik_molmaker not installed")
 def test_predict_quick_cuikmolmaker(monkeypatch, data_path, model_path):
     input_path, *_ = data_path
     args = [
@@ -885,6 +887,69 @@ def test_only_trainset(monkeypatch, data_path):
         "1",
         "0",
         "0",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_save_data_splits(monkeypatch, data_path, tmp_path):
+    (
+        input_path,
+        descriptors_path,
+        atom_features_path,
+        bond_features_path,
+        atom_descriptors_path,
+    ) = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--save-data-splits",
+        "--output-dir",
+        str(tmp_path),
+        "--descriptors-path",
+        descriptors_path,
+        "--atom-features-path",
+        atom_features_path,
+        "--bond-features-path",
+        bond_features_path,
+        "--atom-descriptors-path",
+        atom_descriptors_path,
+        "--epochs",
+        "3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert (tmp_path / "splits.json").exists()
+    assert (tmp_path / "train_atom_desc_0.npz").exists()
+    assert (tmp_path / "val_atom_desc_0.npz").exists()
+    assert (tmp_path / "test_atom_desc_0.npz").exists()
+    assert (tmp_path / "train_atom_feat_0.npz").exists()
+    assert (tmp_path / "val_atom_feat_0.npz").exists()
+    assert (tmp_path / "test_atom_feat_0.npz").exists()
+
+
+def test_descriptors_column(monkeypatch, data_with_descriptors_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_with_descriptors_path,
+        "--target-columns",
+        "y",
+        "--descriptors-columns",
+        "temperature",
+        "--splits-column",
+        "split",
+        "--epochs",
+        "3",
     ]
 
     with monkeypatch.context() as m:

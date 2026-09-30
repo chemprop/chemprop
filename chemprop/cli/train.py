@@ -44,6 +44,7 @@ from chemprop.cli.utils import (
 from chemprop.cli.utils.args import uppercase
 from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
+    LazyReactionDatapoint,
     MolAtomBondDataset,
     MoleculeDataset,
     MolGraphDataset,
@@ -290,10 +291,17 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
     ffn_args = parser.add_argument_group("FFN args")
     ffn_args.add_argument(
-        "--ffn-hidden-dim", type=int, default=300, help="Hidden dimension in the FFN top model"
+        "--ffn-hidden-dim",
+        type=int,
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the FFN top model. A single value is applied to all layers; multiple values specify per-layer widths (must match --ffn-num-layers)",
     )
     ffn_args.add_argument(
-        "--ffn-num-layers", type=int, default=1, help="Number of layers in FFN top model"
+        "--ffn-num-layers",
+        type=int,
+        default=1,
+        help="Number of hidden layers in FFN top model (v2 semantics, differs from v1)",
     )
 
     extra_mpnn_args = parser.add_argument_group("extra MPNN args")
@@ -324,8 +332,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     atom_ffn_args.add_argument(
         "--atom-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the atom FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the atom FFN top model",
     )
     atom_ffn_args.add_argument(
         "--atom-ffn-num-layers", type=int, default=1, help="Number of layers in atom FFN top model"
@@ -347,8 +356,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     bond_ffn_args.add_argument(
         "--bond-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the bond FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the bond FFN top model",
     )
     bond_ffn_args.add_argument(
         "--bond-ffn-num-layers", type=int, default=1, help="Number of layers in bond FFN top model"
@@ -364,8 +374,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     atom_constrain_ffn_args.add_argument(
         "--atom-constrainer-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the atom constrainer FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the atom constrainer FFN top model",
     )
     atom_constrain_ffn_args.add_argument(
         "--atom-constrainer-ffn-num-layers",
@@ -378,8 +389,9 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
     bond_constrain_ffn_args.add_argument(
         "--bond-constrainer-ffn-hidden-dim",
         type=int,
-        default=300,
-        help="Hidden dimension in the bond constrainer FFN top model",
+        nargs="+",
+        default=[300],
+        help="Hidden dimension(s) in the bond constrainer FFN top model",
     )
     bond_constrain_ffn_args.add_argument(
         "--bond-constrainer-ffn-num-layers",
@@ -558,6 +570,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         help="Whether to store the SMILES in each train/val/test split",
     )
     split_args.add_argument(
+        "--save-data-splits",
+        action="store_true",
+        help="Whether to store the input data in each train/val/test split",
+    )
+    split_args.add_argument(
         "--splits-file",
         type=Path,
         help="Path to a JSON file containing pre-defined splits for the input data, formatted as a list of dictionaries with keys ``train``, ``val``, and ``test`` and values as lists of indices or formatted strings (e.g. [0, 1, 2, 4] or '0-2,4')",
@@ -580,7 +597,37 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
 
 
 def process_train_args(args: Namespace) -> Namespace:
+    _process_ffn_hidden_dims(args, "ffn_hidden_dim", "ffn_num_layers")
+    _process_ffn_hidden_dims(args, "atom_ffn_hidden_dim", "atom_ffn_num_layers")
+    _process_ffn_hidden_dims(args, "bond_ffn_hidden_dim", "bond_ffn_num_layers")
+    _process_ffn_hidden_dims(
+        args, "atom_constrainer_ffn_hidden_dim", "atom_constrainer_ffn_num_layers"
+    )
+    _process_ffn_hidden_dims(
+        args, "bond_constrainer_ffn_hidden_dim", "bond_constrainer_ffn_num_layers"
+    )
     return args
+
+
+def _process_ffn_hidden_dims(args: Namespace, hidden_dim_key: str, n_layers_key: str) -> None:
+    """Normalize --ffn-hidden-dim: single value expands to match n_layers; multiple values infer n_layers."""
+    hidden_dims = getattr(args, hidden_dim_key)
+    n_layers = getattr(args, n_layers_key)
+
+    if len(hidden_dims) == 1:
+        setattr(args, hidden_dim_key, [hidden_dims[0]] * n_layers)
+    else:
+        if n_layers != len(hidden_dims):
+            raise ArgumentError(
+                argument=None,
+                message=(
+                    f"--{hidden_dim_key.replace('_', '-')} has {len(hidden_dims)} values but "
+                    f"--{n_layers_key.replace('_', '-')}={n_layers}. You must explicitly pass "
+                    f"--{n_layers_key.replace('_', '-')} {len(hidden_dims)} to match. "
+                    f"Note: --{n_layers_key.replace('_', '-')} specifies the number of hidden "
+                    f"layers (v2 semantics, differs from v1)."
+                ),
+            )
 
 
 def validate_train_args(args):
@@ -601,6 +648,24 @@ def validate_train_args(args):
         raise ArgumentError(
             argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
         )
+
+    if len(args.data_path) > 1:
+        for arg_value, arg_name in (
+            (args.descriptors_path, "--descriptors-path"),
+            (args.atom_features_path, "--atom-features-path"),
+            (args.atom_descriptors_path, "--atom-descriptors-path"),
+            (args.bond_features_path, "--bond-features-path"),
+            (args.bond_descriptors_path, "--bond-descriptors-path"),
+            (args.constraints_path, "--constraints-path"),
+        ):
+            if arg_value is not None:
+                raise ArgumentError(
+                    argument=None,
+                    message=(
+                        f"{arg_name} is not supported with separate data files supplied to "
+                        "--data-path."
+                    ),
+                )
 
     if (
         len(args.data_path) == 2
@@ -728,7 +793,7 @@ def validate_train_args(args):
         args.use_cuikmolmaker_featurization
         and args.splits_column is None
         and args.splits_file is None
-        and args.split != "random"
+        and args.split.lower() != "random"
     ):
         logger.warning(
             f"using split type '{args.split}' reduces the memory savings of `--use-cuikmolmaker-featurization`. Consider precomputing splits and passing them via `--splits-file`"
@@ -989,6 +1054,67 @@ def save_smiles_splits(args: Namespace, output_dir, train_dset, val_dset, test_d
         df_test.to_csv(output_dir / "test_smiles.csv", index=False)
 
 
+def save_data_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
+    no_header_row = args.no_header_row
+    df = pd.read_csv(args.data_path[0], header=None if no_header_row else "infer", index_col=False)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
+
+        df.iloc[train].to_csv(rep_dir / "train.csv", index=False, header=not no_header_row)
+        if val:
+            df.iloc[val].to_csv(rep_dir / "val.csv", index=False, header=not no_header_row)
+        if test:
+            df.iloc[test].to_csv(rep_dir / "test.csv", index=False, header=not no_header_row)
+
+
+def save_feat_desc_splits(args: Namespace, train_indices, val_indices, test_indices) -> None:
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def load_npz(path):
+        loaded_feature = np.load(path)
+        return [loaded_feature[f"arr_{k}"] for k in range(len(loaded_feature))]
+
+    def save_npz(path, arrs):
+        np.savez(path, *arrs)
+
+    for i, (train, val, test) in enumerate(zip(train_indices, val_indices, test_indices)):
+        rep_dir = output_dir / f"replicate_{i}" if len(train_indices) > 1 else output_dir
+        rep_dir.mkdir(parents=True, exist_ok=True)
+
+        if args.descriptors_path:
+            loaded_feature = np.load(args.descriptors_path)
+            features = loaded_feature["arr_0"]
+            np.savez(rep_dir / "train_descriptors.npz", features[train])
+            if val:
+                np.savez(rep_dir / "val_descriptors.npz", features[val])
+            if test:
+                np.savez(rep_dir / "test_descriptors.npz", features[test])
+
+        def save_npz_split(paths, tag):
+            if not paths:
+                return
+            for idx_key, p in paths.items():
+                arrs = load_npz(p)
+                train_arrs = [arrs[idx] for idx in train]
+                save_npz(rep_dir / f"train_{tag}{idx_key}.npz", train_arrs)
+                if val:
+                    val_arrs = [arrs[idx] for idx in val]
+                    save_npz(rep_dir / f"val_{tag}{idx_key}.npz", val_arrs)
+                if test:
+                    test_arrs = [arrs[idx] for idx in test]
+                    save_npz(rep_dir / f"test_{tag}{idx_key}.npz", test_arrs)
+
+        save_npz_split(args.atom_features_path, "atom_feat_")
+        save_npz_split(args.atom_descriptors_path, "atom_desc_")
+        save_npz_split(args.bond_features_path, "bond_feat_")
+        save_npz_split(args.bond_descriptors_path, "bond_desc_")
+
+
 def build_splits(args, format_kwargs, featurization_kwargs):
     """build the train/val/test splits"""
     logger.info(f"Pulling data from file(s): {args.data_path}")
@@ -1079,7 +1205,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
             if args.split == "random":
                 splitting_mols = range(len(splitting_data))
             else:
-                if isinstance(splitting_data[0], ReactionDatapoint):
+                if isinstance(splitting_data[0], (ReactionDatapoint, LazyReactionDatapoint)):
                     splitting_mols = [datapoint.rct for datapoint in splitting_data]
                 else:
                     splitting_mols = [datapoint.mol for datapoint in splitting_data]
@@ -1098,6 +1224,22 @@ def build_splits(args, format_kwargs, featurization_kwargs):
     for i_split in range(len(train_data)):
         sizes = [len(train_data[i_split][0]), len(val_data[i_split][0]), len(test_data[i_split][0])]
         logger.info(f"train/val/test split_{i_split} sizes: {sizes}")
+
+    if len(args.data_path) < 3:
+        splits = [
+            {
+                "train": [int(i) for i in train],
+                "val": [int(i) for i in val],
+                "test": [int(i) for i in test],
+            }
+            for train, val, test in zip(train_indices, val_indices, test_indices)
+        ]
+        with open(Path(args.output_dir) / "splits.json", "w") as f:
+            json.dump(splits, f)
+
+        if args.save_data_splits:
+            save_data_splits(args, train_indices, val_indices, test_indices)
+            save_feat_desc_splits(args, train_indices, val_indices, test_indices)
 
     return train_data, val_data, test_data
 
@@ -1355,7 +1497,7 @@ def build_model(
                     else:
                         logger.info(f"Loading cached CheMeleon from {model_path}")
                     logger.info(
-                        "Please cite DOI: 10.48550/arXiv.2506.15792 when using CheMeleon in published work"
+                        "Please cite DOI: 10.1021/acs.jcim.6c01546 when using CheMeleon in published work"
                     )
                     chemeleon_mp = torch.load(model_path, weights_only=True)
                     if is_multi:
@@ -1387,7 +1529,6 @@ def build_model(
                 raise ValueError(
                     f"Inconsistent number of components ({train_dset.n_components}) and number of --depth arguments ({len(args.depth)}, {args.depth})."
                 )
-            exit
             mp_blocks = [
                 mp_cls(
                     train_dset.datasets[i].featurizer.atom_fdim,
@@ -1889,8 +2030,8 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
     mask = torch.from_numpy(np.isfinite(targets))
     targets = np.nan_to_num(targets, nan=0.0)
     weights = torch.ones(len(test_dset))
-    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.lt_mask[0] is not None else None
-    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.gt_mask[0] is not None else None
+    lt_mask = torch.from_numpy(test_dset.lt_mask) if test_dset.data[0].lt_mask is not None else None
+    gt_mask = torch.from_numpy(test_dset.gt_mask) if test_dset.data[0].gt_mask is not None else None
 
     individual_scores = dict()
     for metric in metrics:

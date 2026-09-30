@@ -1,4 +1,5 @@
 from argparse import ArgumentError, ArgumentParser, Namespace
+import json
 import logging
 from pathlib import Path
 import sys
@@ -9,7 +10,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from chemprop import data, featurizers
+from chemprop import data
+from chemprop.callbacks import CallbackRegistry
 from chemprop.cli.common import (
     add_common_args,
     find_models,
@@ -23,6 +25,11 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     format_probability_string,
     make_dataset,
+)
+from chemprop.featurizers.atom import MultiHotAtomFeaturizer
+from chemprop.featurizers.molgraph.reaction import (
+    CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerCGRFeaturizer,
 )
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.message_passing import BondMessagePassing
@@ -86,6 +93,20 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         type=Path,
         nargs="+",
         help="Location of checkpoint(s) or model file(s) to use for prediction. It can be a path to either a single pretrained model checkpoint (.ckpt) or single pretrained model file (.pt), a directory that contains these files, or a list of path(s) and directory(s). If a directory, will recursively search and predict on all found (.pt) models.",
+    )
+
+    cb_args = parser.add_argument_group("Callback args")
+    cb_args.add_argument(
+        "--callback",
+        default=None,
+        action=LookupAction(CallbackRegistry),
+        help="The callback to use. Only one callback can be used at a time.",
+    )
+    cb_args.add_argument(
+        "--callback-params",
+        default="{}",
+        type=json.loads,
+        help="JSON string of kwargs for the callback.",
     )
 
     unc_args = parser.add_argument_group("Uncertainty and calibration args")
@@ -219,7 +240,7 @@ def check_featurizer_matches_model(data_loader, model):
     current_feat_output_dims = []
     v1_default_feat_output_dims = []
     mp_input_dims = []
-    v1_atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+    v1_atom_featurizer = MultiHotAtomFeaturizer.v1()
     v1_atom_fdims = []
 
     for dataset, mp in zip(datasets, mps):
@@ -227,7 +248,7 @@ def check_featurizer_matches_model(data_loader, model):
         atom_fdim = featurizer.atom_fdim
         bond_fdim = featurizer.bond_fdim
 
-        if isinstance(featurizer, featurizers.CondensedGraphOfReactionFeaturizer):
+        if isinstance(featurizer, (CondensedGraphOfReactionFeaturizer, CuikmolmakerCGRFeaturizer)):
             v1_atom_fdim = 2 * len(v1_atom_featurizer) - len(v1_atom_featurizer.atomic_nums) - 1
         else:
             v1_atom_fdim = len(v1_atom_featurizer) + featurizer.extra_atom_fdim
@@ -256,7 +277,7 @@ def check_featurizer_matches_model(data_loader, model):
             "featurizer! To remove this warning, pass `--multi-hot-atom-featurizer-mode v1`."
         )
         for dataset, v1_atom_fdim in zip(datasets, v1_atom_fdims):
-            dataset.featurizer.atom_featurizer = featurizers.MultiHotAtomFeaturizer.v1()
+            dataset.featurizer.atom_featurizer = MultiHotAtomFeaturizer.v1()
             dataset.featurizer.atom_fdim = v1_atom_fdim
         current_feat_output_dims = v1_default_feat_output_dims
 
@@ -386,8 +407,22 @@ def make_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
+    callbacks = (
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
+        if args.callback
+        else None
+    )
+
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_preds, test_individual_uncs = uncertainty_estimator(
         test_loader, models, trainer
@@ -582,8 +617,22 @@ def make_MAB_prediction_for_models(
         dropout=args.uncertainty_dropout_p,
     )
 
+    callbacks = (
+        [
+            Factory.build(
+                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+            )
+        ]
+        if args.callback
+        else None
+    )
+
     trainer = pl.Trainer(
-        logger=False, enable_progress_bar=True, accelerator=args.accelerator, devices=args.devices
+        logger=False,
+        enable_progress_bar=True,
+        accelerator=args.accelerator,
+        devices=args.devices,
+        callbacks=callbacks,
     )
     test_individual_predss, test_individual_uncss = uncertainty_estimator(
         test_loader, models, trainer

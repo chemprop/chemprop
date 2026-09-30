@@ -5,15 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chemprop"
 description = "Molecular Property Prediction with Message Passing Neural Networks"
-version = "2.2.2"
+version = "2.3.1"
 authors = [
     {name = "The Chemprop Development Team (see LICENSE.txt)", email="chemprop@mit.edu"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 classifiers = [
-	"Programming Language :: Python :: 3",
 	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: Python :: 3.13",
+	"Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent"
 ]
@@ -25,7 +27,7 @@ keywords = [
     "graph neural network",
     "drug discovery"
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "lightning >= 2.0",
     "numpy",
@@ -38,6 +40,8 @@ dependencies = [
     "ConfigArgParse",
     "rich",
     "descriptastorus",
+    "cuik_molmaker_pin",
+    "myerson>=1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -46,7 +50,6 @@ dev = ["black == 23.*", "bumpversion", "autopep8", "flake8", "pytest", "pytest-c
 docs = ["nbsphinx", "sphinx", "sphinx-argparse != 0.5.0", "sphinx-autobuild", "sphinx-autoapi", "sphinxcontrib-bibtex", "sphinx-book-theme", "nbsphinx-link", "ipykernel", "docutils < 0.21", "readthedocs-sphinx-ext", "pandoc"]
 test = ["pytest >= 6.2", "pytest-cov"]
 notebooks = ["ipykernel", "matplotlib"]
-cuik_molmaker = ["cuik_molmaker >= 0.2"]
 
 [project.urls]
 documentation = "https://chemprop.readthedocs.io/en/latest/"

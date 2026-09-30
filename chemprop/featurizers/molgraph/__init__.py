@@ -4,7 +4,12 @@ from .molecule import (
     CuikmolmakerMolGraphFeaturizer,
     SimpleMoleculeMolGraphFeaturizer,
 )
-from .reaction import CGRFeaturizer, CondensedGraphOfReactionFeaturizer, RxnMode
+from .reaction import (
+    CGRFeaturizer,
+    CondensedGraphOfReactionFeaturizer,
+    CuikmolmakerCGRFeaturizer,
+    RxnMode,
+)
 
 __all__ = [
     "MolGraphCacheFacade",
@@ -12,6 +17,7 @@ __all__ = [
     "MolGraphCacheOnTheFly",
     "SimpleMoleculeMolGraphFeaturizer",
     "CuikmolmakerMolGraphFeaturizer",
+    "CuikmolmakerCGRFeaturizer",
     "CondensedGraphOfReactionFeaturizer",
     "CGRFeaturizer",
     "RxnMode",

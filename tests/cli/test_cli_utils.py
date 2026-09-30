@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
+import chemprop
 from chemprop.cli.common import find_models
+from chemprop.cli.main import construct_parser
 from chemprop.cli.utils.parsing import get_column_names, parse_indices
 from chemprop.cli.utils.utils import _to_str, format_probability_string
 
@@ -215,3 +217,24 @@ def test_format_probability_string__various_dimensions(
     """
     expected_output = np.full(expected_output_shape, "1.000000e+00,1.000000e+00,1.000000e+00")
     np.testing.assert_array_equal(format_probability_string(np.ones(input_shape)), expected_output)
+
+
+def test_version_flag(capsys):
+    """
+    Testing that --version prints version and exits with code 0.
+    """
+    parser = construct_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["--version"])
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert f"chemprop {chemprop.__version__}" in captured.out
+
+
+def test_help_shows_version(monkeypatch):
+    """
+    Testing that -h output includes the version string.
+    """
+    parser = construct_parser()
+    help_text = parser.format_help()
+    assert chemprop.__version__ in help_text

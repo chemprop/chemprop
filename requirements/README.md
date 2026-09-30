@@ -12,3 +12,9 @@ Note that you can also run `pip install chemprop==X.Y.Z` to get that installed v
 
 Run `. get_requirements.sh` with Docker installed and running and all of the requirements files will be re-generated.
 This only needs to be done whenever a new tagged release of `chemprop` is created and manually pushed to Docker.
+
+### `cuik-molmaker`
+
+Note that the dependency lists here are built from a `conda` environment but intended to be installed with `pip`.
+This is not a problem except that `cuik-molmaker` is named `cuik-molmaker` on `conda` and `cuik-molmaker-pin` on PyPI.
+You will need to manually fix this in the generated requirements file.

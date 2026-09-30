@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Sequence
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
@@ -39,14 +40,15 @@ class MLP(nn.Sequential, FFN):
         cls,
         input_dim: int,
         output_dim: int,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",
     ):
         dropout = nn.Dropout(dropout)
         act = get_activation_function(activation)
-        dims = [input_dim] + [hidden_dim] * n_layers + [output_dim]
+        hidden_dims = [hidden_dim] * n_layers if isinstance(hidden_dim, int) else list(hidden_dim)
+        dims = [input_dim] + hidden_dims + [output_dim]
         blocks = [nn.Sequential(nn.Linear(dims[0], dims[1]))]
         if len(dims) > 2:
             blocks.extend(
@@ -77,7 +79,7 @@ class ConstrainerFFN(nn.Module, HasHParams, HyperparametersMixin):
         self,
         n_constraints: int = 1,
         fp_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str = "relu",

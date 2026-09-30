@@ -150,6 +150,7 @@ class HpoptSubcommand(Subcommand):
         args = process_hpopt_args(args)
         validate_common_args(args)
         validate_train_args(args)
+        args.output_dir.mkdir(exist_ok=True, parents=True)
         main(args)
 
 
@@ -275,7 +276,7 @@ def add_hpopt_args(parser: ArgumentParser) -> ArgumentParser:
 
 def process_hpopt_args(args: Namespace) -> Namespace:
     if args.hpopt_save_dir is None:
-        args.hpopt_save_dir = Path(f"chemprop_hpopt/{args.data_path.stem}")
+        args.hpopt_save_dir = Path(f"chemprop_hpopt/{args.data_path[0].stem}")
 
     args.hpopt_save_dir.mkdir(exist_ok=True, parents=True)
 
@@ -361,6 +362,9 @@ def update_args_with_config(args: Namespace, config: dict) -> Namespace:
 
             case "depth":
                 setattr(args, "depth", [value])
+
+            case "ffn_hidden_dim" | "atom_ffn_hidden_dim" | "bond_ffn_hidden_dim" | "atom_constrainer_ffn_hidden_dim" | "bond_constrainer_ffn_hidden_dim":
+                setattr(args, key, [value])
 
             case _:
                 assert key in args, f"Key: {key} not found in args."
@@ -628,14 +632,12 @@ def main(args: Namespace):
     else:
         if isinstance(train_loader.dataset, MolAtomBondDataset):
             model = build_MAB_model(args, train_loader.dataset, output_transform, input_transforms)
-            monitor_mode = (
-                "max"
-                if next(m[0].higher_is_better for m in model.metricss if m is not None)
-                else "min"
-            )
+            T_tracking_metric = next(c.__class__ for c in model.criterions if c is not None)
+            monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
         else:
             model = build_model(args, train_loader.dataset, output_transform, input_transforms)
-            monitor_mode = "max" if model.metrics[0].higher_is_better else "min"
+            T_tracking_metric = model.criterion.__class__
+            monitor_mode = "max" if T_tracking_metric.higher_is_better else "min"
 
     results = tune_model(
         args, train_dset, val_dset, logger, monitor_mode, output_transform, input_transforms

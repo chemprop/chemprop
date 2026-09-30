@@ -19,14 +19,19 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
     ----------
     blocks : Sequence[MessagePassing]
         the invidual message-passing blocks for each input
-    n_components : int
+    n_components : int, optional
         the number of components in each input
     shared : bool, default=False
         whether one block will be shared among all components in an input. If not, a separate
         block will be learned for each component.
     """
 
-    def __init__(self, blocks: Sequence[MessagePassing], n_components: int, shared: bool = False):
+    def __init__(
+        self,
+        blocks: Sequence[MessagePassing],
+        n_components: int | None = None,
+        shared: bool = False,
+    ):
         super().__init__()
         self.hparams = {
             "cls": self.__class__,
@@ -41,11 +46,8 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
             logger.warning(
                 "More than 1 block was supplied but 'shared' was True! Using only the 0th block..."
             )
-        elif not shared and len(blocks) != n_components:
-            raise ValueError(
-                "arg 'n_components' must be equal to `len(blocks)` if 'shared' is False! "
-                f"got: {n_components} and {len(blocks)}, respectively."
-            )
+        if shared and n_components is None:
+            raise ValueError("'shared' is True, so arg 'n_components' is required!")
 
         self.n_components = n_components
         self.shared = shared
@@ -60,13 +62,15 @@ class MulticomponentMessagePassing(nn.Module, HasHParams):
 
         return d_o
 
-    def forward(self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None]) -> list[Tensor]:
+    def forward(
+        self, bmgs: Iterable[BatchMolGraph], V_ds: Iterable[Tensor | None] | None = None
+    ) -> list[Tensor]:
         """Encode the multicomponent inputs
 
         Parameters
         ----------
         bmgs : Iterable[BatchMolGraph]
-        V_ds : Iterable[Tensor | None]
+        V_ds : Iterable[Tensor | None] | None
 
         Returns
         -------

@@ -33,6 +33,8 @@ Chemprop recently underwent a ground-up rewrite and new major release (v2.0.0). 
 - **Interpretability**: The interpretation functionality (available in v2 as an example notebook) is based on the paper [Multi-Objective Molecule Generation using Interpretable Substructures](https://arxiv.org/abs/2002.03244).
 - **Atom and Bond Predictions**: Based on the paper [When Do Quantum Mechanical Descriptors Help Graph Neural Networks to Predict Chemical Properties?](https://pubs.acs.org/doi/10.1021/jacs.4c04670).
 
+A known inconsistency between these references and this repository is the edge update function in all `chemprop` versions uses preactivation instead of postactivation initial edge hidden states. Details can be found in the SI of the version 2 paper.
+
 **Selected Applications**: Chemprop has been successfully used in the following works.
 
 - [A Deep Learning Approach to Antibiotic Discovery](https://www.cell.com/cell/fulltext/S0092-8674(20)30102-1) - _Cell_ (2020): Chemprop was used to predict antibiotic activity against _E. coli_, leading to the discovery of [Halicin](https://en.wikipedia.org/wiki/Halicin), a novel antibiotic candidate. Model checkpoints are availabile on [Zenodo](https://doi.org/10.5281/zenodo.6527882).

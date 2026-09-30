@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Sequence
 
 from lightning.pytorch.core.mixins import HyperparametersMixin
 import torch
@@ -98,18 +99,18 @@ PredictorRegistry = ClassRegistry[Predictor]()
 
 
 class _FFNPredictorBase(Predictor, HyperparametersMixin):
-    """A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
+    r"""A :class:`_FFNPredictorBase` is the base class for all :class:`Predictor`\s that use an
     underlying :class:`MLP` to map the learned fingerprint to the desired output.
     """
 
-    _T_default_criterion: ChempropMetric
-    _T_default_metric: ChempropMetric
+    _T_default_criterion: type[ChempropMetric]
+    _T_default_metric: type[ChempropMetric]
 
     def __init__(
         self,
         n_tasks: int = 1,
         input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",
@@ -279,7 +280,7 @@ class MulticlassClassificationFFN(_FFNPredictorBase):
         n_classes: int,
         n_tasks: int = 1,
         input_dim: int = DEFAULT_HIDDEN_DIM,
-        hidden_dim: int = 300,
+        hidden_dim: int | Sequence[int] = 300,
         n_layers: int = 1,
         dropout: float = 0.0,
         activation: str | nn.Module = "relu",

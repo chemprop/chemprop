@@ -10,6 +10,7 @@ from chemprop.data.collate import (
 )
 from chemprop.data.datasets import (
     CuikmolmakerDataset,
+    CuikmolmakerReactionDataset,
     MolAtomBondDataset,
     MoleculeDataset,
     MulticomponentDataset,
@@ -34,7 +35,7 @@ def build_dataloader(
     drop_last: bool | None = None,
     **kwargs,
 ):
-    """Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
+    r"""Return a :obj:`~torch.utils.data.DataLoader` for :class:`MolGraphDataset`\s
 
     Parameters
     ----------
@@ -50,7 +51,7 @@ def build_dataloader(
         shuffle to True in order to get a random subset of the larger class.
     seed : int, default=None
         the random seed to use for shuffling (only used when `shuffle` is `True`).
-    shuffle : bool, default=False
+    shuffle : bool, default=True
         whether to shuffle the data during sampling.
     drop_last : bool, default=None
         Whether to drop the last batch if it is of size 1 (needed if using batchnorm during training).
@@ -66,7 +67,7 @@ def build_dataloader(
 
     if isinstance(dataset, MulticomponentDataset):
         collate_fn = collate_multicomponent
-    elif isinstance(dataset, CuikmolmakerDataset):
+    elif isinstance(dataset, (CuikmolmakerDataset, CuikmolmakerReactionDataset)):
         collate_fn = collate_cuik_batch
     elif isinstance(dataset, MolAtomBondDataset):
         collate_fn = collate_mol_atom_bond_batch

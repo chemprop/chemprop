@@ -117,7 +117,7 @@ def test_dirichlet_overfit(classification_mpnn_dirichlet, dataloader):
         enable_model_summary=False,
         accelerator="cpu",
         devices=1,
-        max_epochs=40,
+        max_epochs=80,
         overfit_batches=1.00,
     )
     trainer.fit(classification_mpnn_dirichlet, dataloader)

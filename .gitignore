@@ -165,6 +165,7 @@ cython_debug/
 *.code-workspace
 *.csv
 *.pkl
+*.npz
 *.pt
 *.json
 *.sqlite3

@@ -84,7 +84,7 @@ def make_mol(
 
     if reorder_atoms:
         atom_map_numbers = tuple(atom.GetAtomMapNum() for atom in mol.GetAtoms())
-        new_order = np.argsort(atom_map_numbers).tolist()
+        new_order = np.argsort(atom_map_numbers, kind="stable").tolist()
         mol = Chem.rdmolops.RenumberAtoms(mol, new_order)
 
     return mol
@@ -180,12 +180,3 @@ def get_memory_usage():
     memory_mb = memory_info.rss / 1024 / 1024
 
     return f"Memory usage: {memory_mb:.2f} MB"
-
-
-def is_cuikmolmaker_available():
-    try:
-        import cuik_molmaker  # noqa: F401
-
-        return True
-    except ImportError:
-        return False

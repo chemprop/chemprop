@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from rdkit import Chem
+from torch.utils._pytree import GetAttrKey, register_pytree_node
+
+from chemprop.data import BatchMolGraph
 
 _DATA_DIR = Path(__file__).parent / "data"
 _DF = pd.read_csv(_DATA_DIR / "smis.csv")
@@ -12,6 +15,42 @@ _DF["mol"] = _DF["smiles"].map(Chem.MolFromSmiles)
 _DF["smi"] = _DF["mol"].map(Chem.MolToSmiles)
 # Ensure atom numbering is consistent between mol and smi for `test_same_featurization`
 _DF["mol"] = _DF["smi"].map(Chem.MolFromSmiles)
+
+
+@pytest.fixture(scope="session")
+def batch_mol_graph_pytree():
+    def flatten(bmg: BatchMolGraph):
+        return [bmg.V, bmg.E, bmg.edge_index, bmg.rev_edge_index, bmg.batch], len(bmg)
+
+    def unflatten(children, size):
+        V, E, edge_index, rev_edge_index, batch = children
+        bmg = object.__new__(BatchMolGraph)
+        bmg.V = V
+        bmg.E = E
+        bmg.edge_index = edge_index
+        bmg.rev_edge_index = rev_edge_index
+        bmg.batch = batch
+        bmg._BatchMolGraph__size = size
+        return bmg
+
+    def flatten_with_keys(bmg: BatchMolGraph):
+        children, context = flatten(bmg)
+        keys = [
+            GetAttrKey("V"),
+            GetAttrKey("E"),
+            GetAttrKey("edge_index"),
+            GetAttrKey("rev_edge_index"),
+            GetAttrKey("batch"),
+        ]
+        return list(zip(keys, children)), context
+
+    register_pytree_node(
+        BatchMolGraph,
+        flatten,
+        unflatten,
+        flatten_with_keys_fn=flatten_with_keys,
+        serialized_type_name="chemprop.data.collate.BatchMolGraph",
+    )
 
 
 @pytest.fixture

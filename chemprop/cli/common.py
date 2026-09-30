@@ -6,7 +6,6 @@ import sys
 from chemprop.cli.utils import LookupAction
 from chemprop.cli.utils.args import uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
-from chemprop.utils.utils import is_cuikmolmaker_available
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         type=uppercase,
         default="V2",
         choices=list(AtomFeatureMode.keys()),
-        help="""Choices for multi-hot atom featurization scheme. This will affect both non-reaction and reaction feturization (case insensitive):
+        help="""Selects the multi-hot atom featurization scheme. This affects both non-reaction and reaction featurization (case insensitive):
 
 - ``V1``: Corresponds to the original configuration employed in the Chemprop V1
 - ``V2``: Tailored for a broad range of molecules, this configuration encompasses all elements in the first four rows of the periodic table, along with iodine. It is the default in Chemprop V2.
@@ -234,17 +233,12 @@ def process_common_args(args: Namespace) -> Namespace:
 
 
 def validate_common_args(args):
-    if args.use_cuikmolmaker_featurization and not is_cuikmolmaker_available():
-        raise ArgumentError(
-            argument=None,
-            message="cuik-molmaker is not installed. Please install it using `pip install chemprop[cuik_molmaker] --extra-index-url https://pypi.nvidia.com/rdkit-latest/` or `conda install 'conda-forge::cuik_molmaker>=0.2'` before using the `--use-cuikmolmaker-featurization` flag.",
-        )
-
     if args.use_cuikmolmaker_featurization:
-        if args.keep_h:
+        is_reaction_task = bool(args.reaction_columns)
+        if args.keep_h and not is_reaction_task:
             raise ArgumentError(
                 argument=None,
-                message="`--keep-h` is not supported when using cuik-molmaker featurization.",
+                message="`--keep-h` is not supported for molecule featurization with cuik-molmaker. It is supported for reaction featurization (--reaction-columns).",
             )
         if args.ignore_stereo:
             raise ArgumentError(
@@ -256,12 +250,17 @@ def validate_common_args(args):
                 argument=None,
                 message="`--reorder-atoms` is not supported when using cuik-molmaker featurization.",
             )
-        if args.reaction_columns or (args.smiles_columns and len(args.smiles_columns) > 1):
+        if args.smiles_columns and len(args.smiles_columns) > 1:
             raise ArgumentError(
                 argument=None,
-                message="cuik-molmaker featurization only supports single component molecule datasets.",
+                message="cuik-molmaker featurization does not support multi-component molecule datasets.",
             )
         if args.molecule_featurizers is not None:
+            if is_reaction_task:
+                raise ArgumentError(
+                    argument=None,
+                    message="`--molecule-featurizers` is not supported for reaction featurization with cuik-molmaker. Either drop `--molecule-featurizers` or run without `--use-cuikmolmaker-featurization`.",
+                )
             logger.warning(
                 "Molecule featurizers reduce the memory savings of `--use-cuikmolmaker-featurization`. Consider pre-computing the features manually and providing them via `--descriptors-path`"
             )
