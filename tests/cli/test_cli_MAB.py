@@ -3,6 +3,7 @@
 import sys
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
@@ -765,6 +766,37 @@ def test_predict_mve_quick(monkeypatch, regression_data_path, mve_model_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+@pytest.mark.parametrize(
+    "model",
+    ["regression.pt", "regression_no_mol.pt", "regression_only_atom.pt", "regression_only_bond.pt"],
+)
+def test_predict_ensemble(monkeypatch, regression_data_path, model_dir, model, tmp_path):
+    input_path, *_ = regression_data_path
+    model_path = str(model_dir / model)
+    output_path = tmp_path / "preds.csv"
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-paths",
+        model_path,
+        model_path,
+        "-o",
+        str(output_path),
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    df_ensemble = pd.read_csv(output_path)
+    df_model = pd.read_csv(tmp_path / "preds_model_0.csv")
+    pd.testing.assert_frame_equal(df_model, df_ensemble)
 
 
 def test_train_regression_constrained(monkeypatch, constrained_data_path):
