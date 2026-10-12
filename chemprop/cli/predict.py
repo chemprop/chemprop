@@ -761,7 +761,9 @@ def make_MAB_prediction_for_models(
     )
 
     if len(model_paths) > 1:
-        for i in range(test_individual_predss[0].shape[0]):
+        if args.uncertainty_method == "ensemble":
+            test_individual_uncss = [None, None, None]
+        for i in range(len(models)):
             individual_output_path = output_path.with_name(
                 output_path.stem + f"_model_{i}" + output_path.suffix
             )
@@ -771,8 +773,8 @@ def make_MAB_prediction_for_models(
                 bond_split_indices,
                 models[0],
                 output_columns,
-                test_individual_predss[i],
-                test_individual_uncss[i],
+                [preds[i] if preds is not None else None for preds in test_individual_predss],
+                [uncs[i] if uncs is not None else None for uncs in test_individual_uncss],
                 individual_output_path,
             )
 
@@ -875,7 +877,9 @@ def save_MAB_predictions(
 
     df_test = pd.concat([df_test, df_preds], axis=1)
 
-    if args.uncertainty_method not in ["none", "classification"]:
+    if args.uncertainty_method not in ["none", "classification"] and any(
+        uncs is not None for uncs in test_uncss
+    ):
         mols_uncs = mol_uncs if mol_uncs is not None else [None] * n_datapoints
         atomss_uncs = (
             np.split(atom_uncs, atom_split_indices)
