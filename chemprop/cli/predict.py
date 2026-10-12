@@ -654,7 +654,6 @@ def make_MAB_prediction_for_models(
     ]
 
     test_uncss = []
-    cal_test_individual_uncss = []
     if args.calibration_method is not None:
         cal_individual_predss, cal_individual_uncss = uncertainty_estimator(
             cal_loader, models, trainer
@@ -688,9 +687,7 @@ def make_MAB_prediction_for_models(
                     uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
                 for i in range(test_individual_uncs.shape[0]):
                     test_individual_uncs[i] = uncertainty_calibrator.apply(test_individual_uncs[i])
-                cal_test_individual_uncss.append(test_individual_uncs)
                 test_uncss.append(torch.mean(test_individual_uncs, dim=0))
-        test_individual_uncss = cal_test_individual_uncss
     else:
         test_uncss = [
             torch.mean(test_individual_uncs, dim=0) if test_individual_uncs is not None else None
