@@ -588,6 +588,16 @@ def save_individual_predictions(
         )
 
 
+def stack_MAB_targets(dataset, predss):
+    """Stack the (mol, atom, bond) targets of a dataset, with None for kinds that aren't predicted"""
+    mol_preds, atom_preds, bond_preds = predss
+    return [
+        dataset.Y if mol_preds is not None else None,
+        np.concatenate(dataset.atom_Y, axis=0) if atom_preds is not None else None,
+        np.concatenate(dataset.bond_Y, axis=0) if bond_preds is not None else None,
+    ]
+
+
 def make_MAB_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
@@ -649,11 +659,7 @@ def make_MAB_prediction_for_models(
         cal_individual_predss, cal_individual_uncss = uncertainty_estimator(
             cal_loader, models, trainer
         )
-        cal_targetss = [
-            cal_loader.dataset.Y,
-            np.concatenate(cal_loader.dataset.atom_Y, axis=0),
-            np.concatenate(cal_loader.dataset.bond_Y, axis=0),
-        ]
+        cal_targetss = stack_MAB_targets(cal_loader.dataset, test_predss)
         for test_individual_uncs, cal_individual_preds, cal_targets, cal_individual_uncs in zip(
             test_individual_uncss, cal_individual_predss, cal_targetss, cal_individual_uncss
         ):
@@ -695,11 +701,7 @@ def make_MAB_prediction_for_models(
             Factory.build(UncertaintyEvaluatorRegistry[method])
             for method in args.evaluation_methods
         ]
-        test_targetss = [
-            test_loader.dataset.Y,
-            np.concatenate(test_loader.dataset.atom_Y, axis=0),
-            np.concatenate(test_loader.dataset.bond_Y, axis=0),
-        ]
+        test_targetss = stack_MAB_targets(test_loader.dataset, test_predss)
         test_maskss = [
             torch.from_numpy(np.isfinite(test_targets)) for test_targets in test_targetss
         ]
