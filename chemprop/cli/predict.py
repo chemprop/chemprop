@@ -664,6 +664,7 @@ def make_MAB_prediction_for_models(
             test_individual_uncss, cal_individual_predss, cal_targetss, cal_individual_uncss
         ):
             if test_individual_uncs is None:
+                test_uncss.append(None)
                 continue
             cal_mask = torch.from_numpy(np.isfinite(cal_targets))
             cal_targets = np.nan_to_num(cal_targets, nan=0.0)
@@ -703,10 +704,15 @@ def make_MAB_prediction_for_models(
         ]
         test_targetss = stack_MAB_targets(test_loader.dataset, test_predss)
         test_maskss = [
-            torch.from_numpy(np.isfinite(test_targets)) for test_targets in test_targetss
+            torch.from_numpy(np.isfinite(test_targets)) if test_targets is not None else None
+            for test_targets in test_targetss
         ]
-        test_targetss = [np.nan_to_num(test_targets, nan=0.0) for test_targets in test_targetss]
-        test_targetss = [torch.from_numpy(test_targets) for test_targets in test_targetss]
+        test_targetss = [
+            torch.from_numpy(np.nan_to_num(test_targets, nan=0.0))
+            if test_targets is not None
+            else None
+            for test_targets in test_targetss
+        ]
         logger.info("Uncertainty evaluation metric:")
         for evaluator in uncertainty_evaluators:
             for test_preds, test_uncs, test_targets, test_mask, kind in zip(
