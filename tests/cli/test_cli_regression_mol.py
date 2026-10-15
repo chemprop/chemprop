@@ -27,6 +27,11 @@ def data_path(data_dir):
 
 
 @pytest.fixture
+def bounded_data_path(data_dir):
+    return str(data_dir / "regression" / "bounded.csv")
+
+
+@pytest.fixture
 def model_path(data_dir):
     return str(data_dir / "example_model_v2_regression_mol.pt")
 
@@ -1011,6 +1016,25 @@ def test_multiple_data_files(monkeypatch, data_path):
         main()
 
     args = ["chemprop", "train", "-i", input_path, input_path, "--split-sizes", "0.9", "0.1", "0.0"]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_bounded(monkeypatch, bounded_data_path):
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        bounded_data_path,
+        "--target-columns",
+        "logSolubility",
+        "--epochs",
+        "3",
+        "-l",
+        "bounded-mse"
+    ]
 
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)

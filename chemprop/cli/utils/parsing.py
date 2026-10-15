@@ -84,9 +84,9 @@ def parse_csv(
 
     if bounded:
         Y = Y.astype(str)
-        lt_mask = Y.applymap(lambda x: "<" in x).to_numpy()
-        gt_mask = Y.applymap(lambda x: ">" in x).to_numpy()
-        Y = Y.applymap(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
+        lt_mask = Y.map(lambda x: "<" in x).to_numpy()
+        gt_mask = Y.map(lambda x: ">" in x).to_numpy()
+        Y = Y.map(lambda x: x.strip("<").strip(">")).to_numpy(np.single)
     else:
         Y = Y.to_numpy(np.single)
         lt_mask = None
