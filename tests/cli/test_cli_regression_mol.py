@@ -600,6 +600,63 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     assert model is not None
 
 
+@pytest.mark.parametrize(
+    "extra_args,expected",
+    [
+        (
+            ["--task-type", "regression-evidential", "--v-kl", "0.5", "--eps", "1e-4"],
+            {"v_kl": 0.5, "eps": 1e-4},
+        ),
+        (
+            [
+                "--task-type",
+                "regression-evidential",
+                "--v-kl",
+                "0.5",
+                "--eps",
+                "1e-4",
+                "--loss-function",
+                "evidential",
+            ],
+            {"v_kl": 0.5, "eps": 1e-4},
+        ),
+        (["--task-type", "regression-quantile", "--alpha", "0.05"], {"alpha": 0.05}),
+        (["--task-type", "regression-evidential"], {"v_kl": 0.2, "eps": 1e-8}),
+        (
+            ["--task-type", "regression-evidential", "--loss-function", "evidential"],
+            {"v_kl": 0.0, "eps": 1e-8},
+        ),
+        (["--task-type", "regression-quantile"], {"alpha": 0.1}),
+    ],
+)
+def test_train_loss_hyperparameters(monkeypatch, data_path, tmp_path, extra_args, expected):
+    """Loss hyperparameters must be used whether or not --loss-function is given (#1416)."""
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        *extra_args,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model = MPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt")
+
+    for key, value in expected.items():
+        assert getattr(model.predictor.criterion, key) == pytest.approx(value)
+
+
 def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     input_path, *_ = data_path
     args = [

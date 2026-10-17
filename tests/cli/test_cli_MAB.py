@@ -8,6 +8,7 @@ import pytest
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
 from chemprop.cli.main import main
 from chemprop.cli.utils.MAB_parsing import build_MAB_data_from_files
+from chemprop.models import MolAtomBondMPNN
 
 pytestmark = pytest.mark.CLI
 
@@ -181,6 +182,50 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+def test_train_evidential_v_kl(monkeypatch, regression_data_path, tmp_path):
+    """--v-kl must be used without --loss-function evidential (#1416)."""
+    input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--keep-h",
+        "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+        "--save-dir",
+        str(tmp_path),
+        "--task-type",
+        "regression-evidential",
+        "--v-kl",
+        "0.5",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model = MolAtomBondMPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt")
+    for predictor in model.predictors:
+        assert predictor.criterion.v_kl == pytest.approx(0.5)
 
 
 def test_train_regression_quick_features(monkeypatch, regression_data_path, extras_paths):

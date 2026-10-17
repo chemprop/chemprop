@@ -262,6 +262,33 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     assert model is not None
 
 
+@pytest.mark.parametrize("extra_args,expected_v_kl", [(["--v-kl", "0.5"], 0.5), ([], 0.2)])
+def test_train_dirichlet_v_kl(monkeypatch, data_path, tmp_path, extra_args, expected_v_kl):
+    """--v-kl must be used without --loss-function dirichlet (#1416)."""
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        data_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        "--task-type",
+        "classification-dirichlet",
+        *extra_args,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model = MPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt")
+    assert model.predictor.criterion.v_kl == pytest.approx(expected_v_kl)
+
+
 def test_class_balance(monkeypatch, data_path, tmp_path):
     args = [
         "chemprop",
