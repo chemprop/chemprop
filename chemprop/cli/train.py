@@ -645,6 +645,20 @@ def validate_train_args(args):
     if args.num_folds is not None:  # i.e. user-specified
         raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
 
+    if (
+        args.config_path is not None
+        and args.loss_function is None
+        and (args.v_kl, args.eps, args.alpha) == (0.0, 1e-8, 0.1)
+    ):
+        logger.warning(
+            "The configuration file sets `v-kl = 0.0`, `eps = 1e-08` and `alpha = 0.1` without a "
+            "`loss-function`. Configuration files written by Chemprop v2.3.1 and earlier always "
+            "contain these values, but those versions ignored them unless a loss function was "
+            "given. They are now used, so a model trained with the default evidential or "
+            "Dirichlet loss uses `v-kl = 0.0` instead of 0.2. Remove `v-kl` from the "
+            "configuration file to reproduce the original training."
+        )
+
     for path in args.data_path:
         if path.suffix not in [".csv"]:
             raise ArgumentError(argument=None, message=f"Input data must be a CSV file. Got {path}")
