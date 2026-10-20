@@ -649,6 +649,24 @@ def validate_train_args(args):
             argument=None, message=f"More than 3 data_files provided. Got: {args.data_path}"
         )
 
+    if len(args.data_path) > 1:
+        for arg_value, arg_name in (
+            (args.descriptors_path, "--descriptors-path"),
+            (args.atom_features_path, "--atom-features-path"),
+            (args.atom_descriptors_path, "--atom-descriptors-path"),
+            (args.bond_features_path, "--bond-features-path"),
+            (args.bond_descriptors_path, "--bond-descriptors-path"),
+            (args.constraints_path, "--constraints-path"),
+        ):
+            if arg_value is not None:
+                raise ArgumentError(
+                    argument=None,
+                    message=(
+                        f"{arg_name} is not supported with separate data files supplied to "
+                        "--data-path."
+                    ),
+                )
+
     if (
         len(args.data_path) == 2
         and args.split_sizes[2] != 0
@@ -1735,8 +1753,16 @@ def build_MAB_model(
 
     atom_constrainer, bond_constrainer = None, None
     if args.constraints_path is not None:
-        n_atom_cons = sum([col in args.atom_target_columns for col in args.constraints_to_targets])
-        n_bond_cons = sum([col in args.bond_target_columns for col in args.constraints_to_targets])
+        n_atom_cons = (
+            sum([col in args.atom_target_columns for col in args.constraints_to_targets])
+            if args.atom_target_columns is not None
+            else 0
+        )
+        n_bond_cons = (
+            sum([col in args.bond_target_columns for col in args.constraints_to_targets])
+            if args.bond_target_columns is not None
+            else 0
+        )
 
         if n_atom_cons:
             atom_constrainer = ConstrainerFFN(
