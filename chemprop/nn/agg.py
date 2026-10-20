@@ -80,7 +80,7 @@ class MeanAggregation(Aggregation):
         counts = torch.zeros(dim_size, 1, dtype=H.dtype, device=H.device).scatter_reduce_(
             self.dim, batch.unsqueeze(1), ones, reduce="sum", include_self=False
         )
-        return sums / counts
+        return sums / counts.clamp(min=1)
 
 
 @AggregationRegistry.register("sum")
