@@ -15,13 +15,13 @@ from chemprop.utils.v1_to_v2 import convert_model_file_v1_to_v2
 
 
 @pytest.fixture
-def example_model_v1_path(data_dir):
-    return data_dir / "example_model_v1_regression_mol.pt"
+def example_model_v1_path(pre_v2_4_model_path):
+    return pre_v2_4_model_path("v1_model_files/example_model_v1_regression_mol.pt")
 
 
 @pytest.fixture
-def example_model_v1_4_path(data_dir):
-    return data_dir / "example_model_v1_4.pt"
+def example_model_v1_4_path(pre_v2_4_model_path):
+    return pre_v2_4_model_path("v1_model_files/example_model_v1_4.pt")
 
 
 @pytest.fixture

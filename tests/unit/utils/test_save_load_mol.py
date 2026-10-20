@@ -134,10 +134,31 @@ def test_scalers_roundtrip(tmp_path):
     assert torch.equal(original.X_d_transform.mean, loaded.X_d_transform.mean)
 
 
-def test_load_checkpoint_with_metrics(data_dir):
-    MPNN.load_from_checkpoint(data_dir / "example_model_v2_regression_mol_with_metrics.ckpt")
-    MPNN.load_from_checkpoint(data_dir / "example_model_v2_classification_mol_with_metrics.ckpt")
+@pytest.mark.parametrize(
+    "path",
+    [
+        "example_model_v2_regression_mol_with_metrics.ckpt",
+        "example_model_v2_classification_mol_with_metrics.ckpt",
+    ],
+)
+def test_load_checkpoint_with_metrics(data_dir, path):
+    MPNN.load_from_checkpoint(data_dir / path, weights_only=True)
 
 
-def test_load_trained_on_cuda(data_dir):
-    MPNN.load_from_file(data_dir / "example_model_v2_trained_on_cuda.pt", map_location="cpu")
+@pytest.mark.parametrize(
+    "path",
+    [
+        "pre_v2_4_model_files/example_model_v2_regression_mol_with_metrics.ckpt",
+        "pre_v2_4_model_files/example_model_v2_classification_mol_with_metrics.ckpt",
+    ],
+)
+def test_load_pre_v2_4_checkpoint_with_metrics(pre_v2_4_model_path, path):
+    MPNN.load_from_checkpoint(pre_v2_4_model_path(path), weights_only=False)
+
+
+def test_load_pre_v2_4_trained_on_cuda(pre_v2_4_model_path):
+    MPNN.load_from_file(
+        pre_v2_4_model_path("pre_v2_4_model_files/example_model_v2_trained_on_cuda.pt"),
+        map_location="cpu",
+        weights_only=False,
+    )
