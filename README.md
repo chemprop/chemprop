@@ -21,6 +21,8 @@ Documentation can be found [here](https://chemprop.readthedocs.io/en/main/).
 
 There are tutorial notebooks in the [`examples/`](https://github.com/chemprop/chemprop/tree/main/examples) directory.
 
+**AI coding agents:** Chemprop ships an [Agent Skill](https://agentskills.io), matched to each release, in `chemprop/.agents/skills/chemprop/`. To use it, run `uvx library-skills` in a project that has Chemprop installed ([Library Skills](https://library-skills.io); use `--claude` for Claude Code), or copy the folder printed by `python -c "import chemprop, pathlib; print(pathlib.Path(chemprop.__file__).parent / '.agents/skills/chemprop')"` into your agent's skills directory.
+
 Chemprop recently underwent a ground-up rewrite and new major release (v2.0.0). A helpful transition guide from Chemprop v1 to v2 can be found [here](https://docs.google.com/spreadsheets/u/3/d/e/2PACX-1vRshySIknVBBsTs5P18jL4WeqisxDAnDE5VRnzxqYEhYrMe4GLS17w5KeKPw9sged6TmmPZ4eEZSTIy/pubhtml). This includes a side-by-side comparison of CLI argument options, a list of which arguments will be implemented in later versions of v2, and a list of changes to default hyperparameters.
 
 **License:** Chemprop is free to use under the [MIT License](LICENSE.txt). The Chemprop logo is free to use under [CC0 1.0](docs/source/_static/images/logo/LICENSE.txt).
