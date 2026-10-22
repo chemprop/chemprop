@@ -10,6 +10,7 @@ import torchmetrics
 from torchmetrics.utilities.compute import auc
 from torchmetrics.utilities.data import dim_zero_cat
 
+from chemprop.nn.hparams import get_init_args
 from chemprop.utils.registry import ClassRegistry
 
 __all__ = [
@@ -69,6 +70,8 @@ class ChempropMetric(torchmetrics.Metric):
             the per-task weights of shape `t` or `1 x t`. Defaults to all tasks having a weight of 1.
         """
         super().__init__()
+        self.hparams = {"cls": self.__class__, **get_init_args(self)}
+
         task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
@@ -192,6 +195,8 @@ class R2Score(torchmetrics.R2Score):
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
         super().__init__()
+        self.hparams = {"cls": self.__class__, **get_init_args(self)}
+
         task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
@@ -470,6 +475,8 @@ class ClassificationMixin:
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
         """
         super().__init__()
+        self.hparams = {"cls": self.__class__, **get_init_args(self)}
+
         task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 

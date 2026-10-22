@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import logging
 from typing import Iterable
 
@@ -8,17 +7,16 @@ from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import BatchMolAtomBondGraph, BatchMolGraph, MolAtomBondTrainingBatch
+from chemprop.models.serialization import CheckpointMixin
 from chemprop.nn import Aggregation, ChempropMetric, ConstrainerFFN, MABMessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
-from chemprop.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
 
-class MolAtomBondMPNN(pl.LightningModule):
+class MolAtomBondMPNN(CheckpointMixin, pl.LightningModule):
     r"""An :class:`MolAtomBondMPNN` is a sequence of message passing layers, an aggregation routine,
     and up to three predictor routines for molecule-level, atom-level, and bond-level predictions.
 
@@ -463,107 +461,3 @@ class MolAtomBondMPNN(pl.LightningModule):
         lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
-
-    @classmethod
-    def _load(cls, path, map_location, **submodules):
-        d = torch.load(path, map_location, weights_only=False)
-
-        try:
-            hparams = d["hyper_parameters"]
-            state_dict = d["state_dict"]
-        except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
-
-        if hparams["metrics"] is not None:
-            hparams["metrics"] = [
-                cls._rebuild_metric(metric)
-                if not torch.cuda.is_available() and metric.device.type != "cpu"
-                else metric
-                for metric in hparams["metrics"]
-            ]
-
-        if (
-            hparams["mol_predictor"] is not None
-            and hparams["mol_predictor"]["criterion"] is not None
-        ):
-            metric = hparams["mol_predictor"]["criterion"]
-            if not torch.cuda.is_available() and metric.device.type != "cpu":
-                hparams["mol_predictor"]["criterion"] = cls._rebuild_metric(metric)
-
-        if (
-            hparams["atom_predictor"] is not None
-            and hparams["atom_predictor"]["criterion"] is not None
-        ):
-            metric = hparams["atom_predictor"]["criterion"]
-            if not torch.cuda.is_available() and metric.device.type != "cpu":
-                hparams["atom_predictor"]["criterion"] = cls._rebuild_metric(metric)
-
-        if (
-            hparams["bond_predictor"] is not None
-            and hparams["bond_predictor"]["criterion"] is not None
-        ):
-            metric = hparams["bond_predictor"]["criterion"]
-            if not torch.cuda.is_available() and metric.device.type != "cpu":
-                hparams["bond_predictor"]["criterion"] = cls._rebuild_metric(metric)
-
-        submodules |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in (
-                "message_passing",
-                "agg",
-                "mol_predictor",
-                "atom_predictor",
-                "bond_predictor",
-                "atom_constrainer",
-                "bond_constrainer",
-            )
-            if key not in submodules and hparams[key] is not None
-        }
-
-        return submodules, state_dict, hparams
-
-    @classmethod
-    def _rebuild_metric(cls, metric):
-        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
-
-    @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MolAtomBondMPNN:
-        submodules = {
-            k: v
-            for k, v in kwargs.items()
-            if k
-            in [
-                "message_passing",
-                "agg",
-                "mol_predictor",
-                "atom_predictor",
-                "bond_predictor",
-                "atom_constrainer",
-                "bond_constrainer",
-            ]
-        }
-        submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
-        kwargs.update(submodules)
-
-        d = torch.load(checkpoint_path, map_location, weights_only=False)
-        d["hyper_parameters"] = hparams
-        buffer = io.BytesIO()
-        torch.save(d, buffer)
-        buffer.seek(0)
-
-        return super().load_from_checkpoint(
-            buffer, map_location, hparams_file, strict, **LIGHTNING_26_COMPAT_ARGS, **kwargs
-        )
-
-    @classmethod
-    def load_from_file(
-        cls, model_path, map_location=None, strict=True, **submodules
-    ) -> MolAtomBondMPNN:
-        submodules, state_dict, hparams = cls._load(model_path, map_location, **submodules)
-        hparams.update(submodules)
-        model = cls(**hparams)
-        model.load_state_dict(state_dict, strict=strict)
-
-        return model

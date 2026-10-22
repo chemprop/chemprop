@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-import io
 import logging
-import traceback
 from typing import Iterable, TypeAlias
 
 from lightning import pytorch as pl
 import torch
 from torch import Tensor, nn, optim
 
-from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import BatchMolGraph, MulticomponentTrainingBatch, TrainingBatch
+from chemprop.models.serialization import CheckpointMixin
 from chemprop.nn import Aggregation, ChempropMetric, MessagePassing, Predictor
 from chemprop.nn.transforms import ScaleTransform
 from chemprop.schedulers import build_NoamLike_LRSched
-from chemprop.utils.registry import Factory
 
 logger = logging.getLogger(__name__)
 
 BatchType: TypeAlias = TrainingBatch | MulticomponentTrainingBatch
 
 
-class MPNN(pl.LightningModule):
+class MPNN(CheckpointMixin, pl.LightningModule):
     r"""An :class:`MPNN` is a sequence of message passing layers, an aggregation routine, and a
     predictor routine.
 
@@ -234,43 +231,18 @@ class MPNN(pl.LightningModule):
         return len(batch[0])
 
     @classmethod
-    def _load(cls, path, map_location, **submodules):
+    def _load(cls, path, map_location, weights_only, **kwargs):
         try:
-            d = torch.load(path, map_location, weights_only=False)
+            hparams, state_dict, d = super()._load(path, map_location, weights_only, **kwargs)
         except AttributeError:
             logger.error(
-                f"{traceback.format_exc()}\nModel loading failed (full stacktrace above)! It is possible this checkpoint was generated in v2.0 and needs to be converted to v2.1\n Please run 'chemprop convert --conversion v2_0_to_v2_1 -i {path}' and load the converted checkpoint."
+                "Model loading failed! It is possible this checkpoint was generated in v2.0 and "
+                "needs to be converted to v2.1.\n Please run 'chemprop convert --conversion "
+                f"v2_0_to_v2_1 -i {path}' and load the converted checkpoint."
             )
+            raise
 
-        try:
-            hparams = d["hyper_parameters"]
-            state_dict = d["state_dict"]
-        except KeyError:
-            raise KeyError(f"Could not find hyper parameters and/or state dict in {path}.")
-
-        if hparams["metrics"] is not None:
-            hparams["metrics"] = [
-                cls._rebuild_metric(metric)
-                if not hasattr(metric, "_defaults")
-                or (not torch.cuda.is_available() and metric.device.type != "cpu")
-                else metric
-                for metric in hparams["metrics"]
-            ]
-
-        if hparams["predictor"]["criterion"] is not None:
-            metric = hparams["predictor"]["criterion"]
-            if not hasattr(metric, "_defaults") or (
-                not torch.cuda.is_available() and metric.device.type != "cpu"
-            ):
-                hparams["predictor"]["criterion"] = cls._rebuild_metric(metric)
-
-        submodules |= {
-            key: hparams[key].pop("cls")(**hparams[key])
-            for key in ("message_passing", "agg", "predictor")
-            if key not in submodules
-        }
-
-        return submodules, state_dict, hparams
+        return hparams, cls._add_metric_task_weights_to_state_dict(state_dict, hparams), d
 
     @classmethod
     def _add_metric_task_weights_to_state_dict(cls, state_dict, hparams):
@@ -283,41 +255,3 @@ class MPNN(pl.LightningModule):
                 "predictor.criterion.task_weights"
             ]
         return state_dict
-
-    @classmethod
-    def _rebuild_metric(cls, metric):
-        return Factory.build(metric.__class__, task_weights=metric.task_weights, **metric.__dict__)
-
-    @classmethod
-    def load_from_checkpoint(
-        cls, checkpoint_path, map_location=None, hparams_file=None, strict=True, **kwargs
-    ) -> MPNN:
-        submodules = {
-            k: v for k, v in kwargs.items() if k in ["message_passing", "agg", "predictor"]
-        }
-        submodules, state_dict, hparams = cls._load(checkpoint_path, map_location, **submodules)
-        kwargs.update(submodules)
-
-        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-        d = torch.load(checkpoint_path, map_location, weights_only=False)
-        d["state_dict"] = state_dict
-        d["hyper_parameters"] = hparams
-        buffer = io.BytesIO()
-        torch.save(d, buffer)
-        buffer.seek(0)
-
-        return super().load_from_checkpoint(
-            buffer, map_location, hparams_file, strict, **LIGHTNING_26_COMPAT_ARGS, **kwargs
-        )
-
-    @classmethod
-    def load_from_file(cls, model_path, map_location=None, strict=True, **submodules) -> MPNN:
-        submodules, state_dict, hparams = cls._load(model_path, map_location, **submodules)
-        hparams.update(submodules)
-
-        state_dict = cls._add_metric_task_weights_to_state_dict(state_dict, hparams)
-
-        model = cls(**hparams)
-        model.load_state_dict(state_dict, strict=strict)
-
-        return model
