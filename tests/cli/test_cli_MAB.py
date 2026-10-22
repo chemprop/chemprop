@@ -287,6 +287,51 @@ def test_predict_regression_quick(monkeypatch, regression_data_path, regression_
         main()
 
 
+@pytest.mark.unsafe_load
+def test_convert_then_predict_weights_only(
+    monkeypatch, regression_data_path, pre_v2_4_model_path, tmp_path
+):
+    regression_model_path = str(
+        pre_v2_4_model_path("pre_v2_4_model_files/mol_atom_bond/regression.pt")
+    )
+    input_path, *_ = regression_data_path
+    converted_path = str(tmp_path / "converted.pt")
+    args = [
+        "chemprop",
+        "convert",
+        "-c",
+        "latest",
+        "-i",
+        regression_model_path,
+        "-o",
+        converted_path,
+        "--yes",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        converted_path,
+        "--keep-h",
+        "--reorder-atoms",
+        "--weights-only",
+        "true",
+        "--output",
+        str(tmp_path / "preds.csv"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_train_regression_no_mol(monkeypatch, regression_data_path):
     input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 

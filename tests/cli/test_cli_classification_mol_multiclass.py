@@ -242,5 +242,5 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = MPNN.load_from_checkpoint(checkpoint_path, weights_only=True)
     assert model is not None

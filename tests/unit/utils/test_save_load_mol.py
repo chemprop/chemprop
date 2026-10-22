@@ -7,7 +7,6 @@ import torch
 from torch.nn import Identity
 from torch.utils.data import DataLoader
 
-from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
 from chemprop.models.utils import load_model, save_model
@@ -34,7 +33,7 @@ def model_path(data_dir):
 
 @pytest.fixture
 def model(checkpoint_path):
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = MPNN.load_from_checkpoint(checkpoint_path, weights_only=True)
     return model
 
 
@@ -60,7 +59,7 @@ def trainer():
 
 @pytest.fixture
 def ys(model, test_loader, trainer):
-    predss = trainer.predict(model, test_loader, **LIGHTNING_26_COMPAT_ARGS)
+    predss = trainer.predict(model, test_loader)
     return np.vstack(predss)
 
 
@@ -68,35 +67,33 @@ def test_roundtrip(tmp_path, model, test_loader, trainer, ys):
     save_path = Path(tmp_path) / "test.pt"
     save_model(save_path, model)
 
-    model_from_file = MPNN.load_from_file(save_path)
+    model_from_file = MPNN.load_from_file(save_path, weights_only=True)
 
-    predss_from_file = trainer.predict(model_from_file, test_loader, **LIGHTNING_26_COMPAT_ARGS)
+    predss_from_file = trainer.predict(model_from_file, test_loader)
     ys_from_file = np.vstack(predss_from_file)
 
     assert np.allclose(ys_from_file, ys, atol=1e-6)
 
 
 def test_checkpoint_is_valid(checkpoint_path, test_loader, trainer, ys):
-    model_from_checkpoint = MPNN.load_from_file(checkpoint_path)
+    model_from_checkpoint = MPNN.load_from_file(checkpoint_path, weights_only=True)
 
-    predss_from_checkpoint = trainer.predict(
-        model_from_checkpoint, test_loader, **LIGHTNING_26_COMPAT_ARGS
-    )
+    predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
 
     assert np.allclose(ys_from_checkpoint, ys, atol=1e-6)
 
 
 def test_checkpoint_roundtrip(checkpoint_path, model_path, trainer, test_loader):
-    model_from_checkpoint = MPNN.load_from_checkpoint(checkpoint_path, map_location="cpu")
-    model_from_file = MPNN.load_from_file(model_path, map_location="cpu")
-
-    predss_from_checkpoint = trainer.predict(
-        model_from_checkpoint, test_loader, **LIGHTNING_26_COMPAT_ARGS
+    model_from_checkpoint = MPNN.load_from_checkpoint(
+        checkpoint_path, map_location="cpu", weights_only=True
     )
+    model_from_file = MPNN.load_from_file(model_path, map_location="cpu", weights_only=True)
+
+    predss_from_checkpoint = trainer.predict(model_from_checkpoint, test_loader)
     ys_from_checkpoint = np.vstack(predss_from_checkpoint)
 
-    predss_from_file = trainer.predict(model_from_file, test_loader, **LIGHTNING_26_COMPAT_ARGS)
+    predss_from_file = trainer.predict(model_from_file, test_loader)
     ys_from_file = np.vstack(predss_from_file)
 
     assert np.allclose(ys_from_file, ys_from_checkpoint, atol=1e-6)
@@ -116,7 +113,7 @@ def test_scalers_roundtrip(tmp_path):
     original = MPNN(mp, NormAggregation(), ffn, X_d_transform=X_d_transform)
 
     save_model(tmp_path / "model.pt", original)
-    loaded = load_model(tmp_path / "model.pt", multicomponent=False)
+    loaded = load_model(tmp_path / "model.pt", multicomponent=False, weights_only=True)
 
     assert torch.equal(
         original.message_passing.V_d_transform.mean, loaded.message_passing.V_d_transform.mean
@@ -145,6 +142,7 @@ def test_load_checkpoint_with_metrics(data_dir, path):
     MPNN.load_from_checkpoint(data_dir / path, weights_only=True)
 
 
+@pytest.mark.unsafe_load
 @pytest.mark.parametrize(
     "path",
     [
@@ -156,6 +154,7 @@ def test_load_pre_v2_4_checkpoint_with_metrics(pre_v2_4_model_path, path):
     MPNN.load_from_checkpoint(pre_v2_4_model_path(path), weights_only=False)
 
 
+@pytest.mark.unsafe_load
 def test_load_pre_v2_4_trained_on_cuda(pre_v2_4_model_path):
     MPNN.load_from_file(
         pre_v2_4_model_path("pre_v2_4_model_files/example_model_v2_trained_on_cuda.pt"),

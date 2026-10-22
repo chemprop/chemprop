@@ -41,7 +41,7 @@ def trainer():
 
 
 def test_NoUncertaintyEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
+    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt", weights_only=True)
     estimator = NoUncertaintyEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
@@ -50,7 +50,7 @@ def test_NoUncertaintyEstimator(data_dir, dataloader, trainer):
 
 
 def test_DropoutEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
+    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt", weights_only=True)
     estimator = DropoutEstimator(ensemble_size=2, dropout=0.1)
     preds, uncs = estimator(dataloader, [model], trainer)
 
@@ -59,8 +59,8 @@ def test_DropoutEstimator(data_dir, dataloader, trainer):
 
 
 def test_EnsembleEstimator(data_dir, dataloader, trainer):
-    model1 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
-    model2 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt")
+    model1 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt", weights_only=True)
+    model2 = MPNN.load_from_file(data_dir / "example_model_v2_regression_mol.pt", weights_only=True)
 
     # Make the second model predict different values than the first
     model2.predictor.output_transform = torch.nn.Identity()
@@ -81,7 +81,9 @@ def test_EnsembleEstimator_wrong_n_models():
 
 
 def test_MVEEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_mve_mol.pt")
+    model = MPNN.load_from_file(
+        data_dir / "example_model_v2_regression_mve_mol.pt", weights_only=True
+    )
     estimator = MVEEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
@@ -112,7 +114,9 @@ def test_MVEEstimator(data_dir, dataloader, trainer):
 def test_EvidentialEstimators(
     estimator_class, expected_preds, expected_uncs, data_dir, dataloader, trainer
 ):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_evidential_mol.pt")
+    model = MPNN.load_from_file(
+        data_dir / "example_model_v2_regression_evidential_mol.pt", weights_only=True
+    )
 
     estimator = estimator_class()
     preds, uncs = estimator(dataloader, [model], trainer)
@@ -122,7 +126,9 @@ def test_EvidentialEstimators(
 
 
 def test_QuantileRegressionEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_regression_quantile_mol.pt")
+    model = MPNN.load_from_file(
+        data_dir / "example_model_v2_regression_quantile_mol.pt", weights_only=True
+    )
     estimator = QuantileRegressionEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
@@ -131,7 +137,9 @@ def test_QuantileRegressionEstimator(data_dir, dataloader, trainer):
 
 
 def test_ClassificationDirichletEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_classification_dirichlet_mol.pt")
+    model = MPNN.load_from_file(
+        data_dir / "example_model_v2_classification_dirichlet_mol.pt", weights_only=True
+    )
     estimator = ClassificationDirichletEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
@@ -150,7 +158,9 @@ def test_ClassificationDirichletEstimator(data_dir, dataloader, trainer):
 
 
 def test_MulticlassDirichletEstimator(data_dir, dataloader, trainer):
-    model = MPNN.load_from_file(data_dir / "example_model_v2_multiclass_dirichlet_mol.pt")
+    model = MPNN.load_from_file(
+        data_dir / "example_model_v2_multiclass_dirichlet_mol.pt", weights_only=True
+    )
     estimator = MulticlassDirichletEstimator()
     preds, uncs = estimator(dataloader, [model], trainer)
 
