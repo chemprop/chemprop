@@ -34,10 +34,21 @@ class Unpickler(pickle.Unpickler):
         return super().find_class(module, name)
 
 
-def convert_model_file_v2_0_to_v2_1(model_v1_file: PathLike, model_v2_file: PathLike):
-    model = torch.load(
-        model_v1_file, map_location="cpu", pickle_module=sys.modules[__name__], weights_only=False
+def load_model_file_v2_0(model_file: PathLike) -> dict:
+    """Load a model file with the classes renamed in v2.1 mapped to their new names. Files from
+    other versions are loaded unchanged.
+
+    .. warning::
+        The file is loaded with ``weights_only=False``, which can execute arbitrary code, so only
+        load model files you trust.
+    """
+    return torch.load(
+        model_file, map_location="cpu", pickle_module=sys.modules[__name__], weights_only=False
     )
+
+
+def convert_model_file_v2_0_to_v2_1(model_v1_file: PathLike, model_v2_file: PathLike):
+    model = load_model_file_v2_0(model_v1_file)
     torch.save(model, model_v2_file)
 
 
