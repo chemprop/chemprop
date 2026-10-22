@@ -55,7 +55,7 @@ def test_mol_atom_bond(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_mol_atom_none(dataloader, tmp_path):
@@ -79,7 +79,7 @@ def test_mol_atom_none(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_mol_none_bond(dataloader, tmp_path):
@@ -103,7 +103,7 @@ def test_mol_none_bond(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_none_atom_bond(dataloader, tmp_path):
@@ -126,7 +126,7 @@ def test_none_atom_bond(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_mol_none_none(dataloader, tmp_path):
@@ -147,7 +147,7 @@ def test_mol_none_none(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_none_atom_none(dataloader, tmp_path):
@@ -167,7 +167,7 @@ def test_none_atom_none(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_none_none_bond(dataloader, tmp_path):
@@ -187,7 +187,7 @@ def test_none_none_bond(dataloader, tmp_path):
     trainer.fit(model, dataloader, None)
 
     models.utils.save_model(tmp_path / "temp.pt", model)
-    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt")
+    models.MolAtomBondMPNN.load_from_file(tmp_path / "temp.pt", weights_only=True)
 
 
 def test_none_none_none(dataloader, tmp_path):

@@ -31,6 +31,7 @@ from chemprop.featurizers.molgraph.reaction import (
     CondensedGraphOfReactionFeaturizer,
     CuikmolmakerCGRFeaturizer,
 )
+from chemprop.models.serialization import load_checkpoint
 from chemprop.models.utils import load_model, load_output_columns
 from chemprop.nn.message_passing import BondMessagePassing
 from chemprop.nn.metrics import BoundedMixin
@@ -379,9 +380,12 @@ def make_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
     mol_atom_bond = False
-    models = [load_model(model_path, multicomponent) for model_path in model_paths]
+    models = [
+        load_model(model_path, multicomponent, weights_only=args.weights_only)
+        for model_path in model_paths
+    ]
     bounded = isinstance(models[0].criterion, BoundedMixin)
-    output_columns = load_output_columns(model_paths[0])
+    output_columns = load_output_columns(model_paths[0], weights_only=args.weights_only)
     format_kwargs = dict(
         no_header_row=args.no_header_row,
         smiles_cols=args.smiles_columns,
@@ -410,7 +414,11 @@ def make_prediction_for_models(
     callbacks = (
         [
             Factory.build(
-                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+                CallbackRegistry[args.callback],
+                model_paths,
+                args.output,
+                weights_only=args.weights_only,
+                **args.callback_params,
             )
         ]
         if args.callback
@@ -592,10 +600,15 @@ def make_MAB_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
     mol_atom_bond = True
-    models = [load_model(model_path, mol_atom_bond=True) for model_path in model_paths]
+    models = [
+        load_model(model_path, mol_atom_bond=True, weights_only=args.weights_only)
+        for model_path in model_paths
+    ]
     bounded = isinstance(next(c for c in models[0].criterions if c is not None), BoundedMixin)
 
-    mol_output_cols, atom_output_cols, bond_output_cols = load_output_columns(model_paths[0])
+    mol_output_cols, atom_output_cols, bond_output_cols = load_output_columns(
+        model_paths[0], weights_only=args.weights_only
+    )
 
     format_kwargs = dict(
         smiles_cols=args.smiles_columns,
@@ -620,7 +633,11 @@ def make_MAB_prediction_for_models(
     callbacks = (
         [
             Factory.build(
-                CallbackRegistry[args.callback], model_paths, args.output, **args.callback_params
+                CallbackRegistry[args.callback],
+                model_paths,
+                args.output,
+                weights_only=args.weights_only,
+                **args.callback_params,
             )
         ]
         if args.callback
@@ -930,7 +947,9 @@ def main(args):
 
     model_paths = find_models(args.model_paths)
 
-    model_file = torch.load(model_paths[0], map_location=torch.device("cpu"), weights_only=False)
+    model_file = load_checkpoint(
+        model_paths[0], map_location=torch.device("cpu"), weights_only=args.weights_only
+    )
     mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
 
     if mol_atom_bond:

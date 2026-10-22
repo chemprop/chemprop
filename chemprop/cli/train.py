@@ -42,7 +42,6 @@ from chemprop.cli.utils import (
     parse_indices,
 )
 from chemprop.cli.utils.args import uppercase
-from chemprop.conf import LIGHTNING_26_COMPAT_ARGS
 from chemprop.data import (
     LazyReactionDatapoint,
     MolAtomBondDataset,
@@ -57,7 +56,7 @@ from chemprop.data import (
 )
 from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.featurizers.atom import AtomFeatureMode
-from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
+from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, load_checkpoint, save_model
 from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
 from chemprop.nn.ffn import ConstrainerFFN
 from chemprop.nn.message_passing import (
@@ -938,15 +937,19 @@ def normalize_inputs(train_dset, val_dset, args):
     return X_d_transform, graph_transforms, V_d_transforms, E_d_transforms
 
 
-def load_and_use_pretrained_model_scalers(model_path: Path, train_dset, val_dset) -> None:
+def load_and_use_pretrained_model_scalers(
+    model_path: Path, train_dset, val_dset, weights_only: bool | None = None
+) -> None:
     if isinstance(train_dset, MulticomponentDataset):
-        _model = MulticomponentMPNN.load_from_file(model_path, map_location="cpu")
+        _model = MulticomponentMPNN.load_from_file(
+            model_path, map_location="cpu", weights_only=weights_only
+        )
         blocks = _model.message_passing.blocks
         train_dsets = train_dset.datasets
         val_dsets = val_dset.datasets if val_dset is not None else None
     else:
         mpnn_cls = MolAtomBondMPNN if isinstance(train_dset, MolAtomBondDataset) else MPNN
-        _model = mpnn_cls.load_from_file(model_path, map_location="cpu")
+        _model = mpnn_cls.load_from_file(model_path, map_location="cpu", weights_only=weights_only)
         blocks = [_model.message_passing]
         train_dsets = [train_dset]
         val_dsets = [val_dset] if val_dset is not None else None
@@ -1469,7 +1472,9 @@ def build_model(
                 mp_blocks = []
                 for _ in range(train_dset.n_components):
                     foundation = MPNN.load_from_file(
-                        args.from_foundation, map_location=torch.device("cpu")
+                        args.from_foundation,
+                        map_location=torch.device("cpu"),
+                        weights_only=args.weights_only,
                     )  # must re-load for each, no good way to copy
                     mp_blocks.append(foundation.message_passing)
                 mp_block = MulticomponentMessagePassing(
@@ -1477,7 +1482,9 @@ def build_model(
                 )
             else:
                 foundation = MPNN.load_from_file(
-                    args.from_foundation, map_location=torch.device("cpu")
+                    args.from_foundation,
+                    map_location=torch.device("cpu"),
+                    weights_only=args.weights_only,
                 )
                 mp_block = foundation.message_passing
             agg = foundation.agg
@@ -1839,7 +1846,9 @@ def train_model(
                 mpnn_cls = MPNN
 
             model_path = model_paths[model_idx] if args.checkpoint else args.model_frzn
-            model = mpnn_cls.load_from_file(model_path, map_location=torch.device("cpu"))
+            model = mpnn_cls.load_from_file(
+                model_path, map_location=torch.device("cpu"), weights_only=args.weights_only
+            )
 
             if args.checkpoint:
                 model.apply(
@@ -1965,21 +1974,22 @@ def train_model(
         )
         trainer.fit(model, train_loader, val_loader)
 
+        # the model has the weights from the last epoch, so load the weights from the best epoch
+        best_model_path = checkpointing.best_model_path
+        best_checkpoint = load_checkpoint(best_model_path, map_location="cpu", weights_only=True)
+        model.load_state_dict(best_checkpoint["state_dict"])
+
         if test_loader is not None:
             if isinstance(trainer.strategy, DDPStrategy):
                 torch.distributed.destroy_process_group()
 
-                best_ckpt_path = trainer.checkpoint_callback.best_model_path
                 trainer = pl.Trainer(
                     logger=trainer_logger,
                     enable_progress_bar=True,
                     accelerator=args.accelerator,
                     devices=1,
                 )
-                model = model.load_from_checkpoint(best_ckpt_path)
-                predss = trainer.predict(model, dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
-            else:
-                predss = trainer.predict(dataloaders=test_loader, **LIGHTNING_26_COMPAT_ARGS)
+            predss = trainer.predict(model, dataloaders=test_loader)
 
             if isinstance(train_loader.dataset, MolAtomBondDataset):
                 mol_preds, atom_preds, bond_preds = (
@@ -2014,8 +2024,6 @@ def train_model(
                     preds, test_loader, model.metrics[:-1], model_output_dir, args
                 )
 
-        best_model_path = checkpointing.best_model_path
-        model = model.__class__.load_from_checkpoint(best_model_path)
         p_model = model_output_dir / "best.pt"
         output_columns = (
             [args.mol_target_columns, args.atom_target_columns, args.bond_target_columns]
@@ -2298,7 +2306,9 @@ def main(args):
                     "same data scalings, meaning they were trained on the same data."
                 )
             model_path = model_paths[0] if args.checkpoint else args.model_frzn
-            load_and_use_pretrained_model_scalers(model_path, train_dset, val_dset)
+            load_and_use_pretrained_model_scalers(
+                model_path, train_dset, val_dset, args.weights_only
+            )
         else:
             input_transforms = normalize_inputs(train_dset, val_dset, args)
 

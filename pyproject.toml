@@ -76,6 +76,7 @@ addopts = "--cov chemprop"
 markers = [
     "integration",
     "CLI",
+    "unsafe_load: loads a pre-v2.4 model file with weights_only=False (skipped unless --allow-unsafe-load)",
 ]
 
 [tool.isort]

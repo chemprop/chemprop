@@ -53,9 +53,50 @@ def batch_mol_graph_pytree():
     )
 
 
+# model files saved before Chemprop v2.4 contain arbitrary objects, so they must be loaded with
+# `weights_only=False`, which can execute arbitrary code. Tests that load them must be marked with
+# `unsafe_load` and only run if `--allow-unsafe-load` is passed. The SHA256 hashes of these files
+# are recorded in `tests/data/pre_v2_4_model_files.sha256`.
+def pytest_addoption(parser):
+    parser.addoption(
+        "--allow-unsafe-load",
+        action="store_true",
+        help="run tests that load pre-v2.4 model files with `weights_only=False`",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--allow-unsafe-load"):
+        return
+
+    skip = pytest.mark.skip(
+        reason="loads a pre-v2.4 model file with weights_only=False; pass --allow-unsafe-load to run"
+    )
+    for item in items:
+        if item.get_closest_marker("unsafe_load") is not None:
+            item.add_marker(skip)
+
+
 @pytest.fixture
 def data_dir():
     return _DATA_DIR
+
+
+@pytest.fixture
+def pre_v2_4_model_path(request):
+    """Get the path to a pre-v2.4 model file in `tests/data`, which must be loaded with
+    `weights_only=False`"""
+
+    def _pre_v2_4_model_path(relative_path: str) -> Path:
+        if request.node.get_closest_marker("unsafe_load") is None:
+            raise RuntimeError(
+                f"'{relative_path}' must be loaded with `weights_only=False`, so tests that use it "
+                "must be marked with `@pytest.mark.unsafe_load`."
+            )
+
+        return _DATA_DIR / relative_path
+
+    return _pre_v2_4_model_path
 
 
 @pytest.fixture

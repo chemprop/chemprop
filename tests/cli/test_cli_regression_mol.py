@@ -1,9 +1,12 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
 
+from argparse import ArgumentError
 import json
+import pickle
 import sys
 
+import pandas as pd
 import pytest
 import torch
 
@@ -596,7 +599,7 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = MPNN.load_from_checkpoint(checkpoint_path, weights_only=True)
     assert model is not None
 
 
@@ -626,8 +629,8 @@ def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    trained_model = MPNN.load_from_checkpoint(checkpoint_path)
-    frzn_model = MPNN.load_from_file(model_path)
+    trained_model = MPNN.load_from_checkpoint(checkpoint_path, weights_only=True)
+    frzn_model = MPNN.load_from_file(model_path, weights_only=True)
 
     assert torch.equal(
         trained_model.message_passing.W_o.weight, frzn_model.message_passing.W_o.weight
@@ -660,8 +663,157 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
 
     checkpoint_path = tmp_path / "model_0" / "checkpoints" / "last.ckpt"
 
-    model = MPNN.load_from_checkpoint(checkpoint_path)
+    model = MPNN.load_from_checkpoint(checkpoint_path, weights_only=True)
     assert model is not None
+
+
+def test_train_then_predict_weights_only(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model_path = str(tmp_path / "model_0" / "best.pt")
+    MPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt", weights_only=True)
+
+    for subcommand, extra_args in [("predict", []), ("fingerprint", ["--ffn-block-index", "0"])]:
+        args = [
+            "chemprop",
+            subcommand,
+            *extra_args,
+            "-i",
+            input_path,
+            "--model-path",
+            model_path,
+            "--weights-only",
+            "true",
+            "--output",
+            str(tmp_path / f"{subcommand}.csv"),
+        ]
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
+
+
+@pytest.fixture
+def pre_v2_4_model_file(pre_v2_4_model_path):
+    return str(pre_v2_4_model_path("pre_v2_4_model_files/example_model_v2_regression_mol.pt"))
+
+
+@pytest.mark.unsafe_load
+def test_predict_old_model_weights_only(monkeypatch, data_path, pre_v2_4_model_file, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        pre_v2_4_model_file,
+        "--output",
+        str(tmp_path / "preds.csv"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args + ["--weights-only", "false"])
+        main()
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args + ["--weights-only", "true"])
+        with pytest.raises(pickle.UnpicklingError, match="chemprop convert"):
+            main()
+
+
+@pytest.mark.unsafe_load
+@pytest.mark.parametrize("conversion", ["latest", "v2_1_to_v2_4"])
+def test_convert_then_predict_weights_only(
+    monkeypatch, data_path, pre_v2_4_model_file, tmp_path, conversion
+):
+    input_path, *_ = data_path
+    converted_path = str(tmp_path / "converted.pt")
+    args = [
+        "chemprop",
+        "convert",
+        "-c",
+        conversion,
+        "-i",
+        pre_v2_4_model_file,
+        "-o",
+        converted_path,
+        "--yes",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    for path, weights_only, output in [
+        (pre_v2_4_model_file, "false", "old.csv"),
+        (converted_path, "true", "new.csv"),
+    ]:
+        args = [
+            "chemprop",
+            "predict",
+            "-i",
+            input_path,
+            "--model-path",
+            path,
+            "--weights-only",
+            weights_only,
+            "--output",
+            str(tmp_path / output),
+        ]
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
+
+    pd.testing.assert_frame_equal(
+        pd.read_csv(tmp_path / "old.csv"), pd.read_csv(tmp_path / "new.csv")
+    )
+
+
+@pytest.mark.unsafe_load
+@pytest.mark.parametrize(
+    "answer, converted", [("y", True), ("YES", True), ("n", False), ("", False)]
+)
+def test_convert_prompt(monkeypatch, pre_v2_4_model_file, tmp_path, answer, converted):
+    converted_path = tmp_path / "converted.pt"
+    args = ["chemprop", "convert", "-i", pre_v2_4_model_file, "-o", str(converted_path)]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        m.setattr("sys.stdin.isatty", lambda: True)
+        m.setattr("builtins.input", lambda prompt: answer)
+        main()
+
+    assert converted_path.exists() == converted
+
+
+@pytest.mark.unsafe_load
+def test_convert_non_interactive_requires_yes(monkeypatch, pre_v2_4_model_file, tmp_path):
+    converted_path = tmp_path / "converted.pt"
+    args = ["chemprop", "convert", "-i", pre_v2_4_model_file, "-o", str(converted_path)]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        m.setattr("sys.stdin.isatty", lambda: False)
+        with pytest.raises(ArgumentError, match="--yes"):
+            main()
+
+    assert not converted_path.exists()
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")
