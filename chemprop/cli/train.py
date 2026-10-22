@@ -488,7 +488,7 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--metric",
         nargs="+",
         action=LookupAction(MetricRegistry),
-        help="Specify the evaluation metrics. If unspecified, Chemprop will use the following metrics for given dataset types: regression -> ``rmse``, classification -> ``roc``, multiclass -> ``ce`` ('cross entropy'), spectral -> ``sid``. If multiple metrics are provided, the 0-th one will be used for early stopping and checkpointing.",
+        help="Specify the evaluation metrics. If unspecified, Chemprop will use the following metrics for given dataset types: regression -> ``mse``, classification -> ``roc``, multiclass -> ``multiclass-mcc``, spectral -> ``sid``. Early stopping and checkpointing use ``--tracking-metric`` (``val_loss`` by default), which can be set to one of these metrics.",
     )
     train_args.add_argument(
         "--tracking-metric",
