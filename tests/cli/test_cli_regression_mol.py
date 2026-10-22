@@ -600,6 +600,147 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     assert model is not None
 
 
+@pytest.mark.parametrize(
+    "extra_args,expected",
+    [
+        (
+            ["--task-type", "regression-evidential", "--v-kl", "0.5", "--eps", "1e-4"],
+            {"v_kl": 0.5, "eps": 1e-4},
+        ),
+        (
+            [
+                "--task-type",
+                "regression-evidential",
+                "--v-kl",
+                "0.5",
+                "--eps",
+                "1e-4",
+                "--loss-function",
+                "evidential",
+            ],
+            {"v_kl": 0.5, "eps": 1e-4},
+        ),
+        (["--task-type", "regression-quantile", "--alpha", "0.05"], {"alpha": 0.05}),
+        (["--task-type", "regression-evidential"], {"v_kl": 0.2, "eps": 1e-8}),
+        (
+            ["--task-type", "regression-evidential", "--loss-function", "evidential"],
+            {"v_kl": 0.0, "eps": 1e-8},
+        ),
+        (["--task-type", "regression-quantile"], {"alpha": 0.1}),
+    ],
+)
+def test_train_loss_hyperparameters(monkeypatch, data_path, tmp_path, extra_args, expected):
+    """Loss hyperparameters must be used whether or not --loss-function is given (#1416)."""
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+        *extra_args,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model = MPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt")
+
+    for key, value in expected.items():
+        assert getattr(model.predictor.criterion, key) == pytest.approx(value)
+
+
+@pytest.mark.parametrize(
+    "extra_args,expected",
+    [
+        (["--v-kl", "0.5"], {"v_kl": 0.5, "eps": 1e-8}),
+        ([], {"v_kl": 0.2, "eps": 1e-8}),
+        (["--loss-function", "evidential"], {"v_kl": 0.0, "eps": 1e-8}),
+    ],
+)
+def test_train_config_replays_loss_hyperparameters(
+    monkeypatch, data_path, tmp_path, extra_args, expected
+):
+    """Training from the saved config.toml must build the same loss function as the original run."""
+    input_path, *_ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--task-type",
+        "regression-evidential",
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path / "original"),
+        *extra_args,
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(tmp_path / "original" / "config.toml"),
+        "--save-dir",
+        str(tmp_path / "replay"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    for run in ["original", "replay"]:
+        model = MPNN.load_from_checkpoint(tmp_path / run / "model_0" / "checkpoints" / "last.ckpt")
+        for key, value in expected.items():
+            assert getattr(model.predictor.criterion, key) == pytest.approx(value)
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_train_legacy_config_warns(monkeypatch, capsys, data_path, tmp_path, legacy):
+    """A config.toml in the v2.3.1 format sets v-kl/eps/alpha without a loss function; warn that
+    v-kl is now used (#1416)."""
+    input_path, *_ = data_path
+
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        f'data-path = ["{input_path}"]\n'
+        "task-type = regression-evidential\n"
+        "epochs = 3\n"
+        "num-workers = 0\n" + ("v-kl = 0.0\neps = 1e-08\nalpha = 0.1\n" if legacy else "")
+    )
+    args = [
+        "chemprop",
+        "train",
+        "--config-path",
+        str(config_path),
+        "--save-dir",
+        str(tmp_path / "replay"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    assert ("Chemprop v2.3.1 and earlier" in capsys.readouterr().err) == legacy
+    model = MPNN.load_from_checkpoint(tmp_path / "replay" / "model_0" / "checkpoints" / "last.ckpt")
+    assert model.predictor.criterion.v_kl == pytest.approx(0.0 if legacy else 0.2)
+
+
 def test_freeze_model(monkeypatch, data_path, model_path, tmp_path):
     input_path, *_ = data_path
     args = [
