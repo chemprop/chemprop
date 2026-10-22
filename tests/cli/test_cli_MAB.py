@@ -3,6 +3,7 @@
 import sys
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from chemprop.cli.hpopt import NO_HYPEROPT, NO_OPTUNA, NO_RAY
@@ -765,6 +766,110 @@ def test_predict_mve_quick(monkeypatch, regression_data_path, mve_model_path):
     with monkeypatch.context() as m:
         m.setattr("sys.argv", args)
         main()
+
+
+@pytest.mark.parametrize(
+    "model",
+    ["regression.pt", "regression_no_mol.pt", "regression_only_atom.pt", "regression_only_bond.pt"],
+)
+def test_predict_ensemble(monkeypatch, regression_data_path, model_dir, model, tmp_path):
+    input_path, *_ = regression_data_path
+    model_path = str(model_dir / model)
+    output_path = tmp_path / "preds.csv"
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-paths",
+        model_path,
+        model_path,
+        "-o",
+        str(output_path),
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    df_ensemble = pd.read_csv(output_path)
+    df_model = pd.read_csv(tmp_path / "preds_model_0.csv")
+    pd.testing.assert_frame_equal(df_model, df_ensemble)
+
+
+def test_predict_ensemble_uncertainty_ensemble_method(
+    monkeypatch, regression_data_path, regression_only_atom_model_path, tmp_path
+):
+    input_path, *_ = regression_data_path
+    output_path = tmp_path / "preds.csv"
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-paths",
+        regression_only_atom_model_path,
+        regression_only_atom_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "ensemble",
+        "-o",
+        str(output_path),
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    df_ensemble = pd.read_csv(output_path)
+    unc_cols = [col for col in df_ensemble.columns if col.endswith("_unc")]
+    assert len(unc_cols) == 2
+    expected_cols = [col for col in df_ensemble.columns if col not in unc_cols]
+    df_model = pd.read_csv(tmp_path / "preds_model_0.csv")
+    assert df_model.columns.tolist() == expected_cols
+
+
+def test_predict_ensemble_uncertainty_individual_models(
+    monkeypatch, regression_data_path, regression_only_atom_model_path, tmp_path
+):
+    input_path, *_ = regression_data_path
+    output_path = tmp_path / "preds.csv"
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-paths",
+        regression_only_atom_model_path,
+        regression_only_atom_model_path,
+        "--cal-path",
+        input_path,
+        "--uncertainty-method",
+        "dropout",
+        "--calibration-method",
+        "zscaling",
+        "--evaluation-methods",
+        "nll-regression",
+        "-o",
+        str(output_path),
+        "--keep-h",
+        "--reorder-atoms",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    df_ensemble = pd.read_csv(output_path)
+    unc_cols = [col for col in df_ensemble.columns if col.endswith("_unc")]
+    assert len(unc_cols) == 2
+    df_model = pd.read_csv(tmp_path / "preds_model_0.csv")
+    assert df_model.columns.tolist() == df_ensemble.columns.tolist()
 
 
 def test_train_regression_constrained(monkeypatch, constrained_data_path):
