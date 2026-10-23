@@ -134,6 +134,21 @@ def test_getitem(cuik_molecule_dataset):
     assert datum is not None
 
 
+def test_cuik_dataset_rejects_reorder_atoms():
+    """CuikmolmakerDataset ignores LazyMoleculeDatapoint._reorder_atoms; fail loud instead.
+
+    See https://github.com/chemprop/chemprop/issues/1382
+    """
+    smi = "[C:3][C:1][O:2]"
+    dp = LazyMoleculeDatapoint(smi, _reorder_atoms=True)
+
+    ds = MoleculeDataset([dp])
+    assert ds[0].mg is not None
+
+    with pytest.raises(ValueError, match="`--reorder-atoms` is not supported"):
+        CuikmolmakerDataset([dp])
+
+
 @pytest.mark.skipif(
     not all([x is None for x in ["X_d", "V_fs", "E_fs", "V_ds"]]), reason="Not all inputs are None"
 )
