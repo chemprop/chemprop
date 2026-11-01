@@ -100,6 +100,15 @@ def test_from_standard_scaler(mean, scale, scaler):
     assert torch.all(scale_transform.scale == torch.tensor([2.0, 3.0])).item()
 
 
+def test_to_standard_scaler_removes_feature_padding(mean, scale, scaler, pad):
+    scale_transform = ScaleTransform.from_standard_scaler(scaler, pad)
+
+    round_tripped = scale_transform.to_standard_scaler(anti_pad=pad)
+
+    assert np.array_equal(round_tripped.mean_, mean)
+    assert np.array_equal(round_tripped.scale_, scale)
+
+
 def test_scale_transform_forward_train(scale_transform, X):
     scale_transform.train()
     output_X = scale_transform(X)
