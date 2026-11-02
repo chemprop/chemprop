@@ -186,7 +186,6 @@ def test_train_regression_quick(monkeypatch, regression_data_path):
 
 
 def test_train_evidential_v_kl(monkeypatch, regression_data_path, tmp_path):
-    """--v-kl must be used without --loss-function evidential (#1416)."""
     input_path, smiles, mol_targets, atom_targets, bond_targets, weight = regression_data_path
 
     args = [

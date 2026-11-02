@@ -635,7 +635,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
     ],
 )
 def test_train_loss_hyperparameters(monkeypatch, data_path, tmp_path, extra_args, expected):
-    """Loss hyperparameters must be used whether or not --loss-function is given (#1416)."""
     input_path, *_ = data_path
 
     args = [
@@ -673,7 +672,6 @@ def test_train_loss_hyperparameters(monkeypatch, data_path, tmp_path, extra_args
 def test_train_config_replays_loss_hyperparameters(
     monkeypatch, data_path, tmp_path, extra_args, expected
 ):
-    """Training from the saved config.toml must build the same loss function as the original run."""
     input_path, *_ = data_path
 
     args = [
@@ -717,13 +715,11 @@ def test_train_config_replays_loss_hyperparameters(
 
 @pytest.mark.parametrize("legacy", [True, False])
 def test_train_legacy_config_warns(monkeypatch, capsys, data_path, tmp_path, legacy):
-    """A config.toml in the v2.3.1 format sets v-kl/eps/alpha without a loss function; warn that
-    v-kl is now used (#1416)."""
     input_path, *_ = data_path
 
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        f'data-path = ["{input_path}"]\n'
+        f"data-path = [{input_path}]\n"
         "task-type = regression-evidential\n"
         "epochs = 3\n"
         "num-workers = 0\n" + ("v-kl = 0.0\neps = 1e-08\nalpha = 0.1\n" if legacy else "")

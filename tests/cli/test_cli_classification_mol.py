@@ -264,7 +264,6 @@ def test_train_outputs(monkeypatch, data_path, tmp_path):
 
 @pytest.mark.parametrize("extra_args,expected_v_kl", [(["--v-kl", "0.5"], 0.5), ([], 0.2)])
 def test_train_dirichlet_v_kl(monkeypatch, data_path, tmp_path, extra_args, expected_v_kl):
-    """--v-kl must be used without --loss-function dirichlet (#1416)."""
     args = [
         "chemprop",
         "train",
