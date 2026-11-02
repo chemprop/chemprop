@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 from torch import Tensor
-from torchmetrics.regression import SpearmanCorrCoef
+from torchmetrics.regression import KendallRankCorrCoef, SpearmanCorrCoef
 
 from chemprop.utils.registry import ClassRegistry
 
@@ -197,6 +197,29 @@ class SpearmanEvaluator(RegressionEvaluator):
             spearman_coeff = spearman(uncs_j, errs_j)
             spearman_coeffs.append(spearman_coeff)
         return torch.stack(spearman_coeffs)
+
+
+@UncertaintyEvaluatorRegistry.register("kendall")
+class KendallEvaluator(RegressionEvaluator):
+    """
+    Evaluate Kendall's rank correlation coefficient (tau) between the uncertainties and errors in the model predictions.
+
+    The correlation coefficient returns a value in the [-1, 1] range, with better scores closer to 1
+    observed when the uncertainty values are predictive of the rank ordering of the errors in the model prediction.
+    """
+
+    def evaluate(self, preds: Tensor, uncs: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
+        kendall_coeffs = []
+        for j in range(uncs.shape[1]):
+            mask_j = mask[:, j]
+            preds_j = preds[:, j][mask_j]
+            targets_j = targets[:, j][mask_j]
+            uncs_j = uncs[:, j][mask_j]
+            errs_j = (preds_j - targets_j).abs()
+            kendall = KendallRankCorrCoef()
+            kendall_coeff = kendall(uncs_j, errs_j)
+            kendall_coeffs.append(kendall_coeff)
+        return torch.stack(kendall_coeffs)
 
 
 @UncertaintyEvaluatorRegistry.register("conformal-coverage-regression")

@@ -4,6 +4,7 @@ import torch
 from chemprop.uncertainty.evaluator import (
     CalibrationAreaEvaluator,
     ExpectedNormalizedErrorEvaluator,
+    KendallEvaluator,
     MulticlassConformalEvaluator,
     MultilabelConformalEvaluator,
     NLLClassEvaluator,
@@ -138,6 +139,34 @@ def test_SpearmanEvaluator(preds, uncs, targets, mask, spearman_exp):
     evaluator = SpearmanEvaluator()
     area = evaluator.evaluate(preds, uncs, targets, mask)
     torch.testing.assert_close(area, spearman_exp)
+
+
+@pytest.mark.parametrize(
+    "preds,uncs,targets,mask,kendall_exp",
+    [
+        (
+            torch.zeros(100, 1, dtype=float),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.tensor([1.0]),
+        ),
+        (
+            torch.zeros(100, 1, dtype=float),
+            -torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.arange(1, 101, dtype=float).unsqueeze(1),
+            torch.ones(100, 1, dtype=bool),
+            torch.tensor([-1.0]),
+        ),
+    ],
+)
+def test_KendallEvaluator(preds, uncs, targets, mask, kendall_exp):
+    """
+    Testing the KendallEvaluator
+    """
+    evaluator = KendallEvaluator()
+    tau = evaluator.evaluate(preds, uncs, targets, mask)
+    torch.testing.assert_close(tau, kendall_exp)
 
 
 @pytest.mark.parametrize(
