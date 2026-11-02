@@ -1,5 +1,6 @@
 """This tests the CLI functionality of training and predicting a regression model on a single molecule.
 """
+from pathlib import Path
 import sys
 
 import numpy as np
@@ -855,6 +856,88 @@ def test_train_regression_constrained(monkeypatch, constrained_data_path):
         main()
 
 
+def test_train_regression_atom_constrained(monkeypatch, constrained_data_path, data_dir):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        mol_targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--atom-target-columns",
+        *atom_targets,
+        "--epochs",
+        "3",
+        "--constraints-path",
+        str(data_dir / "mol_atom_bond" / "constrained_regression_atom_constraints.csv"),
+        "--constraints-to-targets",
+        *constraints_to_targets[:2],
+        "--keep-h",
+        "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+def test_train_regression_bond_constrained(monkeypatch, constrained_data_path, data_dir):
+    (
+        input_path,
+        constraints_path,
+        constraints_to_targets,
+        smiles,
+        mol_targets,
+        atom_targets,
+        bond_targets,
+    ) = constrained_data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--smiles-columns",
+        smiles,
+        "--mol-target-columns",
+        *mol_targets,
+        "--bond-target-columns",
+        *bond_targets,
+        "--epochs",
+        "3",
+        "--constraints-path",
+        str(data_dir / "mol_atom_bond" / "constrained_regression_bond_constraints.csv"),
+        "--constraints-to-targets",
+        *constraints_to_targets[2:],
+        "--keep-h",
+        "--reorder-atoms",
+        "--split-sizes",
+        "0.4",
+        "0.3",
+        "0.3",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
 def test_predict_regression_constrained(monkeypatch, constrained_data_path, constrained_model_path):
     (input_path, constraints_path, constraints_to_targets, smiles, *_) = constrained_data_path
 
@@ -1064,6 +1147,7 @@ def test_hyperopt_quick(monkeypatch, constrained_data_path, tmp_path):
 
 
 def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
+    tmpdir_ = Path(tmpdir)
     constraint_cols = [
         "hirshfeld_charges",
         "hirshfeld_charges_plus1",
@@ -1085,7 +1169,7 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
         "--constraints-path",
         str(data_dir / "mol_atom_bond" / "atomic_bond_constraints.csv"),
         "-o",
-        str(tmpdir / "preds.csv"),
+        str(tmpdir_ / "preds.csv"),
         "--add-h",
     ]
     with monkeypatch.context() as m:
@@ -1120,7 +1204,7 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
         add_h=True,
     )
     new_data = build_MAB_data_from_files(
-        p_data=tmpdir / "preds.csv",
+        p_data=tmpdir_ / "preds.csv",
         smiles_cols=["smiles"],
         mol_target_cols=["homo.1", "lumo.1"],
         atom_target_cols=[
@@ -1155,6 +1239,8 @@ def test_make_predictions_with_constraints(monkeypatch, data_dir, tmpdir):
 
 
 def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
+    tmpdir_ = Path(tmpdir)
+
     args = [
         "chemprop",
         "predict",
@@ -1163,7 +1249,7 @@ def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
         "-i",
         str(data_dir / "mol_atom_bond" / "atomic_regression_atom_mapped.csv"),
         "-o",
-        str(tmpdir / "preds.csv"),
+        str(tmpdir_ / "preds.csv"),
         "--keep-h",
         "--reorder-atoms",
     ]
@@ -1191,7 +1277,7 @@ def test_make_predictions_with_atom_map(monkeypatch, data_dir, tmpdir):
         reorder_atoms=True,
     )
     new_data = build_MAB_data_from_files(
-        p_data=tmpdir / "preds.csv",
+        p_data=tmpdir_ / "preds.csv",
         smiles_cols=["smiles"],
         mol_target_cols=None,
         atom_target_cols=["charges"],
