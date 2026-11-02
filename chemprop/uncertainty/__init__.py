@@ -43,6 +43,7 @@ from .evaluator import (
     RegressionConformalEvaluator,
     RegressionEvaluator,
     SpearmanEvaluator,
+    KendallEvaluator,
     UncertaintyEvaluatorRegistry,
 )
 
@@ -75,6 +76,7 @@ __all__ = [
     "RegressionConformalEvaluator",
     "RegressionEvaluator",
     "SpearmanEvaluator",
+    "KendallEvaluator",
     "UncertaintyEvaluator",
     "UncertaintyEvaluatorRegistry",
     "ClassificationDirichletEstimator",
