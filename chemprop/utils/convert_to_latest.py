@@ -45,7 +45,7 @@ def convert_model_file_to_latest(
         raise RuntimeError(f"Could not apply any conversion to '{model_file_in}'. Errors: {errors}")
 
     torch.save(model_dict, model_file_out)
-    
+
     if hasattr(torch.serialization, "get_unsafe_globals_in_checkpoint"):
         unsafe_globals = torch.serialization.get_unsafe_globals_in_checkpoint(model_file_out)
         if unsafe_globals:

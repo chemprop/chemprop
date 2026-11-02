@@ -14,7 +14,6 @@ from chemprop.nn.hparams import from_hparams, get_native_chemprop_classes, seria
 from chemprop.nn.transforms import GraphTransform, _ScaleTransformMixin
 from chemprop.utils.registry import Factory
 
-
 CHEMPROP_VERSION_KEY = "chemprop_version"
 FileLike = str | PathLike | IO[bytes]
 

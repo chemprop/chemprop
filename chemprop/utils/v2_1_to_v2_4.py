@@ -41,7 +41,7 @@ def convert_model_file_v2_1_to_v2_4(
     model_dict = load_checkpoint(model_file_in, map_location="cpu", weights_only=weights_only)
 
     torch.save(convert_model_dict_v2_1_to_v2_4(model_dict), model_file_out)
-    
+
     if hasattr(torch.serialization, "get_unsafe_globals_in_checkpoint"):
         unsafe_globals = torch.serialization.get_unsafe_globals_in_checkpoint(model_file_out)
         if unsafe_globals:
