@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 from chemprop.cli.utils import LookupAction
-from chemprop.cli.utils.args import uppercase
+from chemprop.cli.utils.args import bool_arg, uppercase
 from chemprop.featurizers import AtomFeatureMode, MoleculeFeaturizerRegistry, RxnMode
 
 logger = logging.getLogger(__name__)
@@ -173,6 +173,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         "--constraints-to-targets",
         nargs="+",
         help="The column names of the atom or bond targets that correspond to each constraint column in the constraints CSV.",
+    )
+    parser.add_argument(
+        "--weights-only",
+        type=bool_arg,
+        help="Passed as ``weights_only`` to ``torch.load`` when loading model files (``true`` or ``false``). Know the risks before passing ``false``. Model files saved before Chemprop v2.4 can only be loaded with ``false``. If not specified, ``false`` is used with a warning that the default will change to ``true`` in a future release.",
     )
     featurization_args.add_argument(
         "--use-cuikmolmaker-featurization",

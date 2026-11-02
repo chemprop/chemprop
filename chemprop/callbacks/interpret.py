@@ -17,6 +17,7 @@ import torch
 
 from chemprop.callbacks import CallbackRegistry
 from chemprop.cli.common import find_models
+from chemprop.models.serialization import load_checkpoint
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,9 @@ class MyersonExplainerCallback(Callback):
         molecules with more atoms, a sampling-based explainer is used.
     save_as_json : bool, default=False
         If `True`, save the explanations as a JSON file instead of a npz file.
+    weights_only : bool | None, default=None
+        Passed to :func:`~chemprop.models.serialization.load_checkpoint` when loading the first
+        model file.
     """
 
     def __init__(
@@ -52,6 +56,7 @@ class MyersonExplainerCallback(Callback):
         output: Path,
         sampling_threshold: int = 20,
         save_as_json: bool = False,
+        weights_only: bool | None = None,
     ):
         super().__init__()
         self.sampling_threshold = sampling_threshold
@@ -64,8 +69,8 @@ class MyersonExplainerCallback(Callback):
 
         model_paths = find_models(model_paths)
 
-        model_file = torch.load(
-            model_paths[0], map_location=torch.device("cpu"), weights_only=False
+        model_file = load_checkpoint(
+            model_paths[0], map_location=torch.device("cpu"), weights_only=weights_only
         )
         mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
 

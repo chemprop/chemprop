@@ -5,6 +5,7 @@ from lightning.pytorch import __version__
 from lightning.pytorch.utilities.parsing import AttributeDict
 import torch
 
+from chemprop.models.serialization import load_checkpoint, resolve_weights_only
 from chemprop.nn.agg import AggregationRegistry
 from chemprop.nn.message_passing import (
     AtomMessagePassing,
@@ -323,10 +324,13 @@ def convert_model_dict_v1_to_v2(model_v1_dict: dict) -> dict:
     return model_v2_dict
 
 
-def convert_model_file_v1_to_v2(model_v1_file: PathLike, model_v2_file: PathLike) -> None:
+def convert_model_file_v1_to_v2(
+    model_v1_file: PathLike, model_v2_file: PathLike, *, weights_only: bool | None = None
+) -> None:
     """Converts a v1 model .pt file to a v2 model .pt file"""
+    weights_only = resolve_weights_only(weights_only)
 
-    model_v1_dict = torch.load(model_v1_file, map_location=torch.device("cpu"), weights_only=False)
+    model_v1_dict = load_checkpoint(model_v1_file, map_location="cpu", weights_only=weights_only)
     model_v2_dict = convert_model_dict_v1_to_v2(model_v1_dict)
     logger.warning(
         "Remember to use the same featurizers which were used when training the model. The default "

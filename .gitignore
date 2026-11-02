@@ -178,3 +178,5 @@ chemprop/_version.py
 config.toml
 
 !tests/data/*
+!tests/data/**/*.pt
+!tests/data/**/*.ckpt

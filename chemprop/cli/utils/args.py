@@ -1,3 +1,4 @@
+from argparse import ArgumentTypeError
 import functools
 
 __all__ = ["bounded"]
@@ -24,6 +25,16 @@ def bounded(lo: float | None = None, hi: float | None = None):
         return wrapper
 
     return decorator
+
+
+def bool_arg(x: str) -> bool:
+    match x.lower():
+        case "true":
+            return True
+        case "false":
+            return False
+        case _:
+            raise ArgumentTypeError(f"Expected 'true' or 'false'! got: '{x}'")
 
 
 def uppercase(x: str):

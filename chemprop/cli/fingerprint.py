@@ -16,7 +16,7 @@ from chemprop.cli.utils import (
     build_MAB_data_from_files,
     make_dataset,
 )
-from chemprop.models import load_model
+from chemprop.models import load_checkpoint, load_model
 from chemprop.nn.metrics import BoundedMixin
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ def process_fingerprint_args(args: Namespace) -> Namespace:
 def make_fingerprint_for_model(
     args: Namespace, model_path: Path, multicomponent: bool, mol_atom_bond: bool, output_path: Path
 ):
-    model = load_model(model_path, multicomponent, mol_atom_bond)
+    model = load_model(model_path, multicomponent, mol_atom_bond, weights_only=args.weights_only)
     model.eval()
 
     criterion = (
@@ -239,7 +239,9 @@ def main(args):
 
     model_paths = find_models(args.model_paths)
 
-    model_file = torch.load(model_paths[0], map_location=torch.device("cpu"), weights_only=False)
+    model_file = load_checkpoint(
+        model_paths[0], map_location=torch.device("cpu"), weights_only=args.weights_only
+    )
     mol_atom_bond = "atom_predictor" in model_file["hyper_parameters"].keys()
 
     for i, model_path in enumerate(model_paths):

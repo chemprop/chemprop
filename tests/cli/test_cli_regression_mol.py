@@ -2,6 +2,7 @@
 """
 
 import json
+import pickle
 import sys
 
 import pytest
@@ -667,6 +668,72 @@ def test_checkpoint_model(monkeypatch, data_path, model_path, tmp_path):
 
     model = MPNN.load_from_checkpoint(checkpoint_path)
     assert model is not None
+
+
+def test_train_then_predict_weights_only(monkeypatch, data_path, tmp_path):
+    input_path, *_ = data_path
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--epochs",
+        "3",
+        "--num-workers",
+        "0",
+        "--save-dir",
+        str(tmp_path),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+    model_path = str(tmp_path / "model_0" / "best.pt")
+    MPNN.load_from_checkpoint(tmp_path / "model_0" / "checkpoints" / "last.ckpt", weights_only=True)
+
+    for subcommand, extra_args in [("predict", []), ("fingerprint", ["--ffn-block-index", "0"])]:
+        args = [
+            "chemprop",
+            subcommand,
+            *extra_args,
+            "-i",
+            input_path,
+            "--model-path",
+            model_path,
+            "--weights-only",
+            "true",
+            "--output",
+            str(tmp_path / f"{subcommand}.csv"),
+        ]
+        with monkeypatch.context() as m:
+            m.setattr("sys.argv", args)
+            main()
+
+
+@pytest.mark.unsafe_load
+def test_predict_old_model_weights_only(monkeypatch, data_path, pre_v2_4_model_path, tmp_path):
+    input_path, *_ = data_path
+    model_path = str(pre_v2_4_model_path("pre_v2_4_model_files/example_model_v2_regression_mol.pt"))
+    args = [
+        "chemprop",
+        "predict",
+        "-i",
+        input_path,
+        "--model-path",
+        model_path,
+        "--output",
+        str(tmp_path / "preds.csv"),
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args + ["--weights-only", "false"])
+        main()
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args + ["--weights-only", "true"])
+        with pytest.raises(pickle.UnpicklingError, match="chemprop convert"):
+            main()
 
 
 @pytest.mark.skipif(NO_RAY or NO_OPTUNA, reason="Optuna not installed")

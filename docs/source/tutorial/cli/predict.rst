@@ -19,6 +19,16 @@ For example:
         --model-path tests/data/example_model_v2_regression_mol.ckpt \
         --preds-path preds.csv
 
+Loading Model Files Safely
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Model files are loaded with ``torch.load``. :code:`--weights-only false` can execute arbitrary code, so only use it with files you trust. The default is currently :code:`false` (with a warning) and will change to :code:`true` in a future release. :code:`--weights-only true` only allows tensors and primitive types and is safe for untrusted files. :code:`chemprop train` and :code:`chemprop fingerprint` accept the same flag.
+
+Model files saved before Chemprop v2.4 can only be loaded with :code:`--weights-only false`, but can be converted with :code:`chemprop convert --input-path <model_path>` (see :ref:`convert`).
+
+.. note::
+    :code:`--weights-only true` only protects against malicious checkpoint files with ``lightning`` version 2.6.6 or later. Earlier versions are affected by `CVE-2026-58659 <https://github.com/Lightning-AI/pytorch-lightning/issues/21913>`_, which allows a checkpoint to execute code even when it is loaded with ``weights_only=True``.
+
 
 Specifying Data to Parse
 ^^^^^^^^^^^^^^^^^^^^^^^^
