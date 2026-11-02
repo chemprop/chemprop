@@ -465,11 +465,11 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--evidential-regularization",
         type=float,
         default=0.0,
-        help="Specify the value used in regularization for evidential loss function. The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
+        help="Specify the value used in regularization for evidential loss function (also requires '-l evidential'). The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
     )
 
     train_args.add_argument(
-        "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
+        "--eps", type=float, default=1e-8, help="Evidential regularization epsilon (also requires '-l evidential')"
     )
     train_args.add_argument(
         "--alpha", type=float, default=0.1, help="Target error bounds for quantile interval loss"
