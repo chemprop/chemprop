@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -82,3 +84,19 @@ def test_same_featurization(bmg_python_cgr, bmg_cuik_reaction):
         bmg_python_cgr.rev_edge_index, bmg_cuik_reaction.rev_edge_index.numpy()
     )
     np.testing.assert_allclose(bmg_python_cgr.batch, bmg_cuik_reaction.batch.numpy())
+
+
+def test_cuik_reaction_featurizer_pickle_preserves_feature_dims(
+    rct_pdt_smis, cuik_reaction_featurizer
+):
+    rct_smis, pdt_smis = zip(*rct_pdt_smis)
+    expected = cuik_reaction_featurizer(list(rct_smis), list(pdt_smis))
+    restored = pickle.loads(pickle.dumps(cuik_reaction_featurizer))
+    actual = restored(list(rct_smis), list(pdt_smis))
+
+    assert actual.V.shape == expected.V.shape
+    assert actual.E.shape == expected.E.shape
+    assert actual.V.shape[1] == restored.atom_fdim
+    assert actual.E.shape[1] == restored.bond_fdim
+    np.testing.assert_allclose(actual.V.numpy(), expected.V.numpy())
+    np.testing.assert_allclose(actual.E.numpy(), expected.E.numpy())

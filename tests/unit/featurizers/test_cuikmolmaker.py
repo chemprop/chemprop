@@ -1,7 +1,12 @@
+import pickle
+
 import numpy as np
 import pytest
 
 from chemprop.data.collate import BatchMolGraph
+from chemprop.data.dataloader import build_dataloader
+from chemprop.data.datapoints import LazyMoleculeDatapoint
+from chemprop.data.datasets import CuikmolmakerDataset
 from chemprop.featurizers.atom import (
     MultiHotAtomFeaturizer,
     RIGRAtomFeaturizer,
@@ -142,3 +147,37 @@ def test_same_featurization(bmg_simplemolecule, bmg_cuikmolmaker):
         bmg_simplemolecule.rev_edge_index, bmg_cuikmolmaker.rev_edge_index.numpy()
     )
     np.testing.assert_allclose(bmg_simplemolecule.batch, bmg_cuikmolmaker.batch.numpy())
+
+
+def test_featurizer_pickle_preserves_feature_dims(smis, batch_mol_featurizer):
+    expected = batch_mol_featurizer(smis)
+    restored = pickle.loads(pickle.dumps(batch_mol_featurizer))
+    actual = restored(smis)
+
+    assert actual.V.shape == expected.V.shape
+    assert actual.E.shape == expected.E.shape
+    assert actual.V.shape[1] > 0
+    assert actual.E.shape[1] > 0
+    np.testing.assert_allclose(actual.V.numpy(), expected.V.numpy())
+    np.testing.assert_allclose(actual.E.numpy(), expected.E.numpy())
+
+
+def test_dataloader_num_workers_preserves_feature_dims(smis):
+    """Regression for #1386: spawn workers pickle the featurizer; V/E dims must stay non-zero."""
+    data = [LazyMoleculeDatapoint(smi, y=np.array([float(i)])) for i, smi in enumerate(smis[:8])]
+    featurizer = CuikmolmakerMolGraphFeaturizer(atom_featurizer_mode="V2")
+    dataset = CuikmolmakerDataset(data, featurizer)
+
+    loader = build_dataloader(
+        dataset,
+        batch_size=2,
+        num_workers=2,
+        shuffle=False,
+        drop_last=False,
+        multiprocessing_context="spawn",
+    )
+    for batch in loader:
+        assert batch.bmg.V.shape[1] == featurizer.atom_fdim
+        assert batch.bmg.E.shape[1] == featurizer.bond_fdim
+        assert batch.bmg.V.shape[1] > 0
+        assert batch.bmg.E.shape[1] > 0
