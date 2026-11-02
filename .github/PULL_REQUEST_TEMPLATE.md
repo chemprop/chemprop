@@ -13,6 +13,15 @@ If there are open questions about implementation strategy or scope of the PR, in
 ## Relevant issues
 If appropriate, please tag them here and include a quick summary
 
+## Contributor
+Your name and institution or employer (if any). You must also email the maintainers from your institution or work address. See [CONTRIBUTING.md](https://github.com/chemprop/chemprop/blob/main/CONTRIBUTING.md#identifying-yourself)
+
+## AI use
+Describe if/how AI tools were used for this PR. The summary at the top of this PR **must be written by you, not an AI**. See [CONTRIBUTING.md](https://github.com/chemprop/chemprop/blob/main/CONTRIBUTING.md#use-of-ai-tools)
+
 ## Checklist
-- [ ] linted with flake8?
+- [ ] formatting checks pass? (black, isort, flake8; see CONTRIBUTING.md)
+- [ ] name and institution or employer given above?
+- [ ] emailed the maintainers from institution or work address?
+- [ ] AI use disclosed?
 - [ ] (if appropriate) unit tests added?
