@@ -340,4 +340,3 @@ def test_r2_raw_values():
         [r2_score(targets[:, 0], preds[:, 0]), r2_score(targets[:3, 1], preds[:3, 1])]
     )
     torch.testing.assert_close(metric.compute(), expected.float())
-

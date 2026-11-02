@@ -34,6 +34,7 @@ from .evaluator import (
     BinaryClassificationEvaluator,
     CalibrationAreaEvaluator,
     ExpectedNormalizedErrorEvaluator,
+    KendallEvaluator,
     MulticlassClassificationEvaluator,
     MulticlassConformalEvaluator,
     MultilabelConformalEvaluator,
@@ -43,7 +44,6 @@ from .evaluator import (
     RegressionConformalEvaluator,
     RegressionEvaluator,
     SpearmanEvaluator,
-    KendallEvaluator,
     UncertaintyEvaluatorRegistry,
 )
 
