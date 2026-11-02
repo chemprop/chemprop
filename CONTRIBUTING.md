@@ -52,7 +52,7 @@ flake8 .                  # flake8 only reports problems; fix them by hand
 
 Please give your name in the PR description, along with your institution or employer (if any).
 
-You must also email the maintainers at `<MAINTAINER EMAIL TBD>` from your institution
+You must also email the maintainers at chemprop@mit.edu from your institution
 or work email address, so that we can confirm who you are. Include your GitHub
 username and the PR number. If you do not have a school or work email address,
 email us anyway and explain. We will not share your email address.
