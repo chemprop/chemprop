@@ -333,6 +333,8 @@ class BinaryMCCLoss(ChempropMetric):
             if weights is None
             else weights
         )
+        if targets.ndim == 2:
+            weights = weights.view(-1, 1)
 
         if not (0 <= preds.min() and preds.max() <= 1):  # assume logits
             preds = preds.sigmoid()
