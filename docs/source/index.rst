@@ -25,6 +25,7 @@ If you use Chemprop to train or develop a model in your own work, we would appre
     installation
     tutorial/cli/index
     tutorial/python/index
+    exporting
     notebooks
     cmd
 

@@ -100,13 +100,14 @@ jobs:
           # runtime deps; install chemprop with --no-deps so pip does NOT pull
           # cuik_molmaker_pin and force-upgrade rdkit (which causes an ABI/segfault).
           python -m pip install --no-deps -e .
-          python -m pip install "ray[tune]" hyperopt optuna "setuptools<82" pytest pytest-cov nbmake ipykernel
+          python -m pip install "ray[tune]" hyperopt optuna "setuptools<82" pytest pytest-cov nbmake ipykernel onnxscript onnxruntime
       - name: Install dependencies (pip)
         if: matrix.os == 'windows-2022'
         shell: bash -l {0}
         run: |
           python -m pip install nbmake
           python -m pip install -e ".[dev,docs,test,hpopt]"
+          python -m pip install onnxscript onnxruntime
       - name: Test with pytest
         shell: bash -l {0}
         run: |
