@@ -2,9 +2,43 @@ import numpy as np
 import pytest
 import torch
 
+from chemprop.data import MoleculeDatapoint, MoleculeDataset, build_dataloader
 from chemprop.data.collate import BatchMolGraph, collate_batch, collate_mol_atom_bond_batch
 from chemprop.data.datasets import Datum, MolAtomBondDatum
 from chemprop.data.molgraph import MolGraph
+
+
+@pytest.mark.parametrize("seed", [None, 13])
+@pytest.mark.parametrize(
+    "n_pos, n_neg, batch_size, class_balance, drop_last, expected_batch_sizes",
+    [
+        (50, 79, 64, True, None, [64, 36]),
+        (1, 4, 4, True, None, [2]),
+        (2, 6, 3, True, None, [3]),
+        (3, 3, 4, True, None, [4, 2]),
+        (2, 3, 4, False, None, [4]),
+        (2, 4, 4, False, None, [4, 2]),
+        (1, 4, 4, True, True, []),
+        (2, 6, 3, True, False, [3, 1]),
+    ],
+)
+def test_build_dataloader_drop_last(
+    n_pos, n_neg, batch_size, class_balance, drop_last, expected_batch_sizes, seed
+):
+    data = [
+        MoleculeDatapoint.from_smi("C", np.array([label])) for label in [1] * n_pos + [0] * n_neg
+    ]
+    loader = build_dataloader(
+        MoleculeDataset(data),
+        batch_size=batch_size,
+        class_balance=class_balance,
+        seed=seed,
+        drop_last=drop_last,
+    )
+
+    for _ in range(2):
+        assert [len(batch.Y) for batch in loader] == expected_batch_sizes
+        assert len(loader) == len(expected_batch_sizes)
 
 
 @pytest.fixture

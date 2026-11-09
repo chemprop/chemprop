@@ -75,10 +75,11 @@ def build_dataloader(
         collate_fn = collate_batch
 
     if drop_last is None:
-        if len(dataset) % batch_size == 1:
+        n_samples = len(sampler) if sampler is not None else len(dataset)
+        if n_samples % batch_size == 1:
             logger.warning(
                 f"Dropping last batch of size 1 to avoid issues with batch normalization \
-    (dataset size = {len(dataset)}, batch_size = {batch_size})"
+    (sample size = {n_samples}, batch_size = {batch_size})"
             )
             drop_last = True
         else:
