@@ -1,6 +1,7 @@
 """This tests the CLI functionality of training and predicting a regression model on a multi-molecule.
 """
 
+from configargparse import ArgumentError
 import pytest
 
 from chemprop.cli.main import main
@@ -52,6 +53,65 @@ def test_train_quick(monkeypatch, data_path):
 
         with monkeypatch.context() as m:
             m.setattr("sys.argv", args)
+            main()
+
+
+def test_train_quick_from_foundation(monkeypatch, data_path):
+    input_path, _ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "smiles",
+        "--rxn-mode",
+        "REAC_DIFF",
+        "--keep-h",
+        "--epochs",
+        "1",
+        "--warmup-epochs",
+        "0",
+        "--init-lr",
+        "1e-4",
+        "--max-lr",
+        "1e-4",
+        "--final-lr",
+        "1e-4",
+        "--num-workers",
+        "0",
+        "--show-individual-scores",
+        "--from-foundation",
+        "chemeleon-rxn",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        main()
+
+
+@pytest.mark.parametrize(
+    "bad_args", [["--rxn-mode", "REAC_DIFF_BALANCE", "--keep-h"], ["--rxn-mode", "REAC_DIFF"]]
+)
+def test_train_from_foundation_featurization_mismatch(monkeypatch, data_path, bad_args):
+    input_path, _ = data_path
+
+    args = [
+        "chemprop",
+        "train",
+        "-i",
+        input_path,
+        "--reaction-columns",
+        "smiles",
+        *bad_args,
+        "--from-foundation",
+        "chemeleon-rxn",
+    ]
+
+    with monkeypatch.context() as m:
+        m.setattr("sys.argv", args)
+        with pytest.raises(ArgumentError, match="CheMeleon-Rxn must be used with"):
             main()
 
 
