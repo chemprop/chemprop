@@ -58,7 +58,13 @@ from chemprop.data import (
 from chemprop.data.datasets import _MolGraphDatasetMixin
 from chemprop.featurizers.atom import AtomFeatureMode
 from chemprop.models import MPNN, MolAtomBondMPNN, MulticomponentMPNN, save_model
-from chemprop.nn import AggregationRegistry, LossFunctionRegistry, MetricRegistry, PredictorRegistry
+from chemprop.nn import (
+    AggregationRegistry,
+    ChempropMetric,
+    LossFunctionRegistry,
+    MetricRegistry,
+    PredictorRegistry,
+)
 from chemprop.nn.ffn import ConstrainerFFN
 from chemprop.nn.message_passing import (
     AtomMessagePassing,
@@ -464,15 +470,14 @@ def add_train_args(parser: ArgumentParser) -> ArgumentParser:
         "--v-kl",
         "--evidential-regularization",
         type=float,
-        default=0.0,
-        help="Specify the value used in regularization for evidential loss function. The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model.",
+        help="Specify the value used in regularization for evidential and Dirichlet loss functions. The default value recommended by Soleimany et al. (2021) is 0.2. However, the optimal value is dataset-dependent, so it is recommended that users test different values to find the best value for their model. If not specified, the default loss function of the task type uses 0.2 and a loss function given with '--loss-function' uses 0.0.",
     )
 
     train_args.add_argument(
-        "--eps", type=float, default=1e-8, help="Evidential regularization epsilon"
+        "--eps", type=float, help="Evidential regularization epsilon (default 1e-8)"
     )
     train_args.add_argument(
-        "--alpha", type=float, default=0.1, help="Target error bounds for quantile interval loss"
+        "--alpha", type=float, help="Target error bounds for quantile interval loss (default 0.1)"
     )
     # TODO: Add in v2.1
     # train_args.add_argument(  # TODO: Is threshold the same thing as the spectra target floor? I'm not sure but combined them.
@@ -639,6 +644,20 @@ def validate_train_args(args):
 
     if args.num_folds is not None:  # i.e. user-specified
         raise ArgumentError(argument=None, message=_CV_REMOVAL_ERROR)
+
+    if (
+        args.config_path is not None
+        and args.loss_function is None
+        and (args.v_kl, args.eps, args.alpha) == (0.0, 1e-8, 0.1)
+    ):
+        logger.warning(
+            "The configuration file sets `v-kl = 0.0`, `eps = 1e-08` and `alpha = 0.1` without a "
+            "`loss-function`. Configuration files written by Chemprop v2.3.1 and earlier always "
+            "contain these values, but those versions ignored them unless a loss function was "
+            "given. They are now used, so a model trained with the default evidential or "
+            "Dirichlet loss uses `v-kl = 0.0` instead of 0.2. Remove `v-kl` from the "
+            "configuration file to reproduce the original training."
+        )
 
     for path in args.data_path:
         if path.suffix not in [".csv"]:
@@ -1439,6 +1458,33 @@ def build_datasets(args, train_data, val_data, test_data):
     return train_dset, val_dset, test_dset
 
 
+def build_criterion(args, predictor_cls, task_weights: torch.Tensor) -> ChempropMetric | None:
+    """Build the loss function from the training arguments.
+
+    If ``--loss-function`` is given, that loss function is built. Otherwise, if any loss
+    hyperparameter (``--v-kl``, ``--eps``, ``--alpha``) is given, the default loss function of
+    ``predictor_cls`` is built with it, so the hyperparameter is not silently ignored. If neither
+    is given, ``None`` is returned and the predictor builds its default loss function.
+    """
+    loss_kwargs = {
+        key: getattr(args, key)
+        for key in ("v_kl", "eps", "alpha")
+        if getattr(args, key) is not None
+    }
+
+    if args.loss_function is not None:
+        loss_cls = LossFunctionRegistry[args.loss_function]
+        # CLI defaults used when a loss function is explicitly specified
+        loss_kwargs = {"v_kl": 0.0, "eps": 1e-8, "alpha": 0.1} | loss_kwargs
+    elif loss_kwargs:
+        loss_cls = predictor_cls._T_default_criterion
+    else:
+        return None
+
+    # threshold=args.threshold, TODO: Add in v2.1
+    return Factory.build(loss_cls, task_weights=task_weights, **loss_kwargs)
+
+
 def build_model(
     args,
     train_dset: MolGraphDataset | MulticomponentDataset,
@@ -1576,18 +1622,8 @@ def build_model(
         agg = Factory.build(AggregationRegistry[args.aggregation], norm=args.aggregation_norm)
 
     predictor_cls = PredictorRegistry[args.task_type]
-    if args.loss_function is not None:
-        task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
-        criterion = Factory.build(
-            LossFunctionRegistry[args.loss_function],
-            task_weights=task_weights,
-            v_kl=args.v_kl,
-            # threshold=args.threshold, TODO: Add in v2.1
-            eps=args.eps,
-            alpha=args.alpha,
-        )
-    else:
-        criterion = None
+    task_weights = torch.ones(n_tasks) if args.task_weights is None else args.task_weights
+    criterion = build_criterion(args, predictor_cls, task_weights)
     if args.metrics is not None:
         metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
     else:
@@ -1672,26 +1708,15 @@ def build_MAB_model(
         train_dset.atom_Y[0].shape[1] if args.atom_target_columns is not None else None,
         train_dset.bond_Y[0].shape[1] if args.bond_target_columns is not None else None,
     ]
-    if args.loss_function is not None:
-        criterions = []
-        for task_weights, n_tasks in zip(
-            [args.task_weights, args.atom_task_weights, args.bond_task_weights], n_taskss
-        ):
-            if n_tasks is None:
-                criterions.append(None)
-                continue
-            task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
-            criterions.append(
-                Factory.build(
-                    LossFunctionRegistry[args.loss_function],
-                    task_weights=task_weights,
-                    v_kl=args.v_kl,
-                    eps=args.eps,
-                    alpha=args.alpha,
-                )
-            )
-    else:
-        criterions = [None, None, None]
+    criterions = []
+    for task_weights, n_tasks in zip(
+        [args.task_weights, args.atom_task_weights, args.bond_task_weights], n_taskss
+    ):
+        if n_tasks is None:
+            criterions.append(None)
+            continue
+        task_weights = torch.ones(n_tasks) if task_weights is None else task_weights
+        criterions.append(build_criterion(args, predictor_cls, task_weights))
     if args.metrics is not None:
         metrics = [Factory.build(MetricRegistry[metric]) for metric in args.metrics]
     else:
