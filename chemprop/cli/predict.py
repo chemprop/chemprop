@@ -129,7 +129,7 @@ def add_predict_args(parser: ArgumentParser) -> ArgumentParser:
         "--evaluation-method",
         nargs="+",
         action=LookupAction(UncertaintyEvaluatorRegistry),
-        help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are [nll, miscalibration_area, ence, spearman] or any available classification or multiclass metric.",
+        help="The methods used for evaluating the uncertainty performance if the test data provided includes targets. Available methods are: regression -> [nll-regression, miscalibration_area, ence, spearman, conformal-coverage-regression], classification -> [nll-classification, conformal-coverage-classification], multiclass -> [nll-multiclass, conformal-coverage-multiclass].",
     )
     # unc_args.add_argument(
     #     "--evaluation-scores-path", help="Location to save the results of uncertainty evaluations."

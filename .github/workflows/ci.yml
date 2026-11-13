@@ -37,6 +37,13 @@ jobs:
       - uses: actions/checkout@v4
       - run: python -m pip install build
       - run: python -m build .
+      # the agent skill must be shipped with the package (see chemprop/.agents/skills/chemprop)
+      - name: Check agent skill is packaged
+        run: |
+          for f in $(git ls-files chemprop/.agents); do
+            python -m zipfile -l dist/*.whl | grep -q "$f" || { echo "missing from wheel: $f"; exit 1; }
+            tar -tzf dist/*.tar.gz | grep -q "$f" || { echo "missing from sdist: $f"; exit 1; }
+          done
 
   lint:
     name: Check Formatting
