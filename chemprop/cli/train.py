@@ -2081,8 +2081,8 @@ def evaluate_and_save_predictions(preds, test_loader, metrics, model_output_dir,
                 targets_slice,
                 mask[:, i : i + 1],
                 weights,
-                lt_mask[:, i] if lt_mask is not None else None,
-                gt_mask[:, i] if gt_mask is not None else None,
+                lt_mask[:, i : i + 1] if lt_mask is not None else None,
+                gt_mask[:, i : i + 1] if gt_mask is not None else None,
             )
             individual_scores[metric.alias].append(preds_loss)
 
@@ -2164,8 +2164,8 @@ def evaluate_and_save_MAB_predictions(
                     targets_slice,
                     mask[:, i : i + 1],
                     weights,
-                    lt_mask[:, i] if lt_mask is not None else None,
-                    gt_mask[:, i] if gt_mask is not None else None,
+                    lt_mask[:, i : i + 1] if lt_mask is not None else None,
+                    gt_mask[:, i : i + 1] if gt_mask is not None else None,
                 )
                 individual_scores[metric.alias].append(preds_loss)
 
