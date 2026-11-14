@@ -213,6 +213,10 @@ The following evaluation metrics are supported during training:
  * :code:`bounded-mse` Bounded mean squared error
  * :code:`bounded-rmse` Bounded root mean squared error
  * :code:`r2` R squared metric
+ * :code:`spearman` Spearman rank correlation coefficient
+ * :code:`kendall` Kendall rank correlation coefficient (tau)
+
+For multitask regression, :code:`r2`, :code:`spearman`, and :code:`kendall` are calculated for each task separately, ignoring missing targets, and then averaged across tasks.
 
 **Classification**:
 

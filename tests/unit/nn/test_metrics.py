@@ -4,6 +4,8 @@ import re
 from lightning import pytorch as pl
 from lightning.pytorch.callbacks.progress.tqdm_progress import Tqdm, TQDMProgressBar
 import pytest
+from scipy.stats import kendalltau, spearmanr
+from sklearn.metrics import r2_score
 import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
@@ -26,10 +28,12 @@ from chemprop.nn.metrics import (
     CrossEntropyLoss,
     DirichletLoss,
     EvidentialLoss,
+    KendallRankCorrCoef,
     MulticlassMCCLoss,
     MulticlassMCCMetric,
     MVELoss,
     R2Score,
+    SpearmanCorrCoef,
     Wasserstein,
 )
 
@@ -226,6 +230,8 @@ class _TestBar(TQDMProgressBar):
 # fmt: off
 groups = [
     (MSE(), R2Score(), reg_train_step, reg_forward, reg_targets, mask),
+    (MSE(), SpearmanCorrCoef(), reg_train_step, reg_forward, reg_targets, mask),
+    (MSE(), KendallRankCorrCoef(), reg_train_step, reg_forward, reg_targets, mask),
     (MAE(), MSE(), reg_train_step, reg_forward, reg_targets, mask),
     (RMSE(), MAE(), reg_train_step, reg_forward, reg_targets, mask),
     (BoundedMSE(), RMSE(), reg_train_step, reg_forward, reg_targets, mask),
@@ -276,3 +282,61 @@ def test_metric_integeration(loss_fn, metric_fn, train_step, forward, targets, m
 
     for value in val_metrics:
         assert abs(float(value) - test_metric) <= 0.01 * max(abs(float(value)), abs(test_metric))
+
+
+@pytest.mark.parametrize(
+    "metric_cls, ref_fn",
+    [
+        (R2Score, r2_score),
+        (SpearmanCorrCoef, lambda t, p: spearmanr(t, p).statistic),
+        (KendallRankCorrCoef, lambda t, p: kendalltau(t, p).statistic),
+    ],
+)
+@pytest.mark.parametrize("n_tasks", [1, 2])
+def test_per_task_metrics(metric_cls, ref_fn, n_tasks):
+    generator = torch.Generator().manual_seed(0)
+    n = 100
+    targets = torch.stack(
+        [torch.randn(n, generator=generator), 100 + 10 * torch.randn(n, generator=generator)], 1
+    )
+    preds = targets + torch.stack(
+        [0.9 * torch.randn(n, generator=generator), 9 * torch.randn(n, generator=generator)], 1
+    )
+    mask = torch.rand(n, 2, generator=generator) > 0.2
+    targets, preds, mask = targets[:, :n_tasks], preds[:, :n_tasks], mask[:, :n_tasks]
+    expected = (
+        sum(ref_fn(targets[mask[:, j], j], preds[mask[:, j], j]) for j in range(n_tasks)) / n_tasks
+    )
+
+    metric = metric_cls()
+    zero_filled_targets = targets.masked_fill(~mask, 0.0)
+    metric.update(preds[:50], zero_filled_targets[:50], mask[:50])
+    metric.update(preds[50:], zero_filled_targets[50:], mask[50:])
+
+    torch.testing.assert_close(metric.compute().item(), float(expected), rtol=1e-4, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "metric, attr, value",
+    [
+        (R2Score(adjusted=2), "adjusted", 2),
+        (R2Score(multioutput="raw_values"), "multioutput", "raw_values"),
+        (KendallRankCorrCoef(variant="a"), "variant", "a"),
+    ],
+)
+def test_per_task_metric_kwargs(metric, attr, value):
+    assert getattr(metric, attr) == value
+
+
+def test_r2_raw_values():
+    targets = torch.tensor([[1.0, 10.0], [2.0, 20.0], [3.0, 30.0], [4.0, 0.0]])
+    preds = torch.tensor([[1.0, 12.0], [2.5, 18.0], [3.0, 30.0], [4.0, 0.0]])
+    mask = torch.tensor([[True, True], [True, True], [True, True], [True, False]])
+
+    metric = R2Score(multioutput="raw_values")
+    metric.update(preds, targets, mask)
+
+    expected = torch.tensor(
+        [r2_score(targets[:, 0], preds[:, 0]), r2_score(targets[:3, 1], preds[:3, 1])]
+    )
+    torch.testing.assert_close(metric.compute(), expected.float())

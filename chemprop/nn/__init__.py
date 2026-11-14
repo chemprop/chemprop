@@ -37,6 +37,7 @@ from .metrics import (
     CrossEntropyLoss,
     DirichletLoss,
     EvidentialLoss,
+    KendallRankCorrCoef,
     LossFunctionRegistry,
     MetricRegistry,
     MulticlassMCCLoss,
@@ -44,6 +45,7 @@ from .metrics import (
     MVELoss,
     QuantileLoss,
     R2Score,
+    SpearmanCorrCoef,
     Wasserstein,
 )
 from .predictors import (
@@ -93,6 +95,8 @@ __all__ = [
     "MetricRegistry",
     "MulticlassMCCMetric",
     "R2Score",
+    "SpearmanCorrCoef",
+    "KendallRankCorrCoef",
     "MVELoss",
     "EvidentialLoss",
     "BCELoss",

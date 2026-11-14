@@ -7,6 +7,9 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 import torchmetrics
+from torchmetrics.functional.regression.kendall import _kendall_corrcoef_compute
+from torchmetrics.functional.regression.r2 import _r2_score_compute, _r2_score_update
+from torchmetrics.functional.regression.spearman import _spearman_corrcoef_compute
 from torchmetrics.utilities.compute import auc
 from torchmetrics.utilities.data import dim_zero_cat
 
@@ -34,6 +37,8 @@ __all__ = [
     "MetricRegistry",
     "MulticlassMCCMetric",
     "R2Score",
+    "SpearmanCorrCoef",
+    "KendallRankCorrCoef",
     "MVELoss",
     "EvidentialLoss",
     "BCELoss",
@@ -185,18 +190,134 @@ class BoundedRMSE(BoundedMixin, RMSE):
 class R2Score(torchmetrics.R2Score):
     def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
         """
+        Calculate the R2 score of each task separately, ignoring masked values, and then aggregate
+        across tasks according to ``multioutput``.
+
         Parameters
         ----------
         task_weights :  ArrayLike = 1.0
             .. important::
                 Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        **kwargs
+            passed to :class:`torchmetrics.R2Score`
         """
-        super().__init__()
+        super().__init__(**kwargs)
         task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
         self.register_buffer("task_weights", task_weights)
 
     def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
-        super().update(preds[mask], targets[mask])
+        preds = torch.where(mask, preds, 0.0)
+        targets = torch.where(mask, targets, 0.0)
+        sum_squared_obs, sum_obs, rss, _ = _r2_score_update(preds, targets)
+
+        self.sum_squared_error = self.sum_squared_error + sum_squared_obs
+        self.sum_error = self.sum_error + sum_obs
+        self.residual = self.residual + rss
+        self.total = self.total + mask.sum(0)
+
+    def compute(self) -> Tensor:
+        raw_scores = torch.stack(
+            [
+                _r2_score_compute(
+                    self.sum_squared_error[j],
+                    self.sum_error[j],
+                    self.residual[j],
+                    self.total[j],
+                    self.adjusted,
+                    "raw_values",
+                )
+                for j in range(self.total.numel())
+            ]
+        )
+
+        if self.multioutput == "raw_values":
+            return raw_scores
+        if self.multioutput == "variance_weighted":
+            tss = self.sum_squared_error - self.sum_error**2 / self.total
+            return torch.sum(tss / tss.sum() * raw_scores)
+        return raw_scores.mean()
+
+
+@MetricRegistry.register("spearman")
+class SpearmanCorrCoef(torchmetrics.regression.SpearmanCorrCoef):
+    def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
+        """
+        Calculate the Spearman rank correlation coefficient of each task separately, ignoring
+        masked values, and then average across tasks.
+
+        Parameters
+        ----------
+        task_weights :  ArrayLike = 1.0
+            .. important::
+                Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        **kwargs
+            passed to :class:`torchmetrics.regression.SpearmanCorrCoef`
+        """
+        super().__init__(**kwargs)
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        self.num_outputs = targets.shape[1]
+        super().update(preds, targets.masked_fill(~mask, torch.nan))
+
+    def compute(self) -> Tensor:
+        preds = dim_zero_cat(self.preds)
+        targets = dim_zero_cat(self.target)
+        preds, targets = preds.view(len(preds), -1), targets.view(len(targets), -1)
+
+        scores = []
+        for j in range(targets.shape[1]):
+            mask_j = targets[:, j].isfinite()
+            scores.append(_spearman_corrcoef_compute(preds[mask_j, j], targets[mask_j, j]))
+        return torch.stack(scores).mean()
+
+
+@MetricRegistry.register("kendall")
+class KendallRankCorrCoef(torchmetrics.regression.KendallRankCorrCoef):
+    # We only return tau, so higher is better
+    higher_is_better = True
+
+    def __init__(self, task_weights: ArrayLike = 1.0, **kwargs):
+        """
+        Calculate Kendall's rank correlation coefficient (tau) of each task separately, ignoring
+        masked values, and then average across tasks.
+
+        Parameters
+        ----------
+        task_weights :  ArrayLike = 1.0
+            .. important::
+                Ignored. Maintained for compatibility with :class:`ChempropMetric`
+        **kwargs
+            passed to :class:`torchmetrics.regression.KendallRankCorrCoef`
+
+        .. note::
+            Only tau is returned. The p-value is dropped even if ``t_test=True``.
+        """
+        super().__init__(**kwargs)
+        task_weights = torch.as_tensor(task_weights, dtype=torch.float).view(1, -1)
+        self.register_buffer("task_weights", task_weights)
+
+    def update(self, preds: Tensor, targets: Tensor, mask: Tensor, *args, **kwargs):
+        self.num_outputs = targets.shape[1]
+        targets = targets.masked_fill(~mask, torch.nan)
+        if self.num_outputs == 1:
+            preds, targets = preds.squeeze(1), targets.squeeze(1)
+        super().update(preds, targets)
+
+    def compute(self) -> Tensor:
+        preds = dim_zero_cat(self.preds)
+        targets = dim_zero_cat(self.target)
+        preds, targets = preds.view(len(preds), -1), targets.view(len(targets), -1)
+
+        scores = []
+        for j in range(targets.shape[1]):
+            mask_j = targets[:, j].isfinite()
+            tau, _ = _kendall_corrcoef_compute(
+                preds[mask_j, j : j + 1], targets[mask_j, j : j + 1], self.variant, self.alternative
+            )
+            scores.append(tau.squeeze())
+        return torch.stack(scores).mean()
 
 
 @LossFunctionRegistry.register("mve")
