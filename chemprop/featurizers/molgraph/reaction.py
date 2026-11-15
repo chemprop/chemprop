@@ -440,6 +440,23 @@ class CuikmolmakerCGRFeaturizer:
 
         self._mode_int = int(cuik_molmaker.reaction_mode_to_int(self.reaction_mode.upper()))
 
+    def __getstate__(self):
+        # Same pickle constraint as CuikmolmakerMolGraphFeaturizer: rebuild cuik property lists
+        # after unpickle for DataLoader spawn workers.
+        return {
+            "atom_featurizer_mode": self.atom_featurizer_mode,
+            "reaction_mode": self.reaction_mode,
+            "keep_h": self.keep_h,
+            "add_h": self.add_h,
+        }
+
+    def __setstate__(self, state):
+        self.atom_featurizer_mode = state["atom_featurizer_mode"]
+        self.reaction_mode = state["reaction_mode"]
+        self.keep_h = state["keep_h"]
+        self.add_h = state["add_h"]
+        self.__post_init__()
+
     def __call__(
         self, reac_smiles_list: list[str], prod_smiles_list: list[str]
     ) -> BatchCuikMolGraph:
