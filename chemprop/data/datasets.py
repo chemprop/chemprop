@@ -388,6 +388,30 @@ class CuikmolmakerDataset(MoleculeDataset):
         default_factory=CuikmolmakerMolGraphFeaturizer
     )
 
+    def __post_init__(self):
+        super().__post_init__()
+        self._validate_unsupported_datapoint_flags()
+
+    def _validate_unsupported_datapoint_flags(self) -> None:
+        """Fail loud for datapoint flags that cuik-molmaker featurization ignores.
+
+        Mirrors CLI checks in ``chemprop.cli.common.validate_common_args``.
+        """
+        if any(d._reorder_atoms for d in self.data):
+            raise ValueError(
+                "`--reorder-atoms` is not supported when using cuik-molmaker featurization."
+            )
+        if any(d._keep_h for d in self.data):
+            raise ValueError(
+                "`--keep-h` is not supported for molecule featurization with cuik-molmaker. "
+                "It is supported for reaction featurization (--reaction-columns)."
+            )
+        if any(d._add_h != self.featurizer.add_h for d in self.data):
+            raise ValueError(
+                "`_add_h` on LazyMoleculeDatapoint must match CuikmolmakerMolGraphFeaturizer.add_h "
+                "when using cuik-molmaker featurization."
+            )
+
     @MoleculeDataset.cache.setter
     def cache(self, cache: bool = False):
         if cache:
