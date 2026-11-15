@@ -53,7 +53,7 @@ The following other common keywords may be used:
  * :code:`--raytune-num-samples <num_samples>` The number of trials to perform
  * :code:`--raytune-num-cpus <num_cpus>` The number of CPUs to use
  * :code:`--raytune-num-gpus <num_gpus>` The number of GPUs to use
- * :code:`--raytune-max-concurrent-trials <num_trials>` The maximum number of concurrent trials
+ * :code:`--raytune-max-concurrent-trials <num_trials>` Maximum number of trials Ray Tune may run simultaneously (``TuneConfig.max_concurrent_trials``). Use ``1`` for sequential trials to limit RAM/GPU contention.
  * :code:`--raytune-search-algorithm <algorithm>` The choice of control search algorithm (either ``random``, ``hyperopt``, or ``optuna``). If ``hyperopt`` is specified, then the arguments ``--hyperopt-n-initial-points <num_points>`` and ``--hyperopt-random-state-seed <seed>`` can be specified.
 
 Other keywords related to hyperparameter optimization are also available (see :ref:`cmd` for a full list).
