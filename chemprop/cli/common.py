@@ -29,6 +29,11 @@ def add_common_args(parser: ArgumentParser) -> ArgumentParser:
         action="store_true",
         help="Turn off using the first row in the input CSV as column names",
     )
+    data_args.add_argument(
+        "--skip-invalid-smiles",
+        action="store_true",
+        help="Skip rows in the input CSV containing invalid SMILES",
+    )
     dataloader_args = parser.add_argument_group("Dataloader args")
     dataloader_args.add_argument(
         "-n",

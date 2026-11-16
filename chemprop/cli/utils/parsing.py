@@ -146,6 +146,7 @@ def make_datapoints(
     reorder_atoms: bool,
     use_cuikmolmaker_featurization: bool,
     n_workers: int = 0,
+    skip_invalid_smiles: bool = False,
 ) -> tuple[
     list[list[MoleculeDatapoint]] | list[list[LazyMoleculeDatapoint]], list[list[ReactionDatapoint]]
 ]:
@@ -205,8 +206,10 @@ def make_datapoints(
         whether to add hydrogen atoms
     ignore_stereo : bool
         whether to ignore stereo information
-    n_workers : bool
+    n_workers : int
         number of workers to use to prepare molecules
+    skip_invalid_smiles : bool
+        whether to skip invalid SMILES instead of raising an error. Default is False.
 
     Returns
     -------
@@ -313,6 +316,7 @@ def make_datapoints(
             parallel_execute(
                 make_mol,
                 [(smi, keep_h, add_h, ignore_stereo, reorder_atoms) for smi in smis],
+                [dict(return_none_on_failure=skip_invalid_smiles) for _ in smis],
                 n_workers=n_workers,
             )
             for smis in smiss
@@ -407,6 +411,15 @@ def make_datapoints(
             else:
                 X_d = np.hstack([X_d, rct_pdt_descriptors])
 
+    invalid_smiles_ids = set()
+    if skip_invalid_smiles:
+        for mols in molss:
+            for i, mol in enumerate(mols):
+                if mol is None:
+                    invalid_smiles_ids.add(i)
+        if invalid_smiles_ids:
+            logger.warning(f"Skipped {len(invalid_smiles_ids)} of {len(molss[0])} rows containing invalid SMILES.")
+
     mol_data = [
         [
             MoleculeDatapoint(
@@ -422,7 +435,7 @@ def make_datapoints(
                 E_f=E_fss[mol_idx][i],
                 V_d=V_dss[mol_idx][i],
             )
-            for i in range(N)
+            for i in range(N) if i not in invalid_smiles_ids
         ]
         for mol_idx, smis in enumerate(smiss)
     ]
@@ -464,6 +477,7 @@ def build_data_from_files(
     p_atom_descs: dict[int, PathLike],
     descriptor_cols: Sequence[str] | None = None,
     n_workers: int = 0,
+    skip_invalid_smiles = False,
     **featurization_kwargs: Mapping,
 ) -> list[list[MoleculeDatapoint] | list[ReactionDatapoint]]:
     smiss, rxnss, Y, weights, lt_mask, gt_mask, X_d_extra = parse_csv(
@@ -504,6 +518,7 @@ def build_data_from_files(
         E_fss,
         V_dss,
         n_workers=n_workers,
+        skip_invalid_smiles=skip_invalid_smiles,
         **featurization_kwargs,
     )
 

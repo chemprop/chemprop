@@ -1180,6 +1180,7 @@ def build_splits(args, format_kwargs, featurization_kwargs):
                 p_bond_feats=args.bond_features_path,
                 p_atom_descs=args.atom_descriptors_path,
                 n_workers=args.num_workers,
+                skip_invalid_smiles=args.skip_invalid_smiles,
                 **format_kwargs,
                 **featurization_kwargs,
             )

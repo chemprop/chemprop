@@ -42,7 +42,8 @@ def make_mol(
     add_h: bool = False,
     ignore_stereo: bool = False,
     reorder_atoms: bool = False,
-) -> Chem.Mol:
+    return_none_on_failure: bool = False,
+) -> Chem.Mol | None:
     """build an RDKit molecule from a SMILES string.
 
     Parameters
@@ -60,17 +61,22 @@ def make_mol(
         whether to reorder the atoms in the molecule by their atom map numbers. This is useful when
         the order of atoms in the SMILES string does not match the atom mapping, e.g. '[F:2][Cl:1]'.
         Default is False. NOTE: This does not reorder the bonds.
+    return_none_on_failure: bool, optional
+        whether to return None instead of raising an error if the SMILES string is invalid.
+        Default is False.
 
     Returns
     -------
-    Chem.Mol
-        the RDKit molecule.
+    Chem.Mol | None
+        the RDKit molecule, or None if parsing fails and return_none_on_failure is True.
     """
     params = Chem.SmilesParserParams()
     params.removeHs = not keep_h
     mol = Chem.MolFromSmiles(smi, params)
 
     if mol is None:
+        if return_none_on_failure:
+            return None
         raise RuntimeError(f"SMILES {smi} is invalid! (RDKit returned None)")
 
     if add_h:
