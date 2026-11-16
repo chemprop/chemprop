@@ -1,0 +1,4 @@
+smiles_A,smiles_B,target
+CCO,O,1
+CCN,not_a_smiles,0
+CC,CO,2

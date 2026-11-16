@@ -72,3 +72,6 @@ def test_reorder_atoms_add_h():
 def test_make_mol_invalid_smiles():
     with pytest.raises(RuntimeError):
         make_mol("chemprop")
+
+def test_make_mol_invalid_smiles_return_none():
+    assert make_mol("chemprop", return_none_on_failure=True) is None
