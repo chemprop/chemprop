@@ -1,10 +1,22 @@
-import numpy as np
 import pytest
 import torch
 
 from chemprop.data import BatchMolGraph, MoleculeDatapoint, MoleculeDataset, collate_batch
 from chemprop.models import MPNN
-from chemprop.nn import BondMessagePassing, MeanAggregation, RegressionFFN, SumAggregation
+from chemprop.nn import (
+    AtomMessagePassing,
+    BondMessagePassing,
+    MABAtomMessagePassing,
+    MABBondMessagePassing,
+    MeanAggregation,
+    RegressionFFN,
+)
+from chemprop.utils.export import add_export_checks, register_batch_mol_graph_pytree
+
+register_batch_mol_graph_pytree()
+
+EXPORT_SMILES = ["C", "CC", "CCC", "CCCC"]
+INFERENCE_SMILES = ["CCO", "c1ccccc1", "CC(=O)O"]
 
 
 def make_batch(smiles: list[str]) -> BatchMolGraph:
@@ -12,88 +24,76 @@ def make_batch(smiles: list[str]) -> BatchMolGraph:
     return collate_batch(dataset)[0]
 
 
-@pytest.mark.usefixtures("batch_mol_graph_pytree")
-def test_mpnn_export_dynamic_graph_sizes():
-    export_graph = make_batch(["C", "CC", "CCC", "CCCC"])
-    inference_graph = make_batch(["C", "S", "N", "O"])
-    assert export_graph.V.shape[0] != inference_graph.V.shape[0]
-    assert inference_graph.E.shape[0] == 0
-
-    message_passing = BondMessagePassing()
-    model = MPNN(
-        message_passing, SumAggregation(), RegressionFFN(input_dim=message_passing.output_dim)
-    ).eval()
+def make_dynamic_shapes() -> dict:
+    """Mark the atom and edge dimensions of the five ``BatchMolGraph`` tensors as dynamic."""
     num_atoms = torch.export.Dim("num_atoms")
     num_edges = torch.export.Dim("num_edges")
-    dynamic_shapes = {
-        "bmg": [{0: num_atoms}, {0: num_edges}, {1: num_edges}, {0: num_edges}, {0: num_atoms}],
-        "V_d": None,
-        "X_d": None,
-    }
+    return {"bmg": [{0: num_atoms}, {0: num_edges}, {1: num_edges}, {0: num_edges}, {0: num_atoms}]}
+
+
+def export_and_run_torch(model, export_graph, inference_graph, dynamic_shapes):
+    """Export with ``torch.export`` and run the exported program in PyTorch."""
+    exported = torch.export.export(
+        model, (export_graph,), dynamic_shapes=dynamic_shapes, strict=False
+    )
+    with torch.inference_mode():
+        return exported.module()(inference_graph)
+
+
+def export_and_run_onnx(model, export_graph, inference_graph, dynamic_shapes):
+    """Export to ONNX (``torch.export`` plus conversion to ONNX operators) and run in ONNX Runtime."""
+    pytest.importorskip("onnxscript")
+    pytest.importorskip("onnxruntime")
+    onnx_program = torch.onnx.export(
+        model, (export_graph,), dynamic_shapes=dynamic_shapes, dynamo=True, verbose=False
+    )
+    return onnx_program(inference_graph)[0]
+
+
+@pytest.mark.parametrize(
+    "message_passing",
+    [AtomMessagePassing(), BondMessagePassing(), MABAtomMessagePassing(), MABBondMessagePassing()],
+)
+def test_message_passing_export_dynamic_graph_sizes(message_passing):
+    export_graph = make_batch(EXPORT_SMILES)
+    inference_graph = make_batch(INFERENCE_SMILES)
+
+    exported = torch.export.export(
+        message_passing, (export_graph,), dynamic_shapes=make_dynamic_shapes(), strict=False
+    )
+
+    expected = message_passing(inference_graph)
+    actual = exported.module()(inference_graph)
+    torch.testing.assert_close(actual, expected)
+
+
+@pytest.mark.parametrize("inference_smiles", [INFERENCE_SMILES, ["CCO"]])
+@pytest.mark.parametrize("export_and_run", [export_and_run_torch, export_and_run_onnx])
+def test_exported_mpnn_matches_eager_on_new_batch(export_and_run, inference_smiles):
+    export_graph = make_batch(EXPORT_SMILES)
+    inference_graph = make_batch(inference_smiles)
+    assert inference_graph.V.shape[0] != export_graph.V.shape[0]
+    assert len(inference_graph) != len(export_graph)
+
+    model = MPNN(BondMessagePassing(), MeanAggregation(), RegressionFFN(), batch_norm=True).eval()
+    add_export_checks(model)
 
     with torch.inference_mode():
         expected = model(inference_graph)
 
-    exported = torch.export.export(
-        model,
-        (export_graph,),
-        kwargs={"V_d": None, "X_d": None},
-        dynamic_shapes=dynamic_shapes,
-        strict=False,
-    )
-
-    with torch.inference_mode():
-        actual = exported.module()(inference_graph, V_d=None, X_d=None)
+    actual = export_and_run(model, export_graph, inference_graph, make_dynamic_shapes())
     torch.testing.assert_close(actual, expected)
 
 
-@pytest.mark.usefixtures("batch_mol_graph_pytree")
-def test_mean_aggregation_onnx_parity_dynamic_batch(tmp_path):
-    ort = pytest.importorskip("onnxruntime")
+def test_add_export_checks_hooks_only_batch_norm():
+    """Hooks go on batch norm layers only, and the returned handles remove them."""
+    model = MPNN(BondMessagePassing(), MeanAggregation(), RegressionFFN(), batch_norm=True)
+    handles = add_export_checks(model)
+    assert len(handles) == 1
+    assert [m for m in model.modules() if m._forward_pre_hooks] == [model.bn]
 
-    export_smiles = ["c1ccccc1", "CC(=O)O"]
-    infer_smiles = ["C", "CC", "CCC", "CCO", "CCN", "CCCl", "c1ccccc1", "CC(=O)O", "CCOC", "CCBr"]
-    export_graph = make_batch(export_smiles)
-    infer_graph = make_batch(infer_smiles)
-    assert export_graph.V.shape[0] < infer_graph.V.shape[0]
-    assert len(export_smiles) < len(infer_smiles)
+    for handle in handles:
+        handle.remove()
+    assert not model.bn._forward_pre_hooks
 
-    message_passing = BondMessagePassing()
-    model = MPNN(
-        message_passing, MeanAggregation(), RegressionFFN(input_dim=message_passing.output_dim)
-    ).eval()
-
-    auto = torch.export.Dim.AUTO
-    dynamic_shapes = {
-        "bmg": [{0: auto, 1: auto}, {0: auto, 1: auto}, {0: auto, 1: auto}, {0: auto}, {0: auto}],
-        "V_d": None,
-        "X_d": None,
-    }
-
-    exported = torch.export.export(
-        model,
-        (export_graph,),
-        kwargs={"V_d": None, "X_d": None},
-        dynamic_shapes=dynamic_shapes,
-        strict=False,
-    )
-    onnx_path = tmp_path / "mean_agg.onnx"
-    onnx_program = torch.onnx.export(exported, f=str(onnx_path), dynamo=True)
-
-    with torch.inference_mode():
-        pt_out = model(infer_graph).detach().cpu().numpy().reshape(-1)
-
-    sess = ort.InferenceSession(
-        onnx_program.model_proto.SerializeToString(), providers=["CPUExecutionProvider"]
-    )
-    feed = {
-        "bmg_v": infer_graph.V.detach().cpu().numpy(),
-        "bmg_e": infer_graph.E.detach().cpu().numpy(),
-        "bmg_edge_index": infer_graph.edge_index.detach().cpu().numpy(),
-        "bmg_rev_edge_index": infer_graph.rev_edge_index.detach().cpu().numpy(),
-        "bmg_batch": infer_graph.batch.detach().cpu().numpy(),
-    }
-    input_names = [inp.name for inp in sess.get_inputs()]
-    ort_out = sess.run(None, {name: feed[name] for name in input_names})[0].reshape(-1)
-
-    assert np.max(np.abs(pt_out - ort_out)) <= 1e-4
+    assert add_export_checks(MPNN(BondMessagePassing(), MeanAggregation(), RegressionFFN())) == []
