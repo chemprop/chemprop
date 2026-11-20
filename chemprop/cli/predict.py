@@ -588,6 +588,16 @@ def save_individual_predictions(
         )
 
 
+def stack_MAB_targets(dataset, predss):
+    """Stack the (mol, atom, bond) targets of a dataset, with None for kinds that aren't predicted"""
+    mol_preds, atom_preds, bond_preds = predss
+    return [
+        dataset.Y if mol_preds is not None else None,
+        np.concatenate(dataset.atom_Y, axis=0) if atom_preds is not None else None,
+        np.concatenate(dataset.bond_Y, axis=0) if bond_preds is not None else None,
+    ]
+
+
 def make_MAB_prediction_for_models(
     args: Namespace, model_paths: Iterator[Path], multicomponent: bool, output_path: Path
 ):
@@ -644,20 +654,16 @@ def make_MAB_prediction_for_models(
     ]
 
     test_uncss = []
-    cal_test_individual_uncss = []
     if args.calibration_method is not None:
         cal_individual_predss, cal_individual_uncss = uncertainty_estimator(
             cal_loader, models, trainer
         )
-        cal_targetss = [
-            cal_loader.dataset.Y,
-            np.concatenate(cal_loader.dataset.atom_Y, axis=0),
-            np.concatenate(cal_loader.dataset.bond_Y, axis=0),
-        ]
+        cal_targetss = stack_MAB_targets(cal_loader.dataset, test_predss)
         for test_individual_uncs, cal_individual_preds, cal_targets, cal_individual_uncs in zip(
             test_individual_uncss, cal_individual_predss, cal_targetss, cal_individual_uncss
         ):
             if test_individual_uncs is None:
+                test_uncss.append(None)
                 continue
             cal_mask = torch.from_numpy(np.isfinite(cal_targets))
             cal_targets = np.nan_to_num(cal_targets, nan=0.0)
@@ -681,9 +687,7 @@ def make_MAB_prediction_for_models(
                     uncertainty_calibrator.fit(cal_uncs, cal_targets, cal_mask)
                 for i in range(test_individual_uncs.shape[0]):
                     test_individual_uncs[i] = uncertainty_calibrator.apply(test_individual_uncs[i])
-                cal_test_individual_uncss.append(test_individual_uncs)
                 test_uncss.append(torch.mean(test_individual_uncs, dim=0))
-        test_individual_uncss = cal_test_individual_uncss
     else:
         test_uncss = [
             torch.mean(test_individual_uncs, dim=0) if test_individual_uncs is not None else None
@@ -695,16 +699,17 @@ def make_MAB_prediction_for_models(
             Factory.build(UncertaintyEvaluatorRegistry[method])
             for method in args.evaluation_methods
         ]
-        test_targetss = [
-            test_loader.dataset.Y,
-            np.concatenate(test_loader.dataset.atom_Y, axis=0),
-            np.concatenate(test_loader.dataset.bond_Y, axis=0),
-        ]
+        test_targetss = stack_MAB_targets(test_loader.dataset, test_predss)
         test_maskss = [
-            torch.from_numpy(np.isfinite(test_targets)) for test_targets in test_targetss
+            torch.from_numpy(np.isfinite(test_targets)) if test_targets is not None else None
+            for test_targets in test_targetss
         ]
-        test_targetss = [np.nan_to_num(test_targets, nan=0.0) for test_targets in test_targetss]
-        test_targetss = [torch.from_numpy(test_targets) for test_targets in test_targetss]
+        test_targetss = [
+            torch.from_numpy(np.nan_to_num(test_targets, nan=0.0))
+            if test_targets is not None
+            else None
+            for test_targets in test_targetss
+        ]
         logger.info("Uncertainty evaluation metric:")
         for evaluator in uncertainty_evaluators:
             for test_preds, test_uncs, test_targets, test_mask, kind in zip(
@@ -761,7 +766,9 @@ def make_MAB_prediction_for_models(
     )
 
     if len(model_paths) > 1:
-        for i in range(test_individual_predss[0].shape[0]):
+        if args.uncertainty_method == "ensemble":
+            test_individual_uncss = [None, None, None]
+        for i in range(len(models)):
             individual_output_path = output_path.with_name(
                 output_path.stem + f"_model_{i}" + output_path.suffix
             )
@@ -771,8 +778,8 @@ def make_MAB_prediction_for_models(
                 bond_split_indices,
                 models[0],
                 output_columns,
-                test_individual_predss[i],
-                test_individual_uncss[i],
+                [preds[i] if preds is not None else None for preds in test_individual_predss],
+                [uncs[i] if uncs is not None else None for uncs in test_individual_uncss],
                 individual_output_path,
             )
 
@@ -875,7 +882,9 @@ def save_MAB_predictions(
 
     df_test = pd.concat([df_test, df_preds], axis=1)
 
-    if args.uncertainty_method not in ["none", "classification"]:
+    if args.uncertainty_method not in ["none", "classification"] and any(
+        uncs is not None for uncs in test_uncss
+    ):
         mols_uncs = mol_uncs if mol_uncs is not None else [None] * n_datapoints
         atomss_uncs = (
             np.split(atom_uncs, atom_split_indices)
