@@ -1621,7 +1621,7 @@ def build_model(
                     else:
                         logger.info(f"Loading cached CheMeleon-Rxn from {model_path}")
                     logger.info(
-                        "Please cite DOI: 10.26434/chemrxiv.15008692 when using CheMeleon-Rxn in published work"
+                        "Please cite DOI: 10.26434/chemrxiv.15008692/v1 when using CheMeleon-Rxn in published work"
                     )
                     chemeleon_rxn_mp = torch.load(model_path, weights_only=True)
                     if is_multi:
