@@ -95,6 +95,8 @@ def test_train_quick_from_foundation(monkeypatch, data_path):
     input_path, *_ = data_path
 
     for foundation in FoundationModels.keys():
+        if foundation == "CHEMELEON_RXN":  # reaction model, see test_cli_regression_rxn.py
+            continue
         args = [
             "chemprop",
             "train",

@@ -96,6 +96,12 @@ _ACTIVATION_FUNCTIONS.move_to_end("RELU", last=False)
 
 class FoundationModels(EnumMapping):
     CHEMELEON = auto()
+    CHEMELEON_RXN = auto()
+
+    @classmethod
+    def get(cls, name: str | EnumMapping) -> EnumMapping:
+        # accept e.g. "chemeleon-rxn" as well as "chemeleon_rxn"
+        return super().get(name.replace("-", "_") if isinstance(name, str) else name)
 
 
 class TrainSubcommand(Subcommand):
@@ -741,6 +747,46 @@ def validate_train_args(args):
                                 argument=None,
                                 message=f"CheMeleon does not support passing {arg_name}",
                             )
+                case FoundationModels.CHEMELEON_RXN:
+                    # the featurization must match pretraining exactly: a mismatch does not
+                    # raise an error, it silently gives a worse model
+                    if args.reaction_columns is None or args.smiles_columns is not None:
+                        raise ArgumentError(
+                            argument=None,
+                            message="CheMeleon-Rxn must be used with reaction inputs only (`--reaction-columns`), not `--smiles-columns`!",
+                        )
+                    if args.rxn_mode != "REAC_DIFF":
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"CheMeleon-Rxn must be used with `--rxn-mode REAC_DIFF` not `{args.rxn_mode}`!",
+                        )
+                    if not args.keep_h or args.add_h:
+                        raise ArgumentError(
+                            argument=None,
+                            message="CheMeleon-Rxn must be used with `--keep-h` and without `--add-h`!",
+                        )
+                    if (
+                        mode := AtomFeatureMode.get(args.multi_hot_atom_featurizer_mode)
+                    ) != AtomFeatureMode.V2:
+                        raise ArgumentError(
+                            argument=None,
+                            message=f"CheMeleon-Rxn must be used with `--multi-hot-atom-featurizer-mode V2` not `{mode}`!",
+                        )
+                    for arg_value, arg_name in (
+                        (args.atom_features_path, "--atom-features-path"),
+                        (args.atom_descriptors_path, "--atom-descriptors-path"),
+                        (args.bond_features_path, "--bond-features-path"),
+                    ):
+                        if arg_value is not None:
+                            raise ArgumentError(
+                                argument=None,
+                                message=f"CheMeleon-Rxn does not support passing {arg_name}",
+                            )
+                    if not args.init_lr == args.max_lr == args.final_lr:
+                        logger.info(
+                            "Note: we recommend fine-tuning CheMeleon-Rxn with a flat learning rate, "
+                            "e.g. `--init-lr 1e-4 --max-lr 1e-4 --final-lr 1e-4`."
+                        )
         _msg = ""
         for arg_value, arg_name in (
             (args.message_hidden_dim, "--message-hidden-dim"),
@@ -1559,6 +1605,38 @@ def build_model(
                     else:
                         mp_block = BondMessagePassing(**chemeleon_mp["hyper_parameters"])
                         mp_block.load_state_dict(chemeleon_mp["state_dict"])
+                    agg = Factory.build(AggregationRegistry["mean"])
+                case FoundationModels.CHEMELEON_RXN:
+                    ckpt_dir = Path().home() / ".chemprop"
+                    ckpt_dir.mkdir(exist_ok=True)
+                    model_path = ckpt_dir / "chemeleon_rxn_mp.pt"
+                    if not model_path.exists():
+                        logger.info(
+                            f"Downloading CheMeleon-Rxn Foundation model from Zenodo (https://zenodo.org/records/23923146) to {model_path}"
+                        )
+                        urlretrieve(
+                            r"https://zenodo.org/records/23923146/files/chemeleon_rxn_mp.pt",
+                            model_path,
+                        )
+                    else:
+                        logger.info(f"Loading cached CheMeleon-Rxn from {model_path}")
+                    logger.info(
+                        "Please cite DOI: 10.26434/chemrxiv.15008692/v1 when using CheMeleon-Rxn in published work"
+                    )
+                    chemeleon_rxn_mp = torch.load(model_path, weights_only=True)
+                    if is_multi:
+                        mp_blocks = [
+                            BondMessagePassing(**chemeleon_rxn_mp["hyper_parameters"])
+                            for _ in range(train_dset.n_components)
+                        ]
+                        for block in mp_blocks:
+                            block.load_state_dict(chemeleon_rxn_mp["state_dict"])
+                        mp_block = MulticomponentMessagePassing(
+                            mp_blocks, train_dset.n_components, args.mpn_shared
+                        )
+                    else:
+                        mp_block = BondMessagePassing(**chemeleon_rxn_mp["hyper_parameters"])
+                        mp_block.load_state_dict(chemeleon_rxn_mp["state_dict"])
                     agg = Factory.build(AggregationRegistry["mean"])
     else:
         mp_cls = AtomMessagePassing if args.atom_messages else BondMessagePassing
